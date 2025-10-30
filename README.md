@@ -1,4 +1,4 @@
-# GemiPrintaIO - Sistem Manajemen Percetakan
+# gemiprintAIO - Sistem Manajemen Percetakan
 
 Program internal untuk mengelola bisnis percetakan dengan fitur lengkap untuk POS, inventori, dan manajemen keuangan.
 
