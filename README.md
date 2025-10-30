@@ -2,6 +2,12 @@
 
 Program internal untuk mengelola bisnis percetakan dengan fitur lengkap untuk POS, inventori, dan manajemen keuangan.
 
+## 🚀 Quick Start
+
+**This project is pre-configured and ready to use!**
+
+See [QUICKSTART.md](QUICKSTART.md) for step-by-step setup instructions (5 minutes to get started).
+
 ## Fitur Utama
 
 ### 1. Autentikasi & Manajemen User
@@ -45,20 +51,27 @@ Program internal untuk mengelola bisnis percetakan dengan fitur lengkap untuk PO
 - Next.js 16, TypeScript, Tailwind CSS
 - Supabase (PostgreSQL + Auth)
 
-## Setup
+## Setup Cepat
 
 1. Clone dan install:
 ```bash
 npm install
 ```
 
-2. Setup Supabase dan jalankan `supabase/schema.sql`
+2. Setup database (lihat [QUICKSTART.md](QUICKSTART.md))
 
-3. Copy `.env.example` ke `.env.local` dan isi credentials
-
-4. Run:
+3. Run:
 ```bash
 npm run dev
 ```
 
-Lihat dokumentasi lengkap di file ini untuk detail setup dan penggunaan.
+## Dokumentasi
+
+- [QUICKSTART.md](QUICKSTART.md) - Setup cepat (mulai di sini!)
+- [SETUP.md](SETUP.md) - Panduan lengkap setup
+- [DOCUMENTATION.md](DOCUMENTATION.md) - Dokumentasi API dan database
+- [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Ringkasan proyek
+
+## Status
+
+✅ **Configured & Ready** - Project sudah terkonfigurasi dengan Supabase project "gemiprint"
