@@ -1,0 +1,1310 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import MainShell from "@/components/MainShell";
+import { NotificationToastProps } from "@/components/NotificationToast";
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  role: "admin" | "manager" | "chief" | "user";
+  is_active: number;
+  created_at?: string;
+}
+
+export default function UsersPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    full_name: "",
+    password: "",
+    role: "user" as "admin" | "manager" | "chief" | "user",
+    is_active: 1,
+  });
+
+  // Password Manager state
+  interface Credential {
+    id: string;
+    owner_id: string;
+    service_name: string;
+    account_username: string;
+    notes: string;
+    is_private: boolean;
+    can_view_password: boolean;
+  }
+  const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [showCredModal, setShowCredModal] = useState(false);
+  const [editingCred, setEditingCred] = useState<Credential | null>(null);
+  const [credForm, setCredForm] = useState({
+    service_name: "",
+    account_username: "",
+    password: "",
+    notes: "",
+    is_private: true,
+  });
+  const [notice, setNotice] = useState<NotificationToastProps | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<{
+    [key: string]: string;
+  }>({});
+  const [showingPasswordId, setShowingPasswordId] = useState<string | null>(
+    null
+  );
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [showCredPassword, setShowCredPassword] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // Handle ESC key to close modals
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showModal) {
+          handleCloseModal();
+        } else if (showCredModal) {
+          setShowCredModal(false);
+          setEditingCred(null);
+          setShowCredPassword(false);
+          setCredForm({
+            service_name: "",
+            account_username: "",
+            password: "",
+            notes: "",
+            is_private: true,
+          });
+        } else if (confirmDialog?.show) {
+          setConfirmDialog(null);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [showModal, showCredModal, confirmDialog]);
+
+  const checkAuth = () => {
+    const userSession = localStorage.getItem("user");
+    if (!userSession) {
+      router.push("/auth/login");
+      return;
+    }
+
+    const user = JSON.parse(userSession);
+    setCurrentUser(user);
+    setLoading(false);
+    // Load initial data
+    loadUsers(user);
+    loadCredentials(user);
+  };
+
+  const showMsg = (type: "success" | "error", message: string) => {
+    setNotice({ type, message });
+    setTimeout(() => setNotice(null), 2500);
+  };
+
+  const loadUsers = async (viewer?: User) => {
+    if (viewer && viewer.role !== "admin" && viewer.role !== "manager") {
+      // Only admins can view/manage users table
+      setUsers([]);
+      return;
+    }
+    try {
+      const res = await fetch("/api/users", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Gagal memuat users");
+      setUsers(data.users || []);
+    } catch (err) {
+      console.error("Gagal memuat users:", err);
+      showMsg("error", "Tidak bisa memuat data users dari database.");
+    }
+  };
+
+  const loadCredentials = async (viewer?: User) => {
+    const v = viewer || currentUser;
+    if (!v) return;
+    try {
+      const res = await fetch(`/api/passwords`, {
+        cache: "no-store",
+        headers: { "x-user-id": v.id },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Gagal memuat kredensial");
+      setCredentials(data.credentials || []);
+    } catch (err) {
+      console.error(err);
+      showMsg("error", "Tidak bisa memuat kredensial.");
+    }
+  };
+
+  const handleOpenModal = (user?: User) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        password: "",
+        role: user.role,
+        is_active: user.is_active,
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        username: "",
+        email: "",
+        full_name: "",
+        password: "",
+        role: "user",
+        is_active: 1,
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingUser(null);
+    setShowUserPassword(false);
+    setFormData({
+      username: "",
+      email: "",
+      full_name: "",
+      password: "",
+      role: "user",
+      is_active: 1,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      if (editingUser) {
+        // Update existing user via API
+        const payload: any = {
+          username: editingUser.username,
+          email: formData.email,
+          full_name: formData.full_name,
+          role: formData.role,
+          is_active: formData.is_active,
+        };
+        if (formData.password) payload.password = formData.password;
+
+        const res = await fetch(`/api/users/${editingUser.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Gagal update user");
+        showMsg("success", "User berhasil diupdate!");
+      } else {
+        // Create new user via API
+        const res = await fetch(`/api/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Gagal menambah user");
+        showMsg("success", "User berhasil ditambahkan!");
+      }
+
+      await loadUsers();
+      handleCloseModal();
+    } catch (err) {
+      console.error(err);
+      showMsg(
+        "error",
+        `Terjadi kesalahan saat menyimpan user: ${
+          err instanceof Error ? err.message : "Unknown"
+        }`
+      );
+    }
+  };
+
+  const handleDelete = async (userToDelete: User) => {
+    const userId = userToDelete.id;
+    console.log("Delete clicked for userId:", userId);
+    console.log("Current user ID:", currentUser?.id);
+
+    if (userId === currentUser?.id) {
+      showMsg("error", "❌ Tidak bisa menghapus user yang sedang login!");
+      return;
+    }
+
+    setConfirmDialog({
+      show: true,
+      title: "Hapus User",
+      message: `Yakin ingin menghapus user berikut?\n\nNama: ${userToDelete.full_name}\nUsername: @${userToDelete.username}\nEmail: ${userToDelete.email}\n\nTindakan ini tidak dapat dibatalkan!`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          const res = await fetch(`/api/users/${userId}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: userToDelete.username }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || "Gagal menghapus user");
+
+          showMsg("success", "User berhasil dihapus!");
+          await loadUsers(currentUser!);
+        } catch (err) {
+          console.error(err);
+          showMsg(
+            "error",
+            `Terjadi kesalahan saat menghapus user: ${
+              err instanceof Error ? err.message : "Unknown"
+            }`
+          );
+        }
+      },
+    });
+  };
+
+  const handleToggleActive = async (userId: string) => {
+    if (userId === currentUser?.id) {
+      showMsg("error", "❌ Tidak bisa menonaktifkan user yang sedang login!");
+      return;
+    }
+
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: target.is_active ? 0 : 1 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Gagal update status");
+      await loadUsers(currentUser!);
+    } catch (err) {
+      console.error(err);
+      showMsg(
+        "error",
+        `Terjadi kesalahan saat mengubah status: ${
+          err instanceof Error ? err.message : "Unknown"
+        }`
+      );
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    router.push("/auth/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-blue-100 to-cyan-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+          <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <MainShell title="Manajemen User" notice={notice}>
+      {/* Main Content */}
+      {currentUser?.role === "admin" && (
+        <>
+          <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-6 mb-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-1 font-twcenmt">
+                  Kelola Pengguna
+                </h2>
+                <p className="text-white/90">
+                  Tambah, edit, atau hapus pengguna sistem
+                </p>
+              </div>
+              <button
+                onClick={() => handleOpenModal()}
+                className="px-6 py-3 bg-white text-[#00afef] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Tambah User
+              </button>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-[#00afef]/10 to-[#2266ff]/10">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                      User
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                      Email
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                      Role
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d]">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr
+                      key={user.id}
+                      className="hover:bg-blue-50/50 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center text-white font-bold">
+                            {user.full_name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[#0a1b3d]">
+                              {user.full_name}
+                            </div>
+                            <div className="text-sm text-[#6b7280]">
+                              @{user.username}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-[#6b7280]">{user.email}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            user.role === "admin"
+                              ? "bg-purple-100 text-purple-700"
+                              : user.role === "manager"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleToggleActive(user.id)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                            user.is_active
+                              ? "bg-green-100 text-green-700 hover:bg-green-200"
+                              : "bg-red-100 text-red-700 hover:bg-red-200"
+                          }`}
+                        >
+                          {user.is_active ? "Aktif" : "Nonaktif"}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenModal(user)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Hapus"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {users.length === 0 && (
+              <div className="text-center py-12 text-[#6b7280]">
+                <p>Belum ada user.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-[#00afef]">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[#6b7280] font-semibold">Total Users</h4>
+                <span className="text-2xl">👥</span>
+              </div>
+              <p className="text-3xl font-bold text-[#0a1b3d]">
+                {users.length}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[#6b7280] font-semibold">Aktif</h4>
+                <span className="text-2xl">✅</span>
+              </div>
+              <p className="text-3xl font-bold text-[#0a1b3d]">
+                {users.filter((u) => u.is_active).length}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-purple-500">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[#6b7280] font-semibold">Admin</h4>
+                <span className="text-2xl">👑</span>
+              </div>
+              <p className="text-3xl font-bold text-[#0a1b3d]">
+                {users.filter((u) => u.role === "admin").length}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Password Manager (Admins, Managers, Users) */}
+      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg p-6 mt-10 mb-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold mb-1 font-twcenmt">
+              Password Manager
+            </h2>
+            <p className="text-white/90">
+              Simpan kredensial login untuk layanan internal
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingCred(null);
+              setShowCredPassword(false);
+              setCredForm({
+                service_name: "",
+                account_username: "",
+                password: "",
+                notes: "",
+                is_private: true,
+              });
+              setShowCredModal(true);
+            }}
+            className="px-6 py-3 bg-white text-teal-700 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Tambah Kredensial
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-emerald-50 to-teal-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                  Layanan
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                  Akun
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                  Password
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                  Visibilitas
+                </th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d]">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {credentials.map((c) => (
+                <tr
+                  key={c.id}
+                  className="hover:bg-emerald-50/40 transition-colors"
+                >
+                  <td className="px-6 py-4 text-[#0a1b3d] font-semibold">
+                    {c.service_name}
+                  </td>
+                  <td className="px-6 py-4 text-[#6b7280]">
+                    {c.account_username}
+                  </td>
+                  <td className="px-6 py-4">
+                    {c.can_view_password ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-[#0a1b3d]">
+                          {showingPasswordId === c.id && visiblePasswords[c.id]
+                            ? visiblePasswords[c.id]
+                            : "••••••••"}
+                        </span>
+                        <button
+                          onClick={async () => {
+                            if (showingPasswordId === c.id) {
+                              setShowingPasswordId(null);
+                              return;
+                            }
+                            try {
+                              const res = await fetch(
+                                `/api/passwords/${c.id}`,
+                                {
+                                  headers: { "x-user-id": currentUser!.id },
+                                }
+                              );
+                              const data = await res.json();
+                              if (!res.ok)
+                                throw new Error(
+                                  data?.error || "Gagal ambil password"
+                                );
+                              setVisiblePasswords((prev) => ({
+                                ...prev,
+                                [c.id]: data.password,
+                              }));
+                              setShowingPasswordId(c.id);
+                            } catch (err) {
+                              console.error(err);
+                              showMsg(
+                                "error",
+                                "Tidak bisa menampilkan password"
+                              );
+                            }
+                          }}
+                          className="p-1 text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                          title={
+                            showingPasswordId === c.id
+                              ? "Sembunyikan"
+                              : "Tampilkan"
+                          }
+                        >
+                          {showingPasswordId === c.id ? (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[#6b7280] text-sm italic">
+                        Tidak ada akses
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        c.is_private
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      {c.is_private ? "Private" : "Tim"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {c.can_view_password && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              let password = visiblePasswords[c.id];
+                              if (!password) {
+                                const res = await fetch(
+                                  `/api/passwords/${c.id}`,
+                                  {
+                                    headers: {
+                                      "x-user-id": currentUser!.id,
+                                    },
+                                  }
+                                );
+                                const data = await res.json();
+                                if (!res.ok)
+                                  throw new Error(
+                                    data?.error || "Gagal ambil password"
+                                  );
+                                password = data.password;
+                                setVisiblePasswords((prev) => ({
+                                  ...prev,
+                                  [c.id]: password,
+                                }));
+                              }
+                              navigator.clipboard.writeText(password);
+                              showMsg(
+                                "success",
+                                "Password disalin ke clipboard"
+                              );
+                            } catch (err) {
+                              console.error(err);
+                              showMsg(
+                                "error",
+                                "Tidak bisa menampilkan password"
+                              );
+                            }
+                          }}
+                          className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Salin Password"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                      {/* Edit */}
+                      <button
+                        onClick={() => {
+                          setEditingCred(c);
+                          setShowCredPassword(false);
+                          setCredForm({
+                            service_name: c.service_name,
+                            account_username: c.account_username,
+                            password: "",
+                            notes: c.notes,
+                            is_private: c.is_private,
+                          });
+                          setShowCredModal(true);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                      {/* Delete */}
+                      <button
+                        onClick={() => {
+                          setConfirmDialog({
+                            show: true,
+                            title: "Hapus Kredensial",
+                            message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.service_name}\nAkun: ${c.account_username}\n\nTindakan ini tidak dapat dibatalkan!`,
+                            onConfirm: async () => {
+                              setConfirmDialog(null);
+                              try {
+                                const res = await fetch(
+                                  `/api/passwords/${c.id}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      "x-user-id": currentUser!.id,
+                                    },
+                                  }
+                                );
+                                const data = await res.json();
+                                if (!res.ok)
+                                  throw new Error(
+                                    data?.error || "Gagal menghapus"
+                                  );
+                                showMsg("success", "Kredensial dihapus");
+                                await loadCredentials();
+                              } catch (err) {
+                                console.error(err);
+                                showMsg(
+                                  "error",
+                                  "Tidak bisa menghapus kredensial"
+                                );
+                              }
+                            },
+                          });
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Hapus"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {credentials.length === 0 && (
+          <div className="text-center py-12 text-[#6b7280]">
+            <p>Belum ada kredensial.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Form - Manage Users */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-[#0a1b3d]">
+                {editingUser ? "Edit User" : "Tambah User Baru"}
+              </h3>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
+                  required
+                  disabled={!!editingUser}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition disabled:bg-gray-100"
+                  placeholder="username"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={formData.full_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Password {editingUser && "(kosongkan jika tidak diubah)"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUserPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required={!editingUser}
+                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPassword(!showUserPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00afef] transition-colors"
+                  >
+                    {showUserPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Role
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) =>
+                    setFormData({ ...formData, role: e.target.value as any })
+                  }
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                >
+                  <option value="user">User</option>
+                  <option value="manager">Manager</option>
+                  <option value="chief">Chief</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={formData.is_active === 1}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      is_active: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-4 h-4 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
+                />
+                <label
+                  htmlFor="is_active"
+                  className="text-sm font-medium text-[#0a1b3d]"
+                >
+                  User Aktif
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                >
+                  {editingUser ? "Update" : "Tambah"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Form - Password Manager */}
+      {showCredModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-[#0a1b3d]">
+                {editingCred ? "Edit Kredensial" : "Tambah Kredensial"}
+              </h3>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!currentUser) return;
+                try {
+                  if (editingCred) {
+                    const res = await fetch(
+                      `/api/passwords/${editingCred.id}`,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "x-user-id": currentUser.id,
+                        },
+                        body: JSON.stringify(credForm),
+                      }
+                    );
+                    const data = await res.json();
+                    if (!res.ok)
+                      throw new Error(data?.error || "Gagal update kredensial");
+                    showMsg("success", "Kredensial berhasil diupdate!");
+                  } else {
+                    const res = await fetch(`/api/passwords`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-user-id": currentUser.id,
+                      },
+                      body: JSON.stringify(credForm),
+                    });
+                    const data = await res.json();
+                    if (!res.ok)
+                      throw new Error(
+                        data?.error || "Gagal menambah kredensial"
+                      );
+                    showMsg("success", "Kredensial berhasil ditambahkan!");
+                  }
+                  setShowCredModal(false);
+                  setEditingCred(null);
+                  setShowCredPassword(false);
+                  setCredForm({
+                    service_name: "",
+                    account_username: "",
+                    password: "",
+                    notes: "",
+                    is_private: true,
+                  });
+                  await loadCredentials();
+                } catch (err) {
+                  console.error(err);
+                  showMsg(
+                    "error",
+                    `Terjadi kesalahan: ${
+                      err instanceof Error ? err.message : "Unknown"
+                    }`
+                  );
+                }
+              }}
+              className="p-6 space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Nama Layanan
+                </label>
+                <input
+                  type="text"
+                  value={credForm.service_name}
+                  onChange={(e) =>
+                    setCredForm({ ...credForm, service_name: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  placeholder="Microsoft, Google, GitHub, BCA, dll."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Akun (Email/Username)
+                </label>
+                <input
+                  type="text"
+                  value={credForm.account_username}
+                  onChange={(e) =>
+                    setCredForm({
+                      ...credForm,
+                      account_username: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Password {editingCred && "(kosongkan jika tidak diubah)"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCredPassword ? "text" : "password"}
+                    value={credForm.password}
+                    onChange={(e) =>
+                      setCredForm({ ...credForm, password: e.target.value })
+                    }
+                    required={!editingCred}
+                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCredPassword(!showCredPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-600 transition-colors"
+                  >
+                    {showCredPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  Catatan
+                </label>
+                <textarea
+                  value={credForm.notes}
+                  onChange={(e) =>
+                    setCredForm({ ...credForm, notes: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  placeholder="Keterangan tambahan"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="cred_private"
+                  checked={credForm.is_private}
+                  onChange={(e) =>
+                    setCredForm({ ...credForm, is_private: e.target.checked })
+                  }
+                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                />
+                <label
+                  htmlFor="cred_private"
+                  className="text-sm font-medium text-[#0a1b3d]"
+                >
+                  Sembunyikan dari user lain
+                </label>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCredModal(false);
+                    setEditingCred(null);
+                    setShowCredPassword(false);
+                    setCredForm({
+                      service_name: "",
+                      account_username: "",
+                      password: "",
+                      notes: "",
+                      is_private: true,
+                    });
+                  }}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                >
+                  {editingCred ? "Update" : "Tambah"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Dialog */}
+      {confirmDialog?.show && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-[#0a1b3d]">
+                  {confirmDialog.title}
+                </h3>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-[#6b7280] text-base leading-relaxed whitespace-pre-line">
+                {confirmDialog.message}
+              </p>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </MainShell>
+  );
+}

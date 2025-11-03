@@ -1,318 +1,395 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import MainShell from "@/components/MainShell";
+import { NotificationToastProps } from "@/components/NotificationToast";
 
-interface SalesReport {
-  total_sales: number;
-  total_profit: number;
-  transaction_count: number;
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name?: string;
+  role: string;
+  is_active: number;
 }
 
-interface InventoryReport {
-  total_value: number;
-  low_stock_count: number;
+interface Archive {
+  archived_label: string;
+  count: number;
+  start_date: string;
+  end_date: string;
+  archived_at: string;
 }
 
-interface FinancialSummary {
-  total_debt: number;
-  total_receivable: number;
-  total_kasbon: number;
-  other_income: number;
-  other_expense: number;
-}
+type ReportType = "financial" | "inventory" | "pos" | "receivables";
 
 export default function ReportsPage() {
   const router = useRouter();
-  const [dateFrom, setDateFrom] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
-  const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
-  const [inventoryReport, setInventoryReport] = useState<InventoryReport | null>(null);
-  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<NotificationToastProps | null>(null);
+  const [selectedReportType, setSelectedReportType] =
+    useState<ReportType>("financial");
+  const [archives, setArchives] = useState<Archive[]>([]);
+  const [selectedArchive, setSelectedArchive] = useState<Archive | null>(null);
+  const [loadingArchives, setLoadingArchives] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
     checkAuth();
-    generateReports();
   }, []);
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/auth/login');
+  const checkAuth = () => {
+    const userSession = localStorage.getItem("user");
+    if (!userSession) {
+      router.push("/auth/login");
+      return;
     }
+
+    const user = JSON.parse(userSession);
+    setCurrentUser(user);
+
+    // Check if user has permission (Admin atau Manager)
+    if (user.role !== "admin" && user.role !== "manager") {
+      router.push("/dashboard");
+      return;
+    }
+
+    setLoading(false);
+    loadArchives();
   };
 
-  const generateReports = async () => {
-    setLoading(true);
+  const showMsg = (type: "success" | "error", message: string) => {
+    setNotice({ type, message });
+    setTimeout(() => setNotice(null), 3000);
+  };
+
+  const loadArchives = async () => {
+    setLoadingArchives(true);
     try {
-      await Promise.all([
-        generateSalesReport(),
-        generateInventoryReport(),
-        generateFinancialSummary(),
-      ]);
-    } catch (error) {
-      console.error('Error generating reports:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const res = await fetch("/api/cashbook/archive");
+      const data = await res.json();
 
-  const generateSalesReport = async () => {
-    const { data: sales } = await supabase
-      .from('sales')
-      .select('id, total_amount, created_at')
-      .gte('created_at', `${dateFrom}T00:00:00`)
-      .lte('created_at', `${dateTo}T23:59:59`);
-
-    if (!sales) return;
-
-    const total_sales = sales.reduce((sum, sale) => sum + sale.total_amount, 0);
-    const transaction_count = sales.length;
-
-    // Calculate profit (simplified - would need more complex calculation with costs)
-    const { data: items } = await supabase
-      .from('sales_items')
-      .select('sale_id, material_id, quantity, unit_price, subtotal')
-      .in('sale_id', sales.map(s => s.id));
-
-    let total_cost = 0;
-    if (items) {
-      for (const item of items) {
-        const { data: material } = await supabase
-          .from('materials')
-          .select('purchase_price')
-          .eq('id', item.material_id)
-          .single();
-        
-        if (material) {
-          total_cost += material.purchase_price * item.quantity;
-        }
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal memuat arsip");
       }
+
+      setArchives(data.archives || []);
+    } catch (err: any) {
+      showMsg("error", err.message || "Terjadi kesalahan");
+    } finally {
+      setLoadingArchives(false);
+    }
+  };
+
+  const handleGenerateFinancialReport = async () => {
+    if (!selectedArchive) {
+      showMsg("error", "Pilih arsip terlebih dahulu");
+      return;
     }
 
-    setSalesReport({
-      total_sales,
-      total_profit: total_sales - total_cost,
-      transaction_count,
+    setGeneratingPDF(true);
+    try {
+      const res = await fetch(
+        `/api/reports/financial?label=${encodeURIComponent(
+          selectedArchive.archived_label
+        )}&at=${encodeURIComponent(selectedArchive.archived_at)}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Gagal generate laporan");
+      }
+
+      // Get PDF blob
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan-Keuangan-${selectedArchive.archived_label.replace(
+        /\s+/g,
+        "-"
+      )}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      showMsg("success", "Laporan berhasil diunduh!");
+    } catch (err: any) {
+      showMsg("error", err.message || "Gagal generate laporan");
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
-  const generateInventoryReport = async () => {
-    const { data: materials } = await supabase
-      .from('materials')
-      .select('*');
+  const reportTypes = [
+    {
+      id: "financial" as ReportType,
+      icon: "💰",
+      title: "Laporan Keuangan",
+      description: "Ringkasan transaksi dari arsip tutup buku",
+      available: true,
+    },
+    {
+      id: "inventory" as ReportType,
+      icon: "📦",
+      title: "Laporan Inventori",
+      description: "Stok barang dan pergerakan inventori",
+      available: false,
+    },
+    {
+      id: "pos" as ReportType,
+      icon: "🛒",
+      title: "Laporan POS",
+      description: "Transaksi penjualan dari sistem kasir",
+      available: false,
+    },
+    {
+      id: "receivables" as ReportType,
+      icon: "📋",
+      title: "Laporan Hutang & Piutang",
+      description: "Daftar hutang supplier dan piutang customer",
+      available: false,
+    },
+  ];
 
-    if (!materials) return;
-
-    const total_value = materials.reduce(
-      (sum, m) => sum + (m.stock_quantity * m.purchase_price),
-      0
+  if (loading) {
+    return (
+      <MainShell title="Laporan">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+        </div>
+      </MainShell>
     );
-
-    const low_stock_count = materials.filter(
-      m => m.stock_quantity <= m.min_stock_level
-    ).length;
-
-    setInventoryReport({
-      total_value,
-      low_stock_count,
-    });
-  };
-
-  const generateFinancialSummary = async () => {
-    const [financialRes, otherRes] = await Promise.all([
-      supabase
-        .from('financial_transactions')
-        .select('transaction_type, amount, is_paid')
-        .gte('created_at', `${dateFrom}T00:00:00`)
-        .lte('created_at', `${dateTo}T23:59:59`),
-      supabase
-        .from('other_transactions')
-        .select('transaction_type, amount')
-        .gte('transaction_date', dateFrom)
-        .lte('transaction_date', dateTo),
-    ]);
-
-    const financial = financialRes.data || [];
-    const other = otherRes.data || [];
-
-    const total_debt = financial
-      .filter(f => f.transaction_type === 'debt' && !f.is_paid)
-      .reduce((sum, f) => sum + f.amount, 0);
-
-    const total_receivable = financial
-      .filter(f => f.transaction_type === 'receivable' && !f.is_paid)
-      .reduce((sum, f) => sum + f.amount, 0);
-
-    const total_kasbon = financial
-      .filter(f => f.transaction_type === 'kasbon' && !f.is_paid)
-      .reduce((sum, f) => sum + f.amount, 0);
-
-    const other_income = other
-      .filter(o => o.transaction_type === 'income')
-      .reduce((sum, o) => sum + o.amount, 0);
-
-    const other_expense = other
-      .filter(o => o.transaction_type === 'expense')
-      .reduce((sum, o) => sum + o.amount, 0);
-
-    setFinancialSummary({
-      total_debt,
-      total_receivable,
-      total_kasbon,
-      other_income,
-      other_expense,
-    });
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Laporan Keuangan</h1>
-          <Link
-            href="/dashboard"
-            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-          >
-            Kembali
-          </Link>
-        </div>
-      </header>
+    <MainShell title="Laporan" notice={notice}>
+      {/* Header Section */}
+      <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
+        <h2 className="text-2xl font-bold mb-1 font-twcenmt">
+          📊 Pusat Laporan
+        </h2>
+        <p className="text-white/90 text-sm">
+          Generate berbagai jenis laporan untuk analisis bisnis
+        </p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Date Filter */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Periode Laporan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Report Type Selection */}
+      <div className="mb-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">
+          Pilih Jenis Laporan
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {reportTypes.map((type) => (
+            <button
+              key={type.id}
+              onClick={() => type.available && setSelectedReportType(type.id)}
+              disabled={!type.available}
+              className={`
+                relative p-5 rounded-xl border-2 text-left transition-all duration-200
+                ${
+                  selectedReportType === type.id && type.available
+                    ? "border-purple-500 bg-purple-50 shadow-lg transform scale-105"
+                    : type.available
+                    ? "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md"
+                    : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                }
+              `}
+            >
+              {!type.available && (
+                <span className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">
+                  Soon
+                </span>
+              )}
+              <div className="text-3xl mb-2">{type.icon}</div>
+              <h4 className="font-bold text-gray-800 mb-1">{type.title}</h4>
+              <p className="text-xs text-gray-600">{type.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Financial Report Section */}
+      {selectedReportType === "financial" && (
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span>💰</span> Laporan Keuangan
+          </h3>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Archive Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Dari Tanggal
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Pilih Periode / Arsip
               </label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+
+              {loadingArchives ? (
+                <div className="text-center py-10">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+                  <p className="mt-2 text-sm text-gray-600">Memuat arsip...</p>
+                </div>
+              ) : archives.length === 0 ? (
+                <div className="text-center py-10 bg-gray-50 rounded-xl">
+                  <div className="text-gray-400 text-5xl mb-3">📭</div>
+                  <p className="text-gray-600 font-medium">
+                    Belum ada arsip tutup buku
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Buat arsip dari halaman Buku Keuangan
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {archives.map((archive, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedArchive(archive)}
+                      className={`
+                        w-full text-left p-4 rounded-xl border-2 transition-all
+                        ${
+                          selectedArchive?.archived_label ===
+                            archive.archived_label &&
+                          selectedArchive?.archived_at === archive.archived_at
+                            ? "border-purple-500 bg-purple-50 shadow-md"
+                            : "border-gray-200 hover:border-purple-300 bg-white"
+                        }
+                      `}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800">
+                            {archive.archived_label}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {formatDate(archive.start_date)} -{" "}
+                            {formatDate(archive.end_date)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {archive.count} transaksi
+                          </p>
+                        </div>
+                        {selectedArchive?.archived_label ===
+                          archive.archived_label &&
+                          selectedArchive?.archived_at ===
+                            archive.archived_at && (
+                            <div className="text-purple-500">
+                              <svg
+                                className="w-6 h-6"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Preview & Action */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sampai Tanggal
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Preview & Generate
               </label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={generateReports}
-                disabled={loading}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {loading ? 'Memuat...' : 'Generate Laporan'}
-              </button>
-            </div>
-          </div>
-        </div>
 
-        {/* Sales Report */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Laporan Penjualan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Penjualan</p>
-              <p className="text-2xl font-bold text-blue-600">
-                Rp {(salesReport?.total_sales || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Laba Kotor</p>
-              <p className="text-2xl font-bold text-green-600">
-                Rp {(salesReport?.total_profit || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Jumlah Transaksi</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {salesReport?.transaction_count || 0}
-              </p>
-            </div>
-          </div>
-        </div>
+              {selectedArchive ? (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+                  <div className="text-center mb-6">
+                    <div className="text-5xl mb-3">📄</div>
+                    <h4 className="text-xl font-bold text-gray-800 mb-2">
+                      {selectedArchive.archived_label}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Periode: {formatDate(selectedArchive.start_date)} s/d{" "}
+                      {formatDate(selectedArchive.end_date)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Total: {selectedArchive.count} transaksi
+                    </p>
+                  </div>
 
-        {/* Inventory Report */}
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Laporan Inventori</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-indigo-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Nilai Total Stok</p>
-              <p className="text-2xl font-bold text-indigo-600">
-                Rp {(inventoryReport?.total_value || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Bahan Stok Rendah</p>
-              <p className="text-2xl font-bold text-red-600">
-                {inventoryReport?.low_stock_count || 0} item
-              </p>
-            </div>
-          </div>
-        </div>
+                  <div className="space-y-3">
+                    <div className="bg-white rounded-lg p-4 border border-purple-200">
+                      <h5 className="font-semibold text-gray-700 mb-2 text-sm">
+                        📋 Isi Laporan
+                      </h5>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>• Ringkasan Saldo & Omzet</li>
+                        <li>• Biaya Operasional & Bahan</li>
+                        <li>• Laba Bersih Periode</li>
+                        <li>• Kasbon Karyawan</li>
+                        <li>• Bagi Hasil Partner</li>
+                        <li>• Detail Transaksi Lengkap</li>
+                      </ul>
+                    </div>
 
-        {/* Financial Summary */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan Keuangan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Hutang (Belum Lunas)</p>
-              <p className="text-2xl font-bold text-red-600">
-                Rp {(financialSummary?.total_debt || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Piutang (Belum Lunas)</p>
-              <p className="text-2xl font-bold text-green-600">
-                Rp {(financialSummary?.total_receivable || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Kasbon (Belum Lunas)</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                Rp {(financialSummary?.total_kasbon || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Pemasukan Lain</p>
-              <p className="text-2xl font-bold text-blue-600">
-                Rp {(financialSummary?.other_income || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Pengeluaran Lain</p>
-              <p className="text-2xl font-bold text-orange-600">
-                Rp {(financialSummary?.other_expense || 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-            <div className="bg-teal-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Saldo Bersih</p>
-              <p className="text-2xl font-bold text-teal-600">
-                Rp {(
-                  (salesReport?.total_profit || 0) +
-                  (financialSummary?.other_income || 0) -
-                  (financialSummary?.other_expense || 0)
-                ).toLocaleString('id-ID')}
-              </p>
+                    <button
+                      onClick={handleGenerateFinancialReport}
+                      disabled={generatingPDF}
+                      className="w-full py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl font-bold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {generatingPDF ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                          <span>Generating PDF...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl">📥</span>
+                          <span>Download Laporan PDF</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
+                  <div className="text-gray-400 text-5xl mb-3">👈</div>
+                  <p className="text-gray-600 font-medium">
+                    Pilih arsip terlebih dahulu
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    untuk generate laporan PDF
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+
+      {/* Coming Soon Sections */}
+      {selectedReportType !== "financial" && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className="text-6xl mb-4">🚧</div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Coming Soon</h3>
+          <p className="text-gray-600">
+            Fitur laporan ini sedang dalam pengembangan
+          </p>
+        </div>
+      )}
+    </MainShell>
   );
 }

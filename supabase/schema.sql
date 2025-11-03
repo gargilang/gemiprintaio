@@ -4,18 +4,35 @@ create extension if not exists "uuid-ossp";
 -- User Roles Enum
 create type user_role as enum ('admin', 'manager', 'user');
 
--- Customer Type Enum
-create type customer_type as enum ('individual', 'company');
+-- Customer Type Enum (Indonesian)
+create type tipe_pelanggan as enum ('perorangan', 'perusahaan');
 
--- Transaction Type Enum
-create type transaction_type as enum ('income', 'expense', 'debt', 'receivable', 'kasbon');
+-- Transaction Category Enum (Indonesian)
+create type kategori_transaksi as enum (
+  'KAS',          -- Cash
+  'BIAYA',        -- Expense
+  'OMZET',        -- Revenue/Sales
+  'INVESTOR',     -- Investment
+  'SUBSIDI',      -- Subsidy
+  'LUNAS',        -- Paid/Settled
+  'SUPPLY',       -- Supply/Purchase
+  'LABA',         -- Profit
+  'KOMISI',       -- Commission
+  'TABUNGAN',     -- Savings
+  'HUTANG',       -- Debt (payable)
+  'PIUTANG',      -- Receivable
+  'PRIBADI-A',    -- Personal Add
+  'PRIBADI-S'     -- Personal Subtract
+);
 
 -- Users table (extends Supabase auth.users)
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
+  username text unique not null,
   email text unique not null,
   full_name text,
   role user_role default 'user',
+  is_active boolean default true,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -38,7 +55,7 @@ create table public.materials (
 -- Customers table
 create table public.customers (
   id uuid default uuid_generate_v4() primary key,
-  customer_type customer_type not null,
+  tipe_pelanggan tipe_pelanggan not null,
   name text not null,
   company_name text, -- for company type
   tax_id text, -- NPWP for Indonesian companies
@@ -116,7 +133,7 @@ create table public.purchase_items (
 -- Financial Transactions (for debts, receivables, kasbon, and other transactions)
 create table public.financial_transactions (
   id uuid default uuid_generate_v4() primary key,
-  transaction_type transaction_type not null,
+  kategori_transaksi kategori_transaksi not null,
   reference_type text, -- 'sale', 'purchase', 'kasbon', 'other'
   reference_id uuid, -- reference to sales, purchases, or profiles
   customer_id uuid references public.customers(id),
@@ -134,7 +151,7 @@ create table public.financial_transactions (
 -- Additional Income/Expense (outside POS and inventory)
 create table public.other_transactions (
   id uuid default uuid_generate_v4() primary key,
-  transaction_type transaction_type not null, -- income or expense
+  kategori_transaksi kategori_transaksi not null,
   category text not null, -- e.g., 'utilities', 'rent', 'salary', 'other'
   amount decimal(15,2) not null,
   description text not null,
@@ -349,16 +366,16 @@ create policy "Admin and Manager can create inventory movements"
   );
 
 -- Create indexes for better performance
-create index idx_materials_name on public.materials(name);
 create index idx_customers_name on public.customers(name);
+create index idx_customers_tipe on public.customers(tipe_pelanggan);
 create index idx_vendors_name on public.vendors(name);
 create index idx_sales_invoice on public.sales(invoice_number);
 create index idx_sales_date on public.sales(created_at);
 create index idx_purchases_number on public.purchases(purchase_number);
 create index idx_purchases_date on public.purchases(created_at);
-create index idx_financial_transactions_type on public.financial_transactions(transaction_type);
+create index idx_financial_transactions_kategori on public.financial_transactions(kategori_transaksi);
 create index idx_financial_transactions_paid on public.financial_transactions(is_paid);
-create index idx_other_transactions_type on public.other_transactions(transaction_type);
+create index idx_other_transactions_kategori on public.other_transactions(kategori_transaksi);
 create index idx_inventory_movements_material on public.inventory_movements(material_id);
 create index idx_inventory_movements_date on public.inventory_movements(created_at);
 

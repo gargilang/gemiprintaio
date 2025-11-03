@@ -1,163 +1,167 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { Profile } from '@/types/database';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import MainShell from "@/components/MainShell";
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name?: string;
+  role: string;
+  is_active: number;
+}
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    checkUser();
+    try {
+      const userSession = localStorage.getItem("user");
+      if (userSession) setUser(JSON.parse(userSession));
+    } catch {}
   }, []);
 
-  const checkUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth/login');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  const quickAccessItems = [
+    {
+      href: "/pos",
+      icon: "🛒",
+      label: "POS / Kasir",
+      color: "from-[#00afef] to-[#2fd3ff]",
+      description: "Point of Sale",
+    },
+    {
+      href: "/materials",
+      icon: "📦",
+      label: "Data Bahan",
+      color: "from-[#2266ff] to-[#00afef]",
+      description: "Material Inventory",
+    },
+    {
+      href: "/customers",
+      icon: "👥",
+      label: "Pelanggan",
+      color: "from-[#2fd3ff] to-[#00afef]",
+      description: "Customer Data",
+    },
+    {
+      href: "/vendors",
+      icon: "🏢",
+      label: "Vendor",
+      color: "from-[#0a1b3d] to-[#2266ff]",
+      description: "Vendor Management",
+    },
+    {
+      href: "/finance",
+      icon: "💰",
+      label: "Keuangan",
+      color: "from-[#ffd400] to-[#ff2f91]",
+      description: "Financial Management",
+    },
+    {
+      href: "/reports",
+      icon: "📊",
+      label: "Laporan",
+      color: "from-[#ff2f91] to-[#2266ff]",
+      description: "Reports & Analytics",
+    },
+    {
+      href: "/users",
+      icon: "👤",
+      label: "Manajemen User",
+      color: "from-[#0a1b3d] to-[#00afef]",
+      description: "User Management",
+      managerOnly: true,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">GemiPrintaIO</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {profile?.full_name || profile?.email} ({profile?.role})
-            </span>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-            >
-              Logout
-            </button>
+    <MainShell title="Dashboard">
+      {/* Welcome Card */}
+      <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-8 mb-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-2 font-twcenmt">
+              Selamat Datang, {user?.full_name || user?.username}! 👋
+            </h2>
+            <p className="text-white/90 font-twcenmt">
+              Sistem Manajemen Internal gemiprint
+            </p>
+          </div>
+          <div className="hidden md:block">
+            <Image
+              src="/assets/images/logo-gemiprint-white.svg"
+              alt="gemiprint"
+              width={80}
+              height={80}
+              className="opacity-40"
+            />
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h2>
+      {/* Quick Access Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {quickAccessItems.map((item) => {
+          // Filter based on role
+          if (
+            item.managerOnly &&
+            user?.role !== "admin" &&
+            user?.role !== "manager"
+          ) {
+            return null;
+          }
 
-        {/* Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* POS */}
-          <Link
-            href="/pos"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              🛒 POS / Kasir
-            </h3>
-            <p className="text-gray-600">
-              Sistem Point of Sale untuk transaksi penjualan
-            </p>
-          </Link>
+          return (
+            <Link key={item.href} href={item.href} className="group">
+              <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-2 border-transparent hover:border-[#00afef] transform hover:-translate-y-1">
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center text-2xl shadow-lg`}
+                  >
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-[#0a1b3d] font-twcenmt group-hover:text-[#00afef] transition-colors">
+                      {item.label}
+                    </h3>
+                    <p className="text-xs text-[#6b7280]">{item.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-[#00afef] font-semibold text-sm">
+                  Buka modul
+                  <svg
+                    className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
 
-          {/* Materials */}
-          <Link
-            href="/materials"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              📦 Data Bahan
-            </h3>
-            <p className="text-gray-600">
-              Kelola bahan dengan harga beli, jual, dan member
-            </p>
-          </Link>
-
-          {/* Customers */}
-          <Link
-            href="/customers"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              👥 Pelanggan
-            </h3>
-            <p className="text-gray-600">
-              Kelola data pelanggan perorangan dan PT
-            </p>
-          </Link>
-
-          {/* Vendors */}
-          <Link
-            href="/vendors"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              🏢 Vendor
-            </h3>
-            <p className="text-gray-600">
-              Kelola data vendor dan supplier
-            </p>
-          </Link>
-
-          {/* Finance */}
-          <Link
-            href="/finance"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              💰 Keuangan
-            </h3>
-            <p className="text-gray-600">
-              Hutang, piutang, kasbon pegawai, dan transaksi lainnya
-            </p>
-          </Link>
-
-          {/* Reports */}
-          <Link
-            href="/reports"
-            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              📊 Laporan
-            </h3>
-            <p className="text-gray-600">
-              Laporan keuangan dan inventori
-            </p>
-          </Link>
-        </div>
-      </main>
-    </div>
+      {/* Footer Info */}
+      <div className="mt-12 text-center">
+        <p className="text-[#6b7280] text-sm">
+          <span className="font-bauhaus italic">
+            <span className="text-[#00afef]">gemi</span>
+            <span className="text-[#0a1b3d]">print</span>
+          </span>{" "}
+          - All-in-One Management System © 2025
+        </p>
+      </div>
+    </MainShell>
   );
 }

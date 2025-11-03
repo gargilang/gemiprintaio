@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
+/* gemiprint Brand Fonts */
+@font-face {
+  font-family: "Bauhaus 93";
+  src: url("/assets/fonts/Bauhaus 93 Regular.ttf") format("truetype"),
+    url("/assets/fonts/BAUHS93.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bauhaus";
+  src: url("/assets/fonts/BauhausRegular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bauhaus";
+  src: url("/assets/fonts/BauhausBold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TwCenMT";
+  src: url("/assets/fonts/TwCenMTStd.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TwCenMT";
+  src: url("/assets/fonts/TwCenMTStdSemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TwCenMT";
+  src: url("/assets/fonts/TwCenMTStdBold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TwCenMT";
+  src: url("/assets/fonts/TwCenMTStdExtraBold.otf") format("opentype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* gemiprint Brand Colors */
+  --navy: #0a1b3d;
+  --blue: #2266ff;
+  --cyan: #2fd3ff;
+  --magenta: #ff2f91;
+  --yellow: #ffd400;
+  --gemi: #00afef;
+
+  /* Light Theme - Bright Blue Background */
+  --text: #1b1f23;
+  --muted: #6b7280;
+  --background: linear-gradient(
+    135deg,
+    #bae6fd 0%,
+    #7dd3fc 25%,
+    #38bdf8 50%,
+    #0ea5e9 75%,
+    #67e8f9 100%
+  );
+  --background-solid: #bae6fd;
+  --foreground: #0a1b3d;
+  --section: rgba(255, 255, 255, 0.4);
+
+  /* Glass Effect Colors */
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(10, 27, 61, 0.15);
+
+  /* Component Colors */
+  --card-bg: rgba(255, 255, 255, 0.4);
+  --card-border: rgba(255, 255, 255, 0.3);
+  --navbar-bg: rgba(255, 255, 255, 0.4);
+  --navbar-border: rgba(255, 255, 255, 0.3);
+
+  /* Effects */
+  --radius: 16px;
+  --shadow: 0 10px 30px rgba(10, 27, 61, 0.1);
+  --blur: blur(16px);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+.dark {
+  /* Dark Theme */
+  --text: #e4e7eb;
+  --muted: #9ca3af;
+  --background: linear-gradient(
+    135deg,
+    #0f1419 0%,
+    #1a1f26 25%,
+    #0a1b3d 50%,
+    #1a1f26 75%,
+    #0f1419 100%
+  );
+  --background-solid: #0f1419;
+  --foreground: #e4e7eb;
+  --section: rgba(255, 255, 255, 0.05);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Glass Effect Colors - Dark */
+  --glass-bg: rgba(10, 27, 61, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  --card-bg: rgba(10, 27, 61, 0.4);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --navbar-bg: rgba(10, 27, 61, 0.4);
+  --navbar-border: rgba(255, 255, 255, 0.1);
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --blur: blur(16px);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "TwCenMT", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.font-bauhaus {
+  font-family: "Bauhaus 93", "Bauhaus", sans-serif;
+}
+
+.font-twcenmt {
+  font-family: "TwCenMT", system-ui, -apple-system, sans-serif;
 }

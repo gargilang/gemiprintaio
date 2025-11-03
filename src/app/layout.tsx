@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GemiPrintaIO - Sistem Manajemen Percetakan",
-  description: "Aplikasi manajemen untuk bisnis percetakan dengan POS, inventori, dan laporan keuangan",
+  title: "gemiprintaio - Sistem Manajemen Percetakan",
+  description:
+    "Aplikasi manajemen untuk bisnis percetakan dengan POS, inventori, dan laporan keuangan",
 };
 
 export default function RootLayout({
@@ -13,9 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

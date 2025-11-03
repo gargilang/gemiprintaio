@@ -1,14 +1,31 @@
-export type UserRole = 'admin' | 'manager' | 'user';
+export type UserRole = "admin" | "manager" | "chief" | "user";
 
-export type CustomerType = 'individual' | 'company';
+// Indonesian Types
+export type TipePelanggan = "perorangan" | "perusahaan";
 
-export type TransactionType = 'income' | 'expense' | 'debt' | 'receivable' | 'kasbon';
+export type KategoriTransaksi =
+  | "KAS" // Cash
+  | "BIAYA" // Expense
+  | "OMZET" // Revenue/Sales
+  | "INVESTOR" // Investment
+  | "SUBSIDI" // Subsidy
+  | "LUNAS" // Paid/Settled
+  | "SUPPLY" // Supply/Purchase
+  | "LABA" // Profit
+  | "KOMISI" // Commission
+  | "TABUNGAN" // Savings
+  | "HUTANG" // Debt (payable)
+  | "PIUTANG" // Receivable
+  | "PRIBADI-A" // Personal Add
+  | "PRIBADI-S"; // Personal Subtract
 
 export interface Profile {
   id: string;
+  username: string;
   email: string;
   full_name?: string;
   role: UserRole;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +46,7 @@ export interface Material {
 
 export interface Customer {
   id: string;
-  customer_type: CustomerType;
+  tipe_pelanggan: TipePelanggan;
   name: string;
   company_name?: string;
   tax_id?: string;
@@ -101,7 +118,7 @@ export interface PurchaseItem {
 
 export interface FinancialTransaction {
   id: string;
-  transaction_type: TransactionType;
+  kategori_transaksi: KategoriTransaksi;
   reference_type?: string;
   reference_id?: string;
   customer_id?: string;
@@ -118,7 +135,7 @@ export interface FinancialTransaction {
 
 export interface OtherTransaction {
   id: string;
-  transaction_type: TransactionType;
+  kategori_transaksi: KategoriTransaksi;
   category: string;
   amount: number;
   description: string;
@@ -131,11 +148,36 @@ export interface OtherTransaction {
 export interface InventoryMovement {
   id: string;
   material_id: string;
-  movement_type: 'in' | 'out' | 'adjustment';
+  movement_type: "in" | "out" | "adjustment";
   quantity: number;
   reference_type?: string;
   reference_id?: string;
   notes?: string;
   created_by?: string;
   created_at: string;
+}
+
+export interface CashBook {
+  id: string;
+  tanggal: string;
+  kategori_transaksi: KategoriTransaksi;
+  debit: number;
+  kredit: number;
+  keperluan?: string;
+  omzet: number;
+  biaya_operasional: number;
+  biaya_bahan: number;
+  saldo: number;
+  laba_bersih: number;
+  kasbon_anwar: number;
+  kasbon_suri: number;
+  kasbon_cahaya: number;
+  kasbon_dinil: number;
+  bagi_hasil_anwar: number;
+  bagi_hasil_suri: number;
+  bagi_hasil_gemi: number;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
 }

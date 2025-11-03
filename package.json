@@ -1,29 +1,51 @@
 {
-  "name": "gemiprintaio",
+  "name": "gemiprint",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "db:import-csv": "node database/import-cashbook-from-csv.mjs",
+    "db:recalc": "node database/recalculate-cashbook.mjs",
+    "db:recalc-override": "node database/recalculate-cashbook-v2.mjs",
+    "db:check": "node database/check-cashbook.mjs",
+    "db:migrate-profiles": "node database/migrate-fix-profiles-fk.mjs",
+    "db:migrate-override": "node database/migrate-add-override-flags.mjs",
+    "db:migrate-archive": "node database/migrate-add-archive-and-order.mjs",
+    "db:clear": "node database/clear-cashbook.mjs"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
+    "@tauri-apps/plugin-fs": "^2.4.4",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-os": "^2.3.2",
+    "@tauri-apps/plugin-shell": "^2.3.3",
+    "@tauri-apps/plugin-updater": "^2.9.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.4.1",
+    "csv-parse": "^5.5.6",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
+    "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "next": "16.0.1",
-    "@supabase/supabase-js": "^2.43.4",
-    "@supabase/ssr": "^0.7.0",
+    "uuid": "^13.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1"
+    "eslint-config-next": "16.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
