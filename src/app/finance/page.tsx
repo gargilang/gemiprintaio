@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
 import { NotificationToastProps } from "@/components/NotificationToast";
@@ -11,6 +11,175 @@ import DeleteAllCashbookModal from "@/components/DeleteAllCashbookModal";
 import EditManualModal from "@/components/EditManualModal";
 import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
+
+// Memoized CashBook Row Component - mencegah re-render yang tidak perlu
+const CashBookRow = memo(
+  ({
+    cashBook,
+    index,
+    isDragging,
+    isDragOver,
+    viewingArchive,
+    formatRupiah,
+    formatDateJakarta,
+    getKategoriColor,
+    onDragStart,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+    onDragEnd,
+    onEdit,
+    onEditManual,
+    onDelete,
+  }: {
+    cashBook: CashBook;
+    index: number;
+    isDragging: boolean;
+    isDragOver: boolean;
+    viewingArchive: boolean;
+    formatRupiah: (amount: number) => string;
+    formatDateJakarta: (date: string) => string;
+    getKategoriColor: (kategori: KategoriTransaksi) => {
+      bg: string;
+      text: string;
+      border: string;
+    };
+    onDragStart: (e: React.DragEvent, index: number) => void;
+    onDragOver: (e: React.DragEvent, index: number) => void;
+    onDragLeave: () => void;
+    onDrop: (e: React.DragEvent, index: number) => void;
+    onDragEnd: () => void;
+    onEdit: (cb: CashBook) => void;
+    onEditManual: (cb: CashBook) => void;
+    onDelete: (cb: CashBook) => void;
+  }) => {
+    const kategoriColor = getKategoriColor(cashBook.kategori_transaksi);
+
+    return (
+      <tr
+        draggable={!viewingArchive}
+        onDragStart={!viewingArchive ? (e) => onDragStart(e, index) : undefined}
+        onDragOver={!viewingArchive ? (e) => onDragOver(e, index) : undefined}
+        onDragLeave={!viewingArchive ? onDragLeave : undefined}
+        onDrop={!viewingArchive ? (e) => onDrop(e, index) : undefined}
+        onDragEnd={!viewingArchive ? onDragEnd : undefined}
+        className={`
+          hover:bg-purple-50 transition-all ${
+            !viewingArchive ? "cursor-move" : "cursor-default"
+          }
+          ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+          ${!viewingArchive && isDragging ? "opacity-40 bg-blue-100" : ""}
+          ${!viewingArchive && isDragOver ? "border-t-4 border-purple-500" : ""}
+        `}
+        title="Drag untuk mengubah urutan"
+      >
+        <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 cursor-grab active:cursor-grabbing">
+              ⋮⋮
+            </span>
+            {formatDateJakarta(cashBook.tanggal)}
+          </div>
+        </td>
+        <td className="px-3 py-3">
+          <span
+            className={`inline-block px-2 py-1 text-xs font-semibold rounded-lg border ${kategoriColor.bg} ${kategoriColor.text} ${kategoriColor.border}`}
+          >
+            {cashBook.kategori_transaksi}
+          </span>
+        </td>
+        <td className="px-3 py-3 text-sm text-right font-semibold">
+          {cashBook.debit > 0 ? (
+            <span className="text-green-600">
+              +{formatRupiah(cashBook.debit)}
+            </span>
+          ) : cashBook.kredit > 0 ? (
+            <span className="text-red-600">
+              -{formatRupiah(cashBook.kredit)}
+            </span>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </td>
+        <td className="px-3 py-3 text-sm text-gray-700 max-w-xs truncate">
+          {cashBook.keperluan || "-"}
+        </td>
+        <td className="px-3 py-3 text-sm text-right font-bold text-blue-600">
+          {formatRupiah(cashBook.saldo)}
+        </td>
+        <td className="px-3 py-3 text-center">
+          <div className="flex gap-2 justify-center">
+            {!viewingArchive ? (
+              <>
+                <button
+                  onClick={() => onEdit(cashBook)}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  title="Edit Transaction"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onEditManual(cashBook)}
+                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  title="Edit Manual (Override)"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onDelete(cashBook)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  title="Delete"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <span className="text-gray-400 text-sm italic">Read-only</span>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+
+CashBookRow.displayName = "CashBookRow";
 
 interface User {
   id: string;
@@ -58,6 +227,8 @@ export default function FinancePage() {
     null
   );
   const [deleting, setDeleting] = useState(false);
+
+  // Merged state for Close Books and Select Month
   const [showCloseBooksModal, setShowCloseBooksModal] = useState(false);
   const [showSelectMonthModal, setShowSelectMonthModal] = useState(false);
 
@@ -67,6 +238,10 @@ export default function FinancePage() {
   // Drag & Drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Virtualization state - untuk performance dengan banyak rows
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const debitInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,9 +262,84 @@ export default function FinancePage() {
     "PRIBADI-S",
   ];
 
+  // Visible cashbooks - hanya render yang terlihat (virtualization)
+  const visibleCashBooks = useMemo(() => {
+    if (cashBooks.length <= 50) return cashBooks; // No virtualization for small lists
+    return cashBooks.slice(visibleRange.start, visibleRange.end);
+  }, [cashBooks, visibleRange]);
+
+  // Memoized summary values - hanya hitung sekali per perubahan cashBooks
+  const summaryData = useMemo(() => {
+    if (cashBooks.length === 0) {
+      return {
+        saldo: 0,
+        omzet: 0,
+        biayaOperasional: 0,
+        biayaBahan: 0,
+        totalBiaya: 0,
+        labaBersih: 0,
+        bagiHasilAnwar: 0,
+        bagiHasilSuri: 0,
+        bagiHasilGemi: 0,
+        kasbonAnwar: 0,
+        kasbonSuri: 0,
+        kasbonCahaya: 0,
+        kasbonDinil: 0,
+      };
+    }
+
+    // Untuk arsip, ambil dari transaksi terakhir (index terakhir) karena sudah di-sort DESC
+    // Untuk data aktif, ambil dari transaksi pertama (latest)
+    // Transaksi terakhir di array adalah yang memiliki nilai kumulatif akhir periode
+    const latest = viewingArchive
+      ? cashBooks[cashBooks.length - 1]
+      : cashBooks[0];
+
+    return {
+      saldo: latest.saldo,
+      omzet: latest.omzet,
+      biayaOperasional: latest.biaya_operasional,
+      biayaBahan: latest.biaya_bahan,
+      totalBiaya: latest.biaya_operasional + latest.biaya_bahan,
+      labaBersih: latest.laba_bersih,
+      bagiHasilAnwar: latest.bagi_hasil_anwar,
+      bagiHasilSuri: latest.bagi_hasil_suri,
+      bagiHasilGemi: latest.bagi_hasil_gemi,
+      kasbonAnwar: latest.kasbon_anwar,
+      kasbonSuri: latest.kasbon_suri,
+      kasbonCahaya: latest.kasbon_cahaya,
+      kasbonDinil: latest.kasbon_dinil,
+    };
+  }, [cashBooks, viewingArchive]);
+
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Scroll handler untuk lazy loading rows (virtualization)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!tableContainerRef.current) return;
+
+      const container = tableContainerRef.current;
+      const scrollTop = container.scrollTop;
+      const rowHeight = 60; // Approximate row height
+      const visibleRows = Math.ceil(container.clientHeight / rowHeight);
+      const buffer = 10; // Extra rows to render above/below
+
+      const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+      const end = Math.min(cashBooks.length, start + visibleRows + buffer * 2);
+
+      setVisibleRange({ start, end });
+    };
+
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      handleScroll(); // Initial calculation
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [cashBooks.length]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -298,16 +548,16 @@ export default function FinancePage() {
     }
   };
 
-  const formatRupiah = (amount: number) => {
+  const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  };
+  }, []);
 
-  const getKategoriColor = (kategori: KategoriTransaksi) => {
+  const getKategoriColor = useCallback((kategori: KategoriTransaksi) => {
     const colors: Record<
       KategoriTransaksi,
       { bg: string; text: string; border: string }
@@ -390,7 +640,7 @@ export default function FinancePage() {
         border: "border-gray-300",
       }
     );
-  };
+  }, []);
 
   const handleDelete = (cashBook: CashBook) => {
     setConfirmDialog({
@@ -601,7 +851,7 @@ export default function FinancePage() {
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
           <p className="text-sm text-gray-500 font-semibold mb-1">Saldo</p>
           <p className="text-2xl font-bold text-blue-600">
-            {formatRupiah(cashBooks.length > 0 ? cashBooks[0].saldo : 0)}
+            {formatRupiah(summaryData.saldo)}
           </p>
         </div>
 
@@ -611,7 +861,7 @@ export default function FinancePage() {
             Total Omzet
           </p>
           <p className="text-2xl font-bold text-green-600">
-            {formatRupiah(cashBooks.length > 0 ? cashBooks[0].omzet : 0)}
+            {formatRupiah(summaryData.omzet)}
           </p>
         </div>
 
@@ -639,28 +889,20 @@ export default function FinancePage() {
             </svg>
           </p>
           <p className="text-2xl font-bold text-red-600">
-            {formatRupiah(
-              cashBooks.length > 0
-                ? cashBooks[0].biaya_operasional + cashBooks[0].biaya_bahan
-                : 0
-            )}
+            {formatRupiah(summaryData.totalBiaya)}
           </p>
           {showBiayaDetail && (
             <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Operasional:</span>
                 <span className="text-sm font-semibold text-red-700">
-                  {formatRupiah(
-                    cashBooks.length > 0 ? cashBooks[0].biaya_operasional : 0
-                  )}
+                  {formatRupiah(summaryData.biayaOperasional)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Bahan:</span>
                 <span className="text-sm font-semibold text-red-700">
-                  {formatRupiah(
-                    cashBooks.length > 0 ? cashBooks[0].biaya_bahan : 0
-                  )}
+                  {formatRupiah(summaryData.biayaBahan)}
                 </span>
               </div>
             </div>
@@ -724,9 +966,7 @@ export default function FinancePage() {
                     </svg>
                   </p>
                   <p className="text-2xl font-bold text-amber-900">
-                    {formatRupiah(
-                      cashBooks.length > 0 ? cashBooks[0].bagi_hasil_anwar : 0
-                    )}
+                    {formatRupiah(summaryData.bagiHasilAnwar)}
                   </p>
                   {showBagiHasilAnwar && (
                     <div className="mt-3 pt-3 border-t border-amber-300 space-y-1">
@@ -735,17 +975,13 @@ export default function FinancePage() {
                           Laba Bersih:
                         </span>
                         <span className="text-xs font-semibold text-amber-900">
-                          {formatRupiah(
-                            cashBooks.length > 0 ? cashBooks[0].laba_bersih : 0
-                          )}
+                          {formatRupiah(summaryData.labaBersih)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-amber-700">Kasbon:</span>
                         <span className="text-xs font-semibold text-amber-900">
-                          {formatRupiah(
-                            cashBooks.length > 0 ? cashBooks[0].kasbon_anwar : 0
-                          )}
+                          {formatRupiah(summaryData.kasbonAnwar)}
                         </span>
                       </div>
                     </div>
@@ -776,9 +1012,7 @@ export default function FinancePage() {
                     </svg>
                   </p>
                   <p className="text-2xl font-bold text-pink-900">
-                    {formatRupiah(
-                      cashBooks.length > 0 ? cashBooks[0].bagi_hasil_suri : 0
-                    )}
+                    {formatRupiah(summaryData.bagiHasilSuri)}
                   </p>
                   {showBagiHasilSuri && (
                     <div className="mt-3 pt-3 border-t border-pink-300 space-y-1">
@@ -787,17 +1021,13 @@ export default function FinancePage() {
                           Laba Bersih:
                         </span>
                         <span className="text-xs font-semibold text-pink-900">
-                          {formatRupiah(
-                            cashBooks.length > 0 ? cashBooks[0].laba_bersih : 0
-                          )}
+                          {formatRupiah(summaryData.labaBersih)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-pink-700">Kasbon:</span>
                         <span className="text-xs font-semibold text-pink-900">
-                          {formatRupiah(
-                            cashBooks.length > 0 ? cashBooks[0].kasbon_suri : 0
-                          )}
+                          {formatRupiah(summaryData.kasbonSuri)}
                         </span>
                       </div>
                     </div>
@@ -828,9 +1058,7 @@ export default function FinancePage() {
                     </svg>
                   </p>
                   <p className="text-2xl font-bold text-blue-900">
-                    {formatRupiah(
-                      cashBooks.length > 0 ? cashBooks[0].bagi_hasil_gemi : 0
-                    )}
+                    {formatRupiah(summaryData.bagiHasilGemi)}
                   </p>
                   {showBagiHasilGemi && (
                     <div className="mt-3 pt-3 border-t border-blue-300 space-y-1">
@@ -839,9 +1067,7 @@ export default function FinancePage() {
                           Laba Bersih:
                         </span>
                         <span className="text-xs font-semibold text-blue-900">
-                          {formatRupiah(
-                            cashBooks.length > 0 ? cashBooks[0].laba_bersih : 0
-                          )}
+                          {formatRupiah(summaryData.labaBersih)}
                         </span>
                       </div>
                     </div>
@@ -887,9 +1113,7 @@ export default function FinancePage() {
                     👤 Kasbon Cahaya
                   </p>
                   <p className="text-2xl font-bold text-violet-900">
-                    {formatRupiah(
-                      cashBooks.length > 0 ? cashBooks[0].kasbon_cahaya : 0
-                    )}
+                    {formatRupiah(summaryData.kasbonCahaya)}
                   </p>
                 </div>
                 <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl shadow-md p-4 border-2 border-emerald-200">
@@ -897,9 +1121,7 @@ export default function FinancePage() {
                     👤 Kasbon Dinil
                   </p>
                   <p className="text-2xl font-bold text-emerald-900">
-                    {formatRupiah(
-                      cashBooks.length > 0 ? cashBooks[0].kasbon_dinil : 0
-                    )}
+                    {formatRupiah(summaryData.kasbonDinil)}
                   </p>
                 </div>
               </div>
@@ -978,26 +1200,30 @@ export default function FinancePage() {
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white">
+        <div
+          ref={tableContainerRef}
+          className="overflow-x-auto max-h-[600px] overflow-y-auto"
+          style={{ scrollBehavior: "smooth" }}
+        >
+          <table className="w-full table-fixed">
+            <thead className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-bold uppercase whitespace-nowrap">
+                <th className="px-3 py-3 text-left text-xs font-bold uppercase whitespace-nowrap w-28">
                   Tanggal
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-bold uppercase">
+                <th className="px-3 py-3 text-left text-xs font-bold uppercase w-28">
                   Kategori
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase">
+                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-28">
                   Nominal
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-bold uppercase">
                   Keperluan
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase">
+                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-32">
                   Saldo
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-bold uppercase">
+                <th className="px-3 py-3 text-center text-xs font-bold uppercase w-32">
                   Aksi
                 </th>
               </tr>
@@ -1013,158 +1239,73 @@ export default function FinancePage() {
                   </td>
                 </tr>
               ) : (
-                cashBooks.map((cb, index) => {
-                  const kategoriColor = getKategoriColor(cb.kategori_transaksi);
-                  const isDragging = draggedIndex === index;
-                  const isDragOver = dragOverIndex === index;
-
-                  return (
+                <>
+                  {/* Spacer untuk rows sebelum visible range - dengan konten agar table tidak collapse */}
+                  {visibleRange.start > 0 && (
                     <tr
-                      key={cb.id}
-                      draggable={!viewingArchive}
-                      onDragStart={
-                        !viewingArchive
-                          ? (e) => handleDragStart(e, index)
-                          : undefined
-                      }
-                      onDragOver={
-                        !viewingArchive
-                          ? (e) => handleDragOver(e, index)
-                          : undefined
-                      }
-                      onDragLeave={
-                        !viewingArchive ? handleDragLeave : undefined
-                      }
-                      onDrop={
-                        !viewingArchive
-                          ? (e) => handleDrop(e, index)
-                          : undefined
-                      }
-                      onDragEnd={!viewingArchive ? handleDragEnd : undefined}
-                      className={`
-                        hover:bg-purple-50 transition-all ${
-                          !viewingArchive ? "cursor-move" : "cursor-default"
-                        }
-                        ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                        ${
-                          !viewingArchive && isDragging
-                            ? "opacity-40 bg-blue-100"
-                            : ""
-                        }
-                        ${
-                          !viewingArchive && isDragOver
-                            ? "border-t-4 border-purple-500"
-                            : ""
-                        }
-                      `}
-                      title="Drag untuk mengubah urutan"
+                      style={{
+                        height: `${visibleRange.start * 60}px`,
+                        opacity: 0,
+                        pointerEvents: "none",
+                      }}
                     >
-                      <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400 cursor-grab active:cursor-grabbing">
-                            ⋮⋮
-                          </span>
-                          {formatDateJakarta(cb.tanggal)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-block px-2 py-1 text-xs font-semibold rounded-lg border ${kategoriColor.bg} ${kategoriColor.text} ${kategoriColor.border}`}
-                        >
-                          {cb.kategori_transaksi}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-sm text-right font-semibold">
-                        {cb.debit > 0 ? (
-                          <span className="text-green-600">
-                            +{formatRupiah(cb.debit)}
-                          </span>
-                        ) : cb.kredit > 0 ? (
-                          <span className="text-red-600">
-                            -{formatRupiah(cb.kredit)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 max-w-xs truncate">
-                        {cb.keperluan || "-"}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-right font-bold text-blue-600">
-                        {formatRupiah(cb.saldo)}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex gap-2 justify-center">
-                          {!viewingArchive ? (
-                            <>
-                              <button
-                                onClick={() => handleOpenEditModal(cb)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                title="Edit Transaction"
-                              >
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                  />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => handleOpenEditManual(cb)}
-                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                title="Edit Manual (Override)"
-                              >
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                                  />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => handleDelete(cb)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                title="Delete"
-                              >
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-gray-400 text-sm italic">
-                              Read-only
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                      <td className="px-3 py-3">&nbsp;</td>
+                      <td className="px-3 py-3">&nbsp;</td>
+                      <td className="px-3 py-3">&nbsp;</td>
+                      <td className="px-3 py-3">&nbsp;</td>
+                      <td className="px-3 py-3">&nbsp;</td>
+                      <td className="px-3 py-3">&nbsp;</td>
                     </tr>
-                  );
-                })
+                  )}
+                  {/* Render visible rows */}
+                  {visibleCashBooks.map((cb, relativeIndex) => {
+                    const actualIndex =
+                      cashBooks.length <= 50
+                        ? relativeIndex
+                        : visibleRange.start + relativeIndex;
+                    return (
+                      <CashBookRow
+                        key={cb.id}
+                        cashBook={cb}
+                        index={actualIndex}
+                        isDragging={draggedIndex === actualIndex}
+                        isDragOver={dragOverIndex === actualIndex}
+                        viewingArchive={!!viewingArchive}
+                        formatRupiah={formatRupiah}
+                        formatDateJakarta={formatDateJakarta}
+                        getKategoriColor={getKategoriColor}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onDragEnd={handleDragEnd}
+                        onEdit={handleOpenEditModal}
+                        onEditManual={handleOpenEditManual}
+                        onDelete={handleDelete}
+                      />
+                    );
+                  })}
+                  {/* Spacer untuk rows setelah visible range - dengan konten agar table tidak collapse */}
+                  {cashBooks.length > 50 &&
+                    visibleRange.end < cashBooks.length && (
+                      <tr
+                        style={{
+                          height: `${
+                            (cashBooks.length - visibleRange.end) * 60
+                          }px`,
+                          opacity: 0,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <td className="px-3 py-3">&nbsp;</td>
+                        <td className="px-3 py-3">&nbsp;</td>
+                        <td className="px-3 py-3">&nbsp;</td>
+                        <td className="px-3 py-3">&nbsp;</td>
+                        <td className="px-3 py-3">&nbsp;</td>
+                        <td className="px-3 py-3">&nbsp;</td>
+                      </tr>
+                    )}
+                </>
               )}
             </tbody>
           </table>
