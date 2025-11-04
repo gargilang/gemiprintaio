@@ -18,11 +18,11 @@ export default function DeleteAllCashbookModal({
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
               <svg
-                className="w-6 h-6 text-red-600"
+                className="w-6 h-6 text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -35,7 +35,20 @@ export default function DeleteAllCashbookModal({
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-[#0a1b3d]">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
               Hapus Semua Data
             </h3>
           </div>

@@ -9,14 +9,18 @@ export async function DELETE(request: NextRequest) {
     const db = new Database(DB_FILE);
     db.pragma("foreign_keys = ON");
 
-    const result = db.prepare("DELETE FROM cash_book").run();
+    // Only delete active transactions (archived_at IS NULL)
+    // This preserves archived transactions from "Tutup Buku"
+    const result = db
+      .prepare("DELETE FROM cash_book WHERE archived_at IS NULL")
+      .run();
 
     db.close();
 
     return NextResponse.json({
       success: true,
       deleted: result.changes,
-      message: `Successfully deleted ${result.changes} cash_book records`,
+      message: `Successfully deleted ${result.changes} active transaction(s). Archived transactions are preserved.`,
     });
   } catch (error: any) {
     console.error("Delete error:", error);

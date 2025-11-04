@@ -69,10 +69,23 @@ export default function SelectMonthModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
-          <h3 className="text-xl font-bold text-white">
-            📅 Pilih Bulan / Arsip
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            Pilih Arsip Bulan
           </h3>
         </div>
 
@@ -88,7 +101,19 @@ export default function SelectMonthModal({
             </div>
           ) : archives.length === 0 ? (
             <div className="text-center py-10">
-              <div className="text-gray-400 text-6xl mb-4">📭</div>
+              <svg
+                className="w-24 h-24 mx-auto text-gray-300 mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+              </svg>
               <h4 className="text-lg font-semibold text-gray-700">
                 Belum Ada Arsip
               </h4>
@@ -111,11 +136,11 @@ export default function SelectMonthModal({
                     });
                     onClose();
                   }}
-                  className="w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-purple-400 hover:bg-purple-50 transition-all group"
+                  className="w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h4 className="font-bold text-gray-800 group-hover:text-purple-700 text-base">
+                      <h4 className="font-bold text-gray-800 group-hover:text-blue-700 text-base">
                         {archive.archived_label}
                       </h4>
                       <p className="text-sm text-gray-600 mt-1">
@@ -126,7 +151,7 @@ export default function SelectMonthModal({
                         {archive.count} transaksi
                       </p>
                     </div>
-                    <div className="text-purple-500 group-hover:text-purple-600 transform transition-transform group-hover:translate-x-1">
+                    <div className="text-blue-500 group-hover:text-blue-600 transform transition-transform group-hover:translate-x-1">
                       <svg
                         className="w-6 h-6"
                         fill="none"

@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import MainShell from "@/components/MainShell";
+import {
+  CartIcon,
+  PackageIcon,
+  UsersIcon,
+  BuildingIcon,
+  MoneyIcon,
+  ChartIcon,
+  UserIcon,
+} from "@/components/icons/PageIcons";
 
 interface User {
   id: string;
@@ -27,49 +36,49 @@ export default function DashboardPage() {
   const quickAccessItems = [
     {
       href: "/pos",
-      icon: "🛒",
+      icon: <CartIcon size={28} />,
       label: "POS / Kasir",
       color: "from-[#00afef] to-[#2fd3ff]",
       description: "Point of Sale",
     },
     {
       href: "/materials",
-      icon: "📦",
+      icon: <PackageIcon size={28} />,
       label: "Data Bahan",
       color: "from-[#2266ff] to-[#00afef]",
       description: "Material Inventory",
     },
     {
       href: "/customers",
-      icon: "👥",
+      icon: <UsersIcon size={28} />,
       label: "Pelanggan",
       color: "from-[#2fd3ff] to-[#00afef]",
       description: "Customer Data",
     },
     {
       href: "/vendors",
-      icon: "🏢",
+      icon: <BuildingIcon size={28} />,
       label: "Vendor",
       color: "from-[#0a1b3d] to-[#2266ff]",
       description: "Vendor Management",
     },
     {
       href: "/finance",
-      icon: "💰",
+      icon: <MoneyIcon size={28} />,
       label: "Keuangan",
       color: "from-[#ffd400] to-[#ff2f91]",
       description: "Financial Management",
     },
     {
       href: "/reports",
-      icon: "📊",
+      icon: <ChartIcon size={28} />,
       label: "Laporan",
       color: "from-[#ff2f91] to-[#2266ff]",
       description: "Reports & Analytics",
     },
     {
       href: "/users",
-      icon: "👤",
+      icon: <UserIcon size={28} />,
       label: "Manajemen User",
       color: "from-[#0a1b3d] to-[#00afef]",
       description: "User Management",
@@ -119,7 +128,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-2 border-transparent hover:border-[#00afef] transform hover:-translate-y-1">
                 <div className="flex items-center gap-4 mb-4">
                   <div
-                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center text-2xl shadow-lg`}
+                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg text-white`}
                   >
                     {item.icon}
                   </div>

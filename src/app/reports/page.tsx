@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
 import { NotificationToastProps } from "@/components/NotificationToast";
+import { ChartIcon } from "@/components/icons/PageIcons";
+import {
+  CoinIcon,
+  BoxIcon,
+  ShoppingCartIcon,
+  ClipboardIcon,
+} from "@/components/icons/ContentIcons";
 
 interface User {
   id: string;
@@ -139,28 +146,28 @@ export default function ReportsPage() {
   const reportTypes = [
     {
       id: "financial" as ReportType,
-      icon: "💰",
+      icon: <CoinIcon size={32} />,
       title: "Laporan Keuangan",
       description: "Ringkasan transaksi dari arsip tutup buku",
       available: true,
     },
     {
       id: "inventory" as ReportType,
-      icon: "📦",
+      icon: <BoxIcon size={32} />,
       title: "Laporan Inventori",
       description: "Stok barang dan pergerakan inventori",
       available: false,
     },
     {
       id: "pos" as ReportType,
-      icon: "🛒",
+      icon: <ShoppingCartIcon size={32} />,
       title: "Laporan POS",
       description: "Transaksi penjualan dari sistem kasir",
       available: false,
     },
     {
       id: "receivables" as ReportType,
-      icon: "📋",
+      icon: <ClipboardIcon size={32} />,
       title: "Laporan Hutang & Piutang",
       description: "Daftar hutang supplier dan piutang customer",
       available: false,
@@ -180,13 +187,18 @@ export default function ReportsPage() {
   return (
     <MainShell title="Laporan" notice={notice}>
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
-        <h2 className="text-2xl font-bold mb-1 font-twcenmt">
-          📊 Pusat Laporan
-        </h2>
-        <p className="text-white/90 text-sm">
-          Generate berbagai jenis laporan untuk analisis bisnis
-        </p>
+      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
+        <div className="flex items-center gap-3">
+          <ChartIcon size={32} className="text-white" />
+          <div>
+            <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
+              Pusat Laporan
+            </h2>
+            <p className="text-white/90 text-sm">
+              Generate berbagai jenis laporan untuk analisis bisnis
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Report Type Selection */}
@@ -216,7 +228,7 @@ export default function ReportsPage() {
                   Soon
                 </span>
               )}
-              <div className="text-3xl mb-2">{type.icon}</div>
+              <div className="mb-2 text-purple-600">{type.icon}</div>
               <h4 className="font-bold text-gray-800 mb-1">{type.title}</h4>
               <p className="text-xs text-gray-600">{type.description}</p>
             </button>
@@ -228,7 +240,8 @@ export default function ReportsPage() {
       {selectedReportType === "financial" && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <span>💰</span> Laporan Keuangan
+            <CoinIcon size={24} className="text-purple-600" />
+            Laporan Keuangan
           </h3>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -245,7 +258,19 @@ export default function ReportsPage() {
                 </div>
               ) : archives.length === 0 ? (
                 <div className="text-center py-10 bg-gray-50 rounded-xl">
-                  <div className="text-gray-400 text-5xl mb-3">📭</div>
+                  <svg
+                    className="w-20 h-20 mx-auto text-gray-300 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                    />
+                  </svg>
                   <p className="text-gray-600 font-medium">
                     Belum ada arsip tutup buku
                   </p>
@@ -317,7 +342,19 @@ export default function ReportsPage() {
               {selectedArchive ? (
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
                   <div className="text-center mb-6">
-                    <div className="text-5xl mb-3">📄</div>
+                    <svg
+                      className="w-16 h-16 mx-auto text-purple-500 mb-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
                     <h4 className="text-xl font-bold text-gray-800 mb-2">
                       {selectedArchive.archived_label}
                     </h4>
@@ -332,8 +369,9 @@ export default function ReportsPage() {
 
                   <div className="space-y-3">
                     <div className="bg-white rounded-lg p-4 border border-purple-200">
-                      <h5 className="font-semibold text-gray-700 mb-2 text-sm">
-                        📋 Isi Laporan
+                      <h5 className="font-semibold text-gray-700 mb-2 text-sm flex items-center gap-2">
+                        <ClipboardIcon size={16} className="text-purple-600" />
+                        Isi Laporan
                       </h5>
                       <ul className="text-xs text-gray-600 space-y-1">
                         <li>• Ringkasan Saldo & Omzet</li>
@@ -357,7 +395,19 @@ export default function ReportsPage() {
                         </>
                       ) : (
                         <>
-                          <span className="text-xl">📥</span>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                          </svg>
                           <span>Download Laporan PDF</span>
                         </>
                       )}
@@ -366,7 +416,19 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
-                  <div className="text-gray-400 text-5xl mb-3">👈</div>
+                  <svg
+                    className="w-20 h-20 mx-auto text-gray-300 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M7 11l5-5m0 0l5 5m-5-5v12"
+                    />
+                  </svg>
                   <p className="text-gray-600 font-medium">
                     Pilih arsip terlebih dahulu
                   </p>

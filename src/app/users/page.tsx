@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
 import { NotificationToastProps } from "@/components/NotificationToast";
+import {
+  UsersIcon,
+  CheckIcon,
+  CrownIcon,
+  KeyIcon,
+} from "@/components/icons/ContentIcons";
 
 interface User {
   id: string;
@@ -332,7 +338,7 @@ export default function UsersPage() {
           <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-6 mb-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-1 font-twcenmt">
+                <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
                   Kelola Pengguna
                 </h2>
                 <p className="text-white/90">
@@ -491,7 +497,7 @@ export default function UsersPage() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-[#00afef]">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[#6b7280] font-semibold">Total Users</h4>
-                <span className="text-2xl">👥</span>
+                <UsersIcon size={28} className="text-[#00afef]" />
               </div>
               <p className="text-3xl font-bold text-[#0a1b3d]">
                 {users.length}
@@ -501,7 +507,7 @@ export default function UsersPage() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-green-500">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[#6b7280] font-semibold">Aktif</h4>
-                <span className="text-2xl">✅</span>
+                <CheckIcon size={28} className="text-green-600" />
               </div>
               <p className="text-3xl font-bold text-[#0a1b3d]">
                 {users.filter((u) => u.is_active).length}
@@ -511,7 +517,7 @@ export default function UsersPage() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-purple-500">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[#6b7280] font-semibold">Admin</h4>
-                <span className="text-2xl">👑</span>
+                <CrownIcon size={28} className="text-purple-600" />
               </div>
               <p className="text-3xl font-bold text-[#0a1b3d]">
                 {users.filter((u) => u.role === "admin").length}
@@ -522,10 +528,10 @@ export default function UsersPage() {
       )}
 
       {/* Password Manager (Admins, Managers, Users) */}
-      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg p-6 mt-10 mb-6 text-white">
+      <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl shadow-lg p-6 mt-10 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-1 font-twcenmt">
+            <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
               Password Manager
             </h2>
             <p className="text-white/90">
@@ -860,9 +866,9 @@ export default function UsersPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-[#0a1b3d]">
-                {editingUser ? "Edit User" : "Tambah User Baru"}
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#00afef] to-[#2266ff] rounded-t-2xl">
+              <h3 className="text-xl font-bold text-white">
+                {editingUser ? "✏️ Edit User" : "Tambah User Baru"}
               </h3>
             </div>
 
@@ -1038,8 +1044,9 @@ export default function UsersPage() {
       {showCredModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-[#0a1b3d]">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <KeyIcon size={24} className="text-white" />
                 {editingCred ? "Edit Kredensial" : "Tambah Kredensial"}
               </h3>
             </div>

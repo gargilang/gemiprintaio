@@ -37,9 +37,9 @@ export async function DELETE(
     db.prepare(`DELETE FROM cash_book WHERE id = ?`).run(id);
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi yang tersisa, urutkan berdasarkan tanggal dan created_at
+    // Ambil semua transaksi yang tersisa, urutkan berdasarkan display_order DESC
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY tanggal ASC, created_at ASC`)
+      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -316,9 +316,9 @@ export async function PUT(
     );
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi, urutkan berdasarkan tanggal dan created_at
+    // Ambil semua transaksi, urutkan berdasarkan display_order DESC
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY tanggal ASC, created_at ASC`)
+      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -365,6 +365,8 @@ export async function PUT(
 
       // Store previous values
       const prevLabaBersih = runningLabaBersih;
+      const prevBagiHasilAnwar = runningBagiHasilAnwar;
+      const prevBagiHasilSuri = runningBagiHasilSuri;
       const prevBagiHasilGemi = runningBagiHasilGemi;
       const prevKasbonAnwar = runningKasbonAnwar;
       const prevKasbonSuri = runningKasbonSuri;
@@ -374,7 +376,7 @@ export async function PUT(
       // G: OMZET
       if (entry.override_omzet !== 1) {
         if (kategori === "OMZET" || kategori === "PIUTANG") {
-          runningOmzet = isFirstEntry ? entryDebit : runningOmzet + entryDebit;
+          runningOmzet += entryDebit;
         }
       } else {
         runningOmzet = entry.omzet;
@@ -382,10 +384,8 @@ export async function PUT(
 
       // H: BIAYA OPERASIONAL
       if (entry.override_biaya_operasional !== 1) {
-        if (!isFirstEntry) {
-          if (kategori === "BIAYA" || kategori === "TABUNGAN") {
-            runningBiayaOperasional = runningBiayaOperasional + entryKredit;
-          }
+        if (kategori === "BIAYA" || kategori === "TABUNGAN") {
+          runningBiayaOperasional += entryKredit;
         }
       } else {
         runningBiayaOperasional = entry.biaya_operasional;
@@ -393,10 +393,8 @@ export async function PUT(
 
       // I: BIAYA BAHAN
       if (entry.override_biaya_bahan !== 1) {
-        if (!isFirstEntry) {
-          if (kategori === "SUPPLY" || kategori === "HUTANG") {
-            runningBiayaBahan = runningBiayaBahan + entryKredit;
-          }
+        if (kategori === "SUPPLY" || kategori === "HUTANG") {
+          runningBiayaBahan += entryKredit;
         }
       } else {
         runningBiayaBahan = entry.biaya_bahan;
@@ -404,9 +402,7 @@ export async function PUT(
 
       // J: SALDO
       if (entry.override_saldo !== 1) {
-        runningSaldo = isFirstEntry
-          ? entryDebit - entryKredit
-          : runningSaldo + entryDebit - entryKredit;
+        runningSaldo += entryDebit - entryKredit;
       } else {
         runningSaldo = entry.saldo;
       }
@@ -414,109 +410,73 @@ export async function PUT(
       // K: LABA BERSIH
       if (entry.override_laba_bersih !== 1) {
         runningLabaBersih =
-          runningOmzet - (runningBiayaOperasional + runningBiayaBahan);
+          runningOmzet - runningBiayaOperasional - runningBiayaBahan;
       } else {
         runningLabaBersih = entry.laba_bersih;
       }
 
-      // L: KASBON ANWAR
+      // L: KASBON ANWAR: Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_anwar !== 1) {
         if (kategori === "PRIBADI-A") {
-          runningKasbonAnwar = isFirstEntry
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonAnwar - entryDebit
-            : prevKasbonAnwar + entryKredit;
-        } else if (!isFirstEntry) {
-          runningKasbonAnwar = prevKasbonAnwar;
+          runningKasbonAnwar += entryKredit - entryDebit;
         }
       } else {
         runningKasbonAnwar = entry.kasbon_anwar;
       }
 
-      // M: KASBON SURI
+      // M: KASBON SURI: Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_suri !== 1) {
         if (kategori === "PRIBADI-S") {
-          runningKasbonSuri = isFirstEntry
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonSuri - entryDebit
-            : prevKasbonSuri + entryKredit;
-        } else if (!isFirstEntry) {
-          runningKasbonSuri = prevKasbonSuri;
+          runningKasbonSuri += entryKredit - entryDebit;
         }
       } else {
         runningKasbonSuri = entry.kasbon_suri;
       }
 
-      // N: BAGI HASIL ANWAR
+      // N: BAGI HASIL ANWAR: (Laba Bersih / 3) - Kasbon Anwar
       if (entry.override_bagi_hasil_anwar !== 1) {
         runningBagiHasilAnwar = runningLabaBersih / 3 - runningKasbonAnwar;
       } else {
         runningBagiHasilAnwar = entry.bagi_hasil_anwar;
       }
 
-      // O: BAGI HASIL SURI
+      // O: BAGI HASIL SURI: (Laba Bersih / 3) - Kasbon Suri
       if (entry.override_bagi_hasil_suri !== 1) {
         runningBagiHasilSuri = runningLabaBersih / 3 - runningKasbonSuri;
       } else {
         runningBagiHasilSuri = entry.bagi_hasil_suri;
       }
 
-      // P: BAGI HASIL GEMI
+      // P: BAGI HASIL GEMI: Increment (Laba Bersih / 3) + adjustment INVESTOR
       if (entry.override_bagi_hasil_gemi !== 1) {
-        const labaIncrement = isFirstEntry
-          ? runningLabaBersih
-          : runningLabaBersih - prevLabaBersih;
-        const investorDebit = kategori === "INVESTOR" ? entryDebit : 0;
-        const investorKredit = kategori === "INVESTOR" ? entryKredit : 0;
-        runningBagiHasilGemi =
-          labaIncrement / 3 +
-          prevBagiHasilGemi +
-          investorDebit -
-          investorKredit;
+        const labaIncrement = runningLabaBersih - prevLabaBersih;
+        runningBagiHasilGemi += labaIncrement / 3;
+
+        if (kategori === "INVESTOR") {
+          runningBagiHasilGemi += entryDebit - entryKredit;
+        }
       } else {
         runningBagiHasilGemi = entry.bagi_hasil_gemi;
       }
 
-      // Q: KASBON CAHAYA
+      // Q: KASBON CAHAYA: Kategori INVESTOR atau BIAYA, Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_cahaya !== 1) {
         const hasCahaya = keperluan_entry.includes("cahaya");
         const isCahayaCategory =
           kategori === "INVESTOR" || kategori === "BIAYA";
         if (hasCahaya && isCahayaCategory) {
-          runningKasbonCahaya = isFirstEntry
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonCahaya - entryDebit
-            : prevKasbonCahaya + entryKredit;
-        } else if (!isFirstEntry) {
-          runningKasbonCahaya = prevKasbonCahaya;
+          runningKasbonCahaya += entryKredit - entryDebit;
         }
       } else {
         runningKasbonCahaya = entry.kasbon_cahaya;
       }
 
-      // R: KASBON DINIL
+      // R: KASBON DINIL: Kategori INVESTOR atau BIAYA, Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_dinil !== 1) {
         const hasDinil = keperluan_entry.includes("dinil");
         const isDinilCategory = kategori === "INVESTOR" || kategori === "BIAYA";
         if (hasDinil && isDinilCategory) {
-          runningKasbonDinil = isFirstEntry
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonDinil - entryDebit
-            : prevKasbonDinil + entryKredit;
-        } else if (!isFirstEntry) {
-          runningKasbonDinil = prevKasbonDinil;
+          runningKasbonDinil += entryKredit - entryDebit;
         }
       } else {
         runningKasbonDinil = entry.kasbon_dinil;

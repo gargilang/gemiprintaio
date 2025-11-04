@@ -106,10 +106,10 @@ export default function EditManualModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white">
-            Edit Manual (Override)
+            🔧 Edit Manual (Override)
           </h3>
           <p className="text-white/90 text-sm mt-1">
             Transaksi tgl: {cashBook.tanggal} | Kategori:{" "}

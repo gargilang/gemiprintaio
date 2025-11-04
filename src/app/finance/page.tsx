@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
@@ -11,31 +11,31 @@ import DeleteAllCashbookModal from "@/components/DeleteAllCashbookModal";
 import EditManualModal from "@/components/EditManualModal";
 import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { MoneyIcon } from "@/components/icons/PageIcons";
+import {
+  BriefcaseIcon,
+  PersonIcon,
+  CoinIcon,
+  BoxIcon,
+  CheckIcon,
+} from "@/components/icons/ContentIcons";
 
 // Memoized CashBook Row Component - mencegah re-render yang tidak perlu
 const CashBookRow = memo(
   ({
     cashBook,
     index,
-    isDragging,
-    isDragOver,
     viewingArchive,
     formatRupiah,
     formatDateJakarta,
     getKategoriColor,
-    onDragStart,
-    onDragOver,
-    onDragLeave,
-    onDrop,
-    onDragEnd,
     onEdit,
     onEditManual,
     onDelete,
   }: {
     cashBook: CashBook;
     index: number;
-    isDragging: boolean;
-    isDragOver: boolean;
     viewingArchive: boolean;
     formatRupiah: (amount: number) => string;
     formatDateJakarta: (date: string) => string;
@@ -44,11 +44,6 @@ const CashBookRow = memo(
       text: string;
       border: string;
     };
-    onDragStart: (e: React.DragEvent, index: number) => void;
-    onDragOver: (e: React.DragEvent, index: number) => void;
-    onDragLeave: () => void;
-    onDrop: (e: React.DragEvent, index: number) => void;
-    onDragEnd: () => void;
     onEdit: (cb: CashBook) => void;
     onEditManual: (cb: CashBook) => void;
     onDelete: (cb: CashBook) => void;
@@ -57,29 +52,13 @@ const CashBookRow = memo(
 
     return (
       <tr
-        draggable={!viewingArchive}
-        onDragStart={!viewingArchive ? (e) => onDragStart(e, index) : undefined}
-        onDragOver={!viewingArchive ? (e) => onDragOver(e, index) : undefined}
-        onDragLeave={!viewingArchive ? onDragLeave : undefined}
-        onDrop={!viewingArchive ? (e) => onDrop(e, index) : undefined}
-        onDragEnd={!viewingArchive ? onDragEnd : undefined}
         className={`
-          hover:bg-purple-50 transition-all ${
-            !viewingArchive ? "cursor-move" : "cursor-default"
-          }
+          hover:bg-purple-50 transition-all cursor-default
           ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-          ${!viewingArchive && isDragging ? "opacity-40 bg-blue-100" : ""}
-          ${!viewingArchive && isDragOver ? "border-t-4 border-purple-500" : ""}
         `}
-        title="Drag untuk mengubah urutan"
       >
         <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 cursor-grab active:cursor-grabbing">
-              ⋮⋮
-            </span>
-            {formatDateJakarta(cashBook.tanggal)}
-          </div>
+          {formatDateJakarta(cashBook.tanggal)}
         </td>
         <td className="px-3 py-3">
           <span
@@ -210,6 +189,9 @@ export default function FinancePage() {
     show: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    cancelText?: string;
+    type?: "warning" | "danger" | "info";
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
@@ -234,10 +216,16 @@ export default function FinancePage() {
 
   // Archive viewing state
   const [viewingArchive, setViewingArchive] = useState<string | null>(null);
+  const [currentArchiveInfo, setCurrentArchiveInfo] = useState<{
+    label: string;
+    archived_at: string;
+  } | null>(null);
 
-  // Drag & Drop state
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  // Filter state - multi-select dengan checkbox
+  const [selectedKategoriFilters, setSelectedKategoriFilters] = useState<
+    Set<KategoriTransaksi>
+  >(new Set());
+  const [showKategoriDropdown, setShowKategoriDropdown] = useState(false);
 
   // Virtualization state - untuk performance dengan banyak rows
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
@@ -262,11 +250,19 @@ export default function FinancePage() {
     "PRIBADI-S",
   ];
 
+  // Filtered cashbooks based on kategori selection
+  const filteredCashBooks = useMemo(() => {
+    if (selectedKategoriFilters.size === 0) return cashBooks;
+    return cashBooks.filter((cb) =>
+      selectedKategoriFilters.has(cb.kategori_transaksi)
+    );
+  }, [cashBooks, selectedKategoriFilters]);
+
   // Visible cashbooks - hanya render yang terlihat (virtualization)
   const visibleCashBooks = useMemo(() => {
-    if (cashBooks.length <= 50) return cashBooks; // No virtualization for small lists
-    return cashBooks.slice(visibleRange.start, visibleRange.end);
-  }, [cashBooks, visibleRange]);
+    if (filteredCashBooks.length <= 50) return filteredCashBooks; // No virtualization for small lists
+    return filteredCashBooks.slice(visibleRange.start, visibleRange.end);
+  }, [filteredCashBooks, visibleRange]);
 
   // Memoized summary values - hanya hitung sekali per perubahan cashBooks
   const summaryData = useMemo(() => {
@@ -288,9 +284,9 @@ export default function FinancePage() {
       };
     }
 
-    // Untuk arsip, ambil dari transaksi terakhir (index terakhir) karena sudah di-sort DESC
-    // Untuk data aktif, ambil dari transaksi pertama (latest)
-    // Transaksi terakhir di array adalah yang memiliki nilai kumulatif akhir periode
+    // Untuk data aktif: ambil index 0 (display_order tertinggi = transaksi terbaru)
+    // Untuk arsip: ambil index terakhir (display_order terkecil = transaksi terakhir periode)
+    // Karena display_order DESC: nilai tertinggi = transaksi paling lama di CSV
     const latest = viewingArchive
       ? cashBooks[cashBooks.length - 1]
       : cashBooks[0];
@@ -328,7 +324,10 @@ export default function FinancePage() {
       const buffer = 10; // Extra rows to render above/below
 
       const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
-      const end = Math.min(cashBooks.length, start + visibleRows + buffer * 2);
+      const end = Math.min(
+        filteredCashBooks.length,
+        start + visibleRows + buffer * 2
+      );
 
       setVisibleRange({ start, end });
     };
@@ -339,7 +338,15 @@ export default function FinancePage() {
       handleScroll(); // Initial calculation
       return () => container.removeEventListener("scroll", handleScroll);
     }
-  }, [cashBooks.length]);
+  }, [filteredCashBooks.length]);
+
+  // Reset scroll position when filter changes
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+      setVisibleRange({ start: 0, end: 50 });
+    }
+  }, [selectedKategoriFilters]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -352,6 +359,7 @@ export default function FinancePage() {
         else if (showEditManualModal) setShowEditManualModal(false);
         else if (showCloseBooksModal) setShowCloseBooksModal(false);
         else if (showSelectMonthModal) setShowSelectMonthModal(false);
+        else if (showKategoriDropdown) setShowKategoriDropdown(false);
       }
     };
 
@@ -365,7 +373,24 @@ export default function FinancePage() {
     showEditManualModal,
     showCloseBooksModal,
     showSelectMonthModal,
+    showKategoriDropdown,
   ]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (showKategoriDropdown && !target.closest(".relative")) {
+        setShowKategoriDropdown(false);
+      }
+    };
+
+    if (showKategoriDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showKategoriDropdown]);
 
   const checkAuth = () => {
     const userSession = localStorage.getItem("user");
@@ -409,6 +434,10 @@ export default function FinancePage() {
 
       // Set viewing archive state
       setViewingArchive(archiveLabel || null);
+      // Reset archive info when returning to active table
+      if (!archiveLabel) {
+        setCurrentArchiveInfo(null);
+      }
     } catch (err) {
       console.error("Gagal memuat cash books:", err);
       showMsg("error", "Tidak bisa memuat data buku keuangan dari database.");
@@ -645,12 +674,15 @@ export default function FinancePage() {
   const handleDelete = (cashBook: CashBook) => {
     setConfirmDialog({
       show: true,
-      title: "Hapus Transaksi",
+      title: "🗑️ Hapus Transaksi",
       message: `Yakin ingin menghapus transaksi berikut?\n\nKategori: ${
         cashBook.kategori_transaksi
       }\nKeperluan: ${cashBook.keperluan || "-"}\nTanggal: ${formatDateJakarta(
         cashBook.tanggal
       )}\n\nData akan dikalkulasi ulang otomatis setelah penghapusan.`,
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      type: "danger",
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -738,6 +770,10 @@ export default function FinancePage() {
       if (!res.ok) throw new Error(data?.error || "Gagal memuat arsip");
       setCashBooks(data.cashBooks || []);
       setViewingArchive(archive.label);
+      setCurrentArchiveInfo({
+        label: archive.label,
+        archived_at: archive.archived_at,
+      });
       showMsg("success", `Menampilkan arsip: ${archive.label}`);
     } catch (err) {
       console.error("Gagal memuat arsip:", err);
@@ -745,66 +781,53 @@ export default function FinancePage() {
     }
   };
 
-  // Drag & Drop Handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
+  const handleRestoreArchive = () => {
+    if (!currentArchiveInfo) {
+      showMsg("error", "Tidak ada arsip yang dipilih");
       return;
     }
 
-    // Reorder the array
-    const reordered = [...cashBooks];
-    const [removed] = reordered.splice(draggedIndex, 1);
-    reordered.splice(dropIndex, 0, removed);
+    setConfirmDialog({
+      show: true,
+      title: "Restore Arsip",
+      message: `Apakah Anda yakin ingin mengembalikan semua transaksi dari arsip "${currentArchiveInfo.label}" ke tabel aktif?\n\nSemua transaksi akan kembali menjadi aktif dan dapat diedit.`,
+      confirmText: "Ya, Restore",
+      cancelText: "Batal",
+      type: "warning",
+      onConfirm: async () => {
+        setConfirmDialog(null);
 
-    // Update local state immediately for smooth UX
-    setCashBooks(reordered);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+        try {
+          const res = await fetch("/api/cashbook/archive/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              label: currentArchiveInfo.label,
+              archived_at: currentArchiveInfo.archived_at,
+            }),
+          });
 
-    // Send new order to server
-    try {
-      const reorderedIds = reordered.map((cb) => cb.id);
-      const res = await fetch("/api/cashbook/reorder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reorderedIds }),
-      });
+          const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error("Gagal menyimpan urutan baru");
-      }
+          if (!res.ok) {
+            throw new Error(data?.error || "Gagal restore arsip");
+          }
 
-      showMsg("success", " Urutan berhasil diubah dan dihitung ulang!");
-      await loadCashBooks(); // Reload to get recalculated values
-    } catch (err) {
-      console.error(err);
-      showMsg("error", "Gagal menyimpan urutan baru");
-      // Reload to revert to correct state
-      await loadCashBooks();
-    }
-  };
+          showMsg(
+            "success",
+            `${data.restored} transaksi berhasil dikembalikan dari "${currentArchiveInfo.label}"`
+          );
 
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+          // Kembali ke tabel aktif dan reload
+          setViewingArchive(null);
+          setCurrentArchiveInfo(null);
+          await loadCashBooks();
+        } catch (err: any) {
+          console.error("Restore archive error:", err);
+          showMsg("error", err.message || "Gagal restore arsip");
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -821,30 +844,44 @@ export default function FinancePage() {
   return (
     <MainShell title="Buku Keuangan" notice={notice}>
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-1 font-twcenmt">
-              💰 Manajemen Buku Keuangan
-            </h2>
-            <p className="text-white/90 text-sm">
-              {viewingArchive
-                ? `Melihat Arsip: ${viewingArchive}`
-                : "Kelola transaksi dan buku kas perusahaan"}
-            </p>
+          <div className="flex items-center gap-3">
+            <MoneyIcon size={28} className="text-white" />
+            <div>
+              <h2 className="text-2xl font-bold mb-1 uppercase font-twcenmt tracking-wide">
+                Buku Keuangan
+              </h2>
+              <p className="text-white/90 text-sm">
+                {viewingArchive
+                  ? `Melihat Arsip: ${viewingArchive}`
+                  : "Kelola transaksi dan buku kas perusahaan"}
+              </p>
+            </div>
           </div>
           {!viewingArchive && (
             <button
               onClick={handleOpenModal}
-              className="bg-white text-purple-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+              className="px-6 py-3 bg-white text-[#00afef] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
             >
-              <span className="text-xl">+</span>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
               Tambah Transaksi
             </button>
           )}
         </div>
       </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Card 1: Saldo */}
@@ -909,7 +946,6 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-
       {/* Bagi Hasil Summary - Hanya untuk Admin, Manager & Chief */}
       {currentUser &&
         (currentUser.role === "admin" ||
@@ -920,8 +956,9 @@ export default function FinancePage() {
               onClick={() => setShowBagiHasilSection(!showBagiHasilSection)}
               className="w-full bg-gradient-to-r from-amber-50 via-pink-50 to-cyan-50 rounded-xl shadow-md p-4 border-2 border-purple-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
             >
-              <span className="text-sm font-bold text-gray-700">
-                💼 Bagi Hasil
+              <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <BriefcaseIcon size={18} className="text-purple-600" />
+                Bagi Hasil
               </span>
               <svg
                 className={`w-5 h-5 transform transition-transform ${
@@ -948,7 +985,10 @@ export default function FinancePage() {
                   className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-4 border-2 border-amber-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
                 >
                   <p className="text-sm font-bold text-amber-800 mb-2 flex items-center justify-between">
-                    <span>💼 Bagi Hasil Anwar</span>
+                    <span className="flex items-center gap-2">
+                      <BriefcaseIcon size={16} className="text-amber-700" />
+                      Bagi Hasil Anwar
+                    </span>
                     <svg
                       className={`w-4 h-4 transform transition-transform ${
                         showBagiHasilAnwar ? "rotate-180" : ""
@@ -994,7 +1034,10 @@ export default function FinancePage() {
                   className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl shadow-md p-4 border-2 border-pink-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
                 >
                   <p className="text-sm font-bold text-pink-800 mb-2 flex items-center justify-between">
-                    <span>💼 Bagi Hasil Suri</span>
+                    <span className="flex items-center gap-2">
+                      <BriefcaseIcon size={16} className="text-pink-700" />
+                      Bagi Hasil Suri
+                    </span>
                     <svg
                       className={`w-4 h-4 transform transition-transform ${
                         showBagiHasilSuri ? "rotate-180" : ""
@@ -1040,7 +1083,10 @@ export default function FinancePage() {
                   className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-4 border-2 border-blue-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
                 >
                   <p className="text-sm font-bold text-blue-800 mb-2 flex items-center justify-between">
-                    <span>💼 Bagi Hasil Gemi</span>
+                    <span className="flex items-center gap-2">
+                      <BriefcaseIcon size={16} className="text-blue-700" />
+                      Bagi Hasil Gemi
+                    </span>
                     <svg
                       className={`w-4 h-4 transform transition-transform ${
                         showBagiHasilGemi ? "rotate-180" : ""
@@ -1077,7 +1123,6 @@ export default function FinancePage() {
             )}
           </div>
         )}
-
       {/* Kasbon Karyawan Summary - Hanya untuk Admin & Manager */}
       {currentUser &&
         (currentUser.role === "admin" || currentUser.role === "manager") && (
@@ -1086,8 +1131,9 @@ export default function FinancePage() {
               onClick={() => setShowKasbonKaryawan(!showKasbonKaryawan)}
               className="w-full bg-gradient-to-r from-violet-50 to-emerald-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
             >
-              <span className="text-sm font-bold text-gray-700">
-                👤 Kasbon Karyawan
+              <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <PersonIcon size={18} className="text-violet-600" />
+                Kasbon Karyawan
               </span>
               <svg
                 className={`w-5 h-5 transform transition-transform ${
@@ -1109,16 +1155,18 @@ export default function FinancePage() {
             {showKasbonKaryawan && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl shadow-md p-4 border-2 border-violet-200">
-                  <p className="text-sm font-bold text-violet-800 mb-2">
-                    👤 Kasbon Cahaya
+                  <p className="text-sm font-bold text-violet-800 mb-2 flex items-center gap-2">
+                    <PersonIcon size={16} className="text-violet-700" />
+                    Kasbon Cahaya
                   </p>
                   <p className="text-2xl font-bold text-violet-900">
                     {formatRupiah(summaryData.kasbonCahaya)}
                   </p>
                 </div>
                 <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl shadow-md p-4 border-2 border-emerald-200">
-                  <p className="text-sm font-bold text-emerald-800 mb-2">
-                    👤 Kasbon Dinil
+                  <p className="text-sm font-bold text-emerald-800 mb-2 flex items-center gap-2">
+                    <PersonIcon size={16} className="text-emerald-700" />
+                    Kasbon Dinil
                   </p>
                   <p className="text-2xl font-bold text-emerald-900">
                     {formatRupiah(summaryData.kasbonDinil)}
@@ -1127,77 +1175,246 @@ export default function FinancePage() {
               </div>
             )}
           </div>
-        )}
-
+        )}{" "}
       {/* Toolbar for Cash Book Management - Moved here */}
       <div className="mb-6 bg-white rounded-xl shadow-md p-4 border border-gray-200">
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => setShowImportModal(true)}
-            disabled={!!viewingArchive}
-            className={`${
-              viewingArchive
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-            } text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm`}
-          >
-            <span className="text-lg">📥</span>
-            Import CSV
-          </button>
-          <button
-            onClick={() => setShowDeleteAllModal(true)}
-            disabled={!!viewingArchive}
-            className={`${
-              viewingArchive
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-            } text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm`}
-          >
-            <span className="text-lg">🗑️</span>
-            Delete All
-          </button>
-          <button
-            onClick={() => setShowCloseBooksModal(true)}
-            disabled={!!viewingArchive}
-            className={`${
-              viewingArchive
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
-            } text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm`}
-          >
-            <span className="text-lg">📚</span>
-            Tutup Buku
-          </button>
+          {/* Filter Kategori Dropdown with Checkbox */}
+          <div className="relative">
+            <button
+              onClick={() => setShowKategoriDropdown(!showKategoriDropdown)}
+              className="bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
+              {selectedKategoriFilters.size === 0
+                ? "Semua Kategori"
+                : `${selectedKategoriFilters.size} Kategori`}
+              <svg
+                className={`w-4 h-4 transition-transform ${
+                  showKategoriDropdown ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {showKategoriDropdown && (
+              <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] max-h-[400px] overflow-y-auto">
+                <div className="p-2 border-b border-gray-200 flex gap-2">
+                  <button
+                    onClick={() => {
+                      const allKats = new Set(kategoriOptions);
+                      setSelectedKategoriFilters(allKats);
+                    }}
+                    className="flex-1 text-xs px-2 py-1 bg-cyan-50 text-cyan-700 rounded hover:bg-cyan-100 transition-colors"
+                  >
+                    Pilih Semua
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedKategoriFilters(new Set());
+                    }}
+                    className="flex-1 text-xs px-2 py-1 bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    Bersihkan
+                  </button>
+                </div>
+                {kategoriOptions.map((kat) => {
+                  const isSelected = selectedKategoriFilters.has(kat);
+                  return (
+                    <label
+                      key={kat}
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          const newFilters = new Set(selectedKategoriFilters);
+                          if (e.target.checked) {
+                            newFilters.add(kat);
+                          } else {
+                            newFilters.delete(kat);
+                          }
+                          setSelectedKategoriFilters(newFilters);
+                        }}
+                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                      />
+                      <span
+                        className={
+                          isSelected ? "font-semibold text-cyan-700" : ""
+                        }
+                      >
+                        {kat}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {!viewingArchive && (
+            <>
+              <button
+                onClick={() => setShowDeleteAllModal(true)}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Delete All
+              </button>
+              <button
+                onClick={() => setShowCloseBooksModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+                Tutup Buku
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setShowSelectMonthModal(true)}
             className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
           >
-            <span className="text-lg">📅</span>
-            Pilih Bulan
-          </button>
-          {viewingArchive && (
-            <button
-              onClick={() => loadCashBooks()}
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <span className="text-lg">🔙</span>
-              Kembali ke Aktif
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            Pilih Arsip Bulan
+          </button>
+
+          {!viewingArchive && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              Import CSV
             </button>
           )}
+
+          {viewingArchive && (
+            <>
+              <button
+                onClick={handleRestoreArchive}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+                title="Kembalikan semua transaksi arsip ini ke tabel aktif"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Restore Arsip
+              </button>
+              <button
+                onClick={() => loadCashBooks()}
+                className="bg-white border-2 border-slate-600 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:bg-slate-50"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                Kembali ke Aktif
+              </button>
+            </>
+          )}
           <div className="ml-auto">
-            <div className="bg-gray-100 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner">
+            <div className="bg-gray-100 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
               {viewingArchive ? (
                 <>
-                  📦 {viewingArchive} ({cashBooks.length} Transaksi)
+                  <BoxIcon size={16} className="text-gray-600" />{" "}
+                  {viewingArchive} ({filteredCashBooks.length} Transaksi)
                 </>
               ) : (
-                <>{cashBooks.length} Transaksi Aktif</>
+                <>{filteredCashBooks.length} Transaksi Aktif</>
               )}
             </div>
           </div>
         </div>
       </div>
-
       {/* Table Section */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
         <div
@@ -1206,7 +1423,7 @@ export default function FinancePage() {
           style={{ scrollBehavior: "smooth" }}
         >
           <table className="w-full table-fixed">
-            <thead className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white sticky top-0 z-10">
+            <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0 z-10">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-bold uppercase whitespace-nowrap w-28">
                   Tanggal
@@ -1214,7 +1431,7 @@ export default function FinancePage() {
                 <th className="px-3 py-3 text-left text-xs font-bold uppercase w-28">
                   Kategori
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-28">
+                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-40">
                   Nominal
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-bold uppercase">
@@ -1229,13 +1446,15 @@ export default function FinancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {cashBooks.length === 0 ? (
+              {filteredCashBooks.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
                     className="px-4 py-8 text-center text-gray-500"
                   >
-                    Belum ada transaksi. Klik "Tambah Transaksi" untuk memulai.
+                    {selectedKategoriFilters.size > 0
+                      ? `Tidak ada transaksi dengan kategori yang dipilih.`
+                      : 'Belum ada transaksi. Klik "Tambah Transaksi" untuk memulai.'}
                   </td>
                 </tr>
               ) : (
@@ -1260,7 +1479,7 @@ export default function FinancePage() {
                   {/* Render visible rows */}
                   {visibleCashBooks.map((cb, relativeIndex) => {
                     const actualIndex =
-                      cashBooks.length <= 50
+                      filteredCashBooks.length <= 50
                         ? relativeIndex
                         : visibleRange.start + relativeIndex;
                     return (
@@ -1268,17 +1487,10 @@ export default function FinancePage() {
                         key={cb.id}
                         cashBook={cb}
                         index={actualIndex}
-                        isDragging={draggedIndex === actualIndex}
-                        isDragOver={dragOverIndex === actualIndex}
                         viewingArchive={!!viewingArchive}
                         formatRupiah={formatRupiah}
                         formatDateJakarta={formatDateJakarta}
                         getKategoriColor={getKategoriColor}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onDragEnd={handleDragEnd}
                         onEdit={handleOpenEditModal}
                         onEditManual={handleOpenEditManual}
                         onDelete={handleDelete}
@@ -1286,12 +1498,12 @@ export default function FinancePage() {
                     );
                   })}
                   {/* Spacer untuk rows setelah visible range - dengan konten agar table tidak collapse */}
-                  {cashBooks.length > 50 &&
-                    visibleRange.end < cashBooks.length && (
+                  {filteredCashBooks.length > 50 &&
+                    visibleRange.end < filteredCashBooks.length && (
                       <tr
                         style={{
                           height: `${
-                            (cashBooks.length - visibleRange.end) * 60
+                            (filteredCashBooks.length - visibleRange.end) * 60
                           }px`,
                           opacity: 0,
                           pointerEvents: "none",
@@ -1311,14 +1523,15 @@ export default function FinancePage() {
           </table>
         </div>
       </div>
-
       {/* Modal Form */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
-                {editingCashBook ? "Edit Transaksi" : "Tambah Transaksi Baru"}
+                {editingCashBook
+                  ? "✏️ Edit Transaksi"
+                  : "Tambah Transaksi Baru"}
               </h3>
             </div>
 
@@ -1448,7 +1661,7 @@ export default function FinancePage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
                   tabIndex={7}
                 >
                   {editingCashBook ? "Update" : "Simpan"}
@@ -1458,65 +1671,26 @@ export default function FinancePage() {
           </div>
         </div>
       )}
-
+      {/* Confirm Dialog */}
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[#0a1b3d]">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-[#6b7280] text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
-
       {/* Import CSV Modal */}
       <ImportCsvModal
         show={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
       />
-
       {/* Delete All Modal */}
       <DeleteAllCashbookModal
         show={showDeleteAllModal}
@@ -1524,7 +1698,6 @@ export default function FinancePage() {
         onConfirm={handleDeleteAll}
         deleting={deleting}
       />
-
       {/* Edit Manual Modal */}
       <EditManualModal
         show={showEditManualModal}
@@ -1535,14 +1708,12 @@ export default function FinancePage() {
         onSuccess={handleEditManualSuccess}
         cashBook={editManualCashBook}
       />
-
       {/* Close Books Modal */}
       <CloseBooksModal
         show={showCloseBooksModal}
         onClose={() => setShowCloseBooksModal(false)}
         onSuccess={handleCloseBooksSuccess}
       />
-
       {/* Select Month Modal */}
       <SelectMonthModal
         show={showSelectMonthModal}

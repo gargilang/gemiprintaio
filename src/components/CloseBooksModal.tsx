@@ -99,18 +99,48 @@ export default function CloseBooksModal({
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
-          <h3 className="text-xl font-bold text-white">📚 Tutup Buku</h3>
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+              />
+            </svg>
+            Tutup Buku
+          </h3>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Info Box */}
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-            <div className="font-bold mb-1">ℹ️ Tentang Tutup Buku</div>
+            <div className="font-bold mb-1 flex items-center gap-2">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Tentang Tutup Buku
+            </div>
             <p>
               Transaksi dalam rentang tanggal yang dipilih akan diarsipkan dan
               dihapus dari tampilan utama. Anda dapat melihatnya lagi dari menu
-              "Pilih Bulan".
+              "Pilih Arsip Bulan".
             </p>
           </div>
 
@@ -183,7 +213,7 @@ export default function CloseBooksModal({
             <button
               type="submit"
               disabled={closing}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50"
             >
               {closing ? "Menutup Buku..." : "Arsipkan & Tutup Buku"}
             </button>

@@ -5,6 +5,17 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import NotificationToast, { NotificationToastProps } from "./NotificationToast";
+import {
+  HomeIcon,
+  CartIcon,
+  PackageIcon,
+  UsersIcon,
+  BuildingIcon,
+  MoneyIcon,
+  ChartIcon,
+  UserIcon,
+  LogoutIcon,
+} from "./icons/PageIcons";
 
 interface User {
   id: string;
@@ -81,21 +92,25 @@ export default function MainShell({
 
   const menuItems = useMemo(
     () => [
-      { href: "/dashboard", icon: "🏠", label: "Dashboard" },
-      { href: "/pos", icon: "🛒", label: "POS / Kasir" },
-      { href: "/materials", icon: "📦", label: "Data Bahan" },
-      { href: "/customers", icon: "👥", label: "Pelanggan" },
-      { href: "/vendors", icon: "🏢", label: "Vendor" },
+      { href: "/dashboard", icon: <HomeIcon size={20} />, label: "Dashboard" },
+      { href: "/pos", icon: <CartIcon size={20} />, label: "POS / Kasir" },
+      {
+        href: "/materials",
+        icon: <PackageIcon size={20} />,
+        label: "Data Bahan",
+      },
+      { href: "/customers", icon: <UsersIcon size={20} />, label: "Pelanggan" },
+      { href: "/vendors", icon: <BuildingIcon size={20} />, label: "Vendor" },
       {
         href: "/finance",
-        icon: "💰",
+        icon: <MoneyIcon size={20} />,
         label: "Keuangan",
         managerOnly: true,
       },
-      { href: "/reports", icon: "📊", label: "Laporan" },
+      { href: "/reports", icon: <ChartIcon size={20} />, label: "Laporan" },
       {
         href: "/users",
-        icon: "👤",
+        icon: <UserIcon size={20} />,
         label: "Manajemen User",
         managerOnly: true,
       },
@@ -159,7 +174,7 @@ export default function MainShell({
               height={40}
               className="w-10 h-10"
             />
-            <span className="font-bauhaus text-xl tracking-wide italic">
+            <span className="font-bauhaus text-2xl tracking-wide italic">
               <span className="text-[#00afef]">gemi</span>
               <span className="text-[#0a1b3d]">print</span>
             </span>
@@ -214,7 +229,7 @@ export default function MainShell({
                     onClick={handleLinkClick}
                     className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#00afef]/10 to-[#2266ff]/10 border-l-4 border-l-[#00afef] transition-all duration-200"
                   >
-                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-[#00afef]">{item.icon}</span>
                     <span className="font-twcenmt font-semibold text-[#00afef]">
                       {item.label}
                     </span>
@@ -230,7 +245,7 @@ export default function MainShell({
                   className="group block rounded-xl border p-3 transition-all duration-200 bg-gray-50 border-gray-200 hover:bg-white hover:border-[#00afef]/60 hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all bg-blue-50 text-[#00afef] group-hover:bg-gradient-to-br group-hover:from-[#00afef] group-hover:to-[#2266ff] group-hover:text-white group-hover:shadow">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-blue-50 text-[#00afef] group-hover:bg-gradient-to-br group-hover:from-[#00afef] group-hover:to-[#2266ff] group-hover:text-white group-hover:shadow">
                       {item.icon}
                     </div>
                     <span className="font-twcenmt font-semibold transition-colors text-[#0a1b3d] group-hover:text-[#00afef]">
@@ -246,9 +261,10 @@ export default function MainShell({
           <div className="mt-auto pt-6 border-t border-gray-200">
             <button
               onClick={handleLogout}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-semibold shadow-lg"
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-semibold shadow-lg flex items-center justify-center gap-2"
             >
-              🚪 Logout
+              <LogoutIcon size={20} />
+              Logout
             </button>
           </div>
         </div>
@@ -265,7 +281,7 @@ export default function MainShell({
         <header className="bg-white shadow-sm sticky top-0 z-30 border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-[#0a1b3d] font-twcenmt">
+              <h1 className="text-3xl font-bold text-[#0a1b3d] font-twcenmt uppercase tracking-wide">
                 {computedTitle}
               </h1>
             </div>

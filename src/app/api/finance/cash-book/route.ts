@@ -14,9 +14,11 @@ export async function GET() {
       );
     }
 
+    // Sort by display_order DESC (highest = newest entry from user perspective)
+    // Then by created_at DESC as fallback for entries with same display_order
     const cashBooks = db
       .prepare(
-        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC, tanggal DESC, created_at DESC`
+        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order DESC, created_at DESC`
       )
       .all();
 
@@ -74,7 +76,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the highest display_order to assign next value
+    const maxDisplayOrder = db
+      .prepare(`SELECT MAX(display_order) as max_order FROM cash_book`)
+      .get() as any;
+
+    const nextDisplayOrder = (maxDisplayOrder?.max_order || 0) + 1;
+
     // Hitung saldo terkini dan running totals dari transaksi terakhir
+    // Based on display_order DESC (latest entry = highest display_order)
     const lastEntry = db
       .prepare(
         `SELECT 
@@ -82,7 +92,7 @@ export async function POST(request: NextRequest) {
           bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
           kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil
         FROM cash_book 
-        ORDER BY tanggal DESC, created_at DESC 
+        ORDER BY display_order DESC 
         LIMIT 1`
       )
       .get() as any;
@@ -268,13 +278,13 @@ export async function POST(request: NextRequest) {
         omzet, biaya_operasional, biaya_bahan, saldo, laba_bersih,
         kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil,
         bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
-        notes, created_by, created_at, updated_at
+        notes, created_by, created_at, updated_at, display_order
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?,
-        ?, ?, ?, ?
+        ?, ?, ?, ?, ?
       )
     `);
 
@@ -300,13 +310,14 @@ export async function POST(request: NextRequest) {
       notes,
       created_by,
       now,
-      now
+      now,
+      nextDisplayOrder
     );
 
-    // RECALCULATION: Hitung ulang semua transaksi setelah insert
-    // untuk memastikan urutan tanggal yang benar
+    // RECALCULATION: Hitung ulang semua transaksi berdasarkan display_order DESC
+    // Ini memastikan perhitungan mengikuti urutan input, bukan urutan tanggal
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY tanggal ASC, created_at ASC`)
+      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -351,6 +362,8 @@ export async function POST(request: NextRequest) {
 
       // Keep track of previous values for incremental calculations
       const prevLabaBersih = calcLabaBersih;
+      const prevBagiHasilAnwar = calcBagiHasilAnwar;
+      const prevBagiHasilSuri = calcBagiHasilSuri;
       const prevBagiHasilGemi = calcBagiHasilGemi;
       const prevKasbonAnwar = calcKasbonAnwar;
       const prevKasbonSuri = calcKasbonSuri;
@@ -360,7 +373,7 @@ export async function POST(request: NextRequest) {
       // OMZET
       if (entry.override_omzet !== 1) {
         if (entryKategori === "OMZET" || entryKategori === "PIUTANG") {
-          calcOmzet = isFirst ? entryDebit : calcOmzet + entryDebit;
+          calcOmzet += entryDebit;
         }
       } else {
         calcOmzet = entry.omzet;
@@ -368,10 +381,8 @@ export async function POST(request: NextRequest) {
 
       // BIAYA OPERASIONAL
       if (entry.override_biaya_operasional !== 1) {
-        if (!isFirst) {
-          if (entryKategori === "BIAYA" || entryKategori === "TABUNGAN") {
-            calcBiayaOperasional = calcBiayaOperasional + entryKredit;
-          }
+        if (entryKategori === "BIAYA" || entryKategori === "TABUNGAN") {
+          calcBiayaOperasional += entryKredit;
         }
       } else {
         calcBiayaOperasional = entry.biaya_operasional;
@@ -379,10 +390,8 @@ export async function POST(request: NextRequest) {
 
       // BIAYA BAHAN
       if (entry.override_biaya_bahan !== 1) {
-        if (!isFirst) {
-          if (entryKategori === "SUPPLY" || entryKategori === "HUTANG") {
-            calcBiayaBahan = calcBiayaBahan + entryKredit;
-          }
+        if (entryKategori === "SUPPLY" || entryKategori === "HUTANG") {
+          calcBiayaBahan += entryKredit;
         }
       } else {
         calcBiayaBahan = entry.biaya_bahan;
@@ -390,116 +399,81 @@ export async function POST(request: NextRequest) {
 
       // SALDO
       if (entry.override_saldo !== 1) {
-        calcSaldo = isFirst
-          ? entryDebit - entryKredit
-          : calcSaldo + entryDebit - entryKredit;
+        calcSaldo += entryDebit - entryKredit;
       } else {
         calcSaldo = entry.saldo;
       }
 
       // LABA BERSIH
       if (entry.override_laba_bersih !== 1) {
-        calcLabaBersih = calcOmzet - (calcBiayaOperasional + calcBiayaBahan);
+        calcLabaBersih = calcOmzet - calcBiayaOperasional - calcBiayaBahan;
       } else {
         calcLabaBersih = entry.laba_bersih;
       }
 
-      // KASBON ANWAR
+      // KASBON ANWAR: Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_anwar !== 1) {
         if (entryKategori === "PRIBADI-A") {
-          calcKasbonAnwar = isFirst
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonAnwar - entryDebit
-            : prevKasbonAnwar + entryKredit;
-        } else if (!isFirst) {
-          calcKasbonAnwar = prevKasbonAnwar;
+          calcKasbonAnwar += entryKredit - entryDebit;
         }
       } else {
         calcKasbonAnwar = entry.kasbon_anwar;
       }
 
-      // KASBON SURI
+      // KASBON SURI: Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_suri !== 1) {
         if (entryKategori === "PRIBADI-S") {
-          calcKasbonSuri = isFirst
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonSuri - entryDebit
-            : prevKasbonSuri + entryKredit;
-        } else if (!isFirst) {
-          calcKasbonSuri = prevKasbonSuri;
+          calcKasbonSuri += entryKredit - entryDebit;
         }
       } else {
         calcKasbonSuri = entry.kasbon_suri;
       }
 
-      // BAGI HASIL ANWAR
+      // BAGI HASIL ANWAR: (Laba Bersih / 3) - Kasbon Anwar
       if (entry.override_bagi_hasil_anwar !== 1) {
         calcBagiHasilAnwar = calcLabaBersih / 3 - calcKasbonAnwar;
       } else {
         calcBagiHasilAnwar = entry.bagi_hasil_anwar;
       }
 
-      // BAGI HASIL SURI
+      // BAGI HASIL SURI: (Laba Bersih / 3) - Kasbon Suri
       if (entry.override_bagi_hasil_suri !== 1) {
         calcBagiHasilSuri = calcLabaBersih / 3 - calcKasbonSuri;
       } else {
         calcBagiHasilSuri = entry.bagi_hasil_suri;
       }
 
-      // BAGI HASIL GEMI
+      // BAGI HASIL GEMI: Increment (Laba Bersih / 3) + adjustment INVESTOR
       if (entry.override_bagi_hasil_gemi !== 1) {
-        const labaInc = isFirst
-          ? calcLabaBersih
-          : calcLabaBersih - prevLabaBersih;
-        const invDebit = entryKategori === "INVESTOR" ? entryDebit : 0;
-        const invKredit = entryKategori === "INVESTOR" ? entryKredit : 0;
-        calcBagiHasilGemi =
-          labaInc / 3 + prevBagiHasilGemi + invDebit - invKredit;
+        const labaIncrement = calcLabaBersih - prevLabaBersih;
+        calcBagiHasilGemi += labaIncrement / 3;
+
+        if (entryKategori === "INVESTOR") {
+          calcBagiHasilGemi += entryDebit - entryKredit;
+        }
       } else {
         calcBagiHasilGemi = entry.bagi_hasil_gemi;
       }
 
-      // KASBON CAHAYA
+      // KASBON CAHAYA: Kategori INVESTOR atau BIAYA, Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_cahaya !== 1) {
         const hasCah = entryKeperluan.includes("cahaya");
         const isCahCat =
           entryKategori === "INVESTOR" || entryKategori === "BIAYA";
         if (hasCah && isCahCat) {
-          calcKasbonCahaya = isFirst
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonCahaya - entryDebit
-            : prevKasbonCahaya + entryKredit;
-        } else if (!isFirst) {
-          calcKasbonCahaya = prevKasbonCahaya;
+          calcKasbonCahaya += entryKredit - entryDebit;
         }
       } else {
         calcKasbonCahaya = entry.kasbon_cahaya;
       }
 
-      // KASBON DINIL
+      // KASBON DINIL: Kategori INVESTOR atau BIAYA, Debit berkurang, Kredit bertambah
       if (entry.override_kasbon_dinil !== 1) {
         const hasDin = entryKeperluan.includes("dinil");
         const isDinCat =
           entryKategori === "INVESTOR" || entryKategori === "BIAYA";
         if (hasDin && isDinCat) {
-          calcKasbonDinil = isFirst
-            ? entryDebit > 0
-              ? -entryDebit
-              : entryKredit
-            : entryDebit > 0
-            ? prevKasbonDinil - entryDebit
-            : prevKasbonDinil + entryKredit;
-        } else if (!isFirst) {
-          calcKasbonDinil = prevKasbonDinil;
+          calcKasbonDinil += entryKredit - entryDebit;
         }
       } else {
         calcKasbonDinil = entry.kasbon_dinil;

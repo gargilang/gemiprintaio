@@ -19,11 +19,13 @@ export async function GET(request: NextRequest) {
 
     const db = new Database(DB_FILE);
 
+    // For archived transactions, sort by display_order ASC (oldest first)
+    // This shows transactions in chronological order from oldest to newest
     const cashBooks = db
       .prepare(
         `SELECT * FROM cash_book 
          WHERE archived_label = ? AND archived_at = ?
-         ORDER BY display_order ASC, tanggal DESC, created_at DESC`
+         ORDER BY display_order ASC, created_at ASC`
       )
       .all(label, at);
 
