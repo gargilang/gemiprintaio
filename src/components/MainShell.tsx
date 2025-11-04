@@ -92,27 +92,55 @@ export default function MainShell({
 
   const menuItems = useMemo(
     () => [
-      { href: "/dashboard", icon: <HomeIcon size={20} />, label: "Dashboard" },
-      { href: "/pos", icon: <CartIcon size={20} />, label: "POS / Kasir" },
+      {
+        href: "/dashboard",
+        icon: <HomeIcon size={20} />,
+        label: "Dashboard",
+        color: "from-[#00afef] to-[#2fd3ff]",
+      },
+      {
+        href: "/pos",
+        icon: <CartIcon size={20} />,
+        label: "POS / Kasir",
+        color: "from-[#00afef] to-[#2fd3ff]",
+      },
       {
         href: "/materials",
         icon: <PackageIcon size={20} />,
         label: "Data Bahan",
+        color: "from-[#2266ff] to-[#00afef]",
       },
-      { href: "/customers", icon: <UsersIcon size={20} />, label: "Pelanggan" },
-      { href: "/vendors", icon: <BuildingIcon size={20} />, label: "Vendor" },
+      {
+        href: "/customers",
+        icon: <UsersIcon size={20} />,
+        label: "Pelanggan",
+        color: "from-[#2fd3ff] to-[#00afef]",
+      },
+      {
+        href: "/vendors",
+        icon: <BuildingIcon size={20} />,
+        label: "Vendor",
+        color: "from-[#0a1b3d] to-[#2266ff]",
+      },
       {
         href: "/finance",
         icon: <MoneyIcon size={20} />,
         label: "Keuangan",
         managerOnly: true,
+        color: "from-[#ffd400] to-[#ff2f91]",
       },
-      { href: "/reports", icon: <ChartIcon size={20} />, label: "Laporan" },
+      {
+        href: "/reports",
+        icon: <ChartIcon size={20} />,
+        label: "Laporan",
+        color: "from-[#ff2f91] to-[#2266ff]",
+      },
       {
         href: "/users",
         icon: <UserIcon size={20} />,
         label: "Manajemen User",
         managerOnly: true,
+        color: "from-[#0a1b3d] to-[#00afef]",
       },
     ],
     []
@@ -245,7 +273,9 @@ export default function MainShell({
                   className="group block rounded-xl border p-3 transition-all duration-200 bg-gray-50 border-gray-200 hover:bg-white hover:border-[#00afef]/60 hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-blue-50 text-[#00afef] group-hover:bg-gradient-to-br group-hover:from-[#00afef] group-hover:to-[#2266ff] group-hover:text-white group-hover:shadow">
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all shadow-sm text-white bg-gradient-to-br ${item.color} group-hover:shadow-lg`}
+                    >
                       {item.icon}
                     </div>
                     <span className="font-twcenmt font-semibold transition-colors text-[#0a1b3d] group-hover:text-[#00afef]">

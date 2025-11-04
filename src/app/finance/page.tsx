@@ -260,7 +260,8 @@ export default function FinancePage() {
 
   // Visible cashbooks - hanya render yang terlihat (virtualization)
   const visibleCashBooks = useMemo(() => {
-    if (filteredCashBooks.length <= 50) return filteredCashBooks; // No virtualization for small lists
+    // Disable virtualization for lists with <= 100 items to avoid scrollbar issues
+    if (filteredCashBooks.length <= 100) return filteredCashBooks;
     return filteredCashBooks.slice(visibleRange.start, visibleRange.end);
   }, [filteredCashBooks, visibleRange]);
 
@@ -1459,8 +1460,8 @@ export default function FinancePage() {
                 </tr>
               ) : (
                 <>
-                  {/* Spacer untuk rows sebelum visible range - dengan konten agar table tidak collapse */}
-                  {visibleRange.start > 0 && (
+                  {/* Spacer untuk rows sebelum visible range - hanya untuk data > 100 */}
+                  {filteredCashBooks.length > 100 && visibleRange.start > 0 && (
                     <tr
                       style={{
                         height: `${visibleRange.start * 60}px`,
@@ -1479,7 +1480,7 @@ export default function FinancePage() {
                   {/* Render visible rows */}
                   {visibleCashBooks.map((cb, relativeIndex) => {
                     const actualIndex =
-                      filteredCashBooks.length <= 50
+                      filteredCashBooks.length <= 100
                         ? relativeIndex
                         : visibleRange.start + relativeIndex;
                     return (
@@ -1497,8 +1498,8 @@ export default function FinancePage() {
                       />
                     );
                   })}
-                  {/* Spacer untuk rows setelah visible range - dengan konten agar table tidak collapse */}
-                  {filteredCashBooks.length > 50 &&
+                  {/* Spacer untuk rows setelah visible range - hanya untuk data > 100 */}
+                  {filteredCashBooks.length > 100 &&
                     visibleRange.end < filteredCashBooks.length && (
                       <tr
                         style={{
