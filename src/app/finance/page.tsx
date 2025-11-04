@@ -53,7 +53,7 @@ const CashBookRow = memo(
     return (
       <tr
         className={`
-          hover:bg-purple-50 transition-all cursor-default
+          hover:bg-orange-50 transition-all cursor-default
           ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
         `}
       >
@@ -83,7 +83,7 @@ const CashBookRow = memo(
         <td className="px-3 py-3 text-sm text-gray-700 max-w-xs truncate">
           {cashBook.keperluan || "-"}
         </td>
-        <td className="px-3 py-3 text-sm text-right font-bold text-blue-600">
+        <td className="px-3 py-3 text-sm text-right font-bold text-pink-600">
           {formatRupiah(cashBook.saldo)}
         </td>
         <td className="px-3 py-3 text-center">
@@ -92,7 +92,7 @@ const CashBookRow = memo(
               <>
                 <button
                   onClick={() => onEdit(cashBook)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  className="p-2 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors inline-flex items-center justify-center"
                   title="Edit Transaction"
                 >
                   <svg
@@ -833,9 +833,9 @@ export default function FinancePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-pink-600 border-t-transparent"></div>
           <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
         </div>
       </div>
@@ -845,7 +845,7 @@ export default function FinancePage() {
   return (
     <MainShell title="Buku Keuangan" notice={notice}>
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
+      <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MoneyIcon size={28} className="text-white" />
@@ -863,7 +863,7 @@ export default function FinancePage() {
           {!viewingArchive && (
             <button
               onClick={handleOpenModal}
-              className="px-6 py-3 bg-white text-[#00afef] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-white text-orange-600 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
             >
               <svg
                 className="w-5 h-5"
@@ -886,9 +886,9 @@ export default function FinancePage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Card 1: Saldo */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-pink-600">
           <p className="text-sm text-gray-500 font-semibold mb-1">Saldo</p>
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-2xl font-bold text-pink-600">
             {formatRupiah(summaryData.saldo)}
           </p>
         </div>
@@ -1424,7 +1424,7 @@ export default function FinancePage() {
           style={{ scrollBehavior: "smooth" }}
         >
           <table className="w-full table-fixed">
-            <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0 z-10">
+            <thead className="bg-gradient-to-r from-orange-500 to-pink-600 text-white sticky top-0 z-10">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-bold uppercase whitespace-nowrap w-28">
                   Tanggal
@@ -1528,7 +1528,7 @@ export default function FinancePage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
                 {editingCashBook
                   ? "✏️ Edit Transaksi"
@@ -1548,7 +1548,7 @@ export default function FinancePage() {
                     setFormData({ ...formData, tanggal: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
                   tabIndex={5}
                 />
               </div>
@@ -1608,7 +1608,7 @@ export default function FinancePage() {
                       kategori_transaksi: e.target.value as KategoriTransaksi,
                     })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
                   tabIndex={3}
                 >
                   {kategoriOptions.map((kat) => (
@@ -1629,7 +1629,7 @@ export default function FinancePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, keperluan: e.target.value })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
                   placeholder="Deskripsi transaksi..."
                   tabIndex={4}
                 />
@@ -1645,7 +1645,7 @@ export default function FinancePage() {
                     setFormData({ ...formData, notes: e.target.value })
                   }
                   rows={3}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition resize-none"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition resize-none"
                   placeholder="Catatan tambahan..."
                   tabIndex={6}
                 />
@@ -1662,7 +1662,7 @@ export default function FinancePage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
                   tabIndex={7}
                 >
                   {editingCashBook ? "Update" : "Simpan"}

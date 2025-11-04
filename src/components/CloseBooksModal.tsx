@@ -99,7 +99,7 @@ export default function CloseBooksModal({
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg
               className="w-6 h-6"
@@ -120,7 +120,7 @@ export default function CloseBooksModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Info Box */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+          <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
             <div className="font-bold mb-1 flex items-center gap-2">
               <svg
                 className="w-4 h-4"
@@ -156,7 +156,7 @@ export default function CloseBooksModal({
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={closing}
                 required
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
               />
             </div>
             <div>
@@ -169,7 +169,7 @@ export default function CloseBooksModal({
                 onChange={(e) => handleEndDateChange(e.target.value)}
                 disabled={closing}
                 required
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
               />
             </div>
           </div>
@@ -186,7 +186,7 @@ export default function CloseBooksModal({
               disabled={closing}
               placeholder="Contoh: Oktober 2025"
               required
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
             />
             <p className="mt-1 text-xs text-gray-500">
               Label untuk mengidentifikasi periode arsip.
@@ -213,7 +213,7 @@ export default function CloseBooksModal({
             <button
               type="submit"
               disabled={closing}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-pink-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50"
             >
               {closing ? "Menutup Buku..." : "Arsipkan & Tutup Buku"}
             </button>

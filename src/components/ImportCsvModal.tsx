@@ -84,7 +84,7 @@ export default function ImportCsvModal({
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg
               className="w-6 h-6"
@@ -105,7 +105,7 @@ export default function ImportCsvModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Info Box */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+          <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
             <div className="font-bold mb-2">Format CSV yang Didukung:</div>
             <ul className="list-disc list-inside space-y-1 pl-2">
               <li>
@@ -135,7 +135,7 @@ export default function ImportCsvModal({
               accept=".csv"
               onChange={handleFileChange}
               disabled={uploading}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600"
             />
             {file && (
               <p className="mt-2 text-xs text-gray-600">
@@ -153,7 +153,7 @@ export default function ImportCsvModal({
               checked={append}
               onChange={(e) => setAppend(e.target.checked)}
               disabled={uploading}
-              className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
+              className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-600"
             />
             <label htmlFor="append" className="ml-3 text-sm text-gray-700">
               Tambahkan ke data yang ada (jangan hapus data lama).
@@ -193,7 +193,7 @@ export default function ImportCsvModal({
             <button
               type="submit"
               disabled={uploading || !file}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-pink-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploading ? "Mengimport..." : "Import"}
             </button>

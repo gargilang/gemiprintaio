@@ -98,37 +98,30 @@ export default function ReportsPage() {
 
     setGeneratingPDF(true);
     try {
-      const res = await fetch(
-        `/api/reports/financial?label=${encodeURIComponent(
-          selectedArchive.archived_label
-        )}&at=${encodeURIComponent(selectedArchive.archived_at)}`,
-        {
-          method: "GET",
-        }
+      // Buka print-friendly page dengan archived label & timestamp
+      const printUrl = `/reports/financial/print?label=${encodeURIComponent(
+        selectedArchive.archived_label
+      )}&at=${encodeURIComponent(selectedArchive.archived_at)}`;
+
+      const printWindow = window.open(
+        printUrl,
+        "_blank",
+        "width=1024,height=768"
       );
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal generate laporan");
+      if (!printWindow) {
+        throw new Error(
+          "Popup blocked! Mohon izinkan popup untuk browser ini."
+        );
       }
 
-      // Get PDF blob
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Laporan-Keuangan-${selectedArchive.archived_label.replace(
-        /\s+/g,
-        "-"
-      )}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      showMsg("success", "Laporan berhasil diunduh!");
+      showMsg(
+        "success",
+        "Print window dibuka! Anda bisa print atau save as PDF dari browser."
+      );
     } catch (err: any) {
-      showMsg("error", err.message || "Gagal generate laporan");
+      console.error("Error opening print window:", err);
+      showMsg("error", err.message || "Gagal membuka print window");
     } finally {
       setGeneratingPDF(false);
     }
@@ -391,7 +384,7 @@ export default function ReportsPage() {
                       {generatingPDF ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                          <span>Generating PDF...</span>
+                          <span>Opening Print Window...</span>
                         </>
                       ) : (
                         <>
@@ -405,10 +398,10 @@ export default function ReportsPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                             />
                           </svg>
-                          <span>Download Laporan PDF</span>
+                          <span>Print / Save PDF</span>
                         </>
                       )}
                     </button>

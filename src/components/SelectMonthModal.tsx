@@ -70,7 +70,7 @@ export default function SelectMonthModal({
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg
               className="w-6 h-6"
@@ -92,7 +92,7 @@ export default function SelectMonthModal({
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center py-10">
-              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent"></div>
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-pink-600 border-t-transparent"></div>
               <p className="mt-3 text-gray-600 font-medium">Memuat arsip...</p>
             </div>
           ) : error ? (
@@ -136,11 +136,11 @@ export default function SelectMonthModal({
                     });
                     onClose();
                   }}
-                  className="w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all group"
+                  className="w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-pink-600 hover:bg-pink-50 transition-all group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h4 className="font-bold text-gray-800 group-hover:text-blue-700 text-base">
+                      <h4 className="font-bold text-gray-800 group-hover:text-pink-600 text-base">
                         {archive.archived_label}
                       </h4>
                       <p className="text-sm text-gray-600 mt-1">

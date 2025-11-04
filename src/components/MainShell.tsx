@@ -127,7 +127,7 @@ export default function MainShell({
         icon: <MoneyIcon size={20} />,
         label: "Keuangan",
         managerOnly: true,
-        color: "from-[#ffd400] to-[#ff2f91]",
+        color: "from-orange-500 to-pink-600",
       },
       {
         href: "/reports",

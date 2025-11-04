@@ -107,7 +107,7 @@ export default function EditManualModal({
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-t-2xl">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white">
             🔧 Edit Manual (Override)
           </h3>
@@ -182,7 +182,7 @@ export default function EditManualModal({
                     value={formData[key] || ""}
                     onChange={(e) => handleChange(key, e.target.value)}
                     disabled={saving}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition disabled:bg-gray-100"
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition disabled:bg-gray-100"
                     placeholder="0"
                   />
                   {formData[key] && (
@@ -215,7 +215,7 @@ export default function EditManualModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Simpan & Kalkulasi Ulang"}
             </button>

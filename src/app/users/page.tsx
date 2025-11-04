@@ -335,7 +335,7 @@ export default function UsersPage() {
       {/* Main Content */}
       {currentUser?.role === "admin" && (
         <>
-          <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-6 mb-6 text-white">
+          <div className="bg-gradient-to-br from-[#0a1b3d] to-[#00afef] rounded-2xl shadow-lg p-6 mb-6 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
@@ -347,7 +347,7 @@ export default function UsersPage() {
               </div>
               <button
                 onClick={() => handleOpenModal()}
-                className="px-6 py-3 bg-white text-[#00afef] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-white text-[#0a1b3d] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <svg
                   className="w-5 h-5"
@@ -371,7 +371,7 @@ export default function UsersPage() {
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-[#00afef]/10 to-[#2266ff]/10">
+                <thead className="bg-gradient-to-r from-[#0a1b3d]/10 to-[#00afef]/10">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
                       User
@@ -394,11 +394,11 @@ export default function UsersPage() {
                   {users.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-blue-50/50 transition-colors"
+                      className="hover:bg-sky-50/50 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a1b3d] to-[#00afef] flex items-center justify-center text-white font-bold">
                             {user.full_name.charAt(0)}
                           </div>
                           <div>
@@ -528,7 +528,7 @@ export default function UsersPage() {
       )}
 
       {/* Password Manager (Admins, Managers, Users) */}
-      <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl shadow-lg p-6 mt-10 mb-6 text-white">
+      <div className="bg-gradient-to-br from-[#0a1b3d]/90 to-[#00afef]/90 rounded-2xl shadow-lg p-6 mt-10 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
@@ -551,7 +551,7 @@ export default function UsersPage() {
               });
               setShowCredModal(true);
             }}
-            className="px-6 py-3 bg-white text-teal-700 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+            className="px-6 py-3 bg-white text-[#0a1b3d] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -574,7 +574,7 @@ export default function UsersPage() {
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-emerald-50 to-teal-50">
+            <thead className="bg-gradient-to-r from-[#0a1b3d]/10 to-[#00afef]/10">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
                   Layanan
@@ -595,10 +595,7 @@ export default function UsersPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {credentials.map((c) => (
-                <tr
-                  key={c.id}
-                  className="hover:bg-emerald-50/40 transition-colors"
-                >
+                <tr key={c.id} className="hover:bg-sky-50/40 transition-colors">
                   <td className="px-6 py-4 text-[#0a1b3d] font-semibold">
                     {c.service_name}
                   </td>
@@ -644,7 +641,7 @@ export default function UsersPage() {
                               );
                             }
                           }}
-                          className="p-1 text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                          className="p-1 text-[#00afef] hover:bg-sky-50 rounded transition-colors"
                           title={
                             showingPasswordId === c.id
                               ? "Sembunyikan"
@@ -777,7 +774,7 @@ export default function UsersPage() {
                           });
                           setShowCredModal(true);
                         }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-[#00afef] hover:bg-sky-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <svg
@@ -866,7 +863,7 @@ export default function UsersPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#00afef] to-[#2266ff] rounded-t-2xl">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
                 {editingUser ? "✏️ Edit User" : "Tambah User Baru"}
               </h3>
@@ -1030,7 +1027,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
                 >
                   {editingUser ? "Update" : "Tambah"}
                 </button>
@@ -1044,7 +1041,7 @@ export default function UsersPage() {
       {showCredModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-t-2xl">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <KeyIcon size={24} className="text-white" />
                 {editingCred ? "Edit Kredensial" : "Tambah Kredensial"}
@@ -1252,7 +1249,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
                 >
                   {editingCred ? "Update" : "Tambah"}
                 </button>
