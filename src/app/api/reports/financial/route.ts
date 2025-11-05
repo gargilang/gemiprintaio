@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { join } from "path";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprintaio.db");
+const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
 
 interface CashBookRow {
   id: string;

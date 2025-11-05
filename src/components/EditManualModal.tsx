@@ -46,6 +46,20 @@ export default function EditManualModal({
     }
   }, [cashBook]);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, onClose]);
+
   if (!show || !cashBook) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {

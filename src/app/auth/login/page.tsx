@@ -41,8 +41,18 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log("📥 Response status:", res.status, res.statusText);
+
       const data = await res.json();
+      console.log("📥 Response data:", data);
+
       if (!res.ok || !data?.success) {
+        console.log(
+          "❌ Login failed - res.ok:",
+          res.ok,
+          "data.success:",
+          data?.success
+        );
         throw new Error(data?.error || "Username atau password salah");
       }
 

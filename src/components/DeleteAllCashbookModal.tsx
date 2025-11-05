@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface DeleteAllCashbookModalProps {
   show: boolean;
   onClose: () => void;
@@ -13,6 +15,20 @@ export default function DeleteAllCashbookModal({
   onConfirm,
   deleting,
 }: DeleteAllCashbookModalProps) {
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show || deleting) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, deleting, onClose]);
+
   if (!show) return null;
 
   return (

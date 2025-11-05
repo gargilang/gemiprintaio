@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import NotificationToast, { NotificationToastProps } from "./NotificationToast";
-import {
-  HomeIcon,
-  CartIcon,
-  PackageIcon,
-  UsersIcon,
-  BuildingIcon,
-  MoneyIcon,
-  ChartIcon,
-  UserIcon,
-  LogoutIcon,
-} from "./icons/PageIcons";
+import dynamic from "next/dynamic";
+import { LogoutIcon } from "./icons/PageIcons";
+import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
+
+// Lazy load NotificationToast since it's conditionally rendered
+const NotificationToast = dynamic(() => import("./NotificationToast"), {
+  ssr: false,
+});
+
+export type { NotificationToastProps } from "./NotificationToast";
 
 interface User {
   id: string;
@@ -24,6 +22,11 @@ interface User {
   full_name?: string;
   role: string;
   is_active: number;
+}
+
+interface NotificationToastProps {
+  type: "success" | "error";
+  message: string;
 }
 
 export default function MainShell({
@@ -90,92 +93,28 @@ export default function MainShell({
     };
   }, [pathname]);
 
-  const menuItems = useMemo(
-    () => [
-      {
-        href: "/dashboard",
-        icon: <HomeIcon size={20} />,
-        label: "Dashboard",
-        color: "from-[#00afef] to-[#2fd3ff]",
-      },
-      {
-        href: "/pos",
-        icon: <CartIcon size={20} />,
-        label: "POS / Kasir",
-        color: "from-[#00afef] to-[#2fd3ff]",
-      },
-      {
-        href: "/materials",
-        icon: <PackageIcon size={20} />,
-        label: "Data Bahan",
-        color: "from-[#2266ff] to-[#00afef]",
-      },
-      {
-        href: "/customers",
-        icon: <UsersIcon size={20} />,
-        label: "Pelanggan",
-        color: "from-[#2fd3ff] to-[#00afef]",
-      },
-      {
-        href: "/vendors",
-        icon: <BuildingIcon size={20} />,
-        label: "Vendor",
-        color: "from-[#0a1b3d] to-[#2266ff]",
-      },
-      {
-        href: "/finance",
-        icon: <MoneyIcon size={20} />,
-        label: "Keuangan",
-        managerOnly: true,
-        color: "from-orange-500 to-pink-600",
-      },
-      {
-        href: "/reports",
-        icon: <ChartIcon size={20} />,
-        label: "Laporan",
-        color: "from-[#ff2f91] to-[#2266ff]",
-      },
-      {
-        href: "/users",
-        icon: <UserIcon size={20} />,
-        label: "Manajemen User",
-        managerOnly: true,
-        color: "from-[#0a1b3d] to-[#00afef]",
-      },
-    ],
-    []
-  );
-
   const computedTitle = useMemo(() => {
-    const map: { [key: string]: string } = {
-      "/dashboard": "Dashboard",
-      "/pos": "POS / Kasir",
-      "/materials": "Data Bahan",
-      "/customers": "Pelanggan",
-      "/vendors": "Vendor",
-      "/finance": "Keuangan",
-      "/reports": "Laporan",
-      "/users": "Manajemen User",
-    };
     if (title) return title;
     if (!pathname) return "Dashboard";
-    const exact = map[pathname];
+    const exact = PAGE_TITLE_MAP[pathname];
     if (exact) return exact;
-    const found = Object.keys(map).find((k) => pathname.startsWith(k));
-    return found ? map[found] : "Dashboard";
+    const found = Object.keys(PAGE_TITLE_MAP).find((k) =>
+      pathname.startsWith(k)
+    );
+    return found ? PAGE_TITLE_MAP[found] : "Dashboard";
   }, [pathname, title]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("user");
     router.push("/auth/login");
-  };
+  }, [router]);
 
   // Save scroll position before navigation
-  const handleLinkClick = () => {
+  const handleLinkClick = useCallback(() => {
     if (navRef.current) {
       sessionStorage.setItem("sidebarScroll", String(navRef.current.scrollTop));
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -237,7 +176,7 @@ export default function MainShell({
 
           {/* Navigation Menu - card-style buttons */}
           <nav ref={navRef} className="space-y-3 flex-1 overflow-y-auto">
-            {menuItems.map((item: any) => {
+            {MENU_ITEMS.map((item) => {
               if (
                 item.managerOnly &&
                 user?.role !== "admin" &&

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getTodayJakarta } from "@/lib/date-utils";
 
 interface CloseBooksModalProps {
@@ -21,6 +21,20 @@ export default function CloseBooksModal({
   const [label, setLabel] = useState("");
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState("");
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show || closing) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, closing]);
 
   if (!show) return null;
 

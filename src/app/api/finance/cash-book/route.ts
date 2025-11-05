@@ -14,11 +14,13 @@ export async function GET() {
       );
     }
 
-    // Sort by display_order DESC (highest = newest entry from user perspective)
-    // Then by created_at DESC as fallback for entries with same display_order
+    // Get only active transactions (not archived)
+    // Sort by display_order DESC (newest first = highest display_order)
     const cashBooks = db
       .prepare(
-        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order DESC, created_at DESC`
+        `SELECT * FROM cash_book 
+         WHERE archived_at IS NULL 
+         ORDER BY display_order DESC, created_at DESC`
       )
       .all();
 

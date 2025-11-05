@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ImportCsvModalProps {
   show: boolean;
@@ -18,6 +18,20 @@ export default function ImportCsvModal({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string>("");
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !uploading) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, uploading]);
 
   if (!show) return null;
 

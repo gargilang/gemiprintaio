@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
-import { NotificationToastProps } from "@/components/NotificationToast";
+import type { NotificationToastProps } from "@/components/MainShell";
 import {
   UsersIcon,
   CheckIcon,

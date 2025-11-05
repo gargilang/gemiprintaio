@@ -9,15 +9,7 @@
     "lint": "eslint",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "db:import-csv": "node database/import-cashbook-from-csv.mjs",
-    "db:recalc": "node database/recalculate-cashbook.mjs",
-    "db:recalc-override": "node database/recalculate-cashbook-v2.mjs",
-    "db:check": "node database/check-cashbook.mjs",
-    "db:migrate-profiles": "node database/migrate-fix-profiles-fk.mjs",
-    "db:migrate-override": "node database/migrate-add-override-flags.mjs",
-    "db:migrate-archive": "node database/migrate-add-archive-and-order.mjs",
-    "db:clear": "node database/clear-cashbook.mjs"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",

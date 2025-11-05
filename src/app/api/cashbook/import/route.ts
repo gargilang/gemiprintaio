@@ -5,7 +5,7 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 import { recalculateCashbook } from "@/lib/calculate-cashbook";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprintaio.db");
+const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
 
 const ALLOWED_CATEGORIES = new Set([
   "KAS",

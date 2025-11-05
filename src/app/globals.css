@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-/* gemiprint Brand Fonts */
+/* gemiprint Brand Fonts - Optimized for Performance */
 @font-face {
   font-family: "Bauhaus 93";
   src: url("/assets/fonts/Bauhaus 93 Regular.ttf") format("truetype"),
     url("/assets/fonts/BAUHS93.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: swap; /* Shows fallback, then swaps to custom font */
 }
 
 @font-face {
@@ -82,10 +82,10 @@
   --foreground: #0a1b3d;
   --section: rgba(255, 255, 255, 0.4);
 
-  /* Glass Effect Colors */
+  /* Glass Effect Colors - Simplified */
   --glass-bg: rgba(255, 255, 255, 0.4);
   --glass-border: rgba(255, 255, 255, 0.3);
-  --glass-shadow: 0 8px 32px rgba(10, 27, 61, 0.15);
+  --glass-shadow: 0 4px 16px rgba(10, 27, 61, 0.1); /* Reduced shadow */
 
   /* Component Colors */
   --card-bg: rgba(255, 255, 255, 0.4);
@@ -93,10 +93,10 @@
   --navbar-bg: rgba(255, 255, 255, 0.4);
   --navbar-border: rgba(255, 255, 255, 0.3);
 
-  /* Effects */
+  /* Effects - Simplified for Performance */
   --radius: 16px;
-  --shadow: 0 10px 30px rgba(10, 27, 61, 0.1);
-  --blur: blur(16px);
+  --shadow: 0 4px 12px rgba(10, 27, 61, 0.08); /* Reduced complexity */
+  --blur: blur(8px); /* Reduced blur for better performance */
 }
 
 .dark {
@@ -118,15 +118,15 @@
   /* Glass Effect Colors - Dark */
   --glass-bg: rgba(10, 27, 61, 0.4);
   --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); /* Reduced shadow */
 
   --card-bg: rgba(10, 27, 61, 0.4);
   --card-border: rgba(255, 255, 255, 0.1);
   --navbar-bg: rgba(10, 27, 61, 0.4);
   --navbar-border: rgba(255, 255, 255, 0.1);
 
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  --blur: blur(16px);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Reduced complexity */
+  --blur: blur(8px); /* Reduced blur */
 }
 
 body {
@@ -135,7 +135,7 @@ body {
   font-family: "TwCenMT", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background 0.3s ease, color 0.3s ease;
+  will-change: auto; /* Remove unnecessary will-change */
 }
 
 .font-bauhaus {

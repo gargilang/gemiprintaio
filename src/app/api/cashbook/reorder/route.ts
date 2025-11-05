@@ -3,7 +3,7 @@ import Database from "better-sqlite3";
 import { join } from "path";
 import { recalculateCashbook } from "@/lib/calculate-cashbook";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprintaio.db");
+const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
 
 export async function POST(request: NextRequest) {
   try {

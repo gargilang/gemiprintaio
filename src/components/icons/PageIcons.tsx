@@ -361,3 +361,29 @@ export const LogoutIcon = ({ className = "", size = 24 }: IconProps) => (
     />
   </svg>
 );
+
+export const SettingsIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19.622 10.395l-1.097-2.65L20 6.5l-2.5-2.5-1.245 1.475-2.65-1.097L13.5 2h-3l-0.105 2.378-2.65 1.097L6.5 4 4 6.5l1.475 1.245-1.097 2.65L2 10.5v3l2.378 0.105 1.097 2.65L4 17.5 6.5 20l1.245-1.475 2.65 1.097L10.5 22h3l0.105-2.378 2.65-1.097L17.5 20l2.5-2.5-1.475-1.245 1.097-2.65L22 13.5v-3l-2.378-0.105z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

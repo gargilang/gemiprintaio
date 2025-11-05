@@ -12,7 +12,7 @@ const DB_DIR = isTauriApp()
 
 const DB_FILE = isTauriApp()
   ? "" // Will be set dynamically in Tauri
-  : path.join(DB_DIR, "gemiprintaio.db");
+  : path.join(DB_DIR, "gemiprint.db");
 
 const SCHEMA_FILE = isTauriApp()
   ? "" // Schema will be embedded in Tauri
@@ -79,11 +79,14 @@ function isDatabaseInitialized(): boolean {
 /**
  * Get database instance
  * In Tauri mode, returns null (use Tauri commands instead)
+ * In Node.js mode, throws error if not initialized
  */
-export function getDatabase(): Database.Database | null {
+export function getDatabase(): Database.Database {
   if (isTauriApp()) {
     // In Tauri, return null - database operations via Tauri commands
-    return null;
+    throw new Error(
+      "Database not available in Tauri mode. Use Tauri commands."
+    );
   }
 
   if (!db) {

@@ -36,6 +36,20 @@ export default function SelectMonthModal({
     }
   }, [show]);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, onClose]);
+
   const loadArchives = async () => {
     setLoading(true);
     setError("");
