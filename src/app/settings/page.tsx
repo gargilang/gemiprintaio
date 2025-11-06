@@ -1768,29 +1768,50 @@ function PricingTab() {
 }
 
 function SystemTab() {
-  const [backupInfo, setBackupInfo] = useState<any>(null);
+  const [backupStatus, setBackupStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [updatingInterval, setUpdatingInterval] = useState(false);
+  const [intervalValue, setIntervalValue] = useState<number>(10);
+  const [intervalUnit, setIntervalUnit] = useState<string>("Menit");
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
-  const loadBackupInfo = async () => {
+  const intervalUnits = [
+    { label: "Detik", multiplier: 1000 },
+    { label: "Menit", multiplier: 60000 },
+    { label: "Jam", multiplier: 3600000 },
+  ];
+
+  const loadBackupStatus = async () => {
     try {
       const res = await fetch("/api/backup/status");
       const data = await res.json();
       if (data.success) {
-        setBackupInfo(data.backup);
+        setBackupStatus(data.status);
+
+        // Set current interval to input
+        const currentMs = data.status?.currentInterval || 600000;
+        if (currentMs >= 3600000) {
+          setIntervalValue(Math.floor(currentMs / 3600000));
+          setIntervalUnit("Jam");
+        } else if (currentMs >= 60000) {
+          setIntervalValue(Math.floor(currentMs / 60000));
+          setIntervalUnit("Menit");
+        } else {
+          setIntervalValue(Math.floor(currentMs / 1000));
+          setIntervalUnit("Detik");
+        }
       }
     } catch (error) {
-      console.error("Failed to load backup info:", error);
+      console.error("Failed to load backup status:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadBackupInfo();
-    // Refresh backup info every 30 seconds
-    const interval = setInterval(loadBackupInfo, 30000);
+    loadBackupStatus();
+    const interval = setInterval(loadBackupStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1805,8 +1826,7 @@ function SystemTab() {
           type: "success",
           message: "✅ Backup berhasil dibuat!",
         });
-        // Reload backup info
-        await loadBackupInfo();
+        await loadBackupStatus();
       } else {
         setNotice({
           type: "error",
@@ -1820,6 +1840,62 @@ function SystemTab() {
       });
     } finally {
       setCreating(false);
+      setTimeout(() => setNotice(null), 3000);
+    }
+  };
+
+  const handleUpdateInterval = async () => {
+    const unit = intervalUnits.find((u) => u.label === intervalUnit);
+    if (!unit) return;
+
+    const intervalMs = intervalValue * unit.multiplier;
+
+    if (intervalMs < 30000) {
+      setNotice({
+        type: "error",
+        message: "❌ Minimal 30 detik",
+      });
+      setTimeout(() => setNotice(null), 3000);
+      return;
+    }
+
+    if (intervalMs > 86400000) {
+      setNotice({
+        type: "error",
+        message: "❌ Maksimal 24 jam",
+      });
+      setTimeout(() => setNotice(null), 3000);
+      return;
+    }
+
+    setUpdatingInterval(true);
+    try {
+      const res = await fetch("/api/backup/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval: intervalMs }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setNotice({
+          type: "success",
+          message: `✅ Interval diubah menjadi ${intervalValue} ${intervalUnit.toLowerCase()}`,
+        });
+        await loadBackupStatus();
+      } else {
+        setNotice({
+          type: "error",
+          message: "❌ Gagal mengubah interval",
+        });
+      }
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: "❌ Error saat mengubah interval",
+      });
+    } finally {
+      setUpdatingInterval(false);
       setTimeout(() => setNotice(null), 3000);
     }
   };
@@ -1860,161 +1936,134 @@ function SystemTab() {
         </div>
       </div>
 
-      {/* Auto-Backup Status */}
+      {/* Auto-Backup Settings - Compact */}
       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border-2 border-blue-200">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-500 rounded-xl">
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
-              />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-800 mb-2">
-              Auto-Backup Database
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-semibold text-green-700">
-                  Auto-backup aktif (setiap 10 menit)
-                </span>
-              </div>
-
-              {loading ? (
-                <div className="text-sm text-gray-600">
-                  Loading backup info...
-                </div>
-              ) : backupInfo?.exists ? (
-                <div className="bg-white rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">File Backup:</span>
-                    <span className="font-semibold text-gray-800">
-                      gemiprint.db.auto-backup
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Ukuran:</span>
-                    <span className="font-semibold text-gray-800">
-                      {backupInfo.sizeMB} MB
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Terakhir dibackup:</span>
-                    <span className="font-semibold text-gray-800">
-                      {backupInfo.lastModifiedFormatted}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600">
-                  Belum ada backup. Backup pertama akan dibuat otomatis.
-                </div>
-              )}
-
-              <button
-                onClick={handleManualBackup}
-                disabled={creating}
-                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+        <div className="flex items-center justify-between gap-6">
+          {/* Left: Title & Status */}
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500 rounded-xl">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {creating ? (
-                  <>
-                    <svg
-                      className="animate-spin h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    <span>Membuat Backup...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                      />
-                    </svg>
-                    <span>Backup Manual Sekarang</span>
-                  </>
-                )}
-              </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                Auto-Backup Database
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    backupStatus?.isRunning
+                      ? "bg-green-500 animate-pulse"
+                      : "bg-gray-400"
+                  }`}
+                ></div>
+              </h3>
+              <p className="text-sm text-gray-600">
+                {loading
+                  ? "Loading..."
+                  : backupStatus?.isRunning
+                  ? `Aktif • Setiap ${backupStatus.currentIntervalMinutes} menit`
+                  : "Tidak aktif"}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Info Section */}
-      <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
-        <div className="flex items-start gap-3">
-          <svg
-            className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          {/* Middle: Interval Control */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              value={intervalValue}
+              onChange={(e) => setIntervalValue(parseInt(e.target.value) || 1)}
+              className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={updatingInterval}
             />
-          </svg>
-          <div className="space-y-2">
-            <h4 className="font-bold text-yellow-800">Tentang Auto-Backup</h4>
-            <ul className="text-sm text-yellow-700 space-y-1">
-              <li>
-                ✅ Backup otomatis berjalan setiap 10 menit saat aplikasi
-                running
-              </li>
-              <li>
-                ✅ Hanya 1 file backup (di-override setiap backup untuk hemat
-                space)
-              </li>
-              <li>
-                ✅ Backup tersimpan di folder database: gemiprint.db.auto-backup
-              </li>
-              <li>
-                ✅ Berlaku di development mode dan production (Tauri desktop
-                app)
-              </li>
-              <li>
-                ⚠️ Lokasi backup:{" "}
-                <code className="bg-yellow-100 px-1 rounded">
-                  database/gemiprint.db.auto-backup
-                </code>
-              </li>
-            </ul>
+            <select
+              value={intervalUnit}
+              onChange={(e) => setIntervalUnit(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={updatingInterval}
+            >
+              {intervalUnits.map((unit) => (
+                <option key={unit.label} value={unit.label}>
+                  {unit.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleUpdateInterval}
+              disabled={updatingInterval}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all"
+            >
+              {updatingInterval ? "..." : "Terapkan"}
+            </button>
           </div>
+
+          {/* Right: Manual Backup Button */}
+          <button
+            onClick={handleManualBackup}
+            disabled={creating}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            {creating ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Backing up...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                  />
+                </svg>
+                <span>Backup Sekarang</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Info Bar - Minimal */}
+        <div className="mt-4 pt-4 border-t border-blue-200 text-xs text-gray-600 flex items-center justify-between">
+          <span>💡 Minimal: 30 detik • Rekomendasi: 5-10 menit</span>
+          <span className="text-blue-600 font-semibold">
+            Lokasi: database/gemiprint.db.auto-backup
+          </span>
         </div>
       </div>
 

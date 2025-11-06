@@ -4,9 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-
-// @ts-ignore - ESM import from scripts folder
-import { createBackup } from "../../../../../scripts/database-autobackup.mjs";
+import { createBackup } from "@/lib/database-backup";
 
 export async function POST() {
   try {

@@ -4,24 +4,35 @@
  */
 
 import { NextResponse } from "next/server";
-
-// @ts-ignore - ESM import from scripts folder
 import {
-  initAutoBackup,
+  initializeBackupService,
   getBackupInfo,
-} from "../../../../../scripts/database-autobackup-init.mjs";
+  getBackupStatus,
+} from "@/lib/database-backup";
 
 // Initialize auto-backup when this route is first loaded
-initAutoBackup();
+// This ensures backup service starts when app is accessed
+if (typeof window === "undefined") {
+  // Only run on server-side
+  initializeBackupService();
+}
 
 export async function GET() {
   try {
     const backupInfo = getBackupInfo();
+    const status = getBackupStatus();
 
     return NextResponse.json({
       success: true,
-      autoBackupEnabled: true,
+      autoBackupEnabled: status.isRunning,
       backup: backupInfo,
+      status: {
+        isRunning: status.isRunning,
+        currentInterval: status.currentInterval,
+        currentIntervalMinutes: status.currentIntervalMinutes,
+        lastBackupTime: status.lastBackupTime,
+        nextBackupTime: status.nextBackupTime,
+      },
     });
   } catch (error) {
     console.error("Error getting backup status:", error);
