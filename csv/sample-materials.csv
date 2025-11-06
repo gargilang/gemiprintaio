@@ -1,0 +1,74 @@
+name,category,subcategory,base_unit,track_inventory,requires_dimension,specifications,min_stock_level,stock_quantity,unit_name,conversion_factor,purchase_price,selling_price,member_price,is_default
+"Flexi China 280 Glossy","Media Cetak","Flexi/Banner","meter",1,1,"280 gsm | Indoor/Outdoor | Lebar 1.37m",10,50,"meter",1,8000,12000,10000,1
+"Flexi China 280 Glossy","Media Cetak","Flexi/Banner","meter",1,1,"280 gsm | Indoor/Outdoor | Lebar 1.37m",10,50,"roll",50,375000,550000,475000,0
+"Flexi Korea 440 Frontlit","Media Cetak","Flexi/Banner","meter",1,1,"440 gsm | Frontlit | Lebar 1.37m",10,50,"meter",1,12000,18000,15000,1
+"Flexi Korea 440 Frontlit","Media Cetak","Flexi/Banner","meter",1,1,"440 gsm | Frontlit | Lebar 1.37m",10,50,"roll",50,575000,850000,725000,0
+"Vinyl Oracal 651","Media Cetak","Vinyl","meter",1,1,"Glossy | Self Adhesive | Lebar 1.22m",5,30,"meter",1,25000,35000,32000,1
+"Vinyl Oracal 651","Media Cetak","Vinyl","meter",1,1,"Glossy | Self Adhesive | Lebar 1.22m",5,30,"roll",50,1200000,1650000,1500000,0
+"Sticker Chromo","Media Cetak","Sticker","sheet",1,0,"A3+ | 260 gsm | Glossy",20,100,"sheet",1,3500,5000,4500,1
+"Sticker Chromo","Media Cetak","Sticker","sheet",1,0,"A3+ | 260 gsm | Glossy",20,100,"pack",100,330000,475000,425000,0
+"One Way Vision","Media Cetak","One Way Vision","meter",1,1,"Perforated | 60/40 | Lebar 1.37m",5,20,"meter",1,35000,50000,45000,1
+"Backlit Korea","Media Cetak","Backlit","meter",1,1,"Translucent | Lebar 1.37m",5,25,"meter",1,18000,28000,25000,1
+"Canvas Glossy 380","Media Cetak","Canvas","meter",1,1,"380 gsm | Glossy Finish | Lebar 1.52m",10,40,"meter",1,15000,22000,20000,1
+"Canvas Glossy 380","Media Cetak","Canvas","meter",1,1,"380 gsm | Glossy Finish | Lebar 1.52m",10,40,"roll",50,725000,1050000,950000,0
+"HVS 70 gsm A4","Kertas","HVS","lembar",1,0,"70 gsm | A4 | Putih",100,500,"lembar",1,150,250,200,1
+"HVS 70 gsm A4","Kertas","HVS","lembar",1,0,"70 gsm | A4 | Putih",100,500,"rim",500,70000,110000,95000,0
+"Art Paper 120 gsm A3","Kertas","Art Paper","lembar",1,0,"120 gsm | A3 | One Side Glossy",50,300,"lembar",1,800,1200,1000,1
+"Art Paper 120 gsm A3","Kertas","Art Paper","lembar",1,0,"120 gsm | A3 | One Side Glossy",50,300,"rim",500,380000,570000,475000,0
+"Art Carton 260 gsm","Kertas","Art Carton","lembar",1,0,"260 gsm | A3 | Two Side Glossy",30,200,"lembar",1,2500,3500,3000,1
+"Art Carton 260 gsm","Kertas","Art Carton","lembar",1,0,"260 gsm | A3 | Two Side Glossy",30,200,"pack",100,240000,330000,285000,0
+"Ivory 230 gsm","Kertas","Ivory","lembar",1,0,"230 gsm | A3 | One Side White",30,150,"lembar",1,2000,3000,2500,1
+"Duplex 270 gsm","Kertas","Duplex","lembar",1,0,"270 gsm | A3 | Grey Back",30,150,"lembar",1,1800,2800,2300,1
+"BC 310 gsm","Kertas","BC/BW","lembar",1,0,"310 gsm | A3 | White",20,100,"lembar",1,3500,5000,4500,1
+"Kraft Paper 150 gsm","Kertas","Kraft","lembar",1,0,"150 gsm | A3 | Natural Brown",50,200,"lembar",1,800,1500,1200,1
+"Concorde 220 gsm","Kertas","Concorde","lembar",1,0,"220 gsm | A4 | Textured",30,150,"lembar",1,1500,2500,2000,1
+"Photo Paper Glossy 260 gsm","Kertas Foto","Photo Paper Glossy","lembar",1,0,"260 gsm | A4 | Water Resistant",50,300,"lembar",1,2500,4000,3500,1
+"Photo Paper Glossy 260 gsm","Kertas Foto","Photo Paper Glossy","lembar",1,0,"260 gsm | A4 | Water Resistant",50,300,"pack",100,240000,380000,330000,0
+"Photo Paper Matte 230 gsm","Kertas Foto","Photo Paper Matte","lembar",1,0,"230 gsm | A4 | Matte Finish",50,250,"lembar",1,2000,3500,3000,1
+"RC Paper Premium","Kertas Foto","RC Paper","lembar",1,0,"Resin Coated | 10R | Professional",30,200,"lembar",1,3500,5500,4800,1
+"Pulpen Pilot G2","Merchandise","Pulpen","pcs",1,0,"Gel Ink | 0.7mm | Hitam",50,144,"pcs",1,2500,3500,3000,1
+"Pulpen Pilot G2","Merchandise","Pulpen","pcs",1,0,"Gel Ink | 0.7mm | Hitam",50,144,"lusin",12,28000,40000,34000,0
+"Pulpen Pilot G2","Merchandise","Pulpen","pcs",1,0,"Gel Ink | 0.7mm | Hitam",50,144,"gross",144,320000,460000,390000,0
+"Mug Polos Putih","Merchandise","Gelas/Mug","pcs",1,0,"Ceramic | 330ml | Sublimation Ready",20,50,"pcs",1,8000,15000,12000,1
+"Mug Polos Putih","Merchandise","Gelas/Mug","pcs",1,0,"Ceramic | 330ml | Sublimation Ready",20,50,"lusin",12,90000,170000,140000,0
+"Kaos Polos Cotton Combed 30s","Merchandise","Kaos","pcs",1,0,"Size L | Putih | 100% Cotton",30,100,"pcs",1,25000,45000,38000,1
+"Kaos Polos Cotton Combed 30s","Merchandise","Kaos","pcs",1,0,"Size L | Putih | 100% Cotton",30,100,"lusin",12,285000,520000,440000,0
+"Tote Bag Canvas","Merchandise","Tote Bag","pcs",1,0,"35x40cm | Natural | Heavy Duty",20,80,"pcs",1,12000,22000,18000,1
+"Tote Bag Canvas","Merchandise","Tote Bag","pcs",1,0,"35x40cm | Natural | Heavy Duty",20,80,"lusin",12,135000,250000,205000,0
+"Gantungan Kunci Akrilik","Merchandise","Gantungan Kunci","pcs",1,0,"5cm Round | 3mm Thick | Clear",50,200,"pcs",1,1500,3000,2500,1
+"Gantungan Kunci Akrilik","Merchandise","Gantungan Kunci","pcs",1,0,"5cm Round | 3mm Thick | Clear",50,200,"gross",144,205000,410000,345000,0
+"Lanyard Polos","Merchandise","Lanyard","pcs",1,0,"90cm | 2cm Width | Polyester",30,100,"pcs",1,2000,4000,3500,1
+"ID Card Holder","Merchandise","ID Card","pcs",1,0,"Vertical | PVC | Clear",50,150,"pcs",1,1500,3000,2500,1
+"Tumbler Stainless","Merchandise","Tumbler","pcs",1,0,"500ml | Vacuum | Sublimation Ready",10,30,"pcs",1,35000,65000,55000,1
+"Pin Badge 58mm","Merchandise","Pin/Badge","pcs",1,0,"Button Badge | 58mm Diameter",100,500,"pcs",1,800,2000,1500,1
+"Pin Badge 58mm","Merchandise","Pin/Badge","pcs",1,0,"Button Badge | 58mm Diameter",100,500,"gross",144,110000,275000,200000,0
+"Akrilik Clear 3mm","Substrat UV","Akrilik","sheet",1,0,"122x244cm | 3mm | Transparant",5,20,"sheet",1,180000,280000,240000,1
+"Akrilik Putih 5mm","Substrat UV","Akrilik","sheet",1,0,"122x244cm | 5mm | Opaque White",5,15,"sheet",1,280000,420000,360000,1
+"MDF 6mm","Substrat UV","MDF","sheet",1,0,"122x244cm | 6mm | Smooth Surface",10,30,"sheet",1,85000,140000,120000,1
+"Aluminium Composite Panel","Substrat UV","Aluminium","sheet",1,0,"122x244cm | 3mm | White",5,20,"sheet",1,250000,380000,330000,1
+"Kaca Tempered 5mm","Substrat UV","Kaca","sheet",1,0,"Custom Cut | 5mm | Clear",3,10,"sheet",1,150000,250000,220000,1
+"PVC Foam Board 5mm","Substrat UV","Plastik/PVC","sheet",1,0,"122x244cm | 5mm | White",10,25,"sheet",1,120000,190000,165000,1
+"Tinta Eco Solvent Cyan","Tinta & Consumables","Tinta Eco Solvent","liter",0,0,"Original | Cyan | Compatible",2,5,"liter",1,350000,550000,500000,1
+"Tinta Eco Solvent Magenta","Tinta & Consumables","Tinta Eco Solvent","liter",0,0,"Original | Magenta | Compatible",2,5,"liter",1,350000,550000,500000,1
+"Tinta Eco Solvent Yellow","Tinta & Consumables","Tinta Eco Solvent","liter",0,0,"Original | Yellow | Compatible",2,5,"liter",1,350000,550000,500000,1
+"Tinta Eco Solvent Black","Tinta & Consumables","Tinta Eco Solvent","liter",0,0,"Original | Black | Compatible",2,5,"liter",1,350000,550000,500000,1
+"Tinta UV CMYK Set","Tinta & Consumables","Tinta UV","liter",0,0,"UV Curable | 4 Colors Set",1,4,"liter",1,450000,700000,650000,1
+"Tinta Sublim Cyan 100ml","Tinta & Consumables","Tinta Sublim","botol",0,0,"Sublimation | Cyan | 100ml",5,20,"botol",1,35000,55000,50000,1
+"Tinta Sublim Magenta 100ml","Tinta & Consumables","Tinta Sublim","botol",0,0,"Sublimation | Magenta | 100ml",5,20,"botol",1,35000,55000,50000,1
+"Tinta Sublim Yellow 100ml","Tinta & Consumables","Tinta Sublim","botol",0,0,"Sublimation | Yellow | 100ml",5,20,"botol",1,35000,55000,50000,1
+"Tinta Sublim Black 100ml","Tinta & Consumables","Tinta Sublim","botol",0,0,"Sublimation | Black | 100ml",5,20,"botol",1,35000,55000,50000,1
+"Head Cleaning Solution","Tinta & Consumables","Cleaning Solution","liter",0,0,"Universal | 1 Liter",3,10,"liter",1,120000,200000,180000,1
+"Laminating Glossy","Finishing","Laminating Glossy","meter",1,0,"125 micron | Lebar 1.3m",10,100,"meter",1,8000,15000,12000,1
+"Laminating Glossy","Finishing","Laminating Glossy","meter",1,0,"125 micron | Lebar 1.3m",10,100,"roll",100,750000,1400000,1150000,0
+"Laminating Doff","Finishing","Laminating Doff","meter",1,0,"125 micron | Lebar 1.3m",10,100,"meter",1,9000,16000,13500,1
+"Laminating Doff","Finishing","Laminating Doff","meter",1,0,"125 micron | Lebar 1.3m",10,100,"roll",100,850000,1500000,1300000,0
+"Foam Board 5mm","Finishing","Foam Board","sheet",1,0,"60x90cm | 5mm | White Core",20,50,"sheet",1,12000,20000,17000,1
+"Kaca Acrylic 2mm","Finishing","Kaca Acrylic","sheet",1,0,"A3 Size | 2mm | Clear",10,30,"sheet",1,15000,25000,22000,1
+"Double Tape Foam","Finishing","Double Tape","roll",1,0,"24mm x 5m | PE Foam",20,50,"roll",1,15000,25000,22000,1
+"Lem Fox Putih 350gr","Finishing","Lem","botol",0,0,"PVAC | 350 gram | Multipurpose",10,30,"botol",1,15000,22000,20000,1
+"Lem Alteco Super Glue","Finishing","Lem","pcs",0,0,"Cyanoacrylate | 3 gram",20,50,"pcs",1,8000,15000,13000,1
+"Selotip Bening 2 inch","Lain-lain","Umum","roll",1,0,"2 inch x 100y | Clear",30,100,"roll",1,8000,15000,12000,1
+"Selotip Kertas 1 inch","Lain-lain","Umum","roll",1,0,"1 inch x 40y | Masking Tape",30,100,"roll",1,5000,10000,8500,1
+"Cutter Kenko Besar","Lain-lain","Umum","pcs",1,0,"Heavy Duty | 18mm Blade",10,20,"pcs",1,12000,22000,18000,1
+"Gunting Besar","Lain-lain","Umum","pcs",1,0,"10 inch | Stainless Steel",10,15,"pcs",1,25000,45000,38000,1
+"Penggaris Besi 100cm","Lain-lain","Umum","pcs",1,0,"Stainless Steel | 1 meter",5,10,"pcs",1,45000,75000,65000,1

@@ -244,17 +244,33 @@ CREATE TABLE IF NOT EXISTS materials (
   description TEXT,
   category_id TEXT,
   subcategory_id TEXT,
-  unit TEXT NOT NULL,
+  base_unit TEXT NOT NULL, -- Satuan terkecil untuk tracking stok (pcs, meter, lembar, dll)
   specifications TEXT,
-  purchase_price REAL DEFAULT 0,
-  selling_price REAL DEFAULT 0,
-  member_price REAL DEFAULT 0,
-  stock_quantity REAL DEFAULT 0,
+  stock_quantity REAL DEFAULT 0, -- Stok dalam satuan base_unit
   min_stock_level REAL DEFAULT 0,
+  track_inventory INTEGER DEFAULT 1, -- 1 = track stok, 0 = tidak perlu track (contoh: lem, minyak goreng, tinta)
+  requires_dimension INTEGER DEFAULT 0, -- 1 = perlu input P×L di POS (banner, vinyl, flexi), 0 = input qty biasa
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (category_id) REFERENCES material_categories(id) ON DELETE SET NULL,
   FOREIGN KEY (subcategory_id) REFERENCES material_subcategories(id) ON DELETE SET NULL
+);
+
+-- Material Unit Prices (Multiple satuan dengan harga berbeda)
+CREATE TABLE IF NOT EXISTS material_unit_prices (
+  id TEXT PRIMARY KEY,
+  material_id TEXT NOT NULL,
+  unit_name TEXT NOT NULL, -- pcs, lusin, pack, box, meter, roll, dll
+  conversion_factor REAL NOT NULL, -- Konversi ke base_unit (contoh: 1 lusin = 12 pcs, maka conversion_factor = 12)
+  purchase_price REAL DEFAULT 0,
+  selling_price REAL DEFAULT 0,
+  member_price REAL DEFAULT 0,
+  is_default INTEGER DEFAULT 0, -- Satuan default untuk transaksi
+  display_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
+  UNIQUE(material_id, unit_name)
 );
 
 -- Customers table
@@ -280,6 +296,10 @@ CREATE TABLE IF NOT EXISTS vendors (
   email TEXT,
   phone TEXT,
   address TEXT,
+  contact_person TEXT,
+  payment_terms TEXT,
+  is_active INTEGER DEFAULT 1,
+  notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -306,12 +326,16 @@ CREATE TABLE IF NOT EXISTS sales_items (
   id TEXT PRIMARY KEY,
   sale_id TEXT NOT NULL,
   material_id TEXT NOT NULL,
-  quantity REAL NOT NULL,
-  unit_price REAL NOT NULL,
+  unit_price_id TEXT, -- Reference ke material_unit_prices untuk tahu satuan & harga yang dipakai
+  quantity REAL NOT NULL, -- Jumlah dalam satuan yang dipilih
+  unit_name TEXT NOT NULL, -- Nama satuan yang digunakan (pcs, lusin, pack)
+  conversion_factor REAL NOT NULL, -- Konversi ke base_unit untuk update stok
+  unit_price REAL NOT NULL, -- Harga per satuan yang dipilih
   subtotal REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-  FOREIGN KEY (material_id) REFERENCES materials(id)
+  FOREIGN KEY (material_id) REFERENCES materials(id),
+  FOREIGN KEY (unit_price_id) REFERENCES material_unit_prices(id)
 );
 
 -- Purchase Orders
@@ -335,12 +359,16 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   id TEXT PRIMARY KEY,
   purchase_id TEXT NOT NULL,
   material_id TEXT NOT NULL,
-  quantity REAL NOT NULL,
-  unit_price REAL NOT NULL,
+  unit_price_id TEXT, -- Reference ke material_unit_prices
+  quantity REAL NOT NULL, -- Jumlah dalam satuan yang dipilih
+  unit_name TEXT NOT NULL, -- Nama satuan yang digunakan
+  conversion_factor REAL NOT NULL, -- Konversi ke base_unit
+  unit_price REAL NOT NULL, -- Harga per satuan yang dipilih
   subtotal REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
-  FOREIGN KEY (material_id) REFERENCES materials(id)
+  FOREIGN KEY (material_id) REFERENCES materials(id),
+  FOREIGN KEY (unit_price_id) REFERENCES material_unit_prices(id)
 );
 
 -- Financial Transactions

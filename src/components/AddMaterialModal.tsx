@@ -3,26 +3,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+interface UnitPrice {
+  id?: string;
+  unit_name: string;
+  conversion_factor: number;
+  purchase_price: number;
+  selling_price: number;
+  member_price: number;
+  is_default: boolean;
+  display_order?: number;
+}
+
 interface AddMaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  editData?: Material | null;
-}
-
-interface Material {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  subcategory: string;
-  unit: string;
-  specifications: string;
-  purchase_price: number;
-  selling_price: number;
-  member_price: number;
-  stock_quantity: number;
-  min_stock_level: number;
+  editData?: any | null;
 }
 
 export default function AddMaterialModal({
@@ -38,37 +34,37 @@ export default function AddMaterialModal({
   const [unitsData, setUnitsData] = useState<any[]>([]);
   const [specsData, setSpecsData] = useState<any[]>([]);
   const [loadingMaster, setLoadingMaster] = useState(true);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     category: "",
     subcategory: "",
-    unit: "",
+    base_unit: "",
     specifications: "",
-    purchase_price: "",
-    selling_price: "",
-    member_price: "",
     stock_quantity: "0",
     min_stock_level: "0",
+    track_inventory: true,
+    requires_dimension: false,
   });
+
+  const [unitPrices, setUnitPrices] = useState<UnitPrice[]>([]);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Load master data from database
+  // Load master data
   useEffect(() => {
     if (isOpen) {
       loadMasterData();
     }
   }, [isOpen]);
 
-  // Handle ESC key to close modal
+  // Handle ESC key
   useEffect(() => {
     if (!isOpen) return;
 
     const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
 
     window.addEventListener("keydown", handleEscKey);
@@ -78,33 +74,25 @@ export default function AddMaterialModal({
   const loadMasterData = async () => {
     try {
       setLoadingMaster(true);
-      // Load categories
-      const catRes = await fetch("/api/master/categories");
-      const catData = await catRes.json();
-      if (catRes.ok) {
-        setCategoriesData(catData.categories || []);
-      }
 
-      // Load all subcategories
-      const subRes = await fetch("/api/master/subcategories");
-      const subData = await subRes.json();
-      if (subRes.ok) {
-        setSubcategoriesData(subData.subcategories || []);
-      }
+      const [catRes, subRes, unitRes, specRes] = await Promise.all([
+        fetch("/api/master/categories"),
+        fetch("/api/master/subcategories"),
+        fetch("/api/master/units"),
+        fetch("/api/master/quick-specs"),
+      ]);
 
-      // Load units
-      const unitRes = await fetch("/api/master/units");
-      const unitData = await unitRes.json();
-      if (unitRes.ok) {
-        setUnitsData(unitData.units || []);
-      }
+      const [catData, subData, unitData, specData] = await Promise.all([
+        catRes.json(),
+        subRes.json(),
+        unitRes.json(),
+        specRes.json(),
+      ]);
 
-      // Load all specs (we'll filter by category later)
-      const specRes = await fetch("/api/master/quick-specs");
-      const specData = await specRes.json();
-      if (specRes.ok) {
-        setSpecsData(specData.specs || []);
-      }
+      if (catRes.ok) setCategoriesData(catData.categories || []);
+      if (subRes.ok) setSubcategoriesData(subData.subcategories || []);
+      if (unitRes.ok) setUnitsData(unitData.units || []);
+      if (specRes.ok) setSpecsData(specData.specs || []);
     } catch (error) {
       console.error("Error loading master data:", error);
     } finally {
@@ -112,231 +100,187 @@ export default function AddMaterialModal({
     }
   };
 
-  // Categories dan units yang relevan untuk percetakan (fallback jika database kosong)
-  const categories = {
-    "Media Cetak": {
-      subcategories: [
-        "Flexi/Banner",
-        "Vinyl",
-        "Sticker",
-        "Backlit",
-        "One Way Vision",
-        "Albatross",
-        "Canvas",
-        "Lain-lain",
-      ],
-      units: ["meter", "roll", "sheet"],
-    },
-    Kertas: {
-      subcategories: [
-        "HVS",
-        "Art Paper",
-        "Art Carton",
-        "Ivory",
-        "Duplex",
-        "BC/BW",
-        "Kraft",
-        "Jasmine",
-        "Concorde",
-        "Linen",
-        "Foto Paper",
-        "Lain-lain",
-      ],
-      units: ["lembar", "rim", "sheet", "pack"],
-    },
-    "Kertas Foto": {
-      subcategories: [
-        "Photo Paper Glossy",
-        "Photo Paper Matte",
-        "Photo Paper Luster",
-        "RC Paper",
-        "Inkjet Paper",
-      ],
-      units: ["lembar", "pack", "sheet"],
-    },
-    Merchandise: {
-      subcategories: [
-        "Tote Bag",
-        "Gelas/Mug",
-        "Kaos",
-        "Payung",
-        "Pin/Badge",
-        "Gantungan Kunci",
-        "ID Card",
-        "Lanyard",
-        "Tumbler",
-        "Notebook",
-        "Pulpen",
-        "Lain-lain",
-      ],
-      units: ["pcs", "lusin", "pack", "box"],
-    },
-    "Substrat UV": {
-      subcategories: [
-        "Akrilik",
-        "Kayu",
-        "MDF",
-        "Aluminium",
-        "Kaca",
-        "Keramik",
-        "Plastik/PVC",
-        "Metal",
-        "Kulit",
-        "Lain-lain",
-      ],
-      units: ["pcs", "sheet", "meter", "pack"],
-    },
-    "Tinta & Consumables": {
-      subcategories: [
-        "Tinta Eco Solvent",
-        "Tinta UV",
-        "Tinta Sublim",
-        "Tinta Pigment",
-        "Tinta Dye",
-        "Cleaning Solution",
-        "Lain-lain",
-      ],
-      units: ["liter", "ml", "botol", "cartridge"],
-    },
-    Finishing: {
-      subcategories: [
-        "Laminating Glossy",
-        "Laminating Doff",
-        "Laminating Sandblast",
-        "Foam Board",
-        "Kaca Acrylic",
-        "Bingkai",
-        "Double Tape",
-        "Lem",
-        "Lain-lain",
-      ],
-      units: ["meter", "roll", "pcs", "sheet"],
-    },
-    "Lain-lain": {
-      subcategories: ["Umum"],
-      units: ["pcs", "unit", "pack"],
-    },
-  };
-
-  // Ukuran kertas standard
-  const paperSizes = [
-    "A0",
-    "A1",
-    "A2",
-    "A3",
-    "A3+",
-    "A4",
-    "A5",
-    "A6",
-    "B4",
-    "B5",
-    "Letter",
-    "Legal",
-    "Ledger",
-    "Tabloid",
-    "F4",
-    "Folio",
-    "R4 (10x15cm)",
-    "R8 (13x18cm)",
-    "R16 (20x30cm)",
-    "Custom",
-  ];
-
-  // Gramasi kertas umum
-  const paperWeights = [
-    "60 gsm",
-    "70 gsm",
-    "80 gsm",
-    "100 gsm",
-    "120 gsm",
-    "150 gsm",
-    "190 gsm",
-    "210 gsm",
-    "230 gsm",
-    "260 gsm",
-    "310 gsm",
-    "400 gsm",
-  ];
-
+  // Initialize form
   useEffect(() => {
     if (isOpen && editData) {
+      // Edit mode
       setFormData({
         name: editData.name,
         description: editData.description || "",
-        category: editData.category || "",
-        subcategory: editData.subcategory || "",
-        unit: editData.unit,
+        category: editData.category_name || "",
+        subcategory: editData.subcategory_name || "",
+        base_unit: editData.base_unit || "",
         specifications: editData.specifications || "",
-        purchase_price: editData.purchase_price.toString(),
-        selling_price: editData.selling_price.toString(),
-        member_price: editData.member_price.toString(),
-        stock_quantity: editData.stock_quantity.toString(),
-        min_stock_level: editData.min_stock_level.toString(),
+        stock_quantity: editData.stock_quantity?.toString() || "0",
+        min_stock_level: editData.min_stock_level?.toString() || "0",
+        track_inventory: editData.track_inventory !== 0,
+        requires_dimension: editData.requires_dimension === 1,
       });
+
+      setUnitPrices(editData.unit_prices || []);
     } else if (isOpen && categoriesData.length > 0) {
-      // Reset form saat open untuk add new - set default dari data pertama
+      // Add new mode
       const firstCategory = categoriesData[0]?.name || "";
       const firstSubcat = subcategoriesData.find(
         (s) => s.category_name === firstCategory
       );
-      const firstUnit = unitsData[0]?.name || "";
+      const firstUnit = unitsData[0]?.name || "pcs";
 
       setFormData({
         name: "",
         description: "",
         category: firstCategory,
         subcategory: firstSubcat?.name || "",
-        unit: firstUnit,
+        base_unit: firstUnit,
         specifications: "",
-        purchase_price: "",
-        selling_price: "",
-        member_price: "",
         stock_quantity: "0",
         min_stock_level: "0",
+        track_inventory: true,
+        requires_dimension: firstCategory === "Media Cetak", // Auto-check untuk Media Cetak
       });
+
+      // Initialize with one default unit price
+      setUnitPrices([
+        {
+          unit_name: firstUnit,
+          conversion_factor: 1,
+          purchase_price: 0,
+          selling_price: 0,
+          member_price: 0,
+          is_default: true,
+        },
+      ]);
     }
 
-    // Focus ke input name saat modal dibuka
     if (isOpen) {
-      setTimeout(() => {
-        nameInputRef.current?.focus();
-      }, 100);
+      setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [isOpen, editData, categoriesData, subcategoriesData, unitsData]);
 
-  // Update subcategory dan unit saat category berubah
   const handleCategoryChange = (category: string) => {
-    // Cari subcategory pertama dari kategori ini
     const firstSubcat = subcategoriesData.find(
       (s) => s.category_name === category
     );
-    const firstUnit = unitsData[0]?.name || formData.unit;
 
     setFormData({
       ...formData,
       category,
       subcategory: firstSubcat?.name || "",
-      unit: firstUnit,
+      // Auto-check requires_dimension untuk Media Cetak
+      requires_dimension: category === "Media Cetak",
     });
+  };
+
+  const handleBaseUnitChange = (newBaseUnit: string) => {
+    setFormData({ ...formData, base_unit: newBaseUnit });
+
+    // Update default unit price if exists
+    const updatedUnitPrices = unitPrices.map((up) => {
+      if (up.conversion_factor === 1) {
+        return { ...up, unit_name: newBaseUnit };
+      }
+      return up;
+    });
+
+    setUnitPrices(updatedUnitPrices);
+  };
+
+  const addUnitPrice = () => {
+    setUnitPrices([
+      ...unitPrices,
+      {
+        unit_name: "",
+        conversion_factor: 1,
+        purchase_price: 0,
+        selling_price: 0,
+        member_price: 0,
+        is_default: false,
+      },
+    ]);
+  };
+
+  const removeUnitPrice = (index: number) => {
+    if (unitPrices.length <= 1) {
+      alert("Minimal harus ada 1 harga satuan");
+      return;
+    }
+    setUnitPrices(unitPrices.filter((_, i) => i !== index));
+  };
+
+  const updateUnitPrice = (
+    index: number,
+    field: keyof UnitPrice,
+    value: any
+  ) => {
+    const updated = [...unitPrices];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // If setting as default, unset others
+    if (field === "is_default" && value === true) {
+      updated.forEach((up, i) => {
+        if (i !== index) up.is_default = false;
+      });
+    }
+
+    setUnitPrices(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    if (!formData.name.trim()) {
+      alert("Nama bahan harus diisi");
+      return;
+    }
+
+    if (!formData.base_unit.trim()) {
+      alert("Satuan dasar harus diisi");
+      return;
+    }
+
+    if (unitPrices.length === 0) {
+      alert("Minimal harus ada 1 harga satuan");
+      return;
+    }
+
+    // Check if at least one unit price is set as default
+    const hasDefault = unitPrices.some((up) => up.is_default);
+    if (!hasDefault) {
+      alert("Minimal harus ada 1 satuan yang dijadikan default");
+      return;
+    }
+
+    // Validate unit prices
+    for (const up of unitPrices) {
+      if (!up.unit_name || !up.unit_name.trim()) {
+        alert("Nama satuan tidak boleh kosong");
+        return;
+      }
+      if (up.conversion_factor <= 0) {
+        alert("Faktor konversi harus lebih dari 0");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       const payload = {
         name: formData.name.trim(),
-        description: formData.description.trim(),
-        category: formData.category,
-        subcategory: formData.subcategory,
-        unit: formData.unit,
-        specifications: formData.specifications.trim(),
-        purchase_price: parseFloat(formData.purchase_price) || 0,
-        selling_price: parseFloat(formData.selling_price) || 0,
-        member_price: parseFloat(formData.member_price) || 0,
+        description: formData.description.trim() || null,
+        category_id:
+          categoriesData.find((c) => c.name === formData.category)?.id || null,
+        subcategory_id:
+          subcategoriesData.find((s) => s.name === formData.subcategory)?.id ||
+          null,
+        base_unit: formData.base_unit.trim(),
+        specifications: formData.specifications.trim() || null,
         stock_quantity: parseFloat(formData.stock_quantity) || 0,
         min_stock_level: parseFloat(formData.min_stock_level) || 0,
+        track_inventory: formData.track_inventory,
+        requires_dimension: formData.requires_dimension,
+        unit_prices: unitPrices,
       };
 
       const url = editData ? `/api/materials/${editData.id}` : "/api/materials";
@@ -365,12 +309,10 @@ export default function AddMaterialModal({
 
   if (!isOpen) return null;
 
-  // Get subcategories untuk kategori yang dipilih
   const currentSubcategories = subcategoriesData.filter(
     (sub) => sub.category_name === formData.category
   );
 
-  // Get specs untuk kategori yang dipilih
   const currentSpecs = specsData.filter(
     (spec) =>
       categoriesData.find((cat) => cat.name === formData.category)?.id ===
@@ -379,7 +321,7 @@ export default function AddMaterialModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -448,7 +390,7 @@ export default function AddMaterialModal({
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    placeholder="Contoh: Flexi China 280 Glossy"
+                    placeholder="Contoh: Pulpen Pilot"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
@@ -458,62 +400,25 @@ export default function AddMaterialModal({
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Kategori <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex gap-2">
-                    <select
-                      required
-                      value={formData.category}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      disabled={loadingMaster}
-                    >
-                      {loadingMaster ? (
-                        <option value="">Memuat kategori...</option>
-                      ) : categoriesData.length === 0 ? (
-                        <option value="">Belum ada kategori</option>
-                      ) : (
-                        categoriesData.map((cat) => (
-                          <option key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Save current form state to localStorage
-                        localStorage.setItem(
-                          "materialFormDraft",
-                          JSON.stringify(formData)
-                        );
-                        // Navigate to settings (works in Tauri)
-                        router.push("/settings?tab=materials");
-                      }}
-                      className="px-3 py-2 bg-gray-100 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center gap-1 whitespace-nowrap"
-                      title="Kelola Kategori di Pengaturan"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      <span className="text-xs">Kelola</span>
-                    </button>
-                  </div>
+                  <select
+                    required
+                    value={formData.category}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    disabled={loadingMaster}
+                  >
+                    {loadingMaster ? (
+                      <option value="">Memuat kategori...</option>
+                    ) : categoriesData.length === 0 ? (
+                      <option value="">Belum ada kategori</option>
+                    ) : (
+                      categoriesData.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
                 </div>
 
                 {/* Subkategori */}
@@ -543,17 +448,16 @@ export default function AddMaterialModal({
                   </select>
                 </div>
 
-                {/* Satuan */}
+                {/* Satuan Dasar (Base Unit) */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Satuan <span className="text-red-500">*</span>
+                    Satuan Dasar (untuk tracking stok){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
-                    value={formData.unit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, unit: e.target.value })
-                    }
+                    value={formData.base_unit}
+                    onChange={(e) => handleBaseUnitChange(e.target.value)}
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     disabled={loadingMaster}
                   >
@@ -569,63 +473,58 @@ export default function AddMaterialModal({
                       ))
                     )}
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Satuan terkecil untuk menghitung stok (contoh: pcs, meter,
+                    lembar)
+                  </p>
                 </div>
 
-                {/* Quick Specs Helper (untuk kategori yang memiliki spesifikasi) */}
-                {currentSpecs.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Tambah Spesifikasi dibawah dengan cepat
+                {/* Track Inventory */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Pengaturan POS
+                  </label>
+                  <div className="space-y-2 mt-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.track_inventory}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            track_inventory: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Track stok barang ini
+                      </span>
                     </label>
-                    <div className="flex gap-2 flex-wrap">
-                      {/* Group specs by type */}
-                      {Object.entries(
-                        currentSpecs.reduce(
-                          (acc: Record<string, any[]>, spec: any) => {
-                            if (!acc[spec.spec_type]) acc[spec.spec_type] = [];
-                            acc[spec.spec_type].push(spec);
-                            return acc;
-                          },
-                          {} as Record<string, any[]>
-                        )
-                      ).map(([type, specs]) => (
-                        <select
-                          key={type}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              specifications:
-                                formData.specifications +
-                                (formData.specifications ? " | " : "") +
-                                e.target.value,
-                            })
-                          }
-                          className="flex-1 min-w-[120px] px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                          <option value="">
-                            {type === "size"
-                              ? "Ukuran..."
-                              : type === "weight"
-                              ? "Gramasi..."
-                              : type === "thickness"
-                              ? "Ketebalan..."
-                              : type === "width"
-                              ? "Lebar..."
-                              : `${type}...`}
-                          </option>
-                          {(specs as any[]).map((spec: any) => (
-                            <option key={spec.id} value={spec.spec_value}>
-                              {spec.spec_value}
-                            </option>
-                          ))}
-                        </select>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Pilih untuk menambahkan ke spesifikasi
-                    </p>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.requires_dimension}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            requires_dimension: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Perlu input dimensi (P×L) saat penjualan
+                      </span>
+                    </label>
                   </div>
-                )}
+                  <p className="text-xs text-gray-500 mt-2">
+                    • Track stok: Nonaktifkan untuk barang konsumsi (lem, tinta,
+                    dll)
+                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi (qty =
+                    P×L meter)
+                  </p>
+                </div>
 
                 {/* Spesifikasi */}
                 <div className="md:col-span-2">
@@ -640,7 +539,7 @@ export default function AddMaterialModal({
                         specifications: e.target.value,
                       })
                     }
-                    placeholder="Contoh: Lebar 1.3m | 280 gsm | Indoor/Outdoor | Glossy Finish"
+                    placeholder="Contoh: Warna hitam | Grip karet | Tinta gel"
                     rows={2}
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
                   />
@@ -664,90 +563,238 @@ export default function AddMaterialModal({
               </div>
             </div>
 
-            {/* Section 2: Harga */}
+            {/* Section 2: Harga Per Satuan */}
             <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
-                  2
-                </span>
-                Harga
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Harga Beli */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Harga Beli (per {formData.unit})
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                      Rp
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.purchase_price}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          purchase_price: e.target.value,
-                        })
-                      }
-                      placeholder="0"
-                      className="w-full pl-12 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                    2
+                  </span>
+                  Harga Per Satuan Jual
+                </h3>
+                <button
+                  type="button"
+                  onClick={addUnitPrice}
+                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
                     />
-                  </div>
-                </div>
+                  </svg>
+                  Tambah Satuan
+                </button>
+              </div>
 
-                {/* Harga Jual */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Harga Jual (per {formData.unit})
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                      Rp
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.selling_price}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          selling_price: e.target.value,
-                        })
-                      }
-                      placeholder="0"
-                      className="w-full pl-12 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
+              <div className="space-y-4">
+                {unitPrices.map((up, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-lg p-4 border-2 border-gray-200"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-600">
+                          #{index + 1}
+                        </span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="default_unit"
+                            checked={up.is_default}
+                            onChange={() =>
+                              updateUnitPrice(index, "is_default", true)
+                            }
+                            className="w-4 h-4 text-blue-500"
+                          />
+                          <span className="text-xs font-semibold text-gray-600">
+                            Default
+                          </span>
+                        </label>
+                      </div>
+                      {unitPrices.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeUnitPrice(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Hapus satuan ini"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
 
-                {/* Harga Member */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Harga Member (per {formData.unit})
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                      Rp
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.member_price}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          member_price: e.target.value,
-                        })
-                      }
-                      placeholder="0"
-                      className="w-full pl-12 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      {/* Nama Satuan - DROPDOWN */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Satuan <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          value={up.unit_name}
+                          onChange={(e) =>
+                            updateUnitPrice(index, "unit_name", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={loadingMaster}
+                        >
+                          <option value="">Pilih satuan...</option>
+                          {unitsData.map((unit) => (
+                            <option key={unit.id} value={unit.name}>
+                              {unit.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Tidak ada?{" "}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              localStorage.setItem(
+                                "materialFormDraft",
+                                JSON.stringify({ formData, unitPrices })
+                              );
+                              router.push("/settings?tab=materials");
+                            }}
+                            className="text-blue-600 hover:underline font-semibold"
+                          >
+                            Kelola
+                          </button>
+                        </p>
+                      </div>
+
+                      {/* Konversi */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Konversi <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={up.conversion_factor}
+                          onChange={(e) =>
+                            updateUnitPrice(
+                              index,
+                              "conversion_factor",
+                              parseFloat(e.target.value) || 1
+                            )
+                          }
+                          placeholder="1"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          1 {up.unit_name} = {up.conversion_factor}{" "}
+                          {formData.base_unit}
+                        </p>
+                      </div>
+
+                      {/* Harga Beli */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Harga Beli
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={up.purchase_price}
+                          onChange={(e) =>
+                            updateUnitPrice(
+                              index,
+                              "purchase_price",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Harga Jual */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Harga Jual
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={up.selling_price}
+                          onChange={(e) =>
+                            updateUnitPrice(
+                              index,
+                              "selling_price",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Harga Member */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Harga Member
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={up.member_price}
+                          onChange={(e) =>
+                            updateUnitPrice(
+                              index,
+                              "member_price",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
+              </div>
+
+              <div className="mt-4 bg-blue-100 border border-blue-300 rounded-lg p-3">
+                <p className="text-xs text-blue-800 font-semibold mb-1">
+                  💡 Contoh Penggunaan:
+                </p>
+                <ul className="text-xs text-blue-700 space-y-1 ml-4">
+                  <li>
+                    • <strong>Pulpen:</strong> Base unit "pcs", tambah satuan
+                    "lusin" (konversi 12), "pack" (konversi 144)
+                  </li>
+                  <li>
+                    • <strong>Flexi Banner:</strong> Base unit "meter", tambah
+                    satuan "roll" (konversi 50)
+                  </li>
+                  <li>
+                    • <strong>Kertas HVS:</strong> Base unit "lembar", tambah
+                    satuan "rim" (konversi 500)
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -761,10 +808,10 @@ export default function AddMaterialModal({
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Stok Awal */}
+                {/* Stok Saat Ini */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Stok Saat Ini ({formData.unit})
+                    Stok Saat Ini ({formData.base_unit})
                   </label>
                   <input
                     type="number"
@@ -777,14 +824,18 @@ export default function AddMaterialModal({
                       })
                     }
                     placeholder="0"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={!formData.track_inventory}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Jumlah stok dalam satuan dasar ({formData.base_unit})
+                  </p>
                 </div>
 
                 {/* Min Stock Level */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Min. Stok Alert ({formData.unit})
+                    Min. Stok Alert ({formData.base_unit})
                   </label>
                   <input
                     type="number"
@@ -797,10 +848,11 @@ export default function AddMaterialModal({
                       })
                     }
                     placeholder="0"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={!formData.track_inventory}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Sistem akan memberi warning jika stok di bawah nilai ini
+                    Warning jika stok di bawah nilai ini
                   </p>
                 </div>
               </div>

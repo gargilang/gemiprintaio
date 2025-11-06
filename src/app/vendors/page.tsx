@@ -1,13 +1,110 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { BuildingIcon } from "@/components/icons/PageIcons";
 import { CheckIcon } from "@/components/icons/ContentIcons";
+
+// Memoized Vendor Row Component - mencegah re-render yang tidak perlu
+const VendorRow = memo(
+  ({
+    vendor,
+    index,
+    onEdit,
+    onDelete,
+  }: {
+    vendor: Vendor;
+    index: number;
+    onEdit: (vendor: Vendor) => void;
+    onDelete: (vendor: Vendor) => void;
+  }) => {
+    return (
+      <tr
+        className={`hover:bg-indigo-50 transition-all cursor-default ${
+          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+        }`}
+      >
+        <td className="px-4 py-3">
+          <div className="font-semibold text-gray-800">{vendor.name}</div>
+          {vendor.company_name && (
+            <div className="text-xs text-gray-500 mt-1">
+              {vendor.company_name}
+            </div>
+          )}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-700">
+          {vendor.contact_person || "-"}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-700">{vendor.email}</td>
+        <td className="px-4 py-3 text-sm text-gray-700">{vendor.phone}</td>
+        <td className="px-4 py-3 text-sm text-gray-600">
+          {vendor.payment_terms || "-"}
+        </td>
+        <td className="px-4 py-3 text-center">
+          {vendor.is_active === 1 ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+              <CheckIcon size={14} />
+              Aktif
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+              Non-Aktif
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => onEdit(vendor)}
+              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="Edit"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => onDelete(vendor)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Hapus"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+
+VendorRow.displayName = "VendorRow";
 
 interface User {
   id: string;
@@ -18,6 +115,7 @@ interface User {
 interface Vendor {
   id: string;
   name: string;
+  company_name?: string;
   email: string;
   phone: string;
   address: string;
@@ -32,7 +130,6 @@ export default function VendorsPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [filteredVendors, setFilteredVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -56,16 +153,87 @@ export default function VendorsPage() {
     show: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    cancelText?: string;
+    type?: "warning" | "danger" | "info";
     onConfirm: () => void;
   } | null>(null);
+
+  // Virtualization state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Filtered vendors based on search and filter
+  const filteredVendors = useMemo(() => {
+    let filtered = [...vendors];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (v) =>
+          v.name.toLowerCase().includes(query) ||
+          v.email.toLowerCase().includes(query) ||
+          v.phone.includes(query) ||
+          (v.contact_person && v.contact_person.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by active status
+    if (filterActive === "active") {
+      filtered = filtered.filter((v) => v.is_active === 1);
+    } else if (filterActive === "inactive") {
+      filtered = filtered.filter((v) => v.is_active === 0);
+    }
+
+    return filtered;
+  }, [vendors, searchQuery, filterActive]);
+
+  // Visible vendors - hanya render yang terlihat (virtualization)
+  const visibleVendors = useMemo(() => {
+    if (filteredVendors.length <= 100) return filteredVendors;
+    return filteredVendors.slice(visibleRange.start, visibleRange.end);
+  }, [filteredVendors, visibleRange]);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
-    filterVendors();
-  }, [vendors, searchQuery, filterActive]);
+    const handleScroll = () => {
+      if (!tableContainerRef.current) return;
+
+      const container = tableContainerRef.current;
+      const scrollTop = container.scrollTop;
+      const rowHeight = 60;
+      const visibleRows = Math.ceil(container.clientHeight / rowHeight);
+      const buffer = 10;
+
+      const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+      const end = Math.min(
+        filteredVendors.length,
+        start + visibleRows + buffer * 2
+      );
+
+      setVisibleRange({ start, end });
+    };
+
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      handleScroll();
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [filteredVendors.length]);
+
+  // Reset scroll position when search/filter changes
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+      setVisibleRange({ start: 0, end: 50 });
+    }
+  }, [searchQuery, filterActive]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -102,42 +270,13 @@ export default function VendorsPage() {
 
   const loadVendors = async () => {
     try {
-      // TODO: Implement API call
-      // const res = await fetch("/api/vendors");
-      // const data = await res.json();
-      // setVendors(data.vendors || []);
-
-      // Dummy data for now
-      setVendors([]);
+      const res = await fetch("/api/vendors");
+      const data = await res.json();
+      setVendors(data.vendors || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
       showMsg("error", "Gagal memuat data vendor");
     }
-  };
-
-  const filterVendors = () => {
-    let filtered = [...vendors];
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (v) =>
-          v.name.toLowerCase().includes(query) ||
-          v.email.toLowerCase().includes(query) ||
-          v.phone.includes(query) ||
-          (v.contact_person && v.contact_person.toLowerCase().includes(query))
-      );
-    }
-
-    // Filter by active status
-    if (filterActive === "active") {
-      filtered = filtered.filter((v) => v.is_active === 1);
-    } else if (filterActive === "inactive") {
-      filtered = filtered.filter((v) => v.is_active === 0);
-    }
-
-    setFilteredVendors(filtered);
   };
 
   const handleAdd = () => {
@@ -179,18 +318,20 @@ export default function VendorsPage() {
 
     try {
       setSaving(true);
-      // TODO: Implement API call
-      // const url = editingVendor
-      //   ? `/api/vendors/${editingVendor.id}`
-      //   : "/api/vendors";
-      // const method = editingVendor ? "PUT" : "POST";
-      // const res = await fetch(url, {
-      //   method,
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
-      // const data = await res.json();
-      // if (!res.ok) throw new Error(data.error);
+      const url = "/api/vendors";
+      const method = editingVendor ? "PUT" : "POST";
+      const payload = editingVendor
+        ? { ...formData, id: editingVendor.id }
+        : formData;
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       showMsg(
         "success",
@@ -207,20 +348,26 @@ export default function VendorsPage() {
     }
   };
 
-  const handleDelete = async (vendor: Vendor) => {
+  const handleDelete = (vendor: Vendor) => {
     setConfirmDialog({
       show: true,
       title: "Hapus Vendor",
-      message: `Yakin ingin menghapus vendor "${vendor.name}"?\n\nData yang sudah dihapus tidak dapat dikembalikan.`,
+      message: `Yakin ingin menghapus vendor "${vendor.name}"?\n\nEmail: ${
+        vendor.email
+      }\nTelepon: ${vendor.phone}\nStatus: ${
+        vendor.is_active === 1 ? "Aktif" : "Non-Aktif"
+      }\n\nData akan dihapus permanen dari database.`,
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      type: "danger",
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          // TODO: Implement API call
-          // const res = await fetch(`/api/vendors/${vendor.id}`, {
-          //   method: "DELETE",
-          // });
-          // const data = await res.json();
-          // if (!res.ok) throw new Error(data.error);
+          const res = await fetch(`/api/vendors?id=${vendor.id}`, {
+            method: "DELETE",
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
 
           showMsg("success", "Vendor berhasil dihapus");
           loadVendors();
@@ -353,23 +500,6 @@ export default function VendorsPage() {
                 </svg>
                 Tambah Vendor
               </button>
-
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Import CSV
-              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -411,9 +541,13 @@ export default function VendorsPage() {
 
         {/* Vendors Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div
+            ref={tableContainerRef}
+            className="overflow-x-auto max-h-[600px] overflow-y-auto"
+            style={{ scrollBehavior: "smooth" }}
+          >
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white">
+              <thead className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Nama Vendor
@@ -428,7 +562,7 @@ export default function VendorsPage() {
                     Telepon
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Payment Terms
+                    Ketentuan Bayar
                   </th>
                   <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                     Status
@@ -458,90 +592,14 @@ export default function VendorsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredVendors.map((vendor, index) => (
-                    <tr
+                  visibleVendors.map((vendor, idx) => (
+                    <VendorRow
                       key={vendor.id}
-                      className={`hover:bg-blue-50 transition-colors ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-gray-800">
-                          {vendor.name}
-                        </div>
-                        {vendor.notes && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {vendor.notes}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {vendor.contact_person || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {vendor.email || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {vendor.phone || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {vendor.payment_terms || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {vendor.is_active === 1 ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-300">
-                            <CheckIcon size={14} />
-                            Aktif
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold border border-gray-300">
-                            Non-Aktif
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2 justify-center">
-                          <button
-                            onClick={() => handleEdit(vendor)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(vendor)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Hapus"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      vendor={vendor}
+                      index={visibleRange.start + idx}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
                   ))
                 )}
               </tbody>
@@ -642,7 +700,7 @@ export default function VendorsPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Payment Terms
+                    Termin Bayar
                   </label>
                   <input
                     type="text"
@@ -734,53 +792,21 @@ export default function VendorsPage() {
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
 
-            <div className="p-6">
-              <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
       )}
     </MainShell>
   );

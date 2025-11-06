@@ -1,12 +1,104 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { UsersIcon, CheckIcon } from "@/components/icons/ContentIcons";
+
+// Memoized Customer Row Component - mencegah re-render yang tidak perlu
+const CustomerRow = memo(
+  ({
+    customer,
+    index,
+    onEdit,
+    onDelete,
+  }: {
+    customer: Customer;
+    index: number;
+    onEdit: (customer: Customer) => void;
+    onDelete: (customer: Customer) => void;
+  }) => {
+    return (
+      <tr
+        className={`hover:bg-teal-50 transition-all cursor-default ${
+          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+        }`}
+      >
+        <td className="px-4 py-3">
+          <div className="font-semibold text-gray-800">{customer.name}</div>
+          {customer.company && (
+            <div className="text-xs text-gray-500 mt-1">{customer.company}</div>
+          )}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
+        <td className="px-4 py-3 text-sm text-gray-700">{customer.phone}</td>
+        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+          {customer.address}
+        </td>
+        <td className="px-4 py-3 text-center">
+          {customer.is_member === 1 ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">
+              <CheckIcon size={14} />
+              Member
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+              Regular
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => onEdit(customer)}
+              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+              title="Edit"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => onDelete(customer)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Hapus"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+
+CustomerRow.displayName = "CustomerRow";
 
 interface User {
   id: string;
@@ -30,7 +122,6 @@ export default function CustomersPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -53,16 +144,87 @@ export default function CustomersPage() {
     show: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    cancelText?: string;
+    type?: "warning" | "danger" | "info";
     onConfirm: () => void;
   } | null>(null);
+
+  // Virtualization state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Filtered customers based on search and filter
+  const filteredCustomers = useMemo(() => {
+    let filtered = [...customers];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          c.email.toLowerCase().includes(query) ||
+          c.phone.includes(query) ||
+          (c.company && c.company.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by member status
+    if (filterMember === "member") {
+      filtered = filtered.filter((c) => c.is_member === 1);
+    } else if (filterMember === "non-member") {
+      filtered = filtered.filter((c) => c.is_member === 0);
+    }
+
+    return filtered;
+  }, [customers, searchQuery, filterMember]);
+
+  // Visible customers - hanya render yang terlihat (virtualization)
+  const visibleCustomers = useMemo(() => {
+    if (filteredCustomers.length <= 100) return filteredCustomers;
+    return filteredCustomers.slice(visibleRange.start, visibleRange.end);
+  }, [filteredCustomers, visibleRange]);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
-    filterCustomers();
-  }, [customers, searchQuery, filterMember]);
+    const handleScroll = () => {
+      if (!tableContainerRef.current) return;
+
+      const container = tableContainerRef.current;
+      const scrollTop = container.scrollTop;
+      const rowHeight = 60;
+      const visibleRows = Math.ceil(container.clientHeight / rowHeight);
+      const buffer = 10;
+
+      const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+      const end = Math.min(
+        filteredCustomers.length,
+        start + visibleRows + buffer * 2
+      );
+
+      setVisibleRange({ start, end });
+    };
+
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      handleScroll();
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [filteredCustomers.length]);
+
+  // Reset scroll position when search/filter changes
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+      setVisibleRange({ start: 0, end: 50 });
+    }
+  }, [searchQuery, filterMember]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -99,42 +261,13 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      // TODO: Implement API call
-      // const res = await fetch("/api/customers");
-      // const data = await res.json();
-      // setCustomers(data.customers || []);
-
-      // Dummy data for now
-      setCustomers([]);
+      const res = await fetch("/api/customers");
+      const data = await res.json();
+      setCustomers(data.customers || []);
     } catch (error) {
       console.error("Error loading customers:", error);
       showMsg("error", "Gagal memuat data pelanggan");
     }
-  };
-
-  const filterCustomers = () => {
-    let filtered = [...customers];
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.email.toLowerCase().includes(query) ||
-          c.phone.includes(query) ||
-          (c.company && c.company.toLowerCase().includes(query))
-      );
-    }
-
-    // Filter by member status
-    if (filterMember === "member") {
-      filtered = filtered.filter((c) => c.is_member === 1);
-    } else if (filterMember === "non-member") {
-      filtered = filtered.filter((c) => c.is_member === 0);
-    }
-
-    setFilteredCustomers(filtered);
   };
 
   const handleAdd = () => {
@@ -174,18 +307,20 @@ export default function CustomersPage() {
 
     try {
       setSaving(true);
-      // TODO: Implement API call
-      // const url = editingCustomer
-      //   ? `/api/customers/${editingCustomer.id}`
-      //   : "/api/customers";
-      // const method = editingCustomer ? "PUT" : "POST";
-      // const res = await fetch(url, {
-      //   method,
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
-      // const data = await res.json();
-      // if (!res.ok) throw new Error(data.error);
+      const url = "/api/customers";
+      const method = editingCustomer ? "PUT" : "POST";
+      const payload = editingCustomer
+        ? { ...formData, id: editingCustomer.id }
+        : formData;
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       showMsg(
         "success",
@@ -202,20 +337,26 @@ export default function CustomersPage() {
     }
   };
 
-  const handleDelete = async (customer: Customer) => {
+  const handleDelete = (customer: Customer) => {
     setConfirmDialog({
       show: true,
       title: "Hapus Pelanggan",
-      message: `Yakin ingin menghapus pelanggan "${customer.name}"?\n\nData yang sudah dihapus tidak dapat dikembalikan.`,
+      message: `Yakin ingin menghapus pelanggan "${customer.name}"?\n\nEmail: ${
+        customer.email
+      }\nTelepon: ${customer.phone}\nStatus: ${
+        customer.is_member === 1 ? "Member" : "Regular"
+      }\n\nData akan dihapus permanen dari database.`,
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      type: "danger",
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          // TODO: Implement API call
-          // const res = await fetch(`/api/customers/${customer.id}`, {
-          //   method: "DELETE",
-          // });
-          // const data = await res.json();
-          // if (!res.ok) throw new Error(data.error);
+          const res = await fetch(`/api/customers?id=${customer.id}`, {
+            method: "DELETE",
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
 
           showMsg("success", "Pelanggan berhasil dihapus");
           loadCustomers();
@@ -334,23 +475,6 @@ export default function CustomersPage() {
                 </svg>
                 Tambah Pelanggan
               </button>
-
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Import CSV
-              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -392,9 +516,13 @@ export default function CustomersPage() {
 
         {/* Customers Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div
+            ref={tableContainerRef}
+            className="overflow-x-auto max-h-[600px] overflow-y-auto"
+            style={{ scrollBehavior: "smooth" }}
+          >
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white">
+              <thead className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Nama
@@ -436,87 +564,14 @@ export default function CustomersPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((customer, index) => (
-                    <tr
+                  visibleCustomers.map((customer, idx) => (
+                    <CustomerRow
                       key={customer.id}
-                      className={`hover:bg-teal-50 transition-colors ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-gray-800">
-                          {customer.name}
-                        </div>
-                        {customer.notes && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {customer.notes}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {customer.email || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {customer.phone || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {customer.company || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {customer.is_member === 1 ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold border border-amber-300">
-                            <CheckIcon size={14} />
-                            Member
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold border border-gray-300">
-                            Reguler
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2 justify-center">
-                          <button
-                            onClick={() => handleEdit(customer)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(customer)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Hapus"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      customer={customer}
+                      index={visibleRange.start + idx}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
                   ))
                 )}
               </tbody>
@@ -685,53 +740,21 @@ export default function CustomersPage() {
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
 
-            <div className="p-6">
-              <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
       )}
     </MainShell>
   );
