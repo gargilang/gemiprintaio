@@ -25,7 +25,7 @@ export async function GET() {
 
     const users = db
       .prepare(
-        `SELECT id, username, email, full_name, role, is_active, created_at, updated_at FROM profiles ORDER BY created_at DESC`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles ORDER BY dibuat_pada DESC`
       )
       .all();
 
@@ -39,18 +39,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const {
-      username,
+      nama_pengguna,
       email,
-      full_name,
+      nama_lengkap,
       password,
       role = "user",
-      is_active = 1,
+      aktif_status = 1,
     } = await request.json();
 
-    // Email kini opsional: hanya username dan password yang wajib
-    if (!username || !password) {
+    // Email kini opsional: hanya nama_pengguna dan password yang wajib
+    if (!nama_pengguna || !password) {
       return NextResponse.json(
-        { error: "username dan password wajib diisi" },
+        { error: "nama_pengguna dan password wajib diisi" },
         { status: 400 }
       );
     }
@@ -69,11 +69,11 @@ export async function POST(request: NextRequest) {
 
     // Uniqueness checks
     const byUsername = db
-      .prepare(`SELECT id FROM profiles WHERE username = ?`)
-      .get(username) as any;
+      .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+      .get(nama_pengguna) as any;
     if (byUsername) {
       return NextResponse.json(
-        { error: "Username sudah digunakan" },
+        { error: "Nama pengguna sudah digunakan" },
         { status: 409 }
       );
     }
@@ -94,21 +94,21 @@ export async function POST(request: NextRequest) {
     const password_hash = await simpleHash(password);
 
     db.prepare(
-      `INSERT INTO profiles (id, username, email, full_name, password_hash, role, is_active)
+      `INSERT INTO profiles (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
-      username,
+      nama_pengguna,
       normalizedEmail,
-      full_name || null,
+      nama_lengkap || null,
       password_hash,
       role,
-      is_active ? 1 : 0
+      aktif_status ? 1 : 0
     );
 
     const user = db
       .prepare(
-        `SELECT id, username, email, full_name, role, is_active, created_at, updated_at FROM profiles WHERE id = ?`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles WHERE id = ?`
       )
       .get(id);
 

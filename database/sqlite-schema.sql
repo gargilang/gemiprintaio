@@ -7,20 +7,20 @@ PRAGMA foreign_keys = ON;
 -- Users/Profiles table
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
+  nama_pengguna TEXT UNIQUE NOT NULL,
   -- Email kini opsional (nullable). UNIQUE di SQLite mengizinkan banyak NULL.
   email TEXT UNIQUE,
-  full_name TEXT,
+  nama_lengkap TEXT,
   password_hash TEXT NOT NULL,
   role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'user')),
-  is_active INTEGER DEFAULT 1,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  aktif_status INTEGER DEFAULT 1,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
 -- Default admin user (username: gemi, password: 5555)
 -- Password hash for "5555" using SHA-256
-INSERT OR IGNORE INTO profiles (id, username, email, full_name, password_hash, role, is_active)
+INSERT OR IGNORE INTO profiles (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
 VALUES (
   'admin-gemi-001',
   'gemi',

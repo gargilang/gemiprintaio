@@ -42,9 +42,9 @@ export async function POST(request: NextRequest) {
     const user = db
       .prepare(
         `
-      SELECT id, username, email, full_name, role, is_active, password_hash
+      SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, password_hash
       FROM profiles
-      WHERE username = ?
+      WHERE nama_pengguna = ?
     `
       )
       .get(username) as any;
@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("✅ User found:", user.username, "- Role:", user.role);
+    console.log("✅ User found:", user.nama_pengguna, "- Role:", user.role);
 
-    if (!user.is_active) {
+    if (!user.aktif_status) {
       console.log("❌ User is not active");
       return NextResponse.json(
         { error: "Akun tidak aktif. Hubungi administrator." },
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Remove password_hash from response
     const { password_hash, ...userWithoutPassword } = user;
 
-    console.log("✅ Login successful for:", userWithoutPassword.username);
+    console.log("✅ Login successful for:", userWithoutPassword.nama_pengguna);
     return NextResponse.json({
       success: true,
       user: userWithoutPassword,

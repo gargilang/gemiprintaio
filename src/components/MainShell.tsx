@@ -17,11 +17,11 @@ export type { NotificationToastProps } from "./NotificationToast";
 
 interface User {
   id: string;
-  username: string;
+  nama_pengguna: string;
   email: string;
-  full_name?: string;
+  nama_lengkap?: string;
   role: string;
-  is_active: number;
+  aktif_status: number;
 }
 
 interface NotificationToastProps {
@@ -52,7 +52,7 @@ export default function MainShell({
         return;
       }
       const userData = JSON.parse(userSession);
-      if (!userData.is_active) {
+      if (!userData.aktif_status) {
         localStorage.removeItem("user");
         router.push("/auth/login");
         return;
@@ -152,16 +152,16 @@ export default function MainShell({
             <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-blue-100">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-xl text-white shadow-md">
-                  {user?.full_name?.charAt(0) ||
-                    user?.username?.charAt(0) ||
+                  {user?.nama_lengkap?.charAt(0) ||
+                    user?.nama_pengguna?.charAt(0) ||
                     "U"}
                 </div>
                 <div className="flex-1">
                   <div className="font-bold text-base text-[#0a1b3d]">
-                    {user?.full_name || user?.username}
+                    {user?.nama_lengkap || user?.nama_pengguna}
                   </div>
                   <div className="text-xs text-[#6b7280]">
-                    @{user?.username}
+                    @{user?.nama_pengguna}
                   </div>
                 </div>
               </div>

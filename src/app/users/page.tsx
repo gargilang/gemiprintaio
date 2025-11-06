@@ -13,12 +13,12 @@ import {
 
 interface User {
   id: string;
-  username: string;
+  nama_pengguna: string;
   email: string;
-  full_name: string;
+  nama_lengkap: string;
   role: "admin" | "manager" | "chief" | "user";
-  is_active: number;
-  created_at?: string;
+  aktif_status: number;
+  dibuat_pada?: string;
 }
 
 export default function UsersPage() {
@@ -29,12 +29,12 @@ export default function UsersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
-    username: "",
+    nama_pengguna: "",
     email: "",
-    full_name: "",
+    nama_lengkap: "",
     password: "",
     role: "user" as "admin" | "manager" | "chief" | "user",
-    is_active: 1,
+    aktif_status: 1,
   });
 
   // Password Manager state
@@ -162,22 +162,22 @@ export default function UsersPage() {
     if (user) {
       setEditingUser(user);
       setFormData({
-        username: user.username,
+        nama_pengguna: user.nama_pengguna,
         email: user.email,
-        full_name: user.full_name,
+        nama_lengkap: user.nama_lengkap,
         password: "",
         role: user.role,
-        is_active: user.is_active,
+        aktif_status: user.aktif_status,
       });
     } else {
       setEditingUser(null);
       setFormData({
-        username: "",
+        nama_pengguna: "",
         email: "",
-        full_name: "",
+        nama_lengkap: "",
         password: "",
         role: "user",
-        is_active: 1,
+        aktif_status: 1,
       });
     }
     setShowModal(true);
@@ -188,12 +188,12 @@ export default function UsersPage() {
     setEditingUser(null);
     setShowUserPassword(false);
     setFormData({
-      username: "",
+      nama_pengguna: "",
       email: "",
-      full_name: "",
+      nama_lengkap: "",
       password: "",
       role: "user",
-      is_active: 1,
+      aktif_status: 1,
     });
   };
 
@@ -204,11 +204,11 @@ export default function UsersPage() {
       if (editingUser) {
         // Update existing user via API
         const payload: any = {
-          username: editingUser.username,
+          nama_pengguna: editingUser.nama_pengguna,
           email: formData.email,
-          full_name: formData.full_name,
+          nama_lengkap: formData.nama_lengkap,
           role: formData.role,
-          is_active: formData.is_active,
+          aktif_status: formData.aktif_status,
         };
         if (formData.password) payload.password = formData.password;
 
@@ -258,14 +258,14 @@ export default function UsersPage() {
     setConfirmDialog({
       show: true,
       title: "Hapus User",
-      message: `Yakin ingin menghapus user berikut?\n\nNama: ${userToDelete.full_name}\nUsername: @${userToDelete.username}\nEmail: ${userToDelete.email}\n\nTindakan ini tidak dapat dibatalkan!`,
+      message: `Yakin ingin menghapus user berikut?\n\nNama: ${userToDelete.nama_lengkap}\nUsername: @${userToDelete.nama_pengguna}\nEmail: ${userToDelete.email}\n\nTindakan ini tidak dapat dibatalkan!`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
           const res = await fetch(`/api/users/${userId}`, {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: userToDelete.username }),
+            body: JSON.stringify({ nama_pengguna: userToDelete.nama_pengguna }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data?.error || "Gagal menghapus user");
@@ -298,7 +298,7 @@ export default function UsersPage() {
       const res = await fetch(`/api/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: target.is_active ? 0 : 1 }),
+        body: JSON.stringify({ aktif_status: target.aktif_status ? 0 : 1 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal update status");
@@ -399,14 +399,14 @@ export default function UsersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a1b3d] to-[#00afef] flex items-center justify-center text-white font-bold">
-                            {user.full_name.charAt(0)}
+                            {user.nama_lengkap.charAt(0)}
                           </div>
                           <div>
                             <div className="font-semibold text-[#0a1b3d]">
-                              {user.full_name}
+                              {user.nama_lengkap}
                             </div>
                             <div className="text-sm text-[#6b7280]">
-                              @{user.username}
+                              @{user.nama_pengguna}
                             </div>
                           </div>
                         </div>
@@ -429,12 +429,12 @@ export default function UsersPage() {
                         <button
                           onClick={() => handleToggleActive(user.id)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                            user.is_active
+                            user.aktif_status
                               ? "bg-green-100 text-green-700 hover:bg-green-200"
                               : "bg-red-100 text-red-700 hover:bg-red-200"
                           }`}
                         >
-                          {user.is_active ? "Aktif" : "Nonaktif"}
+                          {user.aktif_status ? "Aktif" : "Nonaktif"}
                         </button>
                       </td>
                       <td className="px-6 py-4">
@@ -510,7 +510,7 @@ export default function UsersPage() {
                 <CheckIcon size={28} className="text-green-600" />
               </div>
               <p className="text-3xl font-bold text-[#0a1b3d]">
-                {users.filter((u) => u.is_active).length}
+                {users.filter((u) => u.aktif_status).length}
               </p>
             </div>
 
@@ -876,9 +876,9 @@ export default function UsersPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.username}
+                  value={formData.nama_pengguna}
                   onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
+                    setFormData({ ...formData, nama_pengguna: e.target.value })
                   }
                   required
                   disabled={!!editingUser}
@@ -893,9 +893,9 @@ export default function UsersPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.full_name}
+                  value={formData.nama_lengkap}
                   onChange={(e) =>
-                    setFormData({ ...formData, full_name: e.target.value })
+                    setFormData({ ...formData, nama_lengkap: e.target.value })
                   }
                   required
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
@@ -999,18 +999,18 @@ export default function UsersPage() {
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active === 1}
+                  id="aktif_status"
+                  checked={formData.aktif_status === 1}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      is_active: e.target.checked ? 1 : 0,
+                      aktif_status: e.target.checked ? 1 : 0,
                     })
                   }
                   className="w-4 h-4 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
                 />
                 <label
-                  htmlFor="is_active"
+                  htmlFor="aktif_status"
                   className="text-sm font-medium text-[#0a1b3d]"
                 >
                   User Aktif

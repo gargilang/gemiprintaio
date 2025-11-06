@@ -19,7 +19,7 @@ export async function PUT(
   try {
     const { id: paramId } = await params;
     let id = paramId;
-    const { email, full_name, role, is_active, password, username } =
+    const { email, nama_lengkap, role, aktif_status, password, nama_pengguna } =
       await request.json();
 
     const db = await initializeDatabase();
@@ -34,11 +34,11 @@ export async function PUT(
     let existing = db
       .prepare(`SELECT id FROM profiles WHERE id = ?`)
       .get(id) as any;
-    if (!existing && username) {
-      // Fallback by username (helps migrate from legacy localStorage ids)
+    if (!existing && nama_pengguna) {
+      // Fallback by nama_pengguna (helps migrate from legacy localStorage ids)
       const byUsername = db
-        .prepare(`SELECT id FROM profiles WHERE username = ?`)
-        .get(username) as any;
+        .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+        .get(nama_pengguna) as any;
       if (byUsername) {
         id = byUsername.id;
         existing = byUsername;
@@ -59,17 +59,17 @@ export async function PUT(
       fields.push("email = ?");
       values.push(email);
     }
-    if (typeof full_name !== "undefined") {
-      fields.push("full_name = ?");
-      values.push(full_name || null);
+    if (typeof nama_lengkap !== "undefined") {
+      fields.push("nama_lengkap = ?");
+      values.push(nama_lengkap || null);
     }
     if (typeof role !== "undefined") {
       fields.push("role = ?");
       values.push(role);
     }
-    if (typeof is_active !== "undefined") {
-      fields.push("is_active = ?");
-      values.push(is_active ? 1 : 0);
+    if (typeof aktif_status !== "undefined") {
+      fields.push("aktif_status = ?");
+      values.push(aktif_status ? 1 : 0);
     }
     if (password) {
       fields.push("password_hash = ?");
@@ -85,13 +85,13 @@ export async function PUT(
 
     const sql = `UPDATE profiles SET ${fields.join(
       ", "
-    )}, updated_at = datetime('now') WHERE id = ?`;
+    )}, diperbarui_pada = datetime('now') WHERE id = ?`;
     values.push(id);
     db.prepare(sql).run(...values);
 
     const user = db
       .prepare(
-        `SELECT id, username, email, full_name, role, is_active, created_at, updated_at FROM profiles WHERE id = ?`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles WHERE id = ?`
       )
       .get(id);
 
@@ -112,10 +112,10 @@ export async function DELETE(
   try {
     const { id: paramId } = await params;
     let id = paramId;
-    let username: string | undefined;
+    let nama_pengguna: string | undefined;
     try {
       const body = await request.json();
-      username = body?.username;
+      nama_pengguna = body?.nama_pengguna;
     } catch {}
     const db = await initializeDatabase();
     if (!db) {
@@ -128,10 +128,10 @@ export async function DELETE(
     let existing = db
       .prepare(`SELECT id FROM profiles WHERE id = ?`)
       .get(id) as any;
-    if (!existing && username) {
+    if (!existing && nama_pengguna) {
       const byUsername = db
-        .prepare(`SELECT id FROM profiles WHERE username = ?`)
-        .get(username) as any;
+        .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+        .get(nama_pengguna) as any;
       if (byUsername) {
         id = byUsername.id;
         existing = byUsername;
