@@ -268,7 +268,7 @@ export default function VendorsPage() {
     try {
       const res = await fetch("/api/vendors");
       const data = await res.json();
-      setVendors(data.vendors || []);
+      setVendors(data.vendor || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
       showMsg("error", "Gagal memuat data vendor");
@@ -417,13 +417,13 @@ export default function VendorsPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <BuildingIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Total Vendor
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{totalVendors}</p>
-            <p className="text-xs mt-2 text-blue-100">Terdaftar di sistem</p>
+            <p className="text-sm mt-2 text-blue-100">Terdaftar di sistem</p>
           </div>
 
           {/* Active Vendors */}
@@ -433,13 +433,13 @@ export default function VendorsPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Aktif
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{activeVendors}</p>
-            <p className="text-xs mt-2 text-green-100">
+            <p className="text-sm mt-2 text-green-100">
               Vendor yang beroperasi
             </p>
           </div>
@@ -463,13 +463,13 @@ export default function VendorsPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Non-Aktif
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{inactiveVendors}</p>
-            <p className="text-xs mt-2 text-gray-100">Tidak lagi beroperasi</p>
+            <p className="text-sm mt-2 text-gray-100">Tidak lagi beroperasi</p>
           </div>
         </div>
 

@@ -5,14 +5,14 @@
 PRAGMA foreign_keys = ON;
 
 -- Users/Profiles table
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS profil (
   id TEXT PRIMARY KEY,
   nama_pengguna TEXT UNIQUE NOT NULL,
   -- Email kini opsional (nullable). UNIQUE di SQLite mengizinkan banyak NULL.
   email TEXT UNIQUE,
   nama_lengkap TEXT,
   password_hash TEXT NOT NULL,
-  role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'user')),
+  role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'chief', 'user')),
   aktif_status INTEGER DEFAULT 1,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now'))
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Default admin user (username: gemi, password: 5555)
 -- Password hash for "5555" using SHA-256
-INSERT OR IGNORE INTO profiles (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
+INSERT OR IGNORE INTO profil (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
 VALUES (
   'admin-gemi-001',
   'gemi',
@@ -238,7 +238,7 @@ SELECT
 FROM material_quick_specs WHERE category_id = 'cat-kertas';
 
 -- Materials/Bahan table (updated with category/subcategory references)
-CREATE TABLE IF NOT EXISTS materials (
+CREATE TABLE IF NOT EXISTS bahan (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL,
   deskripsi TEXT,
@@ -257,7 +257,7 @@ CREATE TABLE IF NOT EXISTS materials (
 );
 
 -- Material Unit Prices (Multiple satuan dengan harga berbeda)
-CREATE TABLE IF NOT EXISTS material_unit_prices (
+CREATE TABLE IF NOT EXISTS harga_bahan_satuan (
   id TEXT PRIMARY KEY,
   bahan_id TEXT NOT NULL,
   nama_satuan TEXT NOT NULL, -- pcs, lusin, pack, box, meter, roll, dll
@@ -269,12 +269,12 @@ CREATE TABLE IF NOT EXISTS material_unit_prices (
   urutan_tampilan INTEGER DEFAULT 0,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (bahan_id) REFERENCES materials(id) ON DELETE CASCADE,
+  FOREIGN KEY (bahan_id) REFERENCES bahan(id) ON DELETE CASCADE,
   UNIQUE(bahan_id, nama_satuan)
 );
 
 -- Customers table
-CREATE TABLE IF NOT EXISTS customers (
+CREATE TABLE IF NOT EXISTS pelanggan (
   id TEXT PRIMARY KEY,
   tipe_pelanggan TEXT NOT NULL CHECK(tipe_pelanggan IN ('perorangan', 'perusahaan')),
   nama TEXT NOT NULL,
@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 -- Vendors table
-CREATE TABLE IF NOT EXISTS vendors (
+CREATE TABLE IF NOT EXISTS vendor (
   id TEXT PRIMARY KEY,
   nama_perusahaan TEXT NOT NULL,
   email TEXT,
@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS vendors (
 );
 
 -- Sales/POS Transactions
-CREATE TABLE IF NOT EXISTS sales (
+CREATE TABLE IF NOT EXISTS penjualan (
   id TEXT PRIMARY KEY,
   invoice_number TEXT UNIQUE NOT NULL,
   customer_id TEXT,
@@ -316,12 +316,12 @@ CREATE TABLE IF NOT EXISTS sales (
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (cashier_id) REFERENCES profiles(id)
+  FOREIGN KEY (customer_id) REFERENCES pelanggan(id),
+  FOREIGN KEY (cashier_id) REFERENCES profil(id)
 );
 
 -- Sales Items
-CREATE TABLE IF NOT EXISTS sales_items (
+CREATE TABLE IF NOT EXISTS item_penjualan (
   id TEXT PRIMARY KEY,
   sale_id TEXT NOT NULL,
   material_id TEXT NOT NULL,
@@ -332,13 +332,13 @@ CREATE TABLE IF NOT EXISTS sales_items (
   unit_price REAL NOT NULL, -- Harga per satuan yang dipilih
   subtotal REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-  FOREIGN KEY (material_id) REFERENCES materials(id),
-  FOREIGN KEY (unit_price_id) REFERENCES material_unit_prices(id)
+  FOREIGN KEY (sale_id) REFERENCES penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (material_id) REFERENCES bahan(id),
+  FOREIGN KEY (unit_price_id) REFERENCES harga_bahan_satuan(id)
 );
 
 -- Purchase Orders
-CREATE TABLE IF NOT EXISTS purchases (
+CREATE TABLE IF NOT EXISTS pembelian (
   id TEXT PRIMARY KEY,
   purchase_number TEXT UNIQUE NOT NULL,
   vendor_id TEXT,
@@ -349,12 +349,12 @@ CREATE TABLE IF NOT EXISTS purchases (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id),
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Purchase Items
-CREATE TABLE IF NOT EXISTS purchase_items (
+CREATE TABLE IF NOT EXISTS item_pembelian (
   id TEXT PRIMARY KEY,
   purchase_id TEXT NOT NULL,
   material_id TEXT NOT NULL,
@@ -365,13 +365,13 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   unit_price REAL NOT NULL, -- Harga per satuan yang dipilih
   subtotal REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
-  FOREIGN KEY (material_id) REFERENCES materials(id),
-  FOREIGN KEY (unit_price_id) REFERENCES material_unit_prices(id)
+  FOREIGN KEY (purchase_id) REFERENCES pembelian(id) ON DELETE CASCADE,
+  FOREIGN KEY (material_id) REFERENCES bahan(id),
+  FOREIGN KEY (unit_price_id) REFERENCES harga_bahan_satuan(id)
 );
 
 -- Financial Transactions
-CREATE TABLE IF NOT EXISTS financial_transactions (
+CREATE TABLE IF NOT EXISTS transaksi_keuangan (
   id TEXT PRIMARY KEY,
   kategori_transaksi TEXT NOT NULL CHECK(kategori_transaksi IN (
     'KAS', 'BIAYA', 'OMZET', 'INVESTOR', 'SUBSIDI', 'LUNAS', 
@@ -390,14 +390,14 @@ CREATE TABLE IF NOT EXISTS financial_transactions (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-  FOREIGN KEY (employee_id) REFERENCES profiles(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (customer_id) REFERENCES pelanggan(id),
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id),
+  FOREIGN KEY (employee_id) REFERENCES profil(id),
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Other Transactions
-CREATE TABLE IF NOT EXISTS other_transactions (
+CREATE TABLE IF NOT EXISTS transaksi_lainnya (
   id TEXT PRIMARY KEY,
   kategori_transaksi TEXT NOT NULL CHECK(kategori_transaksi IN (
     'KAS', 'BIAYA', 'OMZET', 'INVESTOR', 'SUBSIDI', 'LUNAS', 
@@ -411,7 +411,7 @@ CREATE TABLE IF NOT EXISTS other_transactions (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- =====================================================
@@ -473,7 +473,7 @@ CREATE TABLE IF NOT EXISTS cash_book (
   
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Kasbon (Employee Cash Advance)
@@ -491,7 +491,7 @@ CREATE TABLE IF NOT EXISTS kasbon (
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Pembayaran Kasbon (Kasbon Payment History)
@@ -507,7 +507,7 @@ CREATE TABLE IF NOT EXISTS kasbon_payments (
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (kasbon_id) REFERENCES kasbon(id) ON DELETE CASCADE,
   FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Bagi Hasil (Profit Sharing)
@@ -529,7 +529,7 @@ CREATE TABLE IF NOT EXISTS bagi_hasil (
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Kategori Biaya (Expense Categories)
@@ -561,7 +561,7 @@ CREATE TABLE IF NOT EXISTS monthly_financial_reports (
 );
 
 -- Inventory Movements
-CREATE TABLE IF NOT EXISTS inventory_movements (
+CREATE TABLE IF NOT EXISTS pergerakan_inventori (
   id TEXT PRIMARY KEY,
   material_id TEXT NOT NULL,
   movement_type TEXT NOT NULL CHECK(movement_type IN ('in', 'out', 'adjustment')),
@@ -571,12 +571,12 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   notes TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (material_id) REFERENCES materials(id),
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (material_id) REFERENCES bahan(id),
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Sync Metadata Table (untuk tracking sync status)
-CREATE TABLE IF NOT EXISTS sync_metadata (
+CREATE TABLE IF NOT EXISTS metadata_sinkronisasi (
   table_name TEXT PRIMARY KEY,
   last_sync_at TEXT,
   last_sync_status TEXT,
@@ -584,7 +584,7 @@ CREATE TABLE IF NOT EXISTS sync_metadata (
 );
 
 -- Sync Queue Table (untuk tracking perubahan yang belum di-sync)
-CREATE TABLE IF NOT EXISTS sync_queue (
+CREATE TABLE IF NOT EXISTS antrian_sinkronisasi (
   id TEXT PRIMARY KEY,
   table_name TEXT NOT NULL,
   record_id TEXT NOT NULL,
@@ -613,7 +613,7 @@ CREATE INDEX IF NOT EXISTS idx_sync_queue_synced ON sync_queue(synced);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name);
 
 -- Credentials / Password Manager
-CREATE TABLE IF NOT EXISTS credentials (
+CREATE TABLE IF NOT EXISTS kredensial (
   id TEXT PRIMARY KEY,
   owner_id TEXT NOT NULL,
   service_name TEXT NOT NULL,
@@ -623,7 +623,7 @@ CREATE TABLE IF NOT EXISTS credentials (
   is_private INTEGER DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (owner_id) REFERENCES profiles(id)
+  FOREIGN KEY (owner_id) REFERENCES profil(id)
 );
 CREATE INDEX IF NOT EXISTS idx_credentials_owner ON credentials(owner_id);
 CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service_name);
@@ -645,37 +645,37 @@ CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(is_active);
 CREATE TRIGGER IF NOT EXISTS update_profiles_timestamp 
   AFTER UPDATE ON profiles
   BEGIN
-    UPDATE profiles SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE profil SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_materials_timestamp 
   AFTER UPDATE ON materials
   BEGIN
-    UPDATE materials SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE bahan SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_customers_timestamp 
   AFTER UPDATE ON customers
   BEGIN
-    UPDATE customers SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE pelanggan SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_vendors_timestamp 
   AFTER UPDATE ON vendors
   BEGIN
-    UPDATE vendors SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE vendor SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_sales_timestamp 
   AFTER UPDATE ON sales
   BEGIN
-    UPDATE sales SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE penjualan SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_purchases_timestamp 
   AFTER UPDATE ON purchases
   BEGIN
-    UPDATE purchases SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE pembelian SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_financial_timestamp 
@@ -798,7 +798,7 @@ VALUES
 -- =====================================================
 
 -- Tabel Hutang (Payables) - Hutang ke Vendor dari Pembelian
-CREATE TABLE IF NOT EXISTS payables (
+CREATE TABLE IF NOT EXISTS hutang (
   id TEXT PRIMARY KEY,
   vendor_id TEXT NOT NULL,
   purchase_id TEXT, -- Link ke transaksi pembelian (nullable untuk hutang manual)
@@ -813,13 +813,13 @@ CREATE TABLE IF NOT EXISTS payables (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE RESTRICT,
-  FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id) ON DELETE RESTRICT,
+  FOREIGN KEY (purchase_id) REFERENCES pembelian(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Pembayaran Hutang (Payable Payments)
-CREATE TABLE IF NOT EXISTS payable_payments (
+CREATE TABLE IF NOT EXISTS pembayaran_hutang (
   id TEXT PRIMARY KEY,
   payable_id TEXT NOT NULL,
   payment_date TEXT NOT NULL,
@@ -830,11 +830,11 @@ CREATE TABLE IF NOT EXISTS payable_payments (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (payable_id) REFERENCES payables(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Piutang (Receivables) - Piutang dari Customer
-CREATE TABLE IF NOT EXISTS receivables (
+CREATE TABLE IF NOT EXISTS piutang (
   id TEXT PRIMARY KEY,
   customer_id TEXT NOT NULL,
   sale_id TEXT, -- Link ke transaksi penjualan (nullable untuk piutang manual)
@@ -849,13 +849,13 @@ CREATE TABLE IF NOT EXISTS receivables (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT,
-  FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (customer_id) REFERENCES pelanggan(id) ON DELETE RESTRICT,
+  FOREIGN KEY (sale_id) REFERENCES penjualan(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Tabel Pembayaran Piutang (Receivable Payments)
-CREATE TABLE IF NOT EXISTS receivable_payments (
+CREATE TABLE IF NOT EXISTS pembayaran_piutang (
   id TEXT PRIMARY KEY,
   receivable_id TEXT NOT NULL,
   payment_date TEXT NOT NULL,
@@ -866,7 +866,7 @@ CREATE TABLE IF NOT EXISTS receivable_payments (
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (receivable_id) REFERENCES receivables(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES profiles(id)
+  FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
 -- Trigger untuk update status hutang setelah pembayaran

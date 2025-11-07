@@ -138,9 +138,9 @@ export async function DELETE(
       );
     }
 
-    // Check if there are materials using this category
+    // Check if there are bahan using this category
     const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM materials WHERE category_id = ?")
+      .prepare("SELECT COUNT(*) as count FROM bahan WHERE category_id = ?")
       .get(params.id) as { count: number };
 
     if (materialsCount.count > 0) {

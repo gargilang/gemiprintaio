@@ -6,7 +6,7 @@ import { encryptText, decryptText } from "@/lib/crypto";
 
 function ensureTable(db: any) {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS credentials (
+    CREATE TABLE IF NOT EXISTS kredensial (
       id TEXT PRIMARY KEY,
       owner_id TEXT NOT NULL,
       service_name TEXT NOT NULL,
@@ -38,7 +38,7 @@ export async function GET(
 
     const existing = db
       .prepare(
-        `SELECT id, owner_id, password_encrypted, is_private FROM credentials WHERE id = ?`
+        `SELECT id, owner_id, password_encrypted, is_private FROM kredensial WHERE id = ?`
       )
       .get(id) as any;
     if (!existing)
@@ -49,7 +49,7 @@ export async function GET(
 
     // Get viewer's role
     const viewer = db
-      .prepare(`SELECT id, role FROM profiles WHERE id = ?`)
+      .prepare(`SELECT id, role FROM profil WHERE id = ?`)
       .get(viewerId) as any;
 
     // Check access permission:
@@ -96,7 +96,7 @@ export async function PUT(
     ensureTable(db);
 
     const existing = db
-      .prepare(`SELECT id, owner_id, is_private FROM credentials WHERE id = ?`)
+      .prepare(`SELECT id, owner_id, is_private FROM kredensial WHERE id = ?`)
       .get(id) as any;
     if (!existing)
       return NextResponse.json(
@@ -137,7 +137,7 @@ export async function PUT(
         { status: 400 }
       );
 
-    const sql = `UPDATE credentials SET ${fields.join(
+    const sql = `UPDATE kredensial SET ${fields.join(
       ", "
     )}, updated_at = datetime('now') WHERE id = ?`;
     values.push(id);
@@ -170,7 +170,7 @@ export async function DELETE(
     ensureTable(db);
 
     const existing = db
-      .prepare(`SELECT id, owner_id, is_private FROM credentials WHERE id = ?`)
+      .prepare(`SELECT id, owner_id, is_private FROM kredensial WHERE id = ?`)
       .get(id) as any;
     if (!existing)
       return NextResponse.json(
@@ -183,7 +183,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
     }
 
-    db.prepare(`DELETE FROM credentials WHERE id = ?`).run(id);
+    db.prepare(`DELETE FROM kredensial WHERE id = ?`).run(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/passwords/[id] error:", error);

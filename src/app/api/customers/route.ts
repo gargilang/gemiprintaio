@@ -12,12 +12,12 @@ function generateId(prefix: string = "cust") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// GET all customers
+// GET all pelanggan
 export async function GET(req: NextRequest) {
   try {
     const db = getDb();
 
-    const customers = db
+    const pelanggan = db
       .prepare(
         `
         SELECT 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
           member_status,
           dibuat_pada,
           diperbarui_pada
-        FROM customers
+        FROM pelanggan
         ORDER BY nama_perusahaan, nama
       `
       )
@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
 
     db.close();
 
-    return NextResponse.json({ customers });
+    return NextResponse.json({ pelanggan });
   } catch (error: any) {
-    console.error("Error fetching customers:", error);
+    console.error("Error fetching pelanggan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch customers" },
+      { error: error.message || "Failed to fetch pelanggan" },
       { status: 500 }
     );
   }
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Check if customer with same name already exists
     const existing = db
-      .prepare("SELECT id FROM customers WHERE nama = ?")
+      .prepare("SELECT id FROM pelanggan WHERE nama = ?")
       .get(nama.trim());
 
     if (existing) {
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         : "perorangan";
 
     const stmt = db.prepare(`
-      INSERT INTO customers (
+      INSERT INTO pelanggan (
         id, tipe_pelanggan, nama, nama_perusahaan, npwp,
         email, telepon, alamat, member_status,
         dibuat_pada, diperbarui_pada
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
           member_status,
           dibuat_pada,
           diperbarui_pada
-        FROM customers WHERE id = ?
+        FROM pelanggan WHERE id = ?
       `
       )
       .get(customerId);
@@ -179,7 +179,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if customer exists
     const existing = db
-      .prepare("SELECT id FROM customers WHERE id = ?")
+      .prepare("SELECT id FROM pelanggan WHERE id = ?")
       .get(id);
 
     if (!existing) {
@@ -192,7 +192,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if another customer has the same name
     const duplicate = db
-      .prepare("SELECT id FROM customers WHERE nama = ? AND id != ?")
+      .prepare("SELECT id FROM pelanggan WHERE nama = ? AND id != ?")
       .get(nama.trim(), id);
 
     if (duplicate) {
@@ -210,7 +210,7 @@ export async function PUT(req: NextRequest) {
         : "perorangan";
 
     const stmt = db.prepare(`
-      UPDATE customers
+      UPDATE pelanggan
       SET tipe_pelanggan = ?,
           nama = ?,
           nama_perusahaan = ?,
@@ -250,7 +250,7 @@ export async function PUT(req: NextRequest) {
           member_status,
           dibuat_pada,
           diperbarui_pada
-        FROM customers WHERE id = ?
+        FROM pelanggan WHERE id = ?
       `
       )
       .get(id);
@@ -281,7 +281,7 @@ export async function DELETE(req: NextRequest) {
 
     // Check if customer exists
     const existing = db
-      .prepare("SELECT id FROM customers WHERE id = ?")
+      .prepare("SELECT id FROM pelanggan WHERE id = ?")
       .get(id);
 
     if (!existing) {
@@ -292,19 +292,19 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check if customer is used in sales. The sales table may still use the
+    // Check if customer is used in penjualan. The penjualan table may still use the
     // English column name (customer_id) or the migrated Indonesian name
     // (pelanggan_id). Try the Indonesian column first and fall back if it
     // doesn't exist to avoid runtime errors during incremental migration.
     let usedInSales = null;
     try {
       usedInSales = db
-        .prepare("SELECT id FROM sales WHERE pelanggan_id = ? LIMIT 1")
+        .prepare("SELECT id FROM penjualan WHERE pelanggan_id = ? LIMIT 1")
         .get(id);
     } catch (err) {
       // pelanggan_id doesn't exist yet; try the legacy column name
       usedInSales = db
-        .prepare("SELECT id FROM sales WHERE customer_id = ? LIMIT 1")
+        .prepare("SELECT id FROM penjualan WHERE customer_id = ? LIMIT 1")
         .get(id);
     }
 
@@ -319,7 +319,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const stmt = db.prepare("DELETE FROM customers WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM pelanggan WHERE id = ?");
     stmt.run(id);
 
     db.close();

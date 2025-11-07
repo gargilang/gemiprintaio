@@ -267,7 +267,7 @@ export default function MaterialsPage() {
       const res = await fetch("/api/materials");
       const data = await res.json();
       if (res.ok) {
-        setMaterials(data.materials || []);
+        setMaterials(data.bahan || []);
       }
     } catch (error) {
       console.error("Error loading materials:", error);
@@ -353,7 +353,7 @@ export default function MaterialsPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <BoxIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   {searchQuery.trim() ? "Hasil Pencarian" : "Total Jenis Bahan"}
                 </h3>
               </div>
@@ -361,7 +361,7 @@ export default function MaterialsPage() {
             <p className="text-3xl font-bold">
               {searchQuery.trim() ? filteredMaterials.length : totalItems}
             </p>
-            <p className="text-xs mt-2 text-emerald-100">
+            <p className="text-sm mt-2 text-emerald-100">
               {searchQuery.trim()
                 ? `dari ${totalItems} item`
                 : "Item terdaftar"}
@@ -387,7 +387,7 @@ export default function MaterialsPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Nilai Stok
                 </h3>
               </div>
@@ -395,7 +395,7 @@ export default function MaterialsPage() {
             <p className="text-3xl font-bold">
               Rp {totalStockValue.toLocaleString("id-ID")}
             </p>
-            <p className="text-xs mt-2 text-blue-100">Total nilai inventory</p>
+            <p className="text-sm mt-2 text-blue-100">Total nilai inventory</p>
           </div>
 
           {/* Low Stock Alert */}
@@ -417,13 +417,13 @@ export default function MaterialsPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Stok Menipis
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{lowStockItems}</p>
-            <p className="text-xs mt-2 text-orange-100">Item perlu restock</p>
+            <p className="text-sm mt-2 text-orange-100">Item perlu restock</p>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { encryptText, decryptText } from "@/lib/crypto";
 
 function ensureTable(db: any) {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS credentials (
+    CREATE TABLE IF NOT EXISTS kredensial (
       id TEXT PRIMARY KEY,
       owner_id TEXT NOT NULL,
       service_name TEXT NOT NULL,
@@ -17,14 +17,14 @@ function ensureTable(db: any) {
       is_private INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (owner_id) REFERENCES profiles(id)
+      FOREIGN KEY (owner_id) REFERENCES profil(id)
     );
-    CREATE INDEX IF NOT EXISTS idx_credentials_owner ON credentials(owner_id);
-    CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service_name);
+    CREATE INDEX IF NOT EXISTS idx_credentials_owner ON kredensial(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_credentials_service ON kredensial(service_name);
   `);
 }
 
-// GET credentials: requires viewer id (header x-user-id) to filter privacy
+// GET kredensial: requires viewer id (header x-user-id) to filter privacy
 export async function GET(request: NextRequest) {
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     let viewerRole = "user";
     if (viewerId) {
       const viewer = db
-        .prepare(`SELECT id, role FROM profiles WHERE id = ?`)
+        .prepare(`SELECT id, role FROM profil WHERE id = ?`)
         .get(viewerId) as any;
       if (viewer) {
         viewerRole = viewer.role;
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       rows = db
         .prepare(
           `SELECT id, owner_id, service_name, account_username, password_encrypted, notes, is_private, created_at, updated_at
-           FROM credentials
+           FROM kredensial
            WHERE is_private = 0 OR owner_id = ?
            ORDER BY updated_at DESC`
         )
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       rows = db
         .prepare(
           `SELECT id, owner_id, service_name, account_username, password_encrypted, notes, is_private, created_at, updated_at
-           FROM credentials
+           FROM kredensial
            WHERE is_private = 0
            ORDER BY updated_at DESC`
         )
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ credentials: data });
+    return NextResponse.json({ kredensial: data });
   } catch (error) {
     console.error("GET /api/passwords error:", error);
     return NextResponse.json(
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const password_encrypted = encryptText(password);
     db.prepare(
-      `INSERT INTO credentials (id, owner_id, service_name, account_username, password_encrypted, notes, is_private)
+      `INSERT INTO kredensial (id, owner_id, service_name, account_username, password_encrypted, notes, is_private)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,

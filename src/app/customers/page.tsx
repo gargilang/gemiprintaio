@@ -270,7 +270,7 @@ export default function CustomersPage() {
     try {
       const res = await fetch("/api/customers");
       const data = await res.json();
-      setCustomers(data.customers || []);
+      setCustomers(data.pelanggan || []);
     } catch (error) {
       console.error("Error loading customers:", error);
       showMsg("error", "Gagal memuat data pelanggan");
@@ -419,13 +419,13 @@ export default function CustomersPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Total Pelanggan
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{totalCustomers}</p>
-            <p className="text-xs mt-2 text-teal-100">Terdaftar di sistem</p>
+            <p className="text-sm mt-2 text-teal-100">Terdaftar di sistem</p>
           </div>
 
           {/* Members */}
@@ -435,13 +435,13 @@ export default function CustomersPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Member
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{totalMembers}</p>
-            <p className="text-xs mt-2 text-amber-100">Mendapat harga khusus</p>
+            <p className="text-sm mt-2 text-amber-100">Mendapat harga khusus</p>
           </div>
 
           {/* Non-Members */}
@@ -451,13 +451,13 @@ export default function CustomersPage() {
                 <div className="p-2 bg-white/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                <h3 className="text-base font-semibold uppercase tracking-wide">
                   Non-Member
                 </h3>
               </div>
             </div>
             <p className="text-3xl font-bold">{totalNonMembers}</p>
-            <p className="text-xs mt-2 text-blue-100">Harga reguler</p>
+            <p className="text-sm mt-2 text-blue-100">Harga reguler</p>
           </div>
         </div>
 

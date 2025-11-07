@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { initializeDatabase } from "@/lib/sqlite-db";
+import crypto from "crypto";
 
 // Simple hash function for password verification
 async function simpleHash(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return crypto.createHash("sha256").update(text).digest("hex");
 }
 
 export async function POST(request: NextRequest) {
@@ -43,7 +40,7 @@ export async function POST(request: NextRequest) {
       .prepare(
         `
       SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, password_hash
-      FROM profiles
+      FROM profil
       WHERE nama_pengguna = ?
     `
       )

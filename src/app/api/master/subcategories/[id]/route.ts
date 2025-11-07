@@ -109,10 +109,10 @@ export async function DELETE(
       );
     }
 
-    // Check if there are materials using this subcategory
+    // Check if there are bahan using this subcategory
     const materialsCount = db
       .prepare(
-        "SELECT COUNT(*) as count FROM materials WHERE subcategory_id = ?"
+        "SELECT COUNT(*) as count FROM bahan WHERE subcategory_id = ?"
       )
       .get(params.id) as { count: number };
 

@@ -155,7 +155,7 @@ export default function UsersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat kredensial");
-      setCredentials(data.credentials || []);
+      setCredentials(data.kredensial || []);
     } catch (err) {
       console.error(err);
       showMsg("error", "Tidak bisa memuat kredensial.");
@@ -239,7 +239,7 @@ export default function UsersPage() {
       await loadUsers();
       handleCloseModal();
     } catch (err) {
-      console.error(err);
+      console.error("Error creating/updating user:", err);
       showMsg(
         "error",
         `Terjadi kesalahan saat menyimpan user: ${
@@ -369,7 +369,7 @@ export default function UsersPage() {
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                   />
                 </svg>
-                Tambah User
+                Tambah Pengguna
               </button>
             </div>
           </div>
@@ -875,7 +875,7 @@ export default function UsersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
-                {editingUser ? "✏️ Edit User" : "Tambah User Baru"}
+                {editingUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
               </h3>
             </div>
 

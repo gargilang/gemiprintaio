@@ -24,7 +24,7 @@ export async function GET(
           m.*,
           mc.name as category_name,
           ms.name as subcategory_name
-        FROM materials m
+        FROM bahan m
         LEFT JOIN material_categories mc ON m.kategori_id = mc.id
         LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
         WHERE m.id = ?
@@ -43,7 +43,7 @@ export async function GET(
     const unitPrices = db
       .prepare(
         `
-        SELECT * FROM material_unit_prices
+        SELECT * FROM harga_bahan_satuan
         WHERE bahan_id = ?
         ORDER BY urutan_tampilan, nama_satuan
       `
@@ -96,7 +96,7 @@ export async function PUT(
 
     // Check if material exists
     const existing = db
-      .prepare("SELECT id FROM materials WHERE id = ?")
+      .prepare("SELECT id FROM bahan WHERE id = ?")
       .get(params.id);
 
     console.log("🔎 Material lookup result:", existing);
@@ -111,7 +111,7 @@ export async function PUT(
 
     // Update material
     const updateStmt = db.prepare(`
-      UPDATE materials
+      UPDATE bahan
       SET nama = ?, deskripsi = ?, kategori_id = ?, subkategori_id = ?,
           satuan_dasar = ?, spesifikasi = ?, jumlah_stok = ?,
           level_stok_minimum = ?, lacak_inventori_status = ?, butuh_dimensi_status = ?, 
@@ -136,13 +136,13 @@ export async function PUT(
     // Update unit prices if provided
     if (unit_prices && Array.isArray(unit_prices)) {
       // Delete existing unit prices
-      db.prepare("DELETE FROM material_unit_prices WHERE bahan_id = ?").run(
+      db.prepare("DELETE FROM harga_bahan_satuan WHERE bahan_id = ?").run(
         params.id
       );
 
       // Insert new unit prices
       const unitPriceStmt = db.prepare(`
-        INSERT INTO material_unit_prices (
+        INSERT INTO harga_bahan_satuan (
           id, bahan_id, nama_satuan, faktor_konversi,
           harga_beli, harga_jual, harga_member,
           default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
@@ -170,11 +170,11 @@ export async function PUT(
 
     // Get updated material
     const updatedMaterial: any = db
-      .prepare("SELECT * FROM materials WHERE id = ?")
+      .prepare("SELECT * FROM bahan WHERE id = ?")
       .get(params.id);
 
     const updatedUnitPrices = db
-      .prepare("SELECT * FROM material_unit_prices WHERE bahan_id = ?")
+      .prepare("SELECT * FROM harga_bahan_satuan WHERE bahan_id = ?")
       .all(params.id);
 
     db.close();
@@ -206,7 +206,7 @@ export async function DELETE(
 
     // Check if material exists
     const existing = db
-      .prepare("SELECT id FROM materials WHERE id = ?")
+      .prepare("SELECT id FROM bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -218,7 +218,7 @@ export async function DELETE(
     }
 
     // Delete material (unit prices will be cascade deleted)
-    db.prepare("DELETE FROM materials WHERE id = ?").run(params.id);
+    db.prepare("DELETE FROM bahan WHERE id = ?").run(params.id);
 
     db.close();
 

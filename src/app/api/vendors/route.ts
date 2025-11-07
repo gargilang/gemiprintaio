@@ -12,12 +12,12 @@ function generateId(prefix: string = "vendor") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// GET all vendors
+// GET all vendor
 export async function GET(req: NextRequest) {
   try {
     const db = getDb();
 
-    const vendors = db
+    const vendor = db
       .prepare(
         `
         SELECT 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
           catatan,
           dibuat_pada,
           diperbarui_pada
-        FROM vendors
+        FROM vendor
         ORDER BY nama_perusahaan
       `
       )
@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
 
     db.close();
 
-    return NextResponse.json({ vendors });
+    return NextResponse.json({ vendor });
   } catch (error: any) {
-    console.error("Error fetching vendors:", error);
+    console.error("Error fetching vendor:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch vendors" },
+      { error: error.message || "Failed to fetch vendor" },
       { status: 500 }
     );
   }
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Check if vendor with same company name already exists
     const existing = db
-      .prepare("SELECT id FROM vendors WHERE nama_perusahaan = ?")
+      .prepare("SELECT id FROM vendor WHERE nama_perusahaan = ?")
       .get(nama_perusahaan.trim());
 
     if (existing) {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const vendorId = generateId("vendor");
 
     const stmt = db.prepare(`
-      INSERT INTO vendors (
+      INSERT INTO vendor (
         id, nama_perusahaan, email, telepon, alamat,
         kontak_person, ketentuan_bayar, aktif_status, catatan,
         dibuat_pada, diperbarui_pada
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           catatan,
           dibuat_pada,
           diperbarui_pada
-        FROM vendors WHERE id = ?
+        FROM vendor WHERE id = ?
       `
       )
       .get(vendorId);
@@ -172,7 +172,7 @@ export async function PUT(req: NextRequest) {
     const db = getDb();
 
     // Check if vendor exists
-    const existing = db.prepare("SELECT id FROM vendors WHERE id = ?").get(id);
+    const existing = db.prepare("SELECT id FROM vendor WHERE id = ?").get(id);
 
     if (!existing) {
       db.close();
@@ -184,7 +184,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if another vendor has the same company name
     const duplicate = db
-      .prepare("SELECT id FROM vendors WHERE nama_perusahaan = ? AND id != ?")
+      .prepare("SELECT id FROM vendor WHERE nama_perusahaan = ? AND id != ?")
       .get(nama_perusahaan.trim(), id);
 
     if (duplicate) {
@@ -196,7 +196,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const stmt = db.prepare(`
-      UPDATE vendors
+      UPDATE vendor
       SET nama_perusahaan = ?,
           email = ?,
           telepon = ?,
@@ -236,7 +236,7 @@ export async function PUT(req: NextRequest) {
           catatan,
           dibuat_pada,
           diperbarui_pada
-        FROM vendors WHERE id = ?
+        FROM vendor WHERE id = ?
       `
       )
       .get(id);
@@ -266,7 +266,7 @@ export async function DELETE(req: NextRequest) {
     const db = getDb();
 
     // Check if vendor exists
-    const existing = db.prepare("SELECT id FROM vendors WHERE id = ?").get(id);
+    const existing = db.prepare("SELECT id FROM vendor WHERE id = ?").get(id);
 
     if (!existing) {
       db.close();
@@ -276,9 +276,9 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check if vendor is used in purchases
+    // Check if vendor is used in pembelian
     const usedInPurchases = db
-      .prepare("SELECT id FROM purchases WHERE vendor_id = ? LIMIT 1")
+      .prepare("SELECT id FROM pembelian WHERE vendor_id = ? LIMIT 1")
       .get(id);
 
     if (usedInPurchases) {
@@ -292,7 +292,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const stmt = db.prepare("DELETE FROM vendors WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM vendor WHERE id = ?");
     stmt.run(id);
 
     db.close();

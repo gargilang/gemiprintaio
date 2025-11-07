@@ -3,14 +3,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // exclude from static export
 import { initializeDatabase } from "@/lib/sqlite-db";
 import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 // Keep consistent hashing with login route
 async function simpleHash(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return crypto.createHash("sha256").update(text).digest("hex");
 }
 
 export async function GET() {
@@ -25,7 +22,7 @@ export async function GET() {
 
     const users = db
       .prepare(
-        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles ORDER BY dibuat_pada DESC`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profil ORDER BY dibuat_pada DESC`
       )
       .all();
 
@@ -69,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Uniqueness checks
     const byUsername = db
-      .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+      .prepare(`SELECT id FROM profil WHERE nama_pengguna = ?`)
       .get(nama_pengguna) as any;
     if (byUsername) {
       return NextResponse.json(
@@ -80,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (normalizedEmail) {
       const byEmail = db
-        .prepare(`SELECT id FROM profiles WHERE email = ?`)
+        .prepare(`SELECT id FROM profil WHERE email = ?`)
         .get(normalizedEmail) as any;
       if (byEmail) {
         return NextResponse.json(
@@ -94,7 +91,7 @@ export async function POST(request: NextRequest) {
     const password_hash = await simpleHash(password);
 
     db.prepare(
-      `INSERT INTO profiles (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
+      `INSERT INTO profil (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
@@ -108,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     const user = db
       .prepare(
-        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles WHERE id = ?`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profil WHERE id = ?`
       )
       .get(id);
 

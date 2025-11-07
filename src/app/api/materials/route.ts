@@ -12,20 +12,20 @@ function generateId(prefix: string = "mat") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// GET all materials with their unit prices
+// GET all bahan with their unit prices
 export async function GET(req: NextRequest) {
   try {
     const db = getDb();
 
-    // Get all materials
-    const materials = db
+    // Get all bahan
+    const bahan = db
       .prepare(
         `
         SELECT 
           m.*,
           mc.name as category_name,
           ms.name as subcategory_name
-        FROM materials m
+        FROM bahan m
         LEFT JOIN material_categories mc ON m.kategori_id = mc.id
         LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
         ORDER BY m.nama
@@ -34,11 +34,11 @@ export async function GET(req: NextRequest) {
       .all();
 
     // Get unit prices for each material
-    const materialsWithUnits = materials.map((material: any) => {
+    const materialsWithUnits = bahan.map((material: any) => {
       const unitPrices = db
         .prepare(
           `
-          SELECT * FROM material_unit_prices
+          SELECT * FROM harga_bahan_satuan
           WHERE bahan_id = ?
           ORDER BY urutan_tampilan, nama_satuan
         `
@@ -53,11 +53,11 @@ export async function GET(req: NextRequest) {
 
     db.close();
 
-    return NextResponse.json({ materials: materialsWithUnits });
+    return NextResponse.json({ bahan: materialsWithUnits });
   } catch (error: any) {
-    console.error("Error fetching materials:", error);
+    console.error("Error fetching bahan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch materials" },
+      { error: error.message || "Failed to fetch bahan" },
       { status: 500 }
     );
   }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Check if material already exists
     const existing = db
-      .prepare("SELECT id FROM materials WHERE nama = ?")
+      .prepare("SELECT id FROM bahan WHERE nama = ?")
       .get(nama.trim());
 
     if (existing) {
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     // Insert material
     const materialStmt = db.prepare(`
-      INSERT INTO materials (
+      INSERT INTO bahan (
         id, nama, deskripsi, kategori_id, subkategori_id,
         satuan_dasar, spesifikasi, jumlah_stok, level_stok_minimum,
         lacak_inventori_status, butuh_dimensi_status, dibuat_pada, diperbarui_pada
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     // Insert unit prices
     const unitPriceStmt = db.prepare(`
-      INSERT INTO material_unit_prices (
+      INSERT INTO harga_bahan_satuan (
         id, bahan_id, nama_satuan, faktor_konversi,
         harga_beli, harga_jual, harga_member,
         default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
@@ -170,11 +170,11 @@ export async function POST(req: NextRequest) {
 
     // Get the created material with unit prices
     const newMaterial: any = db
-      .prepare("SELECT * FROM materials WHERE id = ?")
+      .prepare("SELECT * FROM bahan WHERE id = ?")
       .get(materialId);
 
     const newUnitPrices = db
-      .prepare("SELECT * FROM material_unit_prices WHERE bahan_id = ?")
+      .prepare("SELECT * FROM harga_bahan_satuan WHERE bahan_id = ?")
       .all(materialId);
 
     db.close();

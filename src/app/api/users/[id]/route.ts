@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // exclude from static export
 import { initializeDatabase } from "@/lib/sqlite-db";
+import crypto from "crypto";
 
 // Keep hashing consistent with login
 async function simpleHash(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return crypto.createHash("sha256").update(text).digest("hex");
 }
 
 export async function PUT(
@@ -32,12 +29,12 @@ export async function PUT(
 
     // Ensure user exists
     let existing = db
-      .prepare(`SELECT id FROM profiles WHERE id = ?`)
+      .prepare(`SELECT id FROM profil WHERE id = ?`)
       .get(id) as any;
     if (!existing && nama_pengguna) {
       // Fallback by nama_pengguna (helps migrate from legacy localStorage ids)
       const byUsername = db
-        .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+        .prepare(`SELECT id FROM profil WHERE nama_pengguna = ?`)
         .get(nama_pengguna) as any;
       if (byUsername) {
         id = byUsername.id;
@@ -83,7 +80,7 @@ export async function PUT(
       );
     }
 
-    const sql = `UPDATE profiles SET ${fields.join(
+    const sql = `UPDATE profil SET ${fields.join(
       ", "
     )}, diperbarui_pada = datetime('now') WHERE id = ?`;
     values.push(id);
@@ -91,7 +88,7 @@ export async function PUT(
 
     const user = db
       .prepare(
-        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profiles WHERE id = ?`
+        `SELECT id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada FROM profil WHERE id = ?`
       )
       .get(id);
 
@@ -126,11 +123,11 @@ export async function DELETE(
     }
 
     let existing = db
-      .prepare(`SELECT id FROM profiles WHERE id = ?`)
+      .prepare(`SELECT id FROM profil WHERE id = ?`)
       .get(id) as any;
     if (!existing && nama_pengguna) {
       const byUsername = db
-        .prepare(`SELECT id FROM profiles WHERE nama_pengguna = ?`)
+        .prepare(`SELECT id FROM profil WHERE nama_pengguna = ?`)
         .get(nama_pengguna) as any;
       if (byUsername) {
         id = byUsername.id;
@@ -144,7 +141,7 @@ export async function DELETE(
       );
     }
 
-    db.prepare(`DELETE FROM profiles WHERE id = ?`).run(id);
+    db.prepare(`DELETE FROM profil WHERE id = ?`).run(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/users/[id] error:", error);
