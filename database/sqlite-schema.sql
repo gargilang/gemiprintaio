@@ -277,31 +277,31 @@ CREATE TABLE IF NOT EXISTS material_unit_prices (
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,
   tipe_pelanggan TEXT NOT NULL CHECK(tipe_pelanggan IN ('perorangan', 'perusahaan')),
-  name TEXT NOT NULL,
-  company_name TEXT,
-  tax_id TEXT,
+  nama TEXT NOT NULL,
+  nama_perusahaan TEXT,
+  npwp TEXT,
   email TEXT,
-  phone TEXT,
-  address TEXT,
-  is_member INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  telepon TEXT,
+  alamat TEXT,
+  member_status INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
 -- Vendors table
 CREATE TABLE IF NOT EXISTS vendors (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  company_name TEXT,
+  nama TEXT NOT NULL,
+  nama_perusahaan TEXT,
   email TEXT,
-  phone TEXT,
-  address TEXT,
-  contact_person TEXT,
-  payment_terms TEXT,
-  is_active INTEGER DEFAULT 1,
-  notes TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  telepon TEXT,
+  alamat TEXT,
+  kontak_person TEXT,
+  ketentuan_bayar TEXT,
+  aktif_status INTEGER DEFAULT 1,
+  catatan TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
 -- Sales/POS Transactions

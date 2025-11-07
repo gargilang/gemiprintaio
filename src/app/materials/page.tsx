@@ -188,7 +188,11 @@ export default function MaterialsPage() {
   const filteredMaterials = useMemo(() => {
     if (!searchQuery.trim()) return materials;
     const query = searchQuery.toLowerCase();
-    return materials.filter((m) => m.name.toLowerCase().includes(query));
+    return materials.filter(
+      (m) =>
+        m.name.toLowerCase().includes(query) ||
+        (m.category_name && m.category_name.toLowerCase().includes(query))
+    );
   }, [materials, searchQuery]);
 
   // Visible materials - hanya render yang terlihat (virtualization)
@@ -443,7 +447,7 @@ export default function MaterialsPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Cari bahan..."
+                  placeholder="Cari bahan atau kategori..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"

@@ -23,17 +23,17 @@ export async function GET(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          name,
-          company_name as company,
-          tax_id,
+          nama as name,
+          nama_perusahaan as company,
+          npwp as tax_id,
           email,
-          phone,
-          address,
-          is_member,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          member_status as is_member,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM customers
-        ORDER BY name
+        ORDER BY nama
       `
       )
       .all();
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Check if customer with same name already exists
     const existing = db
-      .prepare("SELECT id FROM customers WHERE name = ?")
+      .prepare("SELECT id FROM customers WHERE nama = ?")
       .get(name.trim());
 
     if (existing) {
@@ -95,9 +95,9 @@ export async function POST(req: NextRequest) {
 
     const stmt = db.prepare(`
       INSERT INTO customers (
-        id, tipe_pelanggan, name, company_name, tax_id,
-        email, phone, address, is_member,
-        created_at, updated_at
+        id, tipe_pelanggan, nama, nama_perusahaan, npwp,
+        email, telepon, alamat, member_status,
+        dibuat_pada, diperbarui_pada
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
@@ -120,15 +120,15 @@ export async function POST(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          name,
-          company_name as company,
-          tax_id,
+          nama as name,
+          nama_perusahaan as company,
+          npwp as tax_id,
           email,
-          phone,
-          address,
-          is_member,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          member_status as is_member,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM customers WHERE id = ?
       `
       )
@@ -190,7 +190,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if another customer has the same name
     const duplicate = db
-      .prepare("SELECT id FROM customers WHERE name = ? AND id != ?")
+      .prepare("SELECT id FROM customers WHERE nama = ? AND id != ?")
       .get(name.trim(), id);
 
     if (duplicate) {
@@ -208,14 +208,14 @@ export async function PUT(req: NextRequest) {
     const stmt = db.prepare(`
       UPDATE customers
       SET tipe_pelanggan = ?,
-          name = ?,
-          company_name = ?,
-          tax_id = ?,
+          nama = ?,
+          nama_perusahaan = ?,
+          npwp = ?,
           email = ?,
-          phone = ?,
-          address = ?,
-          is_member = ?,
-          updated_at = datetime('now')
+          telepon = ?,
+          alamat = ?,
+          member_status = ?,
+          diperbarui_pada = datetime('now')
       WHERE id = ?
     `);
 
@@ -237,15 +237,15 @@ export async function PUT(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          name,
-          company_name as company,
-          tax_id,
+          nama as name,
+          nama_perusahaan as company,
+          npwp as tax_id,
           email,
-          phone,
-          address,
-          is_member,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          member_status as is_member,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM customers WHERE id = ?
       `
       )
@@ -288,10 +288,21 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check if customer is used in sales
-    const usedInSales = db
-      .prepare("SELECT id FROM sales WHERE customer_id = ? LIMIT 1")
-      .get(id);
+    // Check if customer is used in sales. The sales table may still use the
+    // English column name (customer_id) or the migrated Indonesian name
+    // (pelanggan_id). Try the Indonesian column first and fall back if it
+    // doesn't exist to avoid runtime errors during incremental migration.
+    let usedInSales = null;
+    try {
+      usedInSales = db
+        .prepare("SELECT id FROM sales WHERE pelanggan_id = ? LIMIT 1")
+        .get(id);
+    } catch (err) {
+      // pelanggan_id doesn't exist yet; try the legacy column name
+      usedInSales = db
+        .prepare("SELECT id FROM sales WHERE customer_id = ? LIMIT 1")
+        .get(id);
+    }
 
     if (usedInSales) {
       db.close();

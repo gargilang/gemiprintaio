@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainShell from "@/components/MainShell";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { NotificationToastProps } from "@/components/MainShell";
 import {
   UsersIcon,
@@ -70,6 +71,9 @@ export default function UsersPage() {
     show: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    cancelText?: string;
+    type?: "warning" | "danger" | "info";
     onConfirm: () => void;
   } | null>(null);
 
@@ -259,6 +263,9 @@ export default function UsersPage() {
       show: true,
       title: "Hapus User",
       message: `Yakin ingin menghapus user berikut?\n\nNama: ${userToDelete.nama_lengkap}\nUsername: @${userToDelete.nama_pengguna}\nEmail: ${userToDelete.email}\n\nTindakan ini tidak dapat dibatalkan!`,
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      type: "danger",
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -798,6 +805,9 @@ export default function UsersPage() {
                             show: true,
                             title: "Hapus Kredensial",
                             message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.service_name}\nAkun: ${c.account_username}\n\nTindakan ini tidak dapat dibatalkan!`,
+                            confirmText: "Ya, Hapus",
+                            cancelText: "Batal",
+                            type: "danger",
                             onConfirm: async () => {
                               setConfirmDialog(null);
                               try {
@@ -1259,55 +1269,18 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Custom Confirm Dialog */}
+      {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[#0a1b3d]">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-[#6b7280] text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </MainShell>
   );

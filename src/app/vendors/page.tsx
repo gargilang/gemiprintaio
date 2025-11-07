@@ -30,15 +30,12 @@ const VendorRow = memo(
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{vendor.name}</div>
-          {vendor.company_name && (
-            <div className="text-xs text-gray-500 mt-1">
-              {vendor.company_name}
-            </div>
-          )}
-        </td>
-        <td className="px-4 py-3 text-sm text-gray-700">
-          {vendor.contact_person || "-"}
+          <div className="font-semibold text-gray-800">
+            {vendor.company_name || vendor.name}
+          </div>
+          <div className="text-xs text-gray-800 mt-1">
+            CP: {vendor.contact_person || "-"}
+          </div>
         </td>
         <td className="px-4 py-3 text-sm text-gray-700">{vendor.email}</td>
         <td className="px-4 py-3 text-sm text-gray-700">{vendor.phone}</td>
@@ -135,6 +132,7 @@ export default function VendorsPage() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState({
     name: "",
+    company_name: "",
     email: "",
     phone: "",
     address: "",
@@ -283,6 +281,7 @@ export default function VendorsPage() {
     setEditingVendor(null);
     setFormData({
       name: "",
+      company_name: "",
       email: "",
       phone: "",
       address: "",
@@ -298,6 +297,7 @@ export default function VendorsPage() {
     setEditingVendor(vendor);
     setFormData({
       name: vendor.name,
+      company_name: vendor.company_name || "",
       email: vendor.email,
       phone: vendor.phone,
       address: vendor.address,
@@ -553,9 +553,6 @@ export default function VendorsPage() {
                     Nama Vendor
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Contact Person
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Email
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
@@ -575,7 +572,7 @@ export default function VendorsPage() {
               <tbody className="divide-y divide-gray-200">
                 {filteredVendors.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400">
                         <BuildingIcon size={48} className="mb-3 opacity-50" />
                         <p className="text-lg font-semibold text-gray-600">

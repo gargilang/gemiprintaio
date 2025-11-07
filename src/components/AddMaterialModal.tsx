@@ -531,6 +531,54 @@ export default function AddMaterialModal({
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Spesifikasi
                   </label>
+
+                  {/* Quick Specs Helper - Pindah ke ATAS */}
+                  {currentSpecs.length > 0 && (
+                    <div className="mb-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <p className="text-xs font-semibold text-emerald-800 mb-2">
+                        ⚡ Pilih Spesifikasi Cepat:
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        {Object.entries(
+                          currentSpecs.reduce(
+                            (acc: Record<string, any[]>, spec: any) => {
+                              if (!acc[spec.spec_type])
+                                acc[spec.spec_type] = [];
+                              acc[spec.spec_type].push(spec);
+                              return acc;
+                            },
+                            {} as Record<string, any[]>
+                          )
+                        ).map(([type, specs]) => (
+                          <select
+                            key={type}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setFormData({
+                                  ...formData,
+                                  specifications:
+                                    formData.specifications +
+                                    (formData.specifications ? " | " : "") +
+                                    e.target.value,
+                                });
+                                e.target.value = "";
+                              }
+                            }}
+                            tabIndex={0}
+                            className="px-3 py-1.5 text-sm border-2 border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white hover:border-emerald-400 transition-colors"
+                          >
+                            <option value="">+ {type}</option>
+                            {specs.map((spec: any) => (
+                              <option key={spec.id} value={spec.spec_value}>
+                                {spec.spec_value}
+                              </option>
+                            ))}
+                          </select>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <textarea
                     value={formData.specifications}
                     onChange={(e) =>

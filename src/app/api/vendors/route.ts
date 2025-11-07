@@ -22,19 +22,19 @@ export async function GET(req: NextRequest) {
         `
         SELECT 
           id,
-          name,
-          company_name,
+          nama as name,
+          nama_perusahaan as company_name,
           email,
-          phone,
-          address,
-          contact_person,
-          payment_terms,
-          is_active,
-          notes,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          kontak_person as contact_person,
+          ketentuan_bayar as payment_terms,
+          aktif_status as is_active,
+          catatan as notes,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM vendors
-        ORDER BY name
+        ORDER BY nama
       `
       )
       .all();
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     // Check if vendor with same name already exists
     const existing = db
-      .prepare("SELECT id FROM vendors WHERE name = ?")
+      .prepare("SELECT id FROM vendors WHERE nama = ?")
       .get(name.trim());
 
     if (existing) {
@@ -93,9 +93,9 @@ export async function POST(req: NextRequest) {
 
     const stmt = db.prepare(`
       INSERT INTO vendors (
-        id, name, company_name, email, phone, address,
-        contact_person, payment_terms, is_active, notes,
-        created_at, updated_at
+        id, nama, nama_perusahaan, email, telepon, alamat,
+        kontak_person, ketentuan_bayar, aktif_status, catatan,
+        dibuat_pada, diperbarui_pada
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
@@ -118,17 +118,17 @@ export async function POST(req: NextRequest) {
         `
         SELECT 
           id,
-          name,
-          company_name,
+          nama as name,
+          nama_perusahaan as company_name,
           email,
-          phone,
-          address,
-          contact_person,
-          payment_terms,
-          is_active,
-          notes,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          kontak_person as contact_person,
+          ketentuan_bayar as payment_terms,
+          aktif_status as is_active,
+          catatan as notes,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM vendors WHERE id = ?
       `
       )
@@ -189,7 +189,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if another vendor has the same name
     const duplicate = db
-      .prepare("SELECT id FROM vendors WHERE name = ? AND id != ?")
+      .prepare("SELECT id FROM vendors WHERE nama = ? AND id != ?")
       .get(name.trim(), id);
 
     if (duplicate) {
@@ -202,16 +202,16 @@ export async function PUT(req: NextRequest) {
 
     const stmt = db.prepare(`
       UPDATE vendors
-      SET name = ?,
-          company_name = ?,
+      SET nama = ?,
+          nama_perusahaan = ?,
           email = ?,
-          phone = ?,
-          address = ?,
-          contact_person = ?,
-          payment_terms = ?,
-          is_active = ?,
-          notes = ?,
-          updated_at = datetime('now')
+          telepon = ?,
+          alamat = ?,
+          kontak_person = ?,
+          ketentuan_bayar = ?,
+          aktif_status = ?,
+          catatan = ?,
+          diperbarui_pada = datetime('now')
       WHERE id = ?
     `);
 
@@ -233,17 +233,17 @@ export async function PUT(req: NextRequest) {
         `
         SELECT 
           id,
-          name,
-          company_name,
+          nama as name,
+          nama_perusahaan as company_name,
           email,
-          phone,
-          address,
-          contact_person,
-          payment_terms,
-          is_active,
-          notes,
-          created_at,
-          updated_at
+          telepon as phone,
+          alamat as address,
+          kontak_person as contact_person,
+          ketentuan_bayar as payment_terms,
+          aktif_status as is_active,
+          catatan as notes,
+          dibuat_pada as created_at,
+          diperbarui_pada as updated_at
         FROM vendors WHERE id = ?
       `
       )
