@@ -22,19 +22,18 @@ export async function GET(req: NextRequest) {
         `
         SELECT 
           id,
-          nama as name,
-          nama_perusahaan as company_name,
+          nama_perusahaan,
           email,
-          telepon as phone,
-          alamat as address,
-          kontak_person as contact_person,
-          ketentuan_bayar as payment_terms,
-          aktif_status as is_active,
-          catatan as notes,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          kontak_person,
+          ketentuan_bayar,
+          aktif_status,
+          catatan,
+          dibuat_pada,
+          diperbarui_pada
         FROM vendors
-        ORDER BY nama
+        ORDER BY nama_perusahaan
       `
       )
       .all();
@@ -56,35 +55,34 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      name,
-      company_name,
+      nama_perusahaan,
       email,
-      phone,
-      address,
-      contact_person,
-      payment_terms,
-      is_active,
-      notes,
+      telepon,
+      alamat,
+      kontak_person,
+      ketentuan_bayar,
+      aktif_status,
+      catatan,
     } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama_perusahaan || !nama_perusahaan.trim()) {
       return NextResponse.json(
-        { error: "Nama vendor harus diisi" },
+        { error: "Nama perusahaan harus diisi" },
         { status: 400 }
       );
     }
 
     const db = getDb();
 
-    // Check if vendor with same name already exists
+    // Check if vendor with same company name already exists
     const existing = db
-      .prepare("SELECT id FROM vendors WHERE nama = ?")
-      .get(name.trim());
+      .prepare("SELECT id FROM vendors WHERE nama_perusahaan = ?")
+      .get(nama_perusahaan.trim());
 
     if (existing) {
       db.close();
       return NextResponse.json(
-        { error: "Vendor dengan nama ini sudah ada" },
+        { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
       );
     }
@@ -93,24 +91,23 @@ export async function POST(req: NextRequest) {
 
     const stmt = db.prepare(`
       INSERT INTO vendors (
-        id, nama, nama_perusahaan, email, telepon, alamat,
+        id, nama_perusahaan, email, telepon, alamat,
         kontak_person, ketentuan_bayar, aktif_status, catatan,
         dibuat_pada, diperbarui_pada
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
     stmt.run(
       vendorId,
-      name.trim(),
-      company_name?.trim() || null,
+      nama_perusahaan.trim(),
       email?.trim() || null,
-      phone?.trim() || null,
-      address?.trim() || null,
-      contact_person?.trim() || null,
-      payment_terms?.trim() || null,
-      is_active !== undefined ? (is_active ? 1 : 0) : 1,
-      notes?.trim() || null
+      telepon?.trim() || null,
+      alamat?.trim() || null,
+      kontak_person?.trim() || null,
+      ketentuan_bayar?.trim() || null,
+      aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
+      catatan?.trim() || null
     );
 
     const newVendor = db
@@ -118,17 +115,16 @@ export async function POST(req: NextRequest) {
         `
         SELECT 
           id,
-          nama as name,
-          nama_perusahaan as company_name,
+          nama_perusahaan,
           email,
-          telepon as phone,
-          alamat as address,
-          kontak_person as contact_person,
-          ketentuan_bayar as payment_terms,
-          aktif_status as is_active,
-          catatan as notes,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          kontak_person,
+          ketentuan_bayar,
+          aktif_status,
+          catatan,
+          dibuat_pada,
+          diperbarui_pada
         FROM vendors WHERE id = ?
       `
       )
@@ -152,24 +148,23 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const {
       id,
-      name,
-      company_name,
+      nama_perusahaan,
       email,
-      phone,
-      address,
-      contact_person,
-      payment_terms,
-      is_active,
-      notes,
+      telepon,
+      alamat,
+      kontak_person,
+      ketentuan_bayar,
+      aktif_status,
+      catatan,
     } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
     }
 
-    if (!name || !name.trim()) {
+    if (!nama_perusahaan || !nama_perusahaan.trim()) {
       return NextResponse.json(
-        { error: "Nama vendor harus diisi" },
+        { error: "Nama perusahaan harus diisi" },
         { status: 400 }
       );
     }
@@ -187,23 +182,22 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Check if another vendor has the same name
+    // Check if another vendor has the same company name
     const duplicate = db
-      .prepare("SELECT id FROM vendors WHERE nama = ? AND id != ?")
-      .get(name.trim(), id);
+      .prepare("SELECT id FROM vendors WHERE nama_perusahaan = ? AND id != ?")
+      .get(nama_perusahaan.trim(), id);
 
     if (duplicate) {
       db.close();
       return NextResponse.json(
-        { error: "Vendor dengan nama ini sudah ada" },
+        { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
       );
     }
 
     const stmt = db.prepare(`
       UPDATE vendors
-      SET nama = ?,
-          nama_perusahaan = ?,
+      SET nama_perusahaan = ?,
           email = ?,
           telepon = ?,
           alamat = ?,
@@ -216,15 +210,14 @@ export async function PUT(req: NextRequest) {
     `);
 
     stmt.run(
-      name.trim(),
-      company_name?.trim() || null,
+      nama_perusahaan.trim(),
       email?.trim() || null,
-      phone?.trim() || null,
-      address?.trim() || null,
-      contact_person?.trim() || null,
-      payment_terms?.trim() || null,
-      is_active !== undefined ? (is_active ? 1 : 0) : 1,
-      notes?.trim() || null,
+      telepon?.trim() || null,
+      alamat?.trim() || null,
+      kontak_person?.trim() || null,
+      ketentuan_bayar?.trim() || null,
+      aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
+      catatan?.trim() || null,
       id
     );
 
@@ -233,17 +226,16 @@ export async function PUT(req: NextRequest) {
         `
         SELECT 
           id,
-          nama as name,
-          nama_perusahaan as company_name,
+          nama_perusahaan,
           email,
-          telepon as phone,
-          alamat as address,
-          kontak_person as contact_person,
-          ketentuan_bayar as payment_terms,
-          aktif_status as is_active,
-          catatan as notes,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          kontak_person,
+          ketentuan_bayar,
+          aktif_status,
+          catatan,
+          dibuat_pada,
+          diperbarui_pada
         FROM vendors WHERE id = ?
       `
       )

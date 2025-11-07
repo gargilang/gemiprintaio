@@ -514,15 +514,15 @@ export default function AddMaterialModal({
                         className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-700">
-                        Perlu input dimensi (P×L) saat penjualan
+                        Perlu input dimensi (Panjang × Lebar) saat penjualan
                       </span>
                     </label>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
                     • Track stok: Nonaktifkan untuk barang konsumsi (lem, tinta,
                     dll)
-                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi (qty =
-                    P×L meter)
+                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi
+                    (Kuantitas = Panjang × Lebar meter)
                   </p>
                 </div>
 
@@ -536,7 +536,7 @@ export default function AddMaterialModal({
                   {currentSpecs.length > 0 && (
                     <div className="mb-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                       <p className="text-xs font-semibold text-emerald-800 mb-2">
-                        ⚡ Pilih Spesifikasi Cepat:
+                        Pilih Spesifikasi Cepat:
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         {Object.entries(

@@ -291,8 +291,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- Vendors table
 CREATE TABLE IF NOT EXISTS vendors (
   id TEXT PRIMARY KEY,
-  nama TEXT NOT NULL,
-  nama_perusahaan TEXT,
+  nama_perusahaan TEXT NOT NULL,
   email TEXT,
   telepon TEXT,
   alamat TEXT,

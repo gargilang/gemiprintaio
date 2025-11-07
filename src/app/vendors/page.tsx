@@ -31,19 +31,19 @@ const VendorRow = memo(
       >
         <td className="px-4 py-3">
           <div className="font-semibold text-gray-800">
-            {vendor.company_name || vendor.name}
+            {vendor.nama_perusahaan}
           </div>
           <div className="text-xs text-gray-800 mt-1">
-            CP: {vendor.contact_person || "-"}
+            CP: {vendor.kontak_person || "-"}
           </div>
         </td>
         <td className="px-4 py-3 text-sm text-gray-700">{vendor.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">{vendor.phone}</td>
+        <td className="px-4 py-3 text-sm text-gray-700">{vendor.telepon}</td>
         <td className="px-4 py-3 text-sm text-gray-600">
-          {vendor.payment_terms || "-"}
+          {vendor.ketentuan_bayar || "-"}
         </td>
         <td className="px-4 py-3 text-center">
-          {vendor.is_active === 1 ? (
+          {vendor.aktif_status === 1 ? (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
               <CheckIcon size={14} />
               Aktif
@@ -111,16 +111,15 @@ interface User {
 
 interface Vendor {
   id: string;
-  name: string;
-  company_name?: string;
+  nama_perusahaan: string;
   email: string;
-  phone: string;
-  address: string;
-  contact_person?: string;
-  payment_terms?: string;
-  is_active: number;
-  notes?: string;
-  created_at: string;
+  telepon: string;
+  alamat: string;
+  kontak_person?: string;
+  ketentuan_bayar?: string;
+  aktif_status: number;
+  catatan?: string;
+  dibuat_pada: string;
 }
 
 export default function VendorsPage() {
@@ -131,15 +130,14 @@ export default function VendorsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    company_name: "",
+    nama_perusahaan: "",
     email: "",
-    phone: "",
-    address: "",
-    contact_person: "",
-    payment_terms: "",
-    is_active: 1,
-    notes: "",
+    telepon: "",
+    alamat: "",
+    kontak_person: "",
+    ketentuan_bayar: "",
+    aktif_status: 1,
+    catatan: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState<
@@ -170,18 +168,18 @@ export default function VendorsPage() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (v) =>
-          v.name.toLowerCase().includes(query) ||
+          v.nama_perusahaan.toLowerCase().includes(query) ||
           v.email.toLowerCase().includes(query) ||
-          v.phone.includes(query) ||
-          (v.contact_person && v.contact_person.toLowerCase().includes(query))
+          v.telepon.includes(query) ||
+          (v.kontak_person && v.kontak_person.toLowerCase().includes(query))
       );
     }
 
     // Filter by active status
     if (filterActive === "active") {
-      filtered = filtered.filter((v) => v.is_active === 1);
+      filtered = filtered.filter((v) => v.aktif_status === 1);
     } else if (filterActive === "inactive") {
-      filtered = filtered.filter((v) => v.is_active === 0);
+      filtered = filtered.filter((v) => v.aktif_status === 0);
     }
 
     return filtered;
@@ -280,15 +278,14 @@ export default function VendorsPage() {
   const handleAdd = () => {
     setEditingVendor(null);
     setFormData({
-      name: "",
-      company_name: "",
+      nama_perusahaan: "",
       email: "",
-      phone: "",
-      address: "",
-      contact_person: "",
-      payment_terms: "",
-      is_active: 1,
-      notes: "",
+      telepon: "",
+      alamat: "",
+      kontak_person: "",
+      ketentuan_bayar: "",
+      aktif_status: 1,
+      catatan: "",
     });
     setShowModal(true);
   };
@@ -296,23 +293,22 @@ export default function VendorsPage() {
   const handleEdit = (vendor: Vendor) => {
     setEditingVendor(vendor);
     setFormData({
-      name: vendor.name,
-      company_name: vendor.company_name || "",
-      email: vendor.email,
-      phone: vendor.phone,
-      address: vendor.address,
-      contact_person: vendor.contact_person || "",
-      payment_terms: vendor.payment_terms || "",
-      is_active: vendor.is_active,
-      notes: vendor.notes || "",
+      nama_perusahaan: vendor.nama_perusahaan || "",
+      email: vendor.email || "",
+      telepon: vendor.telepon || "",
+      alamat: vendor.alamat || "",
+      kontak_person: vendor.kontak_person || "",
+      ketentuan_bayar: vendor.ketentuan_bayar || "",
+      aktif_status: vendor.aktif_status,
+      catatan: vendor.catatan || "",
     });
     setShowModal(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      showMsg("error", "Nama vendor wajib diisi");
+    if (!formData.nama_perusahaan.trim()) {
+      showMsg("error", "Nama perusahaan wajib diisi");
       return;
     }
 
@@ -352,10 +348,10 @@ export default function VendorsPage() {
     setConfirmDialog({
       show: true,
       title: "Hapus Vendor",
-      message: `Yakin ingin menghapus vendor "${vendor.name}"?\n\nEmail: ${
-        vendor.email
-      }\nTelepon: ${vendor.phone}\nStatus: ${
-        vendor.is_active === 1 ? "Aktif" : "Non-Aktif"
+      message: `Yakin ingin menghapus vendor "${
+        vendor.nama_perusahaan
+      }"?\n\nEmail: ${vendor.email}\nTelepon: ${vendor.telepon}\nStatus: ${
+        vendor.aktif_status === 1 ? "Aktif" : "Non-Aktif"
       }\n\nData akan dihapus permanen dari database.`,
       confirmText: "Ya, Hapus",
       cancelText: "Batal",
@@ -379,7 +375,7 @@ export default function VendorsPage() {
   };
 
   const totalVendors = vendors.length;
-  const activeVendors = vendors.filter((v) => v.is_active === 1).length;
+  const activeVendors = vendors.filter((v) => v.aktif_status === 1).length;
   const inactiveVendors = totalVendors - activeVendors;
 
   if (loading) {
@@ -618,13 +614,16 @@ export default function VendorsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Nama Vendor <span className="text-red-500">*</span>
+                    Nama Perusahaan <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
+                    value={formData.nama_perusahaan}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({
+                        ...formData,
+                        nama_perusahaan: e.target.value,
+                      })
                     }
                     placeholder="Contoh: PT. Supplier Indonesia"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -638,11 +637,11 @@ export default function VendorsPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.contact_person}
+                    value={formData.kontak_person}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        contact_person: e.target.value,
+                        kontak_person: e.target.value,
                       })
                     }
                     placeholder="Nama PIC"
@@ -656,9 +655,9 @@ export default function VendorsPage() {
                   </label>
                   <input
                     type="tel"
-                    value={formData.phone}
+                    value={formData.telepon}
                     onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
+                      setFormData({ ...formData, telepon: e.target.value })
                     }
                     placeholder="08xx-xxxx-xxxx"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -685,9 +684,9 @@ export default function VendorsPage() {
                     Alamat
                   </label>
                   <textarea
-                    value={formData.address}
+                    value={formData.alamat}
                     onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
+                      setFormData({ ...formData, alamat: e.target.value })
                     }
                     placeholder="Alamat lengkap vendor"
                     rows={3}
@@ -697,15 +696,15 @@ export default function VendorsPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Termin Bayar
+                    Ketentuan Bayar
                   </label>
                   <input
                     type="text"
-                    value={formData.payment_terms}
+                    value={formData.ketentuan_bayar}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        payment_terms: e.target.value,
+                        ketentuan_bayar: e.target.value,
                       })
                     }
                     placeholder="Contoh: NET 30, COD, TOP 14 hari"
@@ -722,9 +721,9 @@ export default function VendorsPage() {
                     Catatan
                   </label>
                   <textarea
-                    value={formData.notes}
+                    value={formData.catatan}
                     onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
+                      setFormData({ ...formData, catatan: e.target.value })
                     }
                     placeholder="Catatan tambahan (opsional)"
                     rows={2}
@@ -736,18 +735,18 @@ export default function VendorsPage() {
                   <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border-2 border-green-200">
                     <input
                       type="checkbox"
-                      id="is_active"
-                      checked={formData.is_active === 1}
+                      id="aktif_status"
+                      checked={formData.aktif_status === 1}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          is_active: e.target.checked ? 1 : 0,
+                          aktif_status: e.target.checked ? 1 : 0,
                         })
                       }
                       className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
                     />
                     <label
-                      htmlFor="is_active"
+                      htmlFor="aktif_status"
                       className="flex-1 text-sm cursor-pointer"
                     >
                       <span className="font-semibold text-green-900 block">

@@ -29,18 +29,17 @@ const CustomerRow = memo(
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{customer.name}</div>
-          {customer.company && (
-            <div className="text-xs text-gray-500 mt-1">{customer.company}</div>
-          )}
+          <div className="font-semibold text-gray-800">
+            {customer.nama || customer.nama_perusahaan}
+          </div>
         </td>
         <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">{customer.phone}</td>
+        <td className="px-4 py-3 text-sm text-gray-700">{customer.telepon}</td>
         <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-          {customer.address}
+          {customer.alamat}
         </td>
         <td className="px-4 py-3 text-center">
-          {customer.is_member === 1 ? (
+          {customer.member_status === 1 ? (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">
               <CheckIcon size={14} />
               Member
@@ -108,14 +107,16 @@ interface User {
 
 interface Customer {
   id: string;
-  name: string;
+  nama: string;
   email: string;
-  phone: string;
-  address: string;
-  company?: string;
-  is_member: number;
-  notes?: string;
-  created_at: string;
+  telepon: string;
+  alamat: string;
+  nama_perusahaan?: string;
+  tipe_pelanggan: string;
+  npwp?: string;
+  member_status: number;
+  dibuat_pada: string;
+  diperbarui_pada: string;
 }
 
 export default function CustomersPage() {
@@ -126,13 +127,14 @@ export default function CustomersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
+    nama: "",
     email: "",
-    phone: "",
-    address: "",
-    company: "",
-    is_member: 0,
-    notes: "",
+    telepon: "",
+    alamat: "",
+    nama_perusahaan: "",
+    tipe_pelanggan: "RETAIL",
+    npwp: "",
+    member_status: 0,
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMember, setFilterMember] = useState<
@@ -163,18 +165,18 @@ export default function CustomersPage() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.name.toLowerCase().includes(query) ||
+          c.nama.toLowerCase().includes(query) ||
           c.email.toLowerCase().includes(query) ||
-          c.phone.includes(query) ||
-          (c.company && c.company.toLowerCase().includes(query))
+          c.telepon.includes(query) ||
+          (c.nama_perusahaan && c.nama_perusahaan.toLowerCase().includes(query))
       );
     }
 
     // Filter by member status
     if (filterMember === "member") {
-      filtered = filtered.filter((c) => c.is_member === 1);
+      filtered = filtered.filter((c) => c.member_status === 1);
     } else if (filterMember === "non-member") {
-      filtered = filtered.filter((c) => c.is_member === 0);
+      filtered = filtered.filter((c) => c.member_status === 0);
     }
 
     return filtered;
@@ -273,13 +275,14 @@ export default function CustomersPage() {
   const handleAdd = () => {
     setEditingCustomer(null);
     setFormData({
-      name: "",
+      nama: "",
       email: "",
-      phone: "",
-      address: "",
-      company: "",
-      is_member: 0,
-      notes: "",
+      telepon: "",
+      alamat: "",
+      nama_perusahaan: "",
+      tipe_pelanggan: "RETAIL",
+      npwp: "",
+      member_status: 0,
     });
     setShowModal(true);
   };
@@ -287,20 +290,21 @@ export default function CustomersPage() {
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     setFormData({
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      address: customer.address,
-      company: customer.company || "",
-      is_member: customer.is_member,
-      notes: customer.notes || "",
+      nama: customer.nama || "",
+      email: customer.email || "",
+      telepon: customer.telepon || "",
+      alamat: customer.alamat || "",
+      nama_perusahaan: customer.nama_perusahaan || "",
+      tipe_pelanggan: customer.tipe_pelanggan || "RETAIL",
+      npwp: customer.npwp || "",
+      member_status: customer.member_status,
     });
     setShowModal(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    if (!formData.nama.trim()) {
       showMsg("error", "Nama pelanggan wajib diisi");
       return;
     }
@@ -341,10 +345,10 @@ export default function CustomersPage() {
     setConfirmDialog({
       show: true,
       title: "Hapus Pelanggan",
-      message: `Yakin ingin menghapus pelanggan "${customer.name}"?\n\nEmail: ${
+      message: `Yakin ingin menghapus pelanggan "${customer.nama}"?\n\nEmail: ${
         customer.email
-      }\nTelepon: ${customer.phone}\nStatus: ${
-        customer.is_member === 1 ? "Member" : "Regular"
+      }\nTelepon: ${customer.telepon}\nStatus: ${
+        customer.member_status === 1 ? "Member" : "Regular"
       }\n\nData akan dihapus permanen dari database.`,
       confirmText: "Ya, Hapus",
       cancelText: "Batal",
@@ -368,7 +372,7 @@ export default function CustomersPage() {
   };
 
   const totalCustomers = customers.length;
-  const totalMembers = customers.filter((c) => c.is_member === 1).length;
+  const totalMembers = customers.filter((c) => c.member_status === 1).length;
   const totalNonMembers = totalCustomers - totalMembers;
 
   if (loading) {
@@ -597,9 +601,9 @@ export default function CustomersPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
+                    value={formData.nama}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({ ...formData, nama: e.target.value })
                     }
                     placeholder="Contoh: John Doe"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -628,9 +632,9 @@ export default function CustomersPage() {
                   </label>
                   <input
                     type="tel"
-                    value={formData.phone}
+                    value={formData.telepon}
                     onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
+                      setFormData({ ...formData, telepon: e.target.value })
                     }
                     placeholder="08xx-xxxx-xxxx"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -643,9 +647,12 @@ export default function CustomersPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.company}
+                    value={formData.nama_perusahaan}
                     onChange={(e) =>
-                      setFormData({ ...formData, company: e.target.value })
+                      setFormData({
+                        ...formData,
+                        nama_perusahaan: e.target.value,
+                      })
                     }
                     placeholder="Nama perusahaan (opsional)"
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -657,9 +664,9 @@ export default function CustomersPage() {
                     Alamat
                   </label>
                   <textarea
-                    value={formData.address}
+                    value={formData.alamat}
                     onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
+                      setFormData({ ...formData, alamat: e.target.value })
                     }
                     placeholder="Alamat lengkap"
                     rows={3}
@@ -668,36 +675,21 @@ export default function CustomersPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Catatan
-                  </label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder="Catatan tambahan (opsional)"
-                    rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
                   <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
                     <input
                       type="checkbox"
-                      id="is_member"
-                      checked={formData.is_member === 1}
+                      id="member_status"
+                      checked={formData.member_status === 1}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          is_member: e.target.checked ? 1 : 0,
+                          member_status: e.target.checked ? 1 : 0,
                         })
                       }
                       className="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
                     />
                     <label
-                      htmlFor="is_member"
+                      htmlFor="member_status"
                       className="flex-1 text-sm cursor-pointer"
                     >
                       <span className="font-semibold text-amber-900 block">

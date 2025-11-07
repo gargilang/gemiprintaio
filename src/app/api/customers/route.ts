@@ -23,17 +23,17 @@ export async function GET(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          nama as name,
-          nama_perusahaan as company,
-          npwp as tax_id,
+          nama,
+          nama_perusahaan,
+          npwp,
           email,
-          telepon as phone,
-          alamat as address,
-          member_status as is_member,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          member_status,
+          dibuat_pada,
+          diperbarui_pada
         FROM customers
-        ORDER BY nama
+        ORDER BY nama_perusahaan, nama
       `
       )
       .all();
@@ -55,17 +55,17 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      name,
+      nama,
       email,
-      phone,
-      address,
-      company,
+      telepon,
+      alamat,
+      nama_perusahaan,
       tipe_pelanggan,
-      tax_id,
-      is_member,
+      npwp,
+      member_status,
     } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama pelanggan harus diisi" },
         { status: 400 }
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     // Check if customer with same name already exists
     const existing = db
       .prepare("SELECT id FROM customers WHERE nama = ?")
-      .get(name.trim());
+      .get(nama.trim());
 
     if (existing) {
       db.close();
@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
 
     // Determine tipe_pelanggan
     const customerType =
-      company && company.trim() ? tipe_pelanggan || "perusahaan" : "perorangan";
+      nama_perusahaan && nama_perusahaan.trim()
+        ? tipe_pelanggan || "perusahaan"
+        : "perorangan";
 
     const stmt = db.prepare(`
       INSERT INTO customers (
@@ -105,13 +107,13 @@ export async function POST(req: NextRequest) {
     stmt.run(
       customerId,
       customerType,
-      name.trim(),
-      company?.trim() || null,
-      tax_id?.trim() || null,
+      nama.trim(),
+      nama_perusahaan?.trim() || null,
+      npwp?.trim() || null,
       email?.trim() || null,
-      phone?.trim() || null,
-      address?.trim() || null,
-      is_member ? 1 : 0
+      telepon?.trim() || null,
+      alamat?.trim() || null,
+      member_status ? 1 : 0
     );
 
     const newCustomer = db
@@ -120,15 +122,15 @@ export async function POST(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          nama as name,
-          nama_perusahaan as company,
-          npwp as tax_id,
+          nama,
+          nama_perusahaan,
+          npwp,
           email,
-          telepon as phone,
-          alamat as address,
-          member_status as is_member,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          member_status,
+          dibuat_pada,
+          diperbarui_pada
         FROM customers WHERE id = ?
       `
       )
@@ -152,21 +154,21 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const {
       id,
-      name,
+      nama,
       email,
-      phone,
-      address,
-      company,
+      telepon,
+      alamat,
+      nama_perusahaan,
       tipe_pelanggan,
-      tax_id,
-      is_member,
+      npwp,
+      member_status,
     } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
     }
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama pelanggan harus diisi" },
         { status: 400 }
@@ -191,7 +193,7 @@ export async function PUT(req: NextRequest) {
     // Check if another customer has the same name
     const duplicate = db
       .prepare("SELECT id FROM customers WHERE nama = ? AND id != ?")
-      .get(name.trim(), id);
+      .get(nama.trim(), id);
 
     if (duplicate) {
       db.close();
@@ -203,7 +205,9 @@ export async function PUT(req: NextRequest) {
 
     // Determine tipe_pelanggan
     const customerType =
-      company && company.trim() ? tipe_pelanggan || "perusahaan" : "perorangan";
+      nama_perusahaan && nama_perusahaan.trim()
+        ? tipe_pelanggan || "perusahaan"
+        : "perorangan";
 
     const stmt = db.prepare(`
       UPDATE customers
@@ -221,13 +225,13 @@ export async function PUT(req: NextRequest) {
 
     stmt.run(
       customerType,
-      name.trim(),
-      company?.trim() || null,
-      tax_id?.trim() || null,
+      nama.trim(),
+      nama_perusahaan?.trim() || null,
+      npwp?.trim() || null,
       email?.trim() || null,
-      phone?.trim() || null,
-      address?.trim() || null,
-      is_member ? 1 : 0,
+      telepon?.trim() || null,
+      alamat?.trim() || null,
+      member_status ? 1 : 0,
       id
     );
 
@@ -237,15 +241,15 @@ export async function PUT(req: NextRequest) {
         SELECT 
           id,
           tipe_pelanggan,
-          nama as name,
-          nama_perusahaan as company,
-          npwp as tax_id,
+          nama,
+          nama_perusahaan,
+          npwp,
           email,
-          telepon as phone,
-          alamat as address,
-          member_status as is_member,
-          dibuat_pada as created_at,
-          diperbarui_pada as updated_at
+          telepon,
+          alamat,
+          member_status,
+          dibuat_pada,
+          diperbarui_pada
         FROM customers WHERE id = ?
       `
       )
