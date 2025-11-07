@@ -5,6 +5,9 @@ import MainShell from "@/components/MainShell";
 import AddMaterialModal from "@/components/AddMaterialModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BoxIcon } from "@/components/icons/ContentIcons";
+import NotificationToast, {
+  NotificationToastProps,
+} from "@/components/NotificationToast";
 
 // Memoized Material Row Component - mencegah re-render yang tidak perlu
 const MaterialRow = memo(
@@ -19,9 +22,11 @@ const MaterialRow = memo(
     onEdit: (material: any) => void;
     onDelete: (material: any) => void;
   }) => {
-    const defaultUnit = material.unit_prices?.find((up: any) => up.is_default);
+    const defaultUnit = material.unit_prices?.find(
+      (up: any) => up.default_status
+    );
     const otherUnits = material.unit_prices?.filter(
-      (up: any) => !up.is_default
+      (up: any) => !up.default_status
     );
 
     return (
@@ -32,13 +37,13 @@ const MaterialRow = memo(
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{material.name}</div>
-          {material.specifications && (
+          <div className="font-semibold text-gray-800">{material.nama}</div>
+          {material.spesifikasi && (
             <div className="text-xs text-gray-500 mt-1">
-              {material.specifications}
+              {material.spesifikasi}
             </div>
           )}
-          {!material.track_inventory && (
+          {!material.lacak_inventori_status && (
             <span className="inline-block mt-1 px-2 py-0.5 bg-gray-200 text-gray-600 rounded text-xs font-semibold">
               No Tracking
             </span>
@@ -56,7 +61,7 @@ const MaterialRow = memo(
         </td>
         <td className="px-4 py-3">
           <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded font-semibold text-sm">
-            {material.base_unit}
+            {material.satuan_dasar}
           </span>
         </td>
         <td className="px-4 py-3">
@@ -64,13 +69,13 @@ const MaterialRow = memo(
             {defaultUnit && (
               <div className="text-xs">
                 <span className="font-semibold text-emerald-600">
-                  {defaultUnit.unit_name}
+                  {defaultUnit.nama_satuan}
                 </span>
-                : Rp {defaultUnit.selling_price.toLocaleString("id-ID")}
-                {defaultUnit.member_price > 0 && (
+                : Rp {defaultUnit.harga_jual.toLocaleString("id-ID")}
+                {defaultUnit.harga_member > 0 && (
                   <span className="text-blue-600">
                     {" "}
-                    / Rp {defaultUnit.member_price.toLocaleString("id-ID")}
+                    / Rp {defaultUnit.harga_member.toLocaleString("id-ID")}
                   </span>
                 )}
               </div>
@@ -83,12 +88,12 @@ const MaterialRow = memo(
                 <div className="mt-1 ml-2 space-y-0.5">
                   {otherUnits.map((up: any) => (
                     <div key={up.id}>
-                      <span className="font-semibold">{up.unit_name}</span>: Rp{" "}
-                      {up.selling_price.toLocaleString("id-ID")}
-                      {up.member_price > 0 && (
+                      <span className="font-semibold">{up.nama_satuan}</span>:
+                      Rp {up.harga_jual.toLocaleString("id-ID")}
+                      {up.harga_member > 0 && (
                         <span className="text-blue-600">
                           {" "}
-                          / Rp {up.member_price.toLocaleString("id-ID")}
+                          / Rp {up.harga_member.toLocaleString("id-ID")}
                         </span>
                       )}
                     </div>
@@ -99,13 +104,13 @@ const MaterialRow = memo(
           </div>
         </td>
         <td className="px-4 py-3 text-right">
-          {material.track_inventory ? (
+          {material.lacak_inventori_status ? (
             <>
               <div className="font-semibold text-gray-800">
-                {material.stock_quantity.toLocaleString("id-ID")}{" "}
-                {material.base_unit}
+                {material.jumlah_stok.toLocaleString("id-ID")}{" "}
+                {material.satuan_dasar}
               </div>
-              {material.stock_quantity <= material.min_stock_level && (
+              {material.jumlah_stok <= material.level_stok_minimum && (
                 <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
                   Stok Menipis!
                 </span>
@@ -170,6 +175,7 @@ export default function MaterialsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -190,7 +196,7 @@ export default function MaterialsPage() {
     const query = searchQuery.toLowerCase();
     return materials.filter(
       (m) =>
-        m.name.toLowerCase().includes(query) ||
+        m.nama.toLowerCase().includes(query) ||
         (m.category_name && m.category_name.toLowerCase().includes(query))
     );
   }, [materials, searchQuery]);
@@ -270,9 +276,10 @@ export default function MaterialsPage() {
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (message: string) => {
     loadMaterials();
-    console.log("Material saved successfully!");
+    setNotice({ type: "success", message });
+    setTimeout(() => setNotice(null), 3000);
   };
 
   const handleEdit = (material: any) => {
@@ -284,10 +291,10 @@ export default function MaterialsPage() {
     setConfirmDialog({
       show: true,
       title: "Hapus Bahan",
-      message: `Yakin ingin menghapus bahan "${material.name}"?\n\nKategori: ${
+      message: `Yakin ingin menghapus bahan "${material.nama}"?\n\nKategori: ${
         material.category_name || "-"
       }\nSpesifikasi: ${
-        material.specifications || "-"
+        material.spesifikasi || "-"
       }\n\nData akan dihapus permanen dari database.`,
       confirmText: "Ya, Hapus",
       cancelText: "Batal",
@@ -301,6 +308,11 @@ export default function MaterialsPage() {
 
           if (res.ok) {
             loadMaterials();
+            setNotice({
+              type: "success",
+              message: `Bahan "${material.nama}" berhasil dihapus`,
+            });
+            setTimeout(() => setNotice(null), 3000);
           } else {
             const data = await res.json();
             alert(`Error: ${data.error}`);
@@ -321,12 +333,12 @@ export default function MaterialsPage() {
   // Calculate totals
   const totalItems = materials.length;
   const totalStockValue = materials.reduce((sum, m) => {
-    const defaultUnit = m.unit_prices?.find((up: any) => up.is_default);
-    const price = defaultUnit?.purchase_price || 0;
-    return sum + m.stock_quantity * price;
+    const defaultUnit = m.unit_prices?.find((up: any) => up.default_status);
+    const price = defaultUnit?.harga_beli || 0;
+    return sum + m.jumlah_stok * price;
   }, 0);
   const lowStockItems = materials.filter(
-    (m) => m.track_inventory && m.stock_quantity <= m.min_stock_level
+    (m) => m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum
   ).length;
 
   return (
@@ -586,6 +598,11 @@ export default function MaterialsPage() {
             onConfirm={confirmDialog.onConfirm}
             onCancel={() => setConfirmDialog(null)}
           />
+        )}
+
+        {/* Notification Toast */}
+        {notice && (
+          <NotificationToast type={notice.type} message={notice.message} />
         )}
       </div>
     </MainShell>

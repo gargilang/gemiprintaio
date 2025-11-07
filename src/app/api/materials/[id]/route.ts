@@ -11,9 +11,10 @@ function getDb() {
 // GET single material by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const db = getDb();
 
     const material: any = db
@@ -24,8 +25,8 @@ export async function GET(
           mc.name as category_name,
           ms.name as subcategory_name
         FROM materials m
-        LEFT JOIN material_categories mc ON m.category_id = mc.id
-        LEFT JOIN material_subcategories ms ON m.subcategory_id = ms.id
+        LEFT JOIN material_categories mc ON m.kategori_id = mc.id
+        LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
         WHERE m.id = ?
       `
       )
@@ -43,8 +44,8 @@ export async function GET(
       .prepare(
         `
         SELECT * FROM material_unit_prices
-        WHERE material_id = ?
-        ORDER BY display_order, unit_name
+        WHERE bahan_id = ?
+        ORDER BY urutan_tampilan, nama_satuan
       `
       )
       .all(params.id);
@@ -69,21 +70,25 @@ export async function GET(
 // PUT update material
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const body = await req.json();
+    console.log("🔍 PUT request received - ID:", params.id);
+    console.log("📦 Body received:", body);
+
     const {
-      name,
-      description,
-      category_id,
-      subcategory_id,
-      base_unit,
-      specifications,
-      stock_quantity,
-      min_stock_level,
-      track_inventory,
-      requires_dimension,
+      nama,
+      deskripsi,
+      kategori_id,
+      subkategori_id,
+      satuan_dasar,
+      spesifikasi,
+      jumlah_stok,
+      level_stok_minimum,
+      lacak_inventori_status,
+      butuh_dimensi_status,
       unit_prices,
     } = body;
 
@@ -93,6 +98,8 @@ export async function PUT(
     const existing = db
       .prepare("SELECT id FROM materials WHERE id = ?")
       .get(params.id);
+
+    console.log("🔎 Material lookup result:", existing);
 
     if (!existing) {
       db.close();
@@ -105,40 +112,40 @@ export async function PUT(
     // Update material
     const updateStmt = db.prepare(`
       UPDATE materials
-      SET name = ?, description = ?, category_id = ?, subcategory_id = ?,
-          base_unit = ?, specifications = ?, stock_quantity = ?,
-          min_stock_level = ?, track_inventory = ?, requires_dimension = ?, 
-          updated_at = datetime('now')
+      SET nama = ?, deskripsi = ?, kategori_id = ?, subkategori_id = ?,
+          satuan_dasar = ?, spesifikasi = ?, jumlah_stok = ?,
+          level_stok_minimum = ?, lacak_inventori_status = ?, butuh_dimensi_status = ?, 
+          diperbarui_pada = datetime('now')
       WHERE id = ?
     `);
 
     updateStmt.run(
-      name?.trim() || null,
-      description?.trim() || null,
-      category_id || null,
-      subcategory_id || null,
-      base_unit?.trim() || null,
-      specifications?.trim() || null,
-      stock_quantity || 0,
-      min_stock_level || 0,
-      track_inventory !== false ? 1 : 0,
-      requires_dimension ? 1 : 0,
+      nama?.trim() || null,
+      deskripsi?.trim() || null,
+      kategori_id || null,
+      subkategori_id || null,
+      satuan_dasar?.trim() || null,
+      spesifikasi?.trim() || null,
+      jumlah_stok || 0,
+      level_stok_minimum || 0,
+      lacak_inventori_status !== false ? 1 : 0,
+      butuh_dimensi_status ? 1 : 0,
       params.id
     );
 
     // Update unit prices if provided
     if (unit_prices && Array.isArray(unit_prices)) {
       // Delete existing unit prices
-      db.prepare("DELETE FROM material_unit_prices WHERE material_id = ?").run(
+      db.prepare("DELETE FROM material_unit_prices WHERE bahan_id = ?").run(
         params.id
       );
 
       // Insert new unit prices
       const unitPriceStmt = db.prepare(`
         INSERT INTO material_unit_prices (
-          id, material_id, unit_name, conversion_factor,
-          purchase_price, selling_price, member_price,
-          is_default, display_order, created_at, updated_at
+          id, bahan_id, nama_satuan, faktor_konversi,
+          harga_beli, harga_jual, harga_member,
+          default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `);
@@ -150,12 +157,12 @@ export async function PUT(
         unitPriceStmt.run(
           unitPriceId,
           params.id,
-          up.unit_name,
-          up.conversion_factor,
-          up.purchase_price || 0,
-          up.selling_price || 0,
-          up.member_price || 0,
-          up.is_default ? 1 : 0,
+          up.nama_satuan,
+          up.faktor_konversi,
+          up.harga_beli || 0,
+          up.harga_jual || 0,
+          up.harga_member || 0,
+          up.default_status ? 1 : 0,
           index
         );
       });
@@ -167,7 +174,7 @@ export async function PUT(
       .get(params.id);
 
     const updatedUnitPrices = db
-      .prepare("SELECT * FROM material_unit_prices WHERE material_id = ?")
+      .prepare("SELECT * FROM material_unit_prices WHERE bahan_id = ?")
       .all(params.id);
 
     db.close();
@@ -191,9 +198,10 @@ export async function PUT(
 // DELETE material
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const db = getDb();
 
     // Check if material exists

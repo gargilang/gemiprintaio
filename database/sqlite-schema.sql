@@ -240,37 +240,37 @@ FROM material_quick_specs WHERE category_id = 'cat-kertas';
 -- Materials/Bahan table (updated with category/subcategory references)
 CREATE TABLE IF NOT EXISTS materials (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  category_id TEXT,
-  subcategory_id TEXT,
-  base_unit TEXT NOT NULL, -- Satuan terkecil untuk tracking stok (pcs, meter, lembar, dll)
-  specifications TEXT,
-  stock_quantity REAL DEFAULT 0, -- Stok dalam satuan base_unit
-  min_stock_level REAL DEFAULT 0,
-  track_inventory INTEGER DEFAULT 1, -- 1 = track stok, 0 = tidak perlu track (contoh: lem, minyak goreng, tinta)
-  requires_dimension INTEGER DEFAULT 0, -- 1 = perlu input P×L di POS (banner, vinyl, flexi), 0 = input qty biasa
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (category_id) REFERENCES material_categories(id) ON DELETE SET NULL,
-  FOREIGN KEY (subcategory_id) REFERENCES material_subcategories(id) ON DELETE SET NULL
+  nama TEXT NOT NULL,
+  deskripsi TEXT,
+  kategori_id TEXT,
+  subkategori_id TEXT,
+  satuan_dasar TEXT NOT NULL, -- Satuan terkecil untuk tracking stok (pcs, meter, lembar, dll)
+  spesifikasi TEXT,
+  jumlah_stok REAL DEFAULT 0, -- Stok dalam satuan satuan_dasar
+  level_stok_minimum REAL DEFAULT 0,
+  lacak_inventori_status INTEGER DEFAULT 1, -- 1 = track stok, 0 = tidak perlu track (contoh: lem, minyak goreng, tinta)
+  butuh_dimensi_status INTEGER DEFAULT 0, -- 1 = perlu input P×L di POS (banner, vinyl, flexi), 0 = input qty biasa
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (kategori_id) REFERENCES material_categories(id) ON DELETE SET NULL,
+  FOREIGN KEY (subkategori_id) REFERENCES material_subcategories(id) ON DELETE SET NULL
 );
 
 -- Material Unit Prices (Multiple satuan dengan harga berbeda)
 CREATE TABLE IF NOT EXISTS material_unit_prices (
   id TEXT PRIMARY KEY,
-  material_id TEXT NOT NULL,
-  unit_name TEXT NOT NULL, -- pcs, lusin, pack, box, meter, roll, dll
-  conversion_factor REAL NOT NULL, -- Konversi ke base_unit (contoh: 1 lusin = 12 pcs, maka conversion_factor = 12)
-  purchase_price REAL DEFAULT 0,
-  selling_price REAL DEFAULT 0,
-  member_price REAL DEFAULT 0,
-  is_default INTEGER DEFAULT 0, -- Satuan default untuk transaksi
-  display_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
-  UNIQUE(material_id, unit_name)
+  bahan_id TEXT NOT NULL,
+  nama_satuan TEXT NOT NULL, -- pcs, lusin, pack, box, meter, roll, dll
+  faktor_konversi REAL NOT NULL, -- Konversi ke satuan_dasar (contoh: 1 lusin = 12 pcs, maka faktor_konversi = 12)
+  harga_beli REAL DEFAULT 0,
+  harga_jual REAL DEFAULT 0,
+  harga_member REAL DEFAULT 0,
+  default_status INTEGER DEFAULT 0, -- Satuan default untuk transaksi
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (bahan_id) REFERENCES materials(id) ON DELETE CASCADE,
+  UNIQUE(bahan_id, nama_satuan)
 );
 
 -- Customers table

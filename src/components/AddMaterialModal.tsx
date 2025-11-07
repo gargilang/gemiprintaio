@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 interface UnitPrice {
   id?: string;
-  unit_name: string;
-  conversion_factor: number;
-  purchase_price: number;
-  selling_price: number;
-  member_price: number;
-  is_default: boolean;
-  display_order?: number;
+  nama_satuan: string;
+  faktor_konversi: number;
+  harga_beli: number;
+  harga_jual: number;
+  harga_member: number;
+  default_status: boolean;
+  urutan_tampilan?: number;
 }
 
 interface AddMaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (message: string) => void;
   editData?: any | null;
 }
 
@@ -34,6 +34,17 @@ export default function AddMaterialModal({
   const [unitsData, setUnitsData] = useState<any[]>([]);
   const [specsData, setSpecsData] = useState<any[]>([]);
   const [loadingMaster, setLoadingMaster] = useState(true);
+
+  // Helper function to format number as Rupiah
+  const formatRupiah = (value: number): string => {
+    if (!value || value === 0) return "Rp 0";
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -105,16 +116,16 @@ export default function AddMaterialModal({
     if (isOpen && editData) {
       // Edit mode
       setFormData({
-        name: editData.name,
-        description: editData.description || "",
+        name: editData.nama,
+        description: editData.deskripsi || "",
         category: editData.category_name || "",
         subcategory: editData.subcategory_name || "",
-        base_unit: editData.base_unit || "",
-        specifications: editData.specifications || "",
-        stock_quantity: editData.stock_quantity?.toString() || "0",
-        min_stock_level: editData.min_stock_level?.toString() || "0",
-        track_inventory: editData.track_inventory !== 0,
-        requires_dimension: editData.requires_dimension === 1,
+        base_unit: editData.satuan_dasar || "",
+        specifications: editData.spesifikasi || "",
+        stock_quantity: editData.jumlah_stok?.toString() || "0",
+        min_stock_level: editData.level_stok_minimum?.toString() || "0",
+        track_inventory: editData.lacak_inventori_status !== 0,
+        requires_dimension: editData.butuh_dimensi_status === 1,
       });
 
       setUnitPrices(editData.unit_prices || []);
@@ -142,12 +153,12 @@ export default function AddMaterialModal({
       // Initialize with one default unit price
       setUnitPrices([
         {
-          unit_name: firstUnit,
-          conversion_factor: 1,
-          purchase_price: 0,
-          selling_price: 0,
-          member_price: 0,
-          is_default: true,
+          nama_satuan: firstUnit,
+          faktor_konversi: 1,
+          harga_beli: 0,
+          harga_jual: 0,
+          harga_member: 0,
+          default_status: true,
         },
       ]);
     }
@@ -176,8 +187,8 @@ export default function AddMaterialModal({
 
     // Update default unit price if exists
     const updatedUnitPrices = unitPrices.map((up) => {
-      if (up.conversion_factor === 1) {
-        return { ...up, unit_name: newBaseUnit };
+      if (up.faktor_konversi === 1) {
+        return { ...up, nama_satuan: newBaseUnit };
       }
       return up;
     });
@@ -186,15 +197,18 @@ export default function AddMaterialModal({
   };
 
   const addUnitPrice = () => {
+    // Get default unit for reference pricing
+    const defaultUnit = unitPrices.find((up) => up.default_status);
+
     setUnitPrices([
       ...unitPrices,
       {
-        unit_name: "",
-        conversion_factor: 1,
-        purchase_price: 0,
-        selling_price: 0,
-        member_price: 0,
-        is_default: false,
+        nama_satuan: "",
+        faktor_konversi: 1,
+        harga_beli: defaultUnit?.harga_beli || 0,
+        harga_jual: defaultUnit?.harga_jual || 0,
+        harga_member: defaultUnit?.harga_member || 0,
+        default_status: false,
       },
     ]);
   };
@@ -213,99 +227,160 @@ export default function AddMaterialModal({
     value: any
   ) => {
     const updated = [...unitPrices];
-    updated[index] = { ...updated[index], [field]: value };
+    const defaultUnit = unitPrices.find((up) => up.default_status);
+
+    // If changing conversion factor, auto-calculate prices based on default unit
+    if (
+      field === "faktor_konversi" &&
+      defaultUnit &&
+      index !== unitPrices.indexOf(defaultUnit)
+    ) {
+      const newConversion = parseFloat(value) || 1;
+      updated[index] = {
+        ...updated[index],
+        faktor_konversi: newConversion,
+        harga_beli: Math.round(defaultUnit.harga_beli * newConversion),
+        harga_jual: Math.round(defaultUnit.harga_jual * newConversion),
+        harga_member:
+          defaultUnit.harga_member > 0
+            ? Math.round(defaultUnit.harga_member * newConversion)
+            : 0,
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
 
     // If setting as default, unset others
-    if (field === "is_default" && value === true) {
+    if (field === "default_status" && value === true) {
       updated.forEach((up, i) => {
-        if (i !== index) up.is_default = false;
+        if (i !== index) up.default_status = false;
       });
     }
 
     setUnitPrices(updated);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    // Validation
-    if (!formData.name.trim()) {
-      alert("Nama bahan harus diisi");
-      return;
-    }
-
-    if (!formData.base_unit.trim()) {
-      alert("Satuan dasar harus diisi");
-      return;
-    }
-
-    if (unitPrices.length === 0) {
-      alert("Minimal harus ada 1 harga satuan");
-      return;
-    }
-
-    // Check if at least one unit price is set as default
-    const hasDefault = unitPrices.some((up) => up.is_default);
-    if (!hasDefault) {
-      alert("Minimal harus ada 1 satuan yang dijadikan default");
-      return;
-    }
-
-    // Validate unit prices
-    for (const up of unitPrices) {
-      if (!up.unit_name || !up.unit_name.trim()) {
-        alert("Nama satuan tidak boleh kosong");
+      // Validation
+      if (!formData.name.trim()) {
+        alert("Nama bahan harus diisi");
         return;
       }
-      if (up.conversion_factor <= 0) {
-        alert("Faktor konversi harus lebih dari 0");
+
+      if (!formData.base_unit.trim()) {
+        alert("Satuan dasar harus diisi");
         return;
       }
-    }
 
-    setLoading(true);
+      if (unitPrices.length === 0) {
+        alert("Minimal harus ada 1 harga satuan");
+        return;
+      }
 
-    try {
-      const payload = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        category_id:
-          categoriesData.find((c) => c.name === formData.category)?.id || null,
-        subcategory_id:
-          subcategoriesData.find((s) => s.name === formData.subcategory)?.id ||
-          null,
-        base_unit: formData.base_unit.trim(),
-        specifications: formData.specifications.trim() || null,
-        stock_quantity: parseFloat(formData.stock_quantity) || 0,
-        min_stock_level: parseFloat(formData.min_stock_level) || 0,
-        track_inventory: formData.track_inventory,
-        requires_dimension: formData.requires_dimension,
-        unit_prices: unitPrices,
-      };
+      // Check if at least one unit price is set as default
+      const hasDefault = unitPrices.some((up) => up.default_status);
+      if (!hasDefault) {
+        alert("Minimal harus ada 1 satuan yang dijadikan default");
+        return;
+      }
 
-      const url = editData ? `/api/materials/${editData.id}` : "/api/materials";
-      const method = editData ? "PUT" : "POST";
+      // Validate unit prices
+      for (const up of unitPrices) {
+        if (!up.nama_satuan || !up.nama_satuan.trim()) {
+          alert("Nama satuan tidak boleh kosong");
+          return;
+        }
+        if (up.faktor_konversi <= 0) {
+          alert("Faktor konversi harus lebih dari 0");
+          return;
+        }
+      }
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      setLoading(true);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
+      try {
+        const payload = {
+          nama: formData.name.trim(),
+          deskripsi: formData.description.trim() || null,
+          kategori_id:
+            categoriesData.find((c) => c.name === formData.category)?.id ||
+            editData?.kategori_id ||
+            null,
+          subkategori_id:
+            subcategoriesData.find((s) => s.name === formData.subcategory)
+              ?.id ||
+            editData?.subkategori_id ||
+            null,
+          satuan_dasar: formData.base_unit.trim(),
+          spesifikasi: formData.specifications.trim() || null,
+          jumlah_stok: parseFloat(formData.stock_quantity) || 0,
+          level_stok_minimum: parseFloat(formData.min_stock_level) || 0,
+          lacak_inventori_status: formData.track_inventory,
+          butuh_dimensi_status: formData.requires_dimension,
+          unit_prices: unitPrices,
+        };
 
-      onSuccess();
-      onClose();
-    } catch (err) {
-      console.error(err);
-      alert(
-        `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        const url = editData
+          ? `/api/materials/${editData.id}`
+          : "/api/materials";
+        const method = editData ? "PUT" : "POST";
+
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
+
+        // Close modal first, then show notification in parent
+        onClose();
+        onSuccess(`Bahan berhasil ${editData ? "diupdate" : "ditambahkan"}!`);
+      } catch (err) {
+        console.error(err);
+        alert(
+          `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      formData,
+      unitPrices,
+      categoriesData,
+      subcategoriesData,
+      editData,
+      onClose,
+      onSuccess,
+    ]
+  );
+
+  // Keyboard event handler - Enter to submit, ESC to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === "Enter" && !e.shiftKey) {
+        // Prevent submit if user is typing in textarea
+        const target = e.target as HTMLElement;
+        if (target.tagName === "TEXTAREA") return;
+
+        e.preventDefault();
+        handleSubmit(e as any);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleSubmit, onClose]);
 
   if (!isOpen) return null;
 
@@ -657,9 +732,9 @@ export default function AddMaterialModal({
                           <input
                             type="radio"
                             name="default_unit"
-                            checked={up.is_default}
+                            checked={up.default_status}
                             onChange={() =>
-                              updateUnitPrice(index, "is_default", true)
+                              updateUnitPrice(index, "default_status", true)
                             }
                             className="w-4 h-4 text-blue-500"
                           />
@@ -700,9 +775,13 @@ export default function AddMaterialModal({
                         </label>
                         <select
                           required
-                          value={up.unit_name}
+                          value={up.nama_satuan}
                           onChange={(e) =>
-                            updateUnitPrice(index, "unit_name", e.target.value)
+                            updateUnitPrice(
+                              index,
+                              "nama_satuan",
+                              e.target.value
+                            )
                           }
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           disabled={loadingMaster}
@@ -741,11 +820,11 @@ export default function AddMaterialModal({
                           type="number"
                           step="0.01"
                           required
-                          value={up.conversion_factor}
+                          value={up.faktor_konversi}
                           onChange={(e) =>
                             updateUnitPrice(
                               index,
-                              "conversion_factor",
+                              "faktor_konversi",
                               parseFloat(e.target.value) || 1
                             )
                           }
@@ -753,7 +832,7 @@ export default function AddMaterialModal({
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          1 {up.unit_name} = {up.conversion_factor}{" "}
+                          1 {up.nama_satuan} = {up.faktor_konversi}{" "}
                           {formData.base_unit}
                         </p>
                       </div>
@@ -766,17 +845,20 @@ export default function AddMaterialModal({
                         <input
                           type="number"
                           step="0.01"
-                          value={up.purchase_price}
+                          value={up.harga_beli}
                           onChange={(e) =>
                             updateUnitPrice(
                               index,
-                              "purchase_price",
+                              "harga_beli",
                               parseFloat(e.target.value) || 0
                             )
                           }
                           placeholder="0"
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                          {formatRupiah(up.harga_beli)}
+                        </p>
                       </div>
 
                       {/* Harga Jual */}
@@ -787,17 +869,20 @@ export default function AddMaterialModal({
                         <input
                           type="number"
                           step="0.01"
-                          value={up.selling_price}
+                          value={up.harga_jual}
                           onChange={(e) =>
                             updateUnitPrice(
                               index,
-                              "selling_price",
+                              "harga_jual",
                               parseFloat(e.target.value) || 0
                             )
                           }
                           placeholder="0"
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                          {formatRupiah(up.harga_jual)}
+                        </p>
                       </div>
 
                       {/* Harga Member */}
@@ -808,17 +893,20 @@ export default function AddMaterialModal({
                         <input
                           type="number"
                           step="0.01"
-                          value={up.member_price}
+                          value={up.harga_member}
                           onChange={(e) =>
                             updateUnitPrice(
                               index,
-                              "member_price",
+                              "harga_member",
                               parseFloat(e.target.value) || 0
                             )
                           }
                           placeholder="0"
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                          {formatRupiah(up.harga_member)}
+                        </p>
                       </div>
                     </div>
                   </div>

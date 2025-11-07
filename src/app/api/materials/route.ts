@@ -26,9 +26,9 @@ export async function GET(req: NextRequest) {
           mc.name as category_name,
           ms.name as subcategory_name
         FROM materials m
-        LEFT JOIN material_categories mc ON m.category_id = mc.id
-        LEFT JOIN material_subcategories ms ON m.subcategory_id = ms.id
-        ORDER BY m.name
+        LEFT JOIN material_categories mc ON m.kategori_id = mc.id
+        LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
+        ORDER BY m.nama
       `
       )
       .all();
@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
         .prepare(
           `
           SELECT * FROM material_unit_prices
-          WHERE material_id = ?
-          ORDER BY display_order, unit_name
+          WHERE bahan_id = ?
+          ORDER BY urutan_tampilan, nama_satuan
         `
         )
         .all(material.id);
@@ -68,27 +68,27 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      name,
-      description,
-      category_id,
-      subcategory_id,
-      base_unit,
-      specifications,
-      stock_quantity,
-      min_stock_level,
-      track_inventory,
-      requires_dimension,
+      nama,
+      deskripsi,
+      kategori_id,
+      subkategori_id,
+      satuan_dasar,
+      spesifikasi,
+      jumlah_stok,
+      level_stok_minimum,
+      lacak_inventori_status,
+      butuh_dimensi_status,
       unit_prices, // Array of unit price objects
     } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama bahan harus diisi" },
         { status: 400 }
       );
     }
 
-    if (!base_unit || !base_unit.trim()) {
+    if (!satuan_dasar || !satuan_dasar.trim()) {
       return NextResponse.json(
         { error: "Satuan dasar harus diisi" },
         { status: 400 }
@@ -106,8 +106,8 @@ export async function POST(req: NextRequest) {
 
     // Check if material already exists
     const existing = db
-      .prepare("SELECT id FROM materials WHERE name = ?")
-      .get(name.trim());
+      .prepare("SELECT id FROM materials WHERE nama = ?")
+      .get(nama.trim());
 
     if (existing) {
       db.close();
@@ -122,33 +122,33 @@ export async function POST(req: NextRequest) {
     // Insert material
     const materialStmt = db.prepare(`
       INSERT INTO materials (
-        id, name, description, category_id, subcategory_id,
-        base_unit, specifications, stock_quantity, min_stock_level,
-        track_inventory, requires_dimension, created_at, updated_at
+        id, nama, deskripsi, kategori_id, subkategori_id,
+        satuan_dasar, spesifikasi, jumlah_stok, level_stok_minimum,
+        lacak_inventori_status, butuh_dimensi_status, dibuat_pada, diperbarui_pada
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
     materialStmt.run(
       materialId,
-      name.trim(),
-      description?.trim() || null,
-      category_id || null,
-      subcategory_id || null,
-      base_unit.trim(),
-      specifications?.trim() || null,
-      stock_quantity || 0,
-      min_stock_level || 0,
-      track_inventory !== false ? 1 : 0,
-      requires_dimension ? 1 : 0
+      nama.trim(),
+      deskripsi?.trim() || null,
+      kategori_id || null,
+      subkategori_id || null,
+      satuan_dasar.trim(),
+      spesifikasi?.trim() || null,
+      jumlah_stok || 0,
+      level_stok_minimum || 0,
+      lacak_inventori_status !== false ? 1 : 0,
+      butuh_dimensi_status ? 1 : 0
     );
 
     // Insert unit prices
     const unitPriceStmt = db.prepare(`
       INSERT INTO material_unit_prices (
-        id, material_id, unit_name, conversion_factor,
-        purchase_price, selling_price, member_price,
-        is_default, display_order, created_at, updated_at
+        id, bahan_id, nama_satuan, faktor_konversi,
+        harga_beli, harga_jual, harga_member,
+        default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
@@ -158,12 +158,12 @@ export async function POST(req: NextRequest) {
       unitPriceStmt.run(
         unitPriceId,
         materialId,
-        up.unit_name,
-        up.conversion_factor,
-        up.purchase_price || 0,
-        up.selling_price || 0,
-        up.member_price || 0,
-        up.is_default ? 1 : 0,
+        up.nama_satuan,
+        up.faktor_konversi,
+        up.harga_beli || 0,
+        up.harga_jual || 0,
+        up.harga_member || 0,
+        up.default_status ? 1 : 0,
         index
       );
     });
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       .get(materialId);
 
     const newUnitPrices = db
-      .prepare("SELECT * FROM material_unit_prices WHERE material_id = ?")
+      .prepare("SELECT * FROM material_unit_prices WHERE bahan_id = ?")
       .all(materialId);
 
     db.close();

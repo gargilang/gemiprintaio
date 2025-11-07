@@ -22,7 +22,6 @@ PELANGGAN,customers,created_at,TEXT,dibuat_pada
 PELANGGAN,customers,updated_at,TEXT,diperbarui_pada
 ,,,,
 VENDOR,vendors,id,TEXT,id
-VENDOR,vendors,name,TEXT,nama
 VENDOR,vendors,company_name,TEXT,nama_perusahaan
 VENDOR,vendors,email,TEXT,email
 VENDOR,vendors,phone,TEXT,telepon

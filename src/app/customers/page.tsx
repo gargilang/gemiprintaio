@@ -32,6 +32,11 @@ const CustomerRow = memo(
           <div className="font-semibold text-gray-800">
             {customer.nama || customer.nama_perusahaan}
           </div>
+          {customer.nama && customer.nama_perusahaan && (
+            <div className="text-xs text-gray-800 mt-1">
+              {customer.nama_perusahaan}
+            </div>
+          )}
         </td>
         <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
         <td className="px-4 py-3 text-sm text-gray-700">{customer.telepon}</td>
