@@ -136,12 +136,16 @@ export async function POST(request: NextRequest) {
     }
 
     // H: BIAYA OPERASIONAL
-    // =IF(ROW()=2, 0, IF(OR(C289="BIAYA", C289="TABUNGAN"), H288 + E289, H288))
+    // =IF(ROW()=2, 0, IF(OR(C289="BIAYA", C289="TABUNGAN", C289="KOMISI"), H288 + E289, H288))
     let runningBiayaOperasional;
     if (isFirstEntry) {
       runningBiayaOperasional = 0;
     } else {
-      if (kategori_transaksi === "BIAYA" || kategori_transaksi === "TABUNGAN") {
+      if (
+        kategori_transaksi === "BIAYA" ||
+        kategori_transaksi === "TABUNGAN" ||
+        kategori_transaksi === "KOMISI"
+      ) {
         runningBiayaOperasional = previousBiayaOperasional + kredit;
       } else {
         runningBiayaOperasional = previousBiayaOperasional;
@@ -316,10 +320,12 @@ export async function POST(request: NextRequest) {
       nextDisplayOrder
     );
 
-    // RECALCULATION: Hitung ulang semua transaksi berdasarkan display_order DESC
-    // Ini memastikan perhitungan mengikuti urutan input, bukan urutan tanggal
+    // RECALCULATION: Hitung ulang semua transaksi berdasarkan display_order ASC
+    // Ini memastikan perhitungan kumulatif dimulai dari transaksi terlama ke terbaru
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
+      .prepare(
+        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+      )
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -383,7 +389,11 @@ export async function POST(request: NextRequest) {
 
       // BIAYA OPERASIONAL
       if (entry.override_biaya_operasional !== 1) {
-        if (entryKategori === "BIAYA" || entryKategori === "TABUNGAN") {
+        if (
+          entryKategori === "BIAYA" ||
+          entryKategori === "TABUNGAN" ||
+          entryKategori === "KOMISI"
+        ) {
           calcBiayaOperasional += entryKredit;
         }
       } else {
