@@ -15,12 +15,12 @@ export async function GET() {
     }
 
     // Get only active transactions (not archived)
-    // Sort by display_order DESC (newest first = highest display_order)
+    // Sort by urutan_tampilan DESC (newest first = highest urutan_tampilan)
     const cashBooks = db
       .prepare(
-        `SELECT * FROM cash_book 
-         WHERE archived_at IS NULL 
-         ORDER BY display_order DESC, created_at DESC`
+        `SELECT * FROM keuangan 
+         WHERE diarsipkan_pada IS NULL 
+         ORDER BY urutan_tampilan DESC, dibuat_pada DESC`
       )
       .all();
 
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       debit = 0,
       kredit = 0,
       keperluan = "",
-      notes = "",
-      created_by = "",
+      catatan = "",
+      dibuat_oleh = "",
     } = body;
 
     // Validasi input
@@ -78,23 +78,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the highest display_order to assign next value
+    // Get the highest urutan_tampilan to assign next value
     const maxDisplayOrder = db
-      .prepare(`SELECT MAX(display_order) as max_order FROM cash_book`)
+      .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
       .get() as any;
 
     const nextDisplayOrder = (maxDisplayOrder?.max_order || 0) + 1;
 
     // Hitung saldo terkini dan running totals dari transaksi terakhir
-    // Based on display_order DESC (latest entry = highest display_order)
+    // Based on urutan_tampilan DESC (latest entry = highest urutan_tampilan)
     const lastEntry = db
       .prepare(
         `SELECT 
           saldo, omzet, biaya_operasional, biaya_bahan, laba_bersih,
           bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
           kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil
-        FROM cash_book 
-        ORDER BY display_order DESC 
+        FROM keuangan 
+        ORDER BY urutan_tampilan DESC 
         LIMIT 1`
       )
       .get() as any;
@@ -279,12 +279,12 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     const stmt = db.prepare(`
-      INSERT INTO cash_book (
+      INSERT INTO keuangan (
         id, tanggal, kategori_transaksi, debit, kredit, keperluan,
         omzet, biaya_operasional, biaya_bahan, saldo, laba_bersih,
         kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil,
         bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
-        notes, created_by, created_at, updated_at, display_order
+        catatan, dibuat_oleh, dibuat_pada, diperbarui_pada, urutan_tampilan
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -313,18 +313,18 @@ export async function POST(request: NextRequest) {
       runningBagiHasilAnwar,
       runningBagiHasilSuri,
       runningBagiHasilGemi,
-      notes,
-      created_by,
+      catatan,
+      dibuat_oleh,
       now,
       now,
       nextDisplayOrder
     );
 
-    // RECALCULATION: Hitung ulang semua transaksi berdasarkan display_order ASC
+    // RECALCULATION: Hitung ulang semua transaksi berdasarkan urutan_tampilan ASC
     // Ini memastikan perhitungan kumulatif dimulai dari transaksi terlama ke terbaru
     const allEntries = db
       .prepare(
-        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+        `SELECT * FROM keuangan WHERE diarsipkan_pada IS NULL ORDER BY urutan_tampilan ASC`
       )
       .all() as any[];
 
@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
     let calcKasbonDinil = 0;
 
     const updateStmt = db.prepare(`
-      UPDATE cash_book 
+      UPDATE keuangan 
       SET omzet = ?, 
           biaya_operasional = ?,
           biaya_bahan = ?,
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
           kasbon_suri = ?,
           kasbon_cahaya = ?,
           kasbon_dinil = ?,
-          updated_at = ?
+          diperbarui_pada = ?
       WHERE id = ?
     `);
 
@@ -509,7 +509,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newEntry = db.prepare(`SELECT * FROM cash_book WHERE id = ?`).get(id);
+    const newEntry = db.prepare(`SELECT * FROM keuangan WHERE id = ?`).get(id);
 
     return NextResponse.json(
       { message: "Transaksi berhasil ditambahkan", cashBook: newEntry },

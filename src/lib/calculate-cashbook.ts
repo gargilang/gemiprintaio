@@ -18,11 +18,11 @@ interface CashBookEntry {
   debit: number;
   kredit: number;
   keperluan: string;
-  notes?: string;
-  display_order: number;
-  created_at: string;
-  updated_at?: string;
-  archived_at?: string | null;
+  catatan?: string;
+  urutan_tampilan: number;
+  dibuat_pada: string;
+  diperbarui_pada?: string;
+  diarsipkan_pada?: string | null;
 
   // Calculated fields
   omzet: number;
@@ -55,22 +55,22 @@ interface CashBookEntry {
 
 /**
  * Recalculate all cash book entries based on entry order (oldest to newest)
- * Sorts by display_order ASC (lower = older entry)
- * For entries with same display_order, uses created_at ASC as tiebreaker
+ * Sorts by urutan_tampilan ASC (lower = older entry)
+ * For entries with same urutan_tampilan, uses dibuat_pada ASC as tiebreaker
  *
  * @param db - Better-sqlite3 Database instance
- * @param whereClause - Optional WHERE clause (default: "archived_at IS NULL")
+ * @param whereClause - Optional WHERE clause (default: "diarsipkan_pada IS NULL")
  * @returns Number of entries recalculated
  */
 export async function recalculateCashbook(
   db: Database.Database,
-  whereClause: string = "archived_at IS NULL"
+  whereClause: string = "diarsipkan_pada IS NULL"
 ): Promise<number> {
-  // Fetch all entries sorted by display_order ASC (oldest first), then created_at ASC
-  // Lower display_order = older transaction in the books
+  // Fetch all entries sorted by urutan_tampilan ASC (oldest first), then dibuat_pada ASC
+  // Lower urutan_tampilan = older transaction in the books
   const rows = db
     .prepare(
-      `SELECT * FROM cash_book WHERE ${whereClause} ORDER BY display_order ASC, created_at ASC`
+      `SELECT * FROM keuangan WHERE ${whereClause} ORDER BY urutan_tampilan ASC, dibuat_pada ASC`
     )
     .all() as CashBookEntry[];
 
@@ -79,7 +79,7 @@ export async function recalculateCashbook(
   }
 
   const updateStmt = db.prepare(`
-    UPDATE cash_book SET
+    UPDATE keuangan SET
       omzet = ?, biaya_operasional = ?, biaya_bahan = ?, saldo = ?, laba_bersih = ?,
       kasbon_anwar = ?, kasbon_suri = ?, kasbon_cahaya = ?, kasbon_dinil = ?,
       bagi_hasil_anwar = ?, bagi_hasil_suri = ?, bagi_hasil_gemi = ?

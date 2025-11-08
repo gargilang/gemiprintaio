@@ -24,13 +24,13 @@ export async function POST(request: NextRequest) {
     const db = new Database(DB_FILE);
     db.pragma("foreign_keys = ON");
 
-    // Restore transactions: set archived_at and archived_label back to NULL
+    // Restore transactions: set diarsipkan_pada and label_arsip back to NULL
     const result = db
       .prepare(
         `
-      UPDATE cash_book 
-      SET archived_at = NULL, archived_label = NULL
-      WHERE archived_label = ? AND archived_at = ?
+      UPDATE keuangan 
+      SET diarsipkan_pada = NULL, label_arsip = NULL
+      WHERE label_arsip = ? AND diarsipkan_pada = ?
     `
       )
       .run(label, archived_at);

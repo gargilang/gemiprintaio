@@ -55,7 +55,7 @@ export async function PATCH(
 
     values.push(id);
 
-    const query = `UPDATE cash_book SET ${updates.join(", ")} WHERE id = ?`;
+    const query = `UPDATE keuangan SET ${updates.join(", ")} WHERE id = ?`;
     console.log("Override Query:", query);
     console.log("Override Values:", values);
     console.log("Override ID:", id);
@@ -66,7 +66,7 @@ export async function PATCH(
     if (result.changes === 0) {
       db.close();
       return NextResponse.json(
-        { error: "Cash book entry not found", id, query },
+        { error: "Keuangan entry not found", id, query },
         { status: 404 }
       );
     }
@@ -109,13 +109,13 @@ export async function DELETE(
     db.pragma("foreign_keys = ON");
 
     // Remove override flag
-    const query = `UPDATE cash_book SET override_${field} = 0 WHERE id = ?`;
+    const query = `UPDATE keuangan SET override_${field} = 0 WHERE id = ?`;
     const result = db.prepare(query).run(id);
 
     if (result.changes === 0) {
       db.close();
       return NextResponse.json(
-        { error: "Cash book entry not found" },
+        { error: "Keuangan entry not found" },
         { status: 404 }
       );
     }

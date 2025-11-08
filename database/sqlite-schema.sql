@@ -431,8 +431,8 @@ CREATE TABLE IF NOT EXISTS employees (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
--- Tabel Buku Kas (Cash Book) - Manual Input
-CREATE TABLE IF NOT EXISTS cash_book (
+-- Tabel Buku Kas (Keuangan) - Manual Input
+CREATE TABLE IF NOT EXISTS keuangan (
   id TEXT PRIMARY KEY,
   tanggal TEXT NOT NULL,
   kategori_transaksi TEXT NOT NULL CHECK(kategori_transaksi IN (
@@ -464,16 +464,29 @@ CREATE TABLE IF NOT EXISTS cash_book (
   bagi_hasil_suri REAL DEFAULT 0,
   bagi_hasil_gemi REAL DEFAULT 0,
   
-  notes TEXT,
-  created_by TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
   
   -- Archive fields
-  archived_at TEXT,
-  archived_label TEXT,
+  diarsipkan_pada TEXT,
+  label_arsip TEXT,
   
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  urutan_tampilan INTEGER DEFAULT 0,
+  override_saldo INTEGER DEFAULT 0,
+  override_omzet INTEGER DEFAULT 0,
+  override_biaya_operasional INTEGER DEFAULT 0,
+  override_biaya_bahan INTEGER DEFAULT 0,
+  override_laba_bersih INTEGER DEFAULT 0,
+  override_kasbon_anwar INTEGER DEFAULT 0,
+  override_kasbon_suri INTEGER DEFAULT 0,
+  override_kasbon_cahaya INTEGER DEFAULT 0,
+  override_kasbon_dinil INTEGER DEFAULT 0,
+  override_bagi_hasil_anwar INTEGER DEFAULT 0,
+  override_bagi_hasil_suri INTEGER DEFAULT 0,
+  override_bagi_hasil_gemi INTEGER DEFAULT 0,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
 
 -- Tabel Kasbon (Employee Cash Advance)
@@ -486,11 +499,11 @@ CREATE TABLE IF NOT EXISTS kasbon (
   status TEXT DEFAULT 'belum_lunas' CHECK(status IN ('belum_lunas', 'lunas', 'sebagian')),
   sisa_hutang REAL,
   keterangan TEXT,
-  cash_book_id TEXT,
+  buku_kas_id TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
+  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
   FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
@@ -502,11 +515,11 @@ CREATE TABLE IF NOT EXISTS kasbon_payments (
   tanggal_bayar TEXT NOT NULL,
   payment_method TEXT,
   notes TEXT,
-  cash_book_id TEXT,
+  buku_kas_id TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (kasbon_id) REFERENCES kasbon(id) ON DELETE CASCADE,
-  FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
+  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
   FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
@@ -524,11 +537,11 @@ CREATE TABLE IF NOT EXISTS bagi_hasil (
   tanggal_bagi TEXT NOT NULL,
   status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'paid')),
   notes TEXT,
-  cash_book_id TEXT,
+  buku_kas_id TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (cash_book_id) REFERENCES cash_book(id),
+  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
   FOREIGN KEY (created_by) REFERENCES profil(id)
 );
 
@@ -629,8 +642,8 @@ CREATE INDEX IF NOT EXISTS idx_credentials_owner ON credentials(owner_id);
 CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service_name);
 
 -- Indexes untuk sistem keuangan
-CREATE INDEX IF NOT EXISTS idx_cash_book_tanggal ON cash_book(tanggal);
-CREATE INDEX IF NOT EXISTS idx_cash_book_kategori ON cash_book(kategori_transaksi);
+CREATE INDEX IF NOT EXISTS idx_keuangan_tanggal ON keuangan(tanggal);
+CREATE INDEX IF NOT EXISTS idx_keuangan_kategori ON keuangan(kategori_transaksi);
 CREATE INDEX IF NOT EXISTS idx_kasbon_employee ON kasbon(employee_name);
 CREATE INDEX IF NOT EXISTS idx_kasbon_status ON kasbon(status);
 CREATE INDEX IF NOT EXISTS idx_kasbon_tanggal ON kasbon(tanggal_kasbon);
@@ -691,10 +704,10 @@ CREATE TRIGGER IF NOT EXISTS update_other_timestamp
   END;
 
 -- Triggers untuk sistem keuangan
-CREATE TRIGGER IF NOT EXISTS update_cash_book_timestamp 
-  AFTER UPDATE ON cash_book
+CREATE TRIGGER IF NOT EXISTS update_keuangan_timestamp 
+  AFTER UPDATE ON keuangan
   BEGIN
-    UPDATE cash_book SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE keuangan SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_employees_timestamp 
@@ -763,7 +776,7 @@ VALUES
   ('financial_transactions', NULL, 'never', 0),
   ('other_transactions', NULL, 'never', 0),
   ('inventory_movements', NULL, 'never', 0),
-  ('cash_book', NULL, 'never', 0),
+  ('keuangan', NULL, 'never', 0),
   ('kasbon', NULL, 'never', 0),
   ('kasbon_payments', NULL, 'never', 0),
   ('bagi_hasil', NULL, 'never', 0),

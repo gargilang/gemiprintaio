@@ -176,8 +176,8 @@ export interface CashBook {
   bagi_hasil_anwar: number;
   bagi_hasil_suri: number;
   bagi_hasil_gemi: number;
-  notes?: string;
-  created_by?: string;
-  created_at: string;
-  updated_at: string;
+  catatan?: string;
+  dibuat_oleh?: string;
+  dibuat_pada: string;
+  diperbarui_pada: string;
 }

@@ -159,16 +159,16 @@ export async function POST(request: NextRequest) {
     db.pragma("foreign_keys = ON");
 
     if (!append) {
-      db.prepare("DELETE FROM cash_book").run();
+      db.prepare("DELETE FROM keuangan").run();
     }
 
     const insertStmt = db.prepare(`
-      INSERT INTO cash_book (
+      INSERT INTO keuangan (
         id, tanggal, kategori_transaksi, debit, kredit, keperluan,
         omzet, biaya_operasional, biaya_bahan, saldo, laba_bersih,
         kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil,
         bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
-        display_order
+        urutan_tampilan
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         0, 0, 0, 0, 0,
@@ -181,9 +181,9 @@ export async function POST(request: NextRequest) {
     let imported = 0;
     let skipped = 0;
 
-    // Get max display_order to continue numbering
+    // Get max urutan_tampilan to continue numbering
     const maxOrderResult = db
-      .prepare(`SELECT MAX(display_order) as max_order FROM cash_book`)
+      .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
       .get() as any;
 
     let nextDisplayOrder = (maxOrderResult?.max_order || 0) + 1;

@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
     const db = new Database(DB_FILE);
     db.pragma("foreign_keys = ON");
 
-    // Update display_order for each row
+    // Update urutan_tampilan for each row
     const updateStmt = db.prepare(
-      "UPDATE cash_book SET display_order = ? WHERE id = ?"
+      "UPDATE keuangan SET urutan_tampilan = ? WHERE id = ?"
     );
 
     reorderedIds.forEach((id, index) => {

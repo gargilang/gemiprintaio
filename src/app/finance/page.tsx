@@ -182,7 +182,7 @@ export default function FinancePage() {
     debit: "",
     kredit: "",
     keperluan: "",
-    notes: "",
+    catatan: "",
   });
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -453,7 +453,7 @@ export default function FinancePage() {
       debit: "",
       kredit: "",
       keperluan: "",
-      notes: "",
+      catatan: "",
     });
     setShowModal(true);
     // Focus on debit input after modal opens
@@ -470,7 +470,7 @@ export default function FinancePage() {
       debit: cashBook.debit ? cashBook.debit.toString() : "",
       kredit: cashBook.kredit ? cashBook.kredit.toString() : "",
       keperluan: cashBook.keperluan || "",
-      notes: cashBook.notes || "",
+      catatan: cashBook.catatan || "",
     });
     setShowModal(true);
     // Focus on debit input after modal opens
@@ -488,7 +488,7 @@ export default function FinancePage() {
       debit: "",
       kredit: "",
       keperluan: "",
-      notes: "",
+      catatan: "",
     });
   };
 
@@ -534,7 +534,7 @@ export default function FinancePage() {
               debit: debitVal,
               kredit: kreditVal,
               keperluan: formData.keperluan,
-              notes: formData.notes,
+              catatan: formData.catatan,
             }),
           }
         );
@@ -555,8 +555,8 @@ export default function FinancePage() {
             debit: debitVal,
             kredit: kreditVal,
             keperluan: formData.keperluan,
-            notes: formData.notes,
-            created_by: currentUser?.id,
+            catatan: formData.catatan,
+            dibuat_oleh: currentUser?.id,
           }),
         });
 
@@ -1640,9 +1640,9 @@ export default function FinancePage() {
                   Catatan (Opsional)
                 </label>
                 <textarea
-                  value={formData.notes}
+                  value={formData.catatan}
                   onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
+                    setFormData({ ...formData, catatan: e.target.value })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition resize-none"

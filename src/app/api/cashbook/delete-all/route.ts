@@ -9,10 +9,10 @@ export async function DELETE(request: NextRequest) {
     const db = new Database(DB_FILE);
     db.pragma("foreign_keys = ON");
 
-    // Only delete active transactions (archived_at IS NULL)
+    // Only delete active transactions (diarsipkan_pada IS NULL)
     // This preserves archived transactions from "Tutup Buku"
     const result = db
-      .prepare("DELETE FROM cash_book WHERE archived_at IS NULL")
+      .prepare("DELETE FROM keuangan WHERE diarsipkan_pada IS NULL")
       .run();
 
     db.close();

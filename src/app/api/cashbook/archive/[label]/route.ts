@@ -16,9 +16,9 @@ export async function GET(
 
     let cashBooks = db
       .prepare(
-        `SELECT * FROM cash_book 
-         WHERE archived_label = ? 
-         ORDER BY display_order ASC, tanggal DESC, created_at DESC`
+        `SELECT * FROM keuangan 
+         WHERE label_arsip = ? 
+         ORDER BY urutan_tampilan ASC, tanggal DESC, dibuat_pada DESC`
       )
       .all(label);
 
@@ -26,9 +26,9 @@ export async function GET(
     if (!cashBooks || cashBooks.length === 0) {
       cashBooks = db
         .prepare(
-          `SELECT * FROM cash_book 
-           WHERE archived_label LIKE ? 
-           ORDER BY display_order ASC, tanggal DESC, created_at DESC`
+          `SELECT * FROM keuangan 
+           WHERE label_arsip LIKE ? 
+           ORDER BY urutan_tampilan ASC, tanggal DESC, dibuat_pada DESC`
         )
         .all(label);
     }

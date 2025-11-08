@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
     const result = db
       .prepare(
         `
-      UPDATE cash_book 
-      SET archived_at = ?, archived_label = ?
-      WHERE tanggal >= ? AND tanggal <= ? AND archived_at IS NULL
+      UPDATE keuangan 
+      SET diarsipkan_pada = ?, label_arsip = ?
+      WHERE tanggal >= ? AND tanggal <= ? AND diarsipkan_pada IS NULL
     `
       )
       .run(now, label, startDate, endDate);
@@ -57,15 +57,15 @@ export async function GET(request: NextRequest) {
       .prepare(
         `
       SELECT 
-        archived_label,
+        label_arsip as archived_label,
         COUNT(*) as count,
         MIN(tanggal) as start_date,
         MAX(tanggal) as end_date,
-        archived_at
-      FROM cash_book
-      WHERE archived_at IS NOT NULL
-      GROUP BY archived_label, archived_at
-      ORDER BY archived_at DESC
+        diarsipkan_pada as archived_at
+      FROM keuangan
+      WHERE diarsipkan_pada IS NOT NULL
+      GROUP BY label_arsip, diarsipkan_pada
+      ORDER BY diarsipkan_pada DESC
     `
       )
       .all();

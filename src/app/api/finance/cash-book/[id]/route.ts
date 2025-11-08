@@ -20,7 +20,7 @@ export async function DELETE(
 
     // Cek apakah transaksi ada
     const existingEntry = db
-      .prepare(`SELECT * FROM cash_book WHERE id = ?`)
+      .prepare(`SELECT * FROM keuangan WHERE id = ?`)
       .get(id) as any;
 
     if (!existingEntry) {
@@ -34,13 +34,13 @@ export async function DELETE(
     console.log(`Deleting transaction: ${id}`);
 
     // Delete transaksi
-    db.prepare(`DELETE FROM cash_book WHERE id = ?`).run(id);
+    db.prepare(`DELETE FROM keuangan WHERE id = ?`).run(id);
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi yang tersisa, urutkan berdasarkan display_order ASC (terlama ke terbaru)
+    // Ambil semua transaksi yang tersisa, urutkan berdasarkan urutan_tampilan ASC (terlama ke terbaru)
     const allEntries = db
       .prepare(
-        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+        `SELECT * FROM keuangan WHERE diarsipkan_pada IS NULL ORDER BY urutan_tampilan ASC`
       )
       .all() as any[];
 
@@ -60,7 +60,7 @@ export async function DELETE(
 
     // Prepare statement untuk update
     const updateStmt = db.prepare(`
-      UPDATE cash_book 
+      UPDATE keuangan 
       SET omzet = ?, 
           biaya_operasional = ?,
           biaya_bahan = ?,
@@ -73,7 +73,7 @@ export async function DELETE(
           kasbon_suri = ?,
           kasbon_cahaya = ?,
           kasbon_dinil = ?,
-          updated_at = ?
+          diperbarui_pada = ?
       WHERE id = ?
     `);
 
@@ -245,7 +245,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { tanggal, kategori_transaksi, debit, kredit, keperluan, notes } =
+    const { tanggal, kategori_transaksi, debit, kredit, keperluan, catatan } =
       body;
 
     const db = await initializeDatabase();
@@ -258,7 +258,7 @@ export async function PUT(
 
     // Cek apakah transaksi ada
     const existingEntry = db
-      .prepare(`SELECT * FROM cash_book WHERE id = ?`)
+      .prepare(`SELECT * FROM keuangan WHERE id = ?`)
       .get(id) as any;
 
     if (!existingEntry) {
@@ -300,14 +300,14 @@ export async function PUT(
     const now = new Date().toISOString();
     db.prepare(
       `
-      UPDATE cash_book 
+      UPDATE keuangan 
       SET tanggal = ?, 
           kategori_transaksi = ?, 
           debit = ?, 
           kredit = ?, 
           keperluan = ?, 
-          notes = ?,
-          updated_at = ?
+          catatan = ?,
+          diperbarui_pada = ?
       WHERE id = ?
     `
     ).run(
@@ -316,16 +316,16 @@ export async function PUT(
       debitVal,
       kreditVal,
       keperluan || "",
-      notes || "",
+      catatan || "",
       now,
       id
     );
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi, urutkan berdasarkan display_order ASC (terlama ke terbaru)
+    // Ambil semua transaksi, urutkan berdasarkan urutan_tampilan ASC (terlama ke terbaru)
     const allEntries = db
       .prepare(
-        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+        `SELECT * FROM keuangan WHERE diarsipkan_pada IS NULL ORDER BY urutan_tampilan ASC`
       )
       .all() as any[];
 
@@ -345,7 +345,7 @@ export async function PUT(
 
     // Prepare statement untuk update
     const updateStmt = db.prepare(`
-      UPDATE cash_book 
+      UPDATE keuangan 
       SET omzet = ?, 
           biaya_operasional = ?,
           biaya_bahan = ?,
@@ -358,7 +358,7 @@ export async function PUT(
           kasbon_suri = ?,
           kasbon_cahaya = ?,
           kasbon_dinil = ?,
-          updated_at = ?
+          diperbarui_pada = ?
       WHERE id = ?
     `);
 
