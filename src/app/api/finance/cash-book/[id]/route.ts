@@ -37,9 +37,11 @@ export async function DELETE(
     db.prepare(`DELETE FROM cash_book WHERE id = ?`).run(id);
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi yang tersisa, urutkan berdasarkan display_order DESC
+    // Ambil semua transaksi yang tersisa, urutkan berdasarkan display_order ASC (terlama ke terbaru)
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
+      .prepare(
+        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+      )
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -108,7 +110,11 @@ export async function DELETE(
       if (isFirstEntry) {
         runningBiayaOperasional = 0;
       } else {
-        if (kategori === "BIAYA" || kategori === "TABUNGAN") {
+        if (
+          kategori === "BIAYA" ||
+          kategori === "TABUNGAN" ||
+          kategori === "KOMISI"
+        ) {
           runningBiayaOperasional = runningBiayaOperasional + kredit;
         }
       }
@@ -316,9 +322,11 @@ export async function PUT(
     );
 
     // RECALCULATION: Hitung ulang semua transaksi dari awal
-    // Ambil semua transaksi, urutkan berdasarkan display_order DESC
+    // Ambil semua transaksi, urutkan berdasarkan display_order ASC (terlama ke terbaru)
     const allEntries = db
-      .prepare(`SELECT * FROM cash_book ORDER BY display_order DESC`)
+      .prepare(
+        `SELECT * FROM cash_book WHERE archived_at IS NULL ORDER BY display_order ASC`
+      )
       .all() as any[];
 
     // Reset dan hitung ulang dari awal
@@ -384,7 +392,11 @@ export async function PUT(
 
       // H: BIAYA OPERASIONAL
       if (entry.override_biaya_operasional !== 1) {
-        if (kategori === "BIAYA" || kategori === "TABUNGAN") {
+        if (
+          kategori === "BIAYA" ||
+          kategori === "TABUNGAN" ||
+          kategori === "KOMISI"
+        ) {
           runningBiayaOperasional += entryKredit;
         }
       } else {
