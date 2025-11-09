@@ -131,17 +131,17 @@ export default function AddMaterialModal({
       setUnitPrices(editData.unit_prices || []);
     } else if (isOpen && categoriesData.length > 0) {
       // Add new mode
-      const firstCategory = categoriesData[0]?.name || "";
+      const firstCategory = categoriesData[0]?.nama || "";
       const firstSubcat = subcategoriesData.find(
         (s) => s.category_name === firstCategory
       );
-      const firstUnit = unitsData[0]?.name || "pcs";
+      const firstUnit = unitsData[0]?.nama || "pcs";
 
       setFormData({
         name: "",
         description: "",
         category: firstCategory,
-        subcategory: firstSubcat?.name || "",
+        subcategory: firstSubcat?.nama || "",
         base_unit: firstUnit,
         specifications: "",
         stock_quantity: "0",
@@ -176,7 +176,7 @@ export default function AddMaterialModal({
     setFormData({
       ...formData,
       category,
-      subcategory: firstSubcat?.name || "",
+      subcategory: firstSubcat?.nama || "",
       // Auto-check requires_dimension untuk Media Cetak
       requires_dimension: category === "Media Cetak",
     });
@@ -306,11 +306,11 @@ export default function AddMaterialModal({
           nama: formData.name.trim(),
           deskripsi: formData.description.trim() || null,
           kategori_id:
-            categoriesData.find((c) => c.name === formData.category)?.id ||
+            categoriesData.find((c) => c.nama === formData.category)?.id ||
             editData?.kategori_id ||
             null,
           subkategori_id:
-            subcategoriesData.find((s) => s.name === formData.subcategory)
+            subcategoriesData.find((s) => s.nama === formData.subcategory)
               ?.id ||
             editData?.subkategori_id ||
             null,
@@ -390,8 +390,8 @@ export default function AddMaterialModal({
 
   const currentSpecs = specsData.filter(
     (spec) =>
-      categoriesData.find((cat) => cat.name === formData.category)?.id ===
-      spec.category_id
+      categoriesData.find((cat) => cat.nama === formData.category)?.id ===
+      spec.kategori_id
   );
 
   return (
@@ -488,8 +488,8 @@ export default function AddMaterialModal({
                       <option value="">Belum ada kategori</option>
                     ) : (
                       categoriesData.map((cat) => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name}
+                        <option key={cat.id} value={cat.nama}>
+                          {cat.nama}
                         </option>
                       ))
                     )}
@@ -515,8 +515,8 @@ export default function AddMaterialModal({
                       <option value="">Belum ada subkategori</option>
                     ) : (
                       currentSubcategories.map((sub) => (
-                        <option key={sub.id} value={sub.name}>
-                          {sub.name}
+                        <option key={sub.id} value={sub.nama}>
+                          {sub.nama}
                         </option>
                       ))
                     )}
@@ -542,8 +542,8 @@ export default function AddMaterialModal({
                       <option value="">Belum ada satuan</option>
                     ) : (
                       unitsData.map((unit) => (
-                        <option key={unit.id} value={unit.name}>
-                          {unit.name}
+                        <option key={unit.id} value={unit.nama}>
+                          {unit.nama}
                         </option>
                       ))
                     )}
@@ -617,9 +617,9 @@ export default function AddMaterialModal({
                         {Object.entries(
                           currentSpecs.reduce(
                             (acc: Record<string, any[]>, spec: any) => {
-                              if (!acc[spec.spec_type])
-                                acc[spec.spec_type] = [];
-                              acc[spec.spec_type].push(spec);
+                              if (!acc[spec.tipe_spesifikasi])
+                                acc[spec.tipe_spesifikasi] = [];
+                              acc[spec.tipe_spesifikasi].push(spec);
                               return acc;
                             },
                             {} as Record<string, any[]>
@@ -644,8 +644,11 @@ export default function AddMaterialModal({
                           >
                             <option value="">+ {type}</option>
                             {specs.map((spec: any) => (
-                              <option key={spec.id} value={spec.spec_value}>
-                                {spec.spec_value}
+                              <option
+                                key={spec.id}
+                                value={spec.nilai_spesifikasi}
+                              >
+                                {spec.nilai_spesifikasi}
                               </option>
                             ))}
                           </select>
@@ -788,8 +791,8 @@ export default function AddMaterialModal({
                         >
                           <option value="">Pilih satuan...</option>
                           {unitsData.map((unit) => (
-                            <option key={unit.id} value={unit.name}>
-                              {unit.name}
+                            <option key={unit.id} value={unit.nama}>
+                              {unit.nama}
                             </option>
                           ))}
                         </select>

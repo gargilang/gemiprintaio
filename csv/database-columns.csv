@@ -1,196 +1,167 @@
-HALAMAN,TABLE,COLUMN_ENGLISH,TYPE,COLUMN_INDONESIAN
-MANAJEMEN USER,profil,id,TEXT,id
-MANAJEMEN USER,profil,username,TEXT,nama_pengguna
-MANAJEMEN USER,profil,email,TEXT,email
-MANAJEMEN USER,profil,full_name,TEXT,nama_lengkap
-MANAJEMEN USER,profil,password_hash,TEXT,password_hash
-MANAJEMEN USER,profil,role,TEXT,role
-MANAJEMEN USER,profil,is_active,INTEGER,aktif_status
-MANAJEMEN USER,profil,created_at,TEXT,dibuat_pada
-MANAJEMEN USER,profil,updated_at,TEXT,diperbarui_pada
-,,,,
-PELANGGAN,pelanggan,id,TEXT,id
-PELANGGAN,pelanggan,tipe_pelanggan,TEXT,tipe_pelanggan
-PELANGGAN,pelanggan,name,TEXT,nama
-PELANGGAN,pelanggan,company_name,TEXT,nama_perusahaan
-PELANGGAN,pelanggan,tax_id,TEXT,npwp
-PELANGGAN,pelanggan,email,TEXT,email
-PELANGGAN,pelanggan,phone,TEXT,telepon
-PELANGGAN,pelanggan,address,TEXT,alamat
-PELANGGAN,pelanggan,is_member,INTEGER,member_status
-PELANGGAN,pelanggan,created_at,TEXT,dibuat_pada
-PELANGGAN,pelanggan,updated_at,TEXT,diperbarui_pada
-,,,,
-VENDOR,vendor,id,TEXT,id
-VENDOR,vendor,company_name,TEXT,nama_perusahaan
-VENDOR,vendor,email,TEXT,email
-VENDOR,vendor,phone,TEXT,telepon
-VENDOR,vendor,address,TEXT,alamat
-VENDOR,vendor,contact_person,TEXT,kontak_person
-VENDOR,vendor,payment_terms,TEXT,ketentuan_bayar
-VENDOR,vendor,is_active,INTEGER,aktif_status
-VENDOR,vendor,notes,TEXT,catatan
-VENDOR,vendor,created_at,TEXT,dibuat_pada
-VENDOR,vendor,updated_at,TEXT,diperbarui_pada
-,,,,
-DATA BAHAN,bahan,id,TEXT,id
-DATA BAHAN,bahan,name,TEXT,nama
-DATA BAHAN,bahan,description,TEXT,deskripsi
-DATA BAHAN,bahan,category_id,TEXT,kategori_id
-DATA BAHAN,bahan,subcategory_id,TEXT,subkategori_id
-DATA BAHAN,bahan,base_unit,TEXT,satuan_dasar
-DATA BAHAN,bahan,specifications,TEXT,spesifikasi
-DATA BAHAN,bahan,stock_quantity,REAL,jumlah_stok
-DATA BAHAN,bahan,min_stock_level,REAL,level_stok_minimum
-DATA BAHAN,bahan,track_inventory,INTEGER,lacak_inventori_status
-DATA BAHAN,bahan,requires_dimension,INTEGER,butuh_dimensi_status
-DATA BAHAN,bahan,created_at,TEXT,dibuat_pada
-DATA BAHAN,bahan,updated_at,TEXT,diperbarui_pada
-,,,,
-DATA BAHAN,harga_bahan_satuan,id,TEXT,id
-DATA BAHAN,harga_bahan_satuan,material_id,TEXT,bahan_id
-DATA BAHAN,harga_bahan_satuan,unit_name,TEXT,nama_satuan
-DATA BAHAN,harga_bahan_satuan,conversion_factor,REAL,faktor_konversi
-DATA BAHAN,harga_bahan_satuan,purchase_price,REAL,harga_beli
-DATA BAHAN,harga_bahan_satuan,selling_price,REAL,harga_jual
-DATA BAHAN,harga_bahan_satuan,member_price,REAL,harga_member
-DATA BAHAN,harga_bahan_satuan,is_default,INTEGER,default_status
-DATA BAHAN,harga_bahan_satuan,display_order,INTEGER,urutan_tampilan
-DATA BAHAN,harga_bahan_satuan,created_at,TEXT,dibuat_pada
-DATA BAHAN,harga_bahan_satuan,updated_at,TEXT,diperbarui_pada
-,,,,
-POS/PENJUALAN,penjualan,id,TEXT,id
-POS/PENJUALAN,penjualan,invoice_number,TEXT,nomor_faktur
-POS/PENJUALAN,penjualan,customer_id,TEXT,pelanggan_id
-POS/PENJUALAN,penjualan,total_amount,REAL,total_jumlah
-POS/PENJUALAN,penjualan,paid_amount,REAL,jumlah_bayar
-POS/PENJUALAN,penjualan,change_amount,REAL,jumlah_kembalian
-POS/PENJUALAN,penjualan,payment_method,TEXT,metode_bayar
-POS/PENJUALAN,penjualan,cashier_id,TEXT,kasir_id
-POS/PENJUALAN,penjualan,notes,TEXT,catatan
-POS/PENJUALAN,penjualan,created_at,TEXT,dibuat_pada
-POS/PENJUALAN,penjualan,updated_at,TEXT,diperbarui_pada
-,,,,
-POS/PENJUALAN,barang_jual,id,TEXT,id
-POS/PENJUALAN,barang_jual,sale_id,TEXT,penjualan_id
-POS/PENJUALAN,barang_jual,material_id,TEXT,bahan_id
-POS/PENJUALAN,barang_jual,unit_price_id,TEXT,harga_satuan_id
-POS/PENJUALAN,barang_jual,quantity,REAL,jumlah
-POS/PENJUALAN,barang_jual,unit_name,TEXT,nama_satuan
-POS/PENJUALAN,barang_jual,conversion_factor,REAL,faktor_konversi
-POS/PENJUALAN,barang_jual,unit_price,REAL,harga_satuan
-POS/PENJUALAN,barang_jual,subtotal,REAL,subtotal
-POS/PENJUALAN,barang_jual,created_at,TEXT,dibuat_pada
-,,,,
-PEMBELIAN,pembelian,id,TEXT,id
-PEMBELIAN,pembelian,purchase_number,TEXT,nomor_pembelian
-PEMBELIAN,pembelian,vendor_id,TEXT,vendor_id
-PEMBELIAN,pembelian,total_amount,REAL,total_jumlah
-PEMBELIAN,pembelian,paid_amount,REAL,jumlah_bayar
-PEMBELIAN,pembelian,payment_method,TEXT,metode_bayar
-PEMBELIAN,pembelian,notes,TEXT,catatan
-PEMBELIAN,pembelian,created_by,TEXT,dibuat_oleh
-PEMBELIAN,pembelian,created_at,TEXT,dibuat_pada
-PEMBELIAN,pembelian,updated_at,TEXT,diperbarui_pada
-,,,,
-PEMBELIAN,barang_beli,id,TEXT,id
-PEMBELIAN,barang_beli,purchase_id,TEXT,pembelian_id
-PEMBELIAN,barang_beli,material_id,TEXT,bahan_id
-PEMBELIAN,barang_beli,unit_price_id,TEXT,harga_satuan_id
-PEMBELIAN,barang_beli,quantity,REAL,jumlah
-PEMBELIAN,barang_beli,unit_name,TEXT,nama_satuan
-PEMBELIAN,barang_beli,conversion_factor,REAL,faktor_konversi
-PEMBELIAN,barang_beli,unit_price,REAL,harga_satuan
-PEMBELIAN,barang_beli,subtotal,REAL,subtotal
-PEMBELIAN,barang_beli,created_at,TEXT,dibuat_pada
-,,,,
-KEUANGAN,keuangan,id,TEXT,id
-KEUANGAN,keuangan,tanggal,TEXT,tanggal
-KEUANGAN,keuangan,kategori_transaksi,TEXT,kategori_transaksi
-KEUANGAN,keuangan,debit,REAL,debit
-KEUANGAN,keuangan,kredit,REAL,kredit
-KEUANGAN,keuangan,keperluan,TEXT,keperluan
-KEUANGAN,keuangan,omzet,REAL,omzet
-KEUANGAN,keuangan,biaya_operasional,REAL,biaya_operasional
-KEUANGAN,keuangan,biaya_bahan,REAL,biaya_bahan
-KEUANGAN,keuangan,saldo,REAL,saldo
-KEUANGAN,keuangan,laba_bersih,REAL,laba_bersih
-KEUANGAN,keuangan,kasbon_anwar,REAL,kasbon_anwar
-KEUANGAN,keuangan,kasbon_suri,REAL,kasbon_suri
-KEUANGAN,keuangan,kasbon_cahaya,REAL,kasbon_cahaya
-KEUANGAN,keuangan,kasbon_dinil,REAL,kasbon_dinil
-KEUANGAN,keuangan,bagi_hasil_anwar,REAL,bagi_hasil_anwar
-KEUANGAN,keuangan,bagi_hasil_suri,REAL,bagi_hasil_suri
-KEUANGAN,keuangan,bagi_hasil_gemi,REAL,bagi_hasil_gemi
-KEUANGAN,keuangan,notes,TEXT,catatan
-KEUANGAN,keuangan,created_by,TEXT,dibuat_oleh
-KEUANGAN,keuangan,archived_at,TEXT,diarsipkan_pada
-KEUANGAN,keuangan,archived_label,TEXT,label_arsip
-KEUANGAN,keuangan,created_at,TEXT,dibuat_pada
-KEUANGAN,keuangan,updated_at,TEXT,diperbarui_pada
-KEUANGAN,keuangan,display_order,INTEGER,urutan_tampilan
-KEUANGAN,keuangan,override_saldo,INTEGER,override_saldo
-KEUANGAN,keuangan,override_omzet,INTEGER,override_omzet
-KEUANGAN,keuangan,override_biaya_operasional,INTEGER,override_biaya_operasional
-KEUANGAN,keuangan,override_biaya_bahan,INTEGER,override_biaya_bahan
-KEUANGAN,keuangan,override_laba_bersih,INTEGER,override_laba_bersih
-KEUANGAN,keuangan,override_kasbon_anwar,INTEGER,override_kasbon_anwar
-KEUANGAN,keuangan,override_kasbon_suri,INTEGER,override_kasbon_suri
-KEUANGAN,keuangan,override_kasbon_cahaya,INTEGER,override_kasbon_cahaya
-KEUANGAN,keuangan,override_kasbon_dinil,INTEGER,override_kasbon_dinil
-KEUANGAN,keuangan,override_bagi_hasil_anwar,INTEGER,override_bagi_hasil_anwar
-KEUANGAN,keuangan,override_bagi_hasil_suri,INTEGER,override_bagi_hasil_suri
-KEUANGAN,keuangan,override_bagi_hasil_gemi,INTEGER,override_bagi_hasil_gemi
-,,,,
-KASBON,kasbon,id,TEXT,id
-KASBON,kasbon,employee_name,TEXT,nama_karyawan
-KASBON,kasbon,amount,REAL,jumlah
-KASBON,kasbon,tanggal_kasbon,TEXT,tanggal_kasbon
-KASBON,kasbon,tanggal_bayar,TEXT,tanggal_bayar
-KASBON,kasbon,status,TEXT,status
-KASBON,kasbon,sisa_hutang,REAL,sisa_hutang
-KASBON,kasbon,keterangan,TEXT,keterangan
-KASBON,kasbon,cash_book_id,TEXT,buku_kas_id
-KASBON,kasbon,created_by,TEXT,dibuat_oleh
-KASBON,kasbon,created_at,TEXT,dibuat_pada
-KASBON,kasbon,updated_at,TEXT,diperbarui_pada
-,,,,
-KARYAWAN,karyawan,id,TEXT,id
-KARYAWAN,karyawan,name,TEXT,nama
-KARYAWAN,karyawan,position,TEXT,posisi
-KARYAWAN,karyawan,phone,TEXT,telepon
-KARYAWAN,karyawan,address,TEXT,alamat
-KARYAWAN,karyawan,join_date,TEXT,tanggal_bergabung
-KARYAWAN,karyawan,is_active,INTEGER,aktif
-KARYAWAN,karyawan,created_at,TEXT,dibuat_pada
-KARYAWAN,karyawan,updated_at,TEXT,diperbarui_pada
-,,,,
-HUTANG,hutang,id,TEXT,id
-HUTANG,hutang,vendor_id,TEXT,vendor_id
-HUTANG,hutang,purchase_id,TEXT,pembelian_id
-HUTANG,hutang,invoice_number,TEXT,nomor_invoice
-HUTANG,hutang,invoice_date,TEXT,tanggal_invoice
-HUTANG,hutang,total_amount,REAL,total_jumlah
-HUTANG,hutang,paid_amount,REAL,jumlah_bayar
-HUTANG,hutang,remaining_amount,REAL,sisa_jumlah
-HUTANG,hutang,due_date,TEXT,tanggal_jatuh_tempo
-HUTANG,hutang,status,TEXT,status
-HUTANG,hutang,notes,TEXT,catatan
-HUTANG,hutang,created_by,TEXT,dibuat_oleh
-HUTANG,hutang,created_at,TEXT,dibuat_pada
-HUTANG,hutang,updated_at,TEXT,diperbarui_pada
-,,,,
-PIUTANG,piutang,id,TEXT,id
-PIUTANG,piutang,customer_id,TEXT,pelanggan_id
-PIUTANG,piutang,sale_id,TEXT,penjualan_id
-PIUTANG,piutang,invoice_number,TEXT,nomor_invoice
-PIUTANG,piutang,invoice_date,TEXT,tanggal_invoice
-PIUTANG,piutang,total_amount,REAL,total_jumlah
-PIUTANG,piutang,paid_amount,REAL,jumlah_bayar
-PIUTANG,piutang,remaining_amount,REAL,sisa_jumlah
-PIUTANG,piutang,due_date,TEXT,tanggal_jatuh_tempo
-PIUTANG,piutang,status,TEXT,status
-PIUTANG,piutang,notes,TEXT,catatan
-PIUTANG,piutang,created_by,TEXT,dibuat_oleh
-PIUTANG,piutang,created_at,TEXT,dibuat_pada
-PIUTANG,piutang,updated_at,TEXT,diperbarui_pada
+HALAMAN,TABLE_NAME_FROM_DATABASE,TABLE_INDONESIAN,COLUMN_NAME_FROM_DATABASE,COLUMN_INDONESIAN,COLUMN_TYPE,STATUS_MIGRASI
+customers,pelanggan,,id,,TEXT,
+customers,pelanggan,,tipe_pelanggan,,TEXT,
+customers,pelanggan,,nama,,TEXT,
+customers,pelanggan,,nama_perusahaan,,TEXT,
+customers,pelanggan,,npwp,,TEXT,
+customers,pelanggan,,email,,TEXT,
+customers,pelanggan,,telepon,,TEXT,
+customers,pelanggan,,alamat,,TEXT,
+customers,pelanggan,,member_status,,INTEGER,
+customers,pelanggan,,dibuat_pada,,TEXT,
+customers,pelanggan,,diperbarui_pada,,TEXT,
+finance,keuangan,,id,,TEXT,
+finance,keuangan,,tanggal,,TEXT,
+finance,keuangan,,kategori_transaksi,,TEXT,
+finance,keuangan,,debit,,REAL,
+finance,keuangan,,kredit,,REAL,
+finance,keuangan,,keperluan,,TEXT,
+finance,keuangan,,omzet,,REAL,
+finance,keuangan,,biaya_operasional,,REAL,
+finance,keuangan,,biaya_bahan,,REAL,
+finance,keuangan,,saldo,,REAL,
+finance,keuangan,,laba_bersih,,REAL,
+finance,keuangan,,kasbon_anwar,,REAL,
+finance,keuangan,,kasbon_suri,,REAL,
+finance,keuangan,,kasbon_cahaya,,REAL,
+finance,keuangan,,kasbon_dinil,,REAL,
+finance,keuangan,,bagi_hasil_anwar,,REAL,
+finance,keuangan,,bagi_hasil_suri,,REAL,
+finance,keuangan,,bagi_hasil_gemi,,REAL,
+finance,keuangan,,catatan,,TEXT,
+finance,keuangan,,dibuat_oleh,,TEXT,
+finance,keuangan,,diarsipkan_pada,,TEXT,
+finance,keuangan,,label_arsip,,TEXT,
+finance,keuangan,,dibuat_pada,,TEXT,
+finance,keuangan,,diperbarui_pada,,TEXT,
+finance,keuangan,,urutan_tampilan,,INTEGER,
+finance,keuangan,,override_saldo,,INTEGER,
+finance,keuangan,,override_omzet,,INTEGER,
+finance,keuangan,,override_biaya_operasional,,INTEGER,
+finance,keuangan,,override_biaya_bahan,,INTEGER,
+finance,keuangan,,override_laba_bersih,,INTEGER,
+finance,keuangan,,override_kasbon_anwar,,INTEGER,
+finance,keuangan,,override_kasbon_suri,,INTEGER,
+finance,keuangan,,override_kasbon_cahaya,,INTEGER,
+finance,keuangan,,override_kasbon_dinil,,INTEGER,
+finance,keuangan,,override_bagi_hasil_anwar,,INTEGER,
+finance,keuangan,,override_bagi_hasil_suri,,INTEGER,
+finance,keuangan,,override_bagi_hasil_gemi,,INTEGER,
+materials,bahan,,id,,TEXT,
+materials,bahan,,nama,,TEXT,
+materials,bahan,,deskripsi,,TEXT,
+materials,bahan,,kategori_id,,TEXT,
+materials,bahan,,subkategori_id,,TEXT,
+materials,bahan,,satuan_dasar,,TEXT,
+materials,bahan,,spesifikasi,,TEXT,
+materials,bahan,,jumlah_stok,,REAL,
+materials,bahan,,level_stok_minimum,,REAL,
+materials,bahan,,lacak_inventori_status,,INTEGER,
+materials,bahan,,butuh_dimensi_status,,INTEGER,
+materials,bahan,,dibuat_pada,,TEXT,
+materials,bahan,,diperbarui_pada,,TEXT,
+materials,harga_bahan_satuan,,id,,TEXT,
+materials,harga_bahan_satuan,,bahan_id,,TEXT,
+materials,harga_bahan_satuan,,nama_satuan,,TEXT,
+materials,harga_bahan_satuan,,faktor_konversi,,REAL,
+materials,harga_bahan_satuan,,harga_beli,,REAL,
+materials,harga_bahan_satuan,,harga_jual,,REAL,
+materials,harga_bahan_satuan,,harga_member,,REAL,
+materials,harga_bahan_satuan,,default_status,default_status,INTEGER,
+materials,harga_bahan_satuan,,urutan_tampilan,,INTEGER,
+materials,harga_bahan_satuan,,dibuat_pada,,TEXT,
+materials,harga_bahan_satuan,,diperbarui_pada,,TEXT,
+pos,item_penjualan,,id,,TEXT,
+pos,item_penjualan,,sale_id,penjualan_id,TEXT,migrasi ke bahasa indonesia
+pos,item_penjualan,,material_id,bahan_id,TEXT,migrasi ke bahasa indonesia
+pos,item_penjualan,,unit_price_id,harga_satuan_id,TEXT,migrasi ke bahasa indonesia
+pos,item_penjualan,,quantity,jumlah,REAL,migrasi ke bahasa indonesia
+pos,item_penjualan,,unit_name,nama_satuan,TEXT,migrasi ke bahasa indonesia
+pos,item_penjualan,,conversion_factor,faktor_konversi,REAL,migrasi ke bahasa indonesia
+pos,item_penjualan,,unit_price,harga_satuan,REAL,migrasi ke bahasa indonesia
+pos,item_penjualan,,subtotal,subtotal,REAL,migrasi ke bahasa indonesia
+pos,item_penjualan,,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,id,,TEXT,
+pos,penjualan,,invoice_number,nomor_invoice,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,customer_id,pelanggan_id,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,total_amount,total_jumlah,REAL,migrasi ke bahasa indonesia
+pos,penjualan,,paid_amount,jumlah_dibayar,REAL,migrasi ke bahasa indonesia
+pos,penjualan,,change_amount,jumlah_kembalian,REAL,migrasi ke bahasa indonesia
+pos,penjualan,,payment_method,metode_pembayaran,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,cashier_id,kasir_id,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,notes,catatan,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+pos,penjualan,,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+purchases,item_pembelian,,id,,TEXT,
+purchases,item_pembelian,,purchase_id,pembelian_id,TEXT,migrasi ke bahasa indonesia
+purchases,item_pembelian,,material_id,bahan_id,TEXT,migrasi ke bahasa indonesia
+purchases,item_pembelian,,unit_price_id,harga_satuan_id,TEXT,migrasi ke bahasa indonesia
+purchases,item_pembelian,,quantity,jumlah,REAL,migrasi ke bahasa indonesia
+purchases,item_pembelian,,unit_name,nama_satuan,TEXT,migrasi ke bahasa indonesia
+purchases,item_pembelian,,conversion_factor,faktor_konversi,REAL,migrasi ke bahasa indonesia
+purchases,item_pembelian,,unit_price,harga_satuan,REAL,migrasi ke bahasa indonesia
+purchases,item_pembelian,,subtotal,subtotal,REAL,migrasi ke bahasa indonesia
+purchases,item_pembelian,,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,id,,TEXT,
+purchases,pembelian,,purchase_number,nomor_pembelian,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,vendor_id,vendor_id,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,total_amount,total_jumlah,REAL,migrasi ke bahasa indonesia
+purchases,pembelian,,paid_amount,jumlah_dibayar,REAL,migrasi ke bahasa indonesia
+purchases,pembelian,,payment_method,metode_pembayaran,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,notes,catatan,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,created_by,dibuat_oleh,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+purchases,pembelian,,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,id,,TEXT,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,name,nama,TEXT,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,needs_specifications,butuh_spesifikasi_status,INTEGER,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,display_order,urutan_tampilan,INTEGER,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_categories,kategori_bahan,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,id,,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,category_id,kategori_id,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,spec_type,tipe_spesifikasi,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,spec_value,nilai_spesifikasi,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,display_order,urutan_tampilan,INTEGER,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_quick_specs,spesifikasi_cepat_bahan,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,id,,TEXT,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,category_id,kategori_id,TEXT,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,name,nama,TEXT,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,display_order,urutan_tampilan,INTEGER,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_subcategories,subkategori_bahan,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_units,satuan_bahan,id,,TEXT,migrasi ke bahasa indonesia
+settings,material_units,satuan_bahan,name,nama,TEXT,migrasi ke bahasa indonesia
+settings,material_units,satuan_bahan,display_order,urutan_tampilan,INTEGER,migrasi ke bahasa indonesia
+settings,material_units,satuan_bahan,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+settings,material_units,satuan_bahan,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,id,,TEXT,
+users,kredensial,,owner_id,pemilik_id,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,service_name,nama_layanan,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,account_username,nama_pengguna_akun,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,password_encrypted,password_terenkripsi,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,notes,catatan,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,is_private,privat_status,INTEGER,migrasi ke bahasa indonesia
+users,kredensial,,created_at,dibuat_pada,TEXT,migrasi ke bahasa indonesia
+users,kredensial,,updated_at,diperbarui_pada,TEXT,migrasi ke bahasa indonesia
+users,profil,,id,,TEXT,
+users,profil,,nama_pengguna,,TEXT,
+users,profil,,email,,TEXT,
+users,profil,,nama_lengkap,,TEXT,
+users,profil,,password_hash,,TEXT,
+users,profil,,role,,TEXT,
+users,profil,,aktif_status,,INTEGER,
+users,profil,,dibuat_pada,,TEXT,
+users,profil,,diperbarui_pada,,TEXT,
+vendors,vendor,,id,,TEXT,
+vendors,vendor,,nama_perusahaan,,TEXT,
+vendors,vendor,,email,,TEXT,
+vendors,vendor,,telepon,,TEXT,
+vendors,vendor,,alamat,,TEXT,
+vendors,vendor,,kontak_person,,TEXT,
+vendors,vendor,,ketentuan_bayar,,TEXT,
+vendors,vendor,,aktif_status,,INTEGER,
+vendors,vendor,,catatan,,TEXT,
+vendors,vendor,,dibuat_pada,,TEXT,
+vendors,vendor,,diperbarui_pada,,TEXT,

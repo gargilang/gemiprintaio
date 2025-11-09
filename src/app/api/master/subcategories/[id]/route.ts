@@ -16,9 +16,9 @@ export async function PUT(
   const params = await context.params;
   try {
     const body = await req.json();
-    const { name, display_order } = body;
+    const { nama, urutan_tampilan } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama subkategori harus diisi" },
         { status: 400 }
@@ -29,7 +29,7 @@ export async function PUT(
 
     // Check if subcategory exists
     const existing = db
-      .prepare("SELECT * FROM material_subcategories WHERE id = ?")
+      .prepare("SELECT * FROM subkategori_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -43,9 +43,9 @@ export async function PUT(
     // Check if name is already taken by another subcategory in the same category
     const duplicate = db
       .prepare(
-        "SELECT id FROM material_subcategories WHERE category_id = ? AND name = ? AND id != ?"
+        "SELECT id FROM subkategori_bahan WHERE kategori_id = ? AND nama = ? AND id != ?"
       )
-      .get((existing as any).category_id, name.trim(), params.id);
+      .get((existing as any).kategori_id, nama.trim(), params.id);
 
     if (duplicate) {
       db.close();
@@ -56,18 +56,18 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE material_subcategories 
-       SET name = ?, display_order = ?, updated_at = datetime('now')
+      `UPDATE subkategori_bahan 
+       SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
 
-    stmt.run(name.trim(), display_order || 0, params.id);
+    stmt.run(nama.trim(), urutan_tampilan || 0, params.id);
 
     const updatedSubcategory = db
       .prepare(
-        `SELECT s.*, c.name as category_name 
-         FROM material_subcategories s
-         LEFT JOIN material_categories c ON s.category_id = c.id
+        `SELECT s.*, c.nama as category_name 
+         FROM subkategori_bahan s
+         LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
          WHERE s.id = ?`
       )
       .get(params.id);
@@ -98,7 +98,7 @@ export async function DELETE(
 
     // Check if subcategory exists
     const existing = db
-      .prepare("SELECT id FROM material_subcategories WHERE id = ?")
+      .prepare("SELECT id FROM subkategori_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -111,9 +111,7 @@ export async function DELETE(
 
     // Check if there are bahan using this subcategory
     const materialsCount = db
-      .prepare(
-        "SELECT COUNT(*) as count FROM bahan WHERE subcategory_id = ?"
-      )
+      .prepare("SELECT COUNT(*) as count FROM bahan WHERE subkategori_id = ?")
       .get(params.id) as { count: number };
 
     if (materialsCount.count > 0) {
@@ -126,7 +124,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM material_subcategories WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM subkategori_bahan WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

@@ -31,50 +31,50 @@ VALUES (
   1
 );
 
--- Master Material Categories
-CREATE TABLE IF NOT EXISTS material_categories (
+-- Master Kategori Bahan
+CREATE TABLE IF NOT EXISTS kategori_bahan (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  needs_specifications INTEGER DEFAULT 0, -- Flag: apakah kategori ini perlu quick specs
-  display_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  nama TEXT NOT NULL UNIQUE,
+  butuh_spesifikasi_status INTEGER DEFAULT 0, -- Flag: apakah kategori ini perlu quick specs
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
--- Master Material Subcategories
-CREATE TABLE IF NOT EXISTS material_subcategories (
+-- Master Subkategori Bahan
+CREATE TABLE IF NOT EXISTS subkategori_bahan (
   id TEXT PRIMARY KEY,
-  category_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  display_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (category_id) REFERENCES material_categories(id) ON DELETE CASCADE
+  kategori_id TEXT NOT NULL,
+  nama TEXT NOT NULL,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (kategori_id) REFERENCES kategori_bahan(id) ON DELETE CASCADE
 );
 
--- Master Material Units (Satuan)
-CREATE TABLE IF NOT EXISTS material_units (
+-- Master Satuan Bahan
+CREATE TABLE IF NOT EXISTS satuan_bahan (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  display_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  nama TEXT NOT NULL UNIQUE,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
--- Master Quick Specs (untuk Spek Cepat seperti ukuran kertas, gramasi, dll)
-CREATE TABLE IF NOT EXISTS material_quick_specs (
+-- Master Spesifikasi Cepat Bahan (untuk Spek Cepat seperti ukuran kertas, gramasi, dll)
+CREATE TABLE IF NOT EXISTS spesifikasi_cepat_bahan (
   id TEXT PRIMARY KEY,
-  category_id TEXT NOT NULL,
-  spec_type TEXT NOT NULL, -- 'size', 'weight', 'width', 'thickness', dll
-  spec_value TEXT NOT NULL,
-  display_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (category_id) REFERENCES material_categories(id) ON DELETE CASCADE
+  kategori_id TEXT NOT NULL,
+  tipe_spesifikasi TEXT NOT NULL, -- 'size', 'weight', 'width', 'thickness', dll
+  nilai_spesifikasi TEXT NOT NULL,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (kategori_id) REFERENCES kategori_bahan(id) ON DELETE CASCADE
 );
 
 -- Default Material Categories
-INSERT OR IGNORE INTO material_categories (id, name, needs_specifications, display_order) VALUES
+INSERT OR IGNORE INTO kategori_bahan (id, nama, butuh_spesifikasi_status, urutan_tampilan) VALUES
   ('cat-media-cetak', 'Media Cetak', 0, 1),
   ('cat-kertas', 'Kertas', 1, 2),
   ('cat-kertas-foto', 'Kertas Foto', 1, 3),
@@ -85,7 +85,7 @@ INSERT OR IGNORE INTO material_categories (id, name, needs_specifications, displ
   ('cat-lain-lain', 'Lain-lain', 0, 8);
 
 -- Default Subcategories for Media Cetak
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-mc-flexi', 'cat-media-cetak', 'Flexi/Banner', 1),
   ('sub-mc-vinyl', 'cat-media-cetak', 'Vinyl', 2),
   ('sub-mc-sticker', 'cat-media-cetak', 'Sticker', 3),
@@ -96,7 +96,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-mc-lainlain', 'cat-media-cetak', 'Lain-lain', 99);
 
 -- Default Subcategories for Kertas
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-kr-hvs', 'cat-kertas', 'HVS', 1),
   ('sub-kr-art-paper', 'cat-kertas', 'Art Paper', 2),
   ('sub-kr-art-carton', 'cat-kertas', 'Art Carton', 3),
@@ -111,7 +111,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-kr-lainlain', 'cat-kertas', 'Lain-lain', 99);
 
 -- Default Subcategories for Kertas Foto
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-kf-glossy', 'cat-kertas-foto', 'Photo Paper Glossy', 1),
   ('sub-kf-matte', 'cat-kertas-foto', 'Photo Paper Matte', 2),
   ('sub-kf-luster', 'cat-kertas-foto', 'Photo Paper Luster', 3),
@@ -119,7 +119,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-kf-inkjet', 'cat-kertas-foto', 'Inkjet Paper', 5);
 
 -- Default Subcategories for Merchandise
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-md-totebag', 'cat-merchandise', 'Tote Bag', 1),
   ('sub-md-gelas', 'cat-merchandise', 'Gelas/Mug', 2),
   ('sub-md-kaos', 'cat-merchandise', 'Kaos', 3),
@@ -134,7 +134,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-md-lainlain', 'cat-merchandise', 'Lain-lain', 99);
 
 -- Default Subcategories for Substrat UV
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-uv-akrilik', 'cat-substrat-uv', 'Akrilik', 1),
   ('sub-uv-kayu', 'cat-substrat-uv', 'Kayu', 2),
   ('sub-uv-mdf', 'cat-substrat-uv', 'MDF', 3),
@@ -147,7 +147,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-uv-lainlain', 'cat-substrat-uv', 'Lain-lain', 99);
 
 -- Default Subcategories for Tinta & Consumables
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-tc-eco', 'cat-tinta-consumables', 'Tinta Eco Solvent', 1),
   ('sub-tc-uv', 'cat-tinta-consumables', 'Tinta UV', 2),
   ('sub-tc-sublim', 'cat-tinta-consumables', 'Tinta Sublim', 3),
@@ -157,7 +157,7 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-tc-lainlain', 'cat-tinta-consumables', 'Lain-lain', 99);
 
 -- Default Subcategories for Finishing
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-fn-lam-glossy', 'cat-finishing', 'Laminating Glossy', 1),
   ('sub-fn-lam-doff', 'cat-finishing', 'Laminating Doff', 2),
   ('sub-fn-lam-sandblast', 'cat-finishing', 'Laminating Sandblast', 3),
@@ -169,11 +169,11 @@ INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_ord
   ('sub-fn-lainlain', 'cat-finishing', 'Lain-lain', 99);
 
 -- Default Subcategories for Lain-lain
-INSERT OR IGNORE INTO material_subcategories (id, category_id, name, display_order) VALUES
+INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-ll-umum', 'cat-lain-lain', 'Umum', 1);
 
 -- Default Material Units
-INSERT OR IGNORE INTO material_units (id, name, display_order) VALUES
+INSERT OR IGNORE INTO satuan_bahan (id, nama, urutan_tampilan) VALUES
   ('unit-meter', 'meter', 1),
   ('unit-roll', 'roll', 2),
   ('unit-sheet', 'sheet', 3),
@@ -190,7 +190,7 @@ INSERT OR IGNORE INTO material_units (id, name, display_order) VALUES
   ('unit-unit', 'unit', 14);
 
 -- Default Quick Specs for Kertas (sizes)
-INSERT OR IGNORE INTO material_quick_specs (id, category_id, spec_type, spec_value, display_order) VALUES
+INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
   ('spec-kr-size-a0', 'cat-kertas', 'size', 'A0', 1),
   ('spec-kr-size-a1', 'cat-kertas', 'size', 'A1', 2),
   ('spec-kr-size-a2', 'cat-kertas', 'size', 'A2', 3),
@@ -213,7 +213,7 @@ INSERT OR IGNORE INTO material_quick_specs (id, category_id, spec_type, spec_val
   ('spec-kr-size-custom', 'cat-kertas', 'size', 'Custom', 99);
 
 -- Default Quick Specs for Kertas (weights/gramasi)
-INSERT OR IGNORE INTO material_quick_specs (id, category_id, spec_type, spec_value, display_order) VALUES
+INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
   ('spec-kr-weight-60', 'cat-kertas', 'weight', '60 gsm', 1),
   ('spec-kr-weight-70', 'cat-kertas', 'weight', '70 gsm', 2),
   ('spec-kr-weight-80', 'cat-kertas', 'weight', '80 gsm', 3),
@@ -228,14 +228,14 @@ INSERT OR IGNORE INTO material_quick_specs (id, category_id, spec_type, spec_val
   ('spec-kr-weight-400', 'cat-kertas', 'weight', '400 gsm', 12);
 
 -- Default Quick Specs for Kertas Foto (same as Kertas)
-INSERT OR IGNORE INTO material_quick_specs (id, category_id, spec_type, spec_value, display_order)
+INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan)
 SELECT 
   REPLACE(id, 'cat-kertas', 'cat-kertas-foto'),
   'cat-kertas-foto',
   spec_type,
   spec_value,
   display_order
-FROM material_quick_specs WHERE category_id = 'cat-kertas';
+FROM spesifikasi_cepat_bahan WHERE kategori_id = 'cat-kertas';
 
 -- Materials/Bahan table (updated with category/subcategory references)
 CREATE TABLE IF NOT EXISTS bahan (
@@ -370,66 +370,15 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   FOREIGN KEY (unit_price_id) REFERENCES harga_bahan_satuan(id)
 );
 
--- Financial Transactions
-CREATE TABLE IF NOT EXISTS transaksi_keuangan (
-  id TEXT PRIMARY KEY,
-  kategori_transaksi TEXT NOT NULL CHECK(kategori_transaksi IN (
-    'KAS', 'BIAYA', 'OMZET', 'INVESTOR', 'SUBSIDI', 'LUNAS', 
-    'SUPPLY', 'LABA', 'KOMISI', 'TABUNGAN', 'HUTANG', 'PIUTANG', 
-    'PRIBADI-A', 'PRIBADI-S'
-  )),
-  reference_type TEXT,
-  reference_id TEXT,
-  customer_id TEXT,
-  vendor_id TEXT,
-  employee_id TEXT,
-  amount REAL NOT NULL,
-  description TEXT NOT NULL,
-  is_paid INTEGER DEFAULT 0,
-  payment_date TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (customer_id) REFERENCES pelanggan(id),
-  FOREIGN KEY (vendor_id) REFERENCES vendor(id),
-  FOREIGN KEY (employee_id) REFERENCES profil(id),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Other Transactions
-CREATE TABLE IF NOT EXISTS transaksi_lainnya (
-  id TEXT PRIMARY KEY,
-  kategori_transaksi TEXT NOT NULL CHECK(kategori_transaksi IN (
-    'KAS', 'BIAYA', 'OMZET', 'INVESTOR', 'SUBSIDI', 'LUNAS', 
-    'SUPPLY', 'LABA', 'KOMISI', 'TABUNGAN', 'HUTANG', 'PIUTANG', 
-    'PRIBADI-A', 'PRIBADI-S'
-  )),
-  category TEXT NOT NULL,
-  amount REAL NOT NULL,
-  description TEXT NOT NULL,
-  transaction_date TEXT NOT NULL,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
+
+
 
 -- =====================================================
 -- SISTEM KEUANGAN TERPISAH (Independent Finance System)
 -- =====================================================
 
--- Tabel Karyawan untuk Kasbon dan Bagi Hasil
-CREATE TABLE IF NOT EXISTS employees (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  position TEXT,
-  phone TEXT,
-  address TEXT,
-  join_date TEXT,
-  is_active INTEGER DEFAULT 1,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+
 
 -- Tabel Buku Kas (Keuangan) - Manual Input
 CREATE TABLE IF NOT EXISTS keuangan (
@@ -489,125 +438,21 @@ CREATE TABLE IF NOT EXISTS keuangan (
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
 
--- Tabel Kasbon (Employee Cash Advance)
-CREATE TABLE IF NOT EXISTS kasbon (
-  id TEXT PRIMARY KEY,
-  employee_name TEXT NOT NULL,
-  amount REAL NOT NULL,
-  tanggal_kasbon TEXT NOT NULL,
-  tanggal_bayar TEXT,
-  status TEXT DEFAULT 'belum_lunas' CHECK(status IN ('belum_lunas', 'lunas', 'sebagian')),
-  sisa_hutang REAL,
-  keterangan TEXT,
-  buku_kas_id TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Pembayaran Kasbon (Kasbon Payment History)
-CREATE TABLE IF NOT EXISTS kasbon_payments (
-  id TEXT PRIMARY KEY,
-  kasbon_id TEXT NOT NULL,
-  amount_paid REAL NOT NULL,
-  tanggal_bayar TEXT NOT NULL,
-  payment_method TEXT,
-  notes TEXT,
-  buku_kas_id TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (kasbon_id) REFERENCES kasbon(id) ON DELETE CASCADE,
-  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Bagi Hasil (Profit Sharing)
-CREATE TABLE IF NOT EXISTS bagi_hasil (
-  id TEXT PRIMARY KEY,
-  periode_bulan TEXT NOT NULL, -- Format: YYYY-MM
-  total_laba REAL NOT NULL,
-  persentase_anwar REAL DEFAULT 0,
-  persentase_suri REAL DEFAULT 0,
-  persentase_gemi REAL DEFAULT 0,
-  jumlah_anwar REAL DEFAULT 0,
-  jumlah_suri REAL DEFAULT 0,
-  jumlah_gemi REAL DEFAULT 0,
-  tanggal_bagi TEXT NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'paid')),
-  notes TEXT,
-  buku_kas_id TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (buku_kas_id) REFERENCES keuangan(id),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Kategori Biaya (Expense Categories)
-CREATE TABLE IF NOT EXISTS expense_categories (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  description TEXT,
-  is_active INTEGER DEFAULT 1,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
-);
 
--- Tabel Laporan Keuangan Bulanan (Monthly Financial Report Summary)
-CREATE TABLE IF NOT EXISTS monthly_financial_reports (
-  id TEXT PRIMARY KEY,
-  periode_bulan TEXT NOT NULL UNIQUE, -- Format: YYYY-MM
-  total_omzet REAL DEFAULT 0,
-  total_biaya_operasional REAL DEFAULT 0,
-  total_biaya_bahan REAL DEFAULT 0,
-  total_debit REAL DEFAULT 0,
-  total_kredit REAL DEFAULT 0,
-  saldo_awal REAL DEFAULT 0,
-  saldo_akhir REAL DEFAULT 0,
-  laba_bersih REAL DEFAULT 0,
-  total_kasbon_outstanding REAL DEFAULT 0,
-  total_bagi_hasil REAL DEFAULT 0,
-  generated_at TEXT DEFAULT (datetime('now')),
-  notes TEXT
-);
 
--- Inventory Movements
-CREATE TABLE IF NOT EXISTS pergerakan_inventori (
-  id TEXT PRIMARY KEY,
-  material_id TEXT NOT NULL,
-  movement_type TEXT NOT NULL CHECK(movement_type IN ('in', 'out', 'adjustment')),
-  quantity REAL NOT NULL,
-  reference_type TEXT,
-  reference_id TEXT,
-  notes TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (material_id) REFERENCES bahan(id),
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Sync Metadata Table (untuk tracking sync status)
-CREATE TABLE IF NOT EXISTS metadata_sinkronisasi (
-  table_name TEXT PRIMARY KEY,
-  last_sync_at TEXT,
-  last_sync_status TEXT,
-  pending_changes INTEGER DEFAULT 0
-);
 
--- Sync Queue Table (untuk tracking perubahan yang belum di-sync)
-CREATE TABLE IF NOT EXISTS antrian_sinkronisasi (
-  id TEXT PRIMARY KEY,
-  table_name TEXT NOT NULL,
-  record_id TEXT NOT NULL,
-  operation TEXT NOT NULL CHECK(operation IN ('INSERT', 'UPDATE', 'DELETE')),
-  data TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  synced INTEGER DEFAULT 0,
-  sync_attempts INTEGER DEFAULT 0,
-  last_error TEXT
-);
+
+
+
+
+
+
+
+
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
@@ -644,15 +489,15 @@ CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service_name);
 -- Indexes untuk sistem keuangan
 CREATE INDEX IF NOT EXISTS idx_keuangan_tanggal ON keuangan(tanggal);
 CREATE INDEX IF NOT EXISTS idx_keuangan_kategori ON keuangan(kategori_transaksi);
-CREATE INDEX IF NOT EXISTS idx_kasbon_employee ON kasbon(employee_name);
-CREATE INDEX IF NOT EXISTS idx_kasbon_status ON kasbon(status);
-CREATE INDEX IF NOT EXISTS idx_kasbon_tanggal ON kasbon(tanggal_kasbon);
-CREATE INDEX IF NOT EXISTS idx_kasbon_payments_kasbon ON kasbon_payments(kasbon_id);
-CREATE INDEX IF NOT EXISTS idx_bagi_hasil_periode ON bagi_hasil(periode_bulan);
-CREATE INDEX IF NOT EXISTS idx_bagi_hasil_status ON bagi_hasil(status);
+
+
+
+
+
+
 CREATE INDEX IF NOT EXISTS idx_monthly_reports_periode ON monthly_financial_reports(periode_bulan);
-CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);
-CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(is_active);
+
+
 
 -- Triggers for updated_at timestamp
 CREATE TRIGGER IF NOT EXISTS update_profiles_timestamp 
@@ -710,29 +555,13 @@ CREATE TRIGGER IF NOT EXISTS update_keuangan_timestamp
     UPDATE keuangan SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
-CREATE TRIGGER IF NOT EXISTS update_employees_timestamp 
-  AFTER UPDATE ON employees
-  BEGIN
-    UPDATE employees SET updated_at = datetime('now') WHERE id = NEW.id;
-  END;
 
-CREATE TRIGGER IF NOT EXISTS update_kasbon_timestamp 
-  AFTER UPDATE ON kasbon
-  BEGIN
-    UPDATE kasbon SET updated_at = datetime('now') WHERE id = NEW.id;
-  END;
 
-CREATE TRIGGER IF NOT EXISTS update_bagi_hasil_timestamp 
-  AFTER UPDATE ON bagi_hasil
-  BEGIN
-    UPDATE bagi_hasil SET updated_at = datetime('now') WHERE id = NEW.id;
-  END;
 
-CREATE TRIGGER IF NOT EXISTS update_expense_categories_timestamp 
-  AFTER UPDATE ON expense_categories
-  BEGIN
-    UPDATE expense_categories SET updated_at = datetime('now') WHERE id = NEW.id;
-  END;
+
+
+
+
 
 -- Trigger untuk auto-update sisa_hutang kasbon ketika ada pembayaran
 CREATE TRIGGER IF NOT EXISTS update_kasbon_sisa_hutang
@@ -777,110 +606,23 @@ VALUES
   ('other_transactions', NULL, 'never', 0),
   ('inventory_movements', NULL, 'never', 0),
   ('keuangan', NULL, 'never', 0),
-  ('kasbon', NULL, 'never', 0),
-  ('kasbon_payments', NULL, 'never', 0),
-  ('bagi_hasil', NULL, 'never', 0),
-  ('employees', NULL, 'never', 0),
-  ('expense_categories', NULL, 'never', 0),
-  ('monthly_financial_reports', NULL, 'never', 0);
 
--- Insert default expense categories
-INSERT OR IGNORE INTO expense_categories (id, name, description)
-VALUES 
-  ('exp_001', 'Gaji Karyawan', 'Pembayaran gaji bulanan karyawan'),
-  ('exp_002', 'Listrik & Air', 'Biaya utilitas bulanan'),
-  ('exp_003', 'Sewa Tempat', 'Biaya sewa gedung/tempat usaha'),
-  ('exp_004', 'Transportasi', 'Biaya transportasi dan pengiriman'),
-  ('exp_005', 'Maintenance', 'Biaya pemeliharaan peralatan'),
-  ('exp_006', 'ATK & Supplies', 'Alat tulis kantor dan perlengkapan'),
-  ('exp_007', 'Marketing', 'Biaya promosi dan iklan'),
-  ('exp_008', 'Komunikasi', 'Biaya telepon dan internet'),
-  ('exp_009', 'Lain-lain', 'Biaya operasional lainnya');
 
--- Insert default employees (Anwar, Suri, Cahaya, Dinil, Gemi)
-INSERT OR IGNORE INTO employees (id, name, position, is_active)
-VALUES 
-  ('emp_anwar', 'Anwar', 'Partner', 1),
-  ('emp_suri', 'Suri', 'Partner', 1),
-  ('emp_gemi', 'Gemi', 'Owner', 1),
-  ('emp_cahaya', 'Cahaya', 'Staff', 1),
-  ('emp_dinil', 'Dinil', 'Staff', 1);
+
+
+
 
 -- =====================================================
 -- HUTANG & PIUTANG SYSTEM
 -- =====================================================
 
--- Tabel Hutang (Payables) - Hutang ke Vendor dari Pembelian
-CREATE TABLE IF NOT EXISTS hutang (
-  id TEXT PRIMARY KEY,
-  vendor_id TEXT NOT NULL,
-  purchase_id TEXT, -- Link ke transaksi pembelian (nullable untuk hutang manual)
-  invoice_number TEXT NOT NULL, -- Nomor faktur/nota dari vendor
-  invoice_date TEXT NOT NULL,
-  total_amount REAL NOT NULL,
-  paid_amount REAL DEFAULT 0,
-  remaining_amount REAL NOT NULL,
-  due_date TEXT,
-  status TEXT DEFAULT 'unpaid' CHECK(status IN ('unpaid', 'partial', 'paid')),
-  notes TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (vendor_id) REFERENCES vendor(id) ON DELETE RESTRICT,
-  FOREIGN KEY (purchase_id) REFERENCES pembelian(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Pembayaran Hutang (Payable Payments)
-CREATE TABLE IF NOT EXISTS pembayaran_hutang (
-  id TEXT PRIMARY KEY,
-  payable_id TEXT NOT NULL,
-  payment_date TEXT NOT NULL,
-  amount_paid REAL NOT NULL,
-  payment_method TEXT, -- 'cash', 'transfer', 'check', dll
-  reference_number TEXT, -- No. transfer/check
-  notes TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (payable_id) REFERENCES payables(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Piutang (Receivables) - Piutang dari Customer
-CREATE TABLE IF NOT EXISTS piutang (
-  id TEXT PRIMARY KEY,
-  customer_id TEXT NOT NULL,
-  sale_id TEXT, -- Link ke transaksi penjualan (nullable untuk piutang manual)
-  invoice_number TEXT NOT NULL, -- Nomor invoice kita
-  invoice_date TEXT NOT NULL,
-  total_amount REAL NOT NULL,
-  paid_amount REAL DEFAULT 0,
-  remaining_amount REAL NOT NULL,
-  due_date TEXT,
-  status TEXT DEFAULT 'unpaid' CHECK(status IN ('unpaid', 'partial', 'paid')),
-  notes TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (customer_id) REFERENCES pelanggan(id) ON DELETE RESTRICT,
-  FOREIGN KEY (sale_id) REFERENCES penjualan(id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
 
--- Tabel Pembayaran Piutang (Receivable Payments)
-CREATE TABLE IF NOT EXISTS pembayaran_piutang (
-  id TEXT PRIMARY KEY,
-  receivable_id TEXT NOT NULL,
-  payment_date TEXT NOT NULL,
-  amount_paid REAL NOT NULL,
-  payment_method TEXT, -- 'cash', 'transfer', 'check', dll
-  reference_number TEXT, -- No. transfer/check
-  notes TEXT,
-  created_by TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (receivable_id) REFERENCES receivables(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES profil(id)
-);
+
+
+
+
 
 -- Trigger untuk update status hutang setelah pembayaran
 CREATE TRIGGER IF NOT EXISTS update_payable_after_payment

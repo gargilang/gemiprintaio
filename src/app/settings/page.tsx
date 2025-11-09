@@ -12,30 +12,30 @@ type TabType = "company" | "materials" | "pricing" | "system";
 interface Category {
   id: string;
   name: string;
-  display_order: number;
+  urutan_tampilan: number;
 }
 
 interface Subcategory {
   id: string;
-  category_id: string;
+  kategori_id: string;
   name: string;
   category_name: string;
-  display_order: number;
+  urutan_tampilan: number;
 }
 
 interface Unit {
   id: string;
   name: string;
-  display_order: number;
+  urutan_tampilan: number;
 }
 
 interface QuickSpec {
   id: string;
-  category_id: string;
-  spec_type: string;
-  spec_value: string;
+  kategori_id: string;
+  tipe_spesifikasi: string;
+  nilai_spesifikasi: string;
   category_name: string;
-  display_order: number;
+  urutan_tampilan: number;
 }
 
 export default function SettingsPage() {
@@ -219,7 +219,7 @@ function MaterialsTab() {
               />
             </svg>
             <span className="px-3 py-1.5 bg-blue-100 text-blue-700 font-semibold rounded-lg">
-              {selectedCategory.name}
+              {selectedCategory.nama}
             </span>
           </>
         )}
@@ -254,7 +254,7 @@ function CategoriesView({
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    needs_specifications: false,
+    butuh_spesifikasi_status: false,
   });
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
@@ -310,7 +310,7 @@ function CategoriesView({
 
   const handleAdd = () => {
     setEditingCategory(null);
-    setFormData({ name: "", needs_specifications: false });
+    setFormData({ name: "", butuh_spesifikasi_status: false });
     setShowModal(true);
   };
 
@@ -318,8 +318,9 @@ function CategoriesView({
     e.stopPropagation(); // Prevent category click
     setEditingCategory(category);
     setFormData({
-      name: category.name,
-      needs_specifications: (category as any).needs_specifications === 1,
+      nama: category.nama,
+      butuh_spesifikasi_status:
+        (category as any).butuh_spesifikasi_status === 1,
     });
     setShowModal(true);
   };
@@ -360,7 +361,7 @@ function CategoriesView({
     setConfirmDialog({
       show: true,
       title: "Hapus Kategori",
-      message: `Yakin ingin menghapus kategori "${category.name}"?\n\nKategori hanya bisa dihapus jika tidak ada bahan yang menggunakannya.`,
+      message: `Yakin ingin menghapus kategori "${category.nama}"?\n\nKategori hanya bisa dihapus jika tidak ada bahan yang menggunakannya.`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -427,9 +428,9 @@ function CategoriesView({
                 </div>
                 <div className="flex-1">
                   <span className="font-semibold text-gray-800 block">
-                    {category.name}
+                    {category.nama}
                   </span>
-                  {(category as any).needs_specifications === 1 && (
+                  {(category as any).butuh_spesifikasi_status === 1 && (
                     <span className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
                       <svg
                         className="w-3 h-3"
@@ -537,11 +538,11 @@ function CategoriesView({
                 <input
                   type="checkbox"
                   id="needs_specifications"
-                  checked={formData.needs_specifications}
+                  checked={formData.butuh_spesifikasi_status}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      needs_specifications: e.target.checked,
+                      butuh_spesifikasi_status: e.target.checked,
                     })
                   }
                   className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
@@ -657,8 +658,8 @@ function SubcategoriesView({
   const [editingSpec, setEditingSpec] = useState<QuickSpec | null>(null);
   const [formData, setFormData] = useState({ name: "" });
   const [specFormData, setSpecFormData] = useState({
-    spec_type: "",
-    spec_value: "",
+    tipe_spesifikasi: "",
+    nilai_spesifikasi: "",
   });
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
@@ -676,7 +677,7 @@ function SubcategoriesView({
 
   useEffect(() => {
     loadSubcategories();
-    if ((category as any).needs_specifications === 1) {
+    if ((category as any).butuh_spesifikasi_status === 1) {
       loadSpecs();
     }
   }, [category.id]);
@@ -702,7 +703,7 @@ function SubcategoriesView({
   const loadSubcategories = async () => {
     try {
       setLoading(true);
-      const url = `/api/master/subcategories?category_id=${category.id}`;
+      const url = `/api/master/subcategories?kategori_id =${category.id}`;
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
@@ -721,7 +722,7 @@ function SubcategoriesView({
   const loadSpecs = async () => {
     try {
       setSpecsLoading(true);
-      const url = `/api/master/quick-specs?category_id=${category.id}`;
+      const url = `/api/master/quick-specs?kategori_id =${category.id}`;
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
@@ -745,7 +746,7 @@ function SubcategoriesView({
 
   const handleEdit = (subcategory: Subcategory) => {
     setEditingSubcategory(subcategory);
-    setFormData({ name: subcategory.name });
+    setFormData({ nama: subcategory.nama });
     setShowModal(true);
   };
 
@@ -762,7 +763,7 @@ function SubcategoriesView({
 
       const payload = {
         name: formData.name,
-        ...(!editingSubcategory && { category_id: category.id }),
+        ...(!editingSubcategory && { kategori_id: category.id }),
       };
 
       const res = await fetch(url, {
@@ -788,7 +789,7 @@ function SubcategoriesView({
     setConfirmDialog({
       show: true,
       title: "Hapus Subkategori",
-      message: `Yakin ingin menghapus subkategori "${subcategory.name}"?\n\nSubkategori hanya bisa dihapus jika tidak ada bahan yang menggunakannya.`,
+      message: `Yakin ingin menghapus subkategori "${subcategory.nama}"?\n\nSubkategori hanya bisa dihapus jika tidak ada bahan yang menggunakannya.`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -814,19 +815,25 @@ function SubcategoriesView({
   // Quick Specs Handlers
   const handleAddSpec = () => {
     setEditingSpec(null);
-    setSpecFormData({ spec_type: "", spec_value: "" });
+    setSpecFormData({ tipe_spesifikasi: "", nilai_spesifikasi: "" });
     setShowSpecModal(true);
   };
 
   const handleEditSpec = (spec: QuickSpec) => {
     setEditingSpec(spec);
-    setSpecFormData({ spec_type: spec.spec_type, spec_value: spec.spec_value });
+    setSpecFormData({
+      tipe_spesifikasi: spec.tipe_spesifikasi,
+      nilai_spesifikasi: spec.nilai_spesifikasi,
+    });
     setShowSpecModal(true);
   };
 
   const handleSaveSpec = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!specFormData.spec_type.trim() || !specFormData.spec_value.trim())
+    if (
+      !specFormData.tipe_spesifikasi.trim() ||
+      !specFormData.nilai_spesifikasi.trim()
+    )
       return;
 
     try {
@@ -838,7 +845,7 @@ function SubcategoriesView({
 
       const payload = {
         ...specFormData,
-        ...(!editingSpec && { category_id: category.id }),
+        ...(!editingSpec && { kategori_id: category.id }),
       };
 
       const res = await fetch(url, {
@@ -864,7 +871,7 @@ function SubcategoriesView({
     setConfirmDialog({
       show: true,
       title: "Hapus Spesifikasi",
-      message: `Yakin ingin menghapus spesifikasi "${spec.spec_value}" (${spec.spec_type})?`,
+      message: `Yakin ingin menghapus spesifikasi "${spec.nilai_spesifikasi}" (${spec.tipe_spesifikasi})?`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -889,7 +896,7 @@ function SubcategoriesView({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-bold text-gray-800">
-            Subkategori: {category.name}
+            Subkategori: {category.nama}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             Kelola subkategori untuk kategori ini
@@ -917,7 +924,7 @@ function SubcategoriesView({
       </div>
 
       {/* Info Card */}
-      {(category as any).needs_specifications === 1 && (
+      {(category as any).butuh_spesifikasi_status === 1 && (
         <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 flex items-start gap-3">
           <svg
             className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
@@ -977,7 +984,7 @@ function SubcategoriesView({
             >
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-gray-800 block truncate">
-                  {subcategory.name}
+                  {subcategory.nama}
                 </span>
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
@@ -1026,7 +1033,7 @@ function SubcategoriesView({
       )}
 
       {/* Quick Specs Section - Only for categories that need specifications */}
-      {(category as any).needs_specifications === 1 ? (
+      {(category as any).butuh_spesifikasi_status === 1 ? (
         <div className="mt-8 pt-6 border-t-2 border-gray-300">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -1104,8 +1111,9 @@ function SubcategoriesView({
               {/* Group by spec_type */}
               {Object.entries(
                 specs.reduce((acc, spec) => {
-                  if (!acc[spec.spec_type]) acc[spec.spec_type] = [];
-                  acc[spec.spec_type].push(spec);
+                  if (!acc[spec.tipe_spesifikasi])
+                    acc[spec.tipe_spesifikasi] = [];
+                  acc[spec.tipe_spesifikasi].push(spec);
                   return acc;
                 }, {} as Record<string, QuickSpec[]>)
               ).map(([type, typeSpecs]) => (
@@ -1131,7 +1139,7 @@ function SubcategoriesView({
                         className="bg-white rounded-lg p-2 border border-purple-300 flex items-center justify-between group hover:shadow-md transition-all"
                       >
                         <span className="text-sm font-semibold text-gray-800 truncate">
-                          {spec.spec_value}
+                          {spec.nilai_spesifikasi}
                         </span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                           <button
@@ -1205,7 +1213,7 @@ function SubcategoriesView({
             </h3>
             <p className="text-gray-600 text-sm max-w-md mx-auto">
               Untuk menambahkan spesifikasi, silakan edit kategori "
-              {category.name}" dan centang opsi{" "}
+              {category.nama}" dan centang opsi{" "}
               <span className="font-semibold">
                 "Kategori ini perlu Spesifikasi"
               </span>
@@ -1226,7 +1234,7 @@ function SubcategoriesView({
                   : "Tambah Subkategori Baru"}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Kategori: {category.name}
+                Kategori: {category.nama}
               </p>
             </div>
             <form onSubmit={handleSave} className="p-6">
@@ -1274,7 +1282,7 @@ function SubcategoriesView({
                 {editingSpec ? "Edit Spesifikasi" : "Tambah Spesifikasi Baru"}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Kategori: {category.name}
+                Kategori: {category.nama}
               </p>
             </div>
             <form onSubmit={handleSaveSpec} className="p-6 space-y-4">
@@ -1283,11 +1291,11 @@ function SubcategoriesView({
                   Tipe Spesifikasi
                 </label>
                 <select
-                  value={specFormData.spec_type}
+                  value={specFormData.tipe_spesifikasi}
                   onChange={(e) =>
                     setSpecFormData({
                       ...specFormData,
-                      spec_type: e.target.value,
+                      tipe_spesifikasi: e.target.value,
                     })
                   }
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -1308,11 +1316,11 @@ function SubcategoriesView({
                 </label>
                 <input
                   type="text"
-                  value={specFormData.spec_value}
+                  value={specFormData.nilai_spesifikasi}
                   onChange={(e) =>
                     setSpecFormData({
                       ...specFormData,
-                      spec_value: e.target.value,
+                      nilai_spesifikasi: e.target.value,
                     })
                   }
                   placeholder="Contoh: A4, 80 gsm, Glossy"
@@ -1472,7 +1480,7 @@ function UnitsSection() {
 
   const handleEdit = (unit: Unit) => {
     setEditingUnit(unit);
-    setFormData({ name: unit.name });
+    setFormData({ nama: unit.nama });
     setShowModal(true);
   };
 
@@ -1510,7 +1518,7 @@ function UnitsSection() {
     setConfirmDialog({
       show: true,
       title: "Hapus Satuan",
-      message: `Yakin ingin menghapus satuan "${unit.name}"?`,
+      message: `Yakin ingin menghapus satuan "${unit.nama}"?`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -1566,7 +1574,7 @@ function UnitsSection() {
               key={unit.id}
               className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-3 border-2 border-orange-200 flex items-center justify-between group hover:shadow-md transition-all"
             >
-              <span className="font-semibold text-gray-800">{unit.name}</span>
+              <span className="font-semibold text-gray-800">{unit.nama}</span>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleEdit(unit)}

@@ -16,16 +16,16 @@ export async function PUT(
   const params = await context.params;
   try {
     const body = await req.json();
-    const { spec_type, spec_value, display_order } = body;
+    const { tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan } = body;
 
-    if (!spec_type || !spec_type.trim()) {
+    if (!tipe_spesifikasi || !tipe_spesifikasi.trim()) {
       return NextResponse.json(
         { error: "Tipe spesifikasi harus diisi" },
         { status: 400 }
       );
     }
 
-    if (!spec_value || !spec_value.trim()) {
+    if (!nilai_spesifikasi || !nilai_spesifikasi.trim()) {
       return NextResponse.json(
         { error: "Nilai spesifikasi harus diisi" },
         { status: 400 }
@@ -36,7 +36,7 @@ export async function PUT(
 
     // Check if quick spec exists
     const existing = db
-      .prepare("SELECT * FROM material_quick_specs WHERE id = ?")
+      .prepare("SELECT * FROM spesifikasi_cepat_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -50,12 +50,12 @@ export async function PUT(
     // Check if duplicate exists
     const duplicate = db
       .prepare(
-        "SELECT id FROM material_quick_specs WHERE category_id = ? AND spec_type = ? AND spec_value = ? AND id != ?"
+        "SELECT id FROM spesifikasi_cepat_bahan WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ? AND id != ?"
       )
       .get(
-        (existing as any).category_id,
-        spec_type.trim(),
-        spec_value.trim(),
+        (existing as any).kategori_id,
+        tipe_spesifikasi.trim(),
+        nilai_spesifikasi.trim(),
         params.id
       );
 
@@ -68,23 +68,23 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE material_quick_specs 
-       SET spec_type = ?, spec_value = ?, display_order = ?, updated_at = datetime('now')
+      `UPDATE spesifikasi_cepat_bahan 
+       SET tipe_spesifikasi = ?, nilai_spesifikasi = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
 
     stmt.run(
-      spec_type.trim(),
-      spec_value.trim(),
-      display_order || 0,
+      tipe_spesifikasi.trim(),
+      nilai_spesifikasi.trim(),
+      urutan_tampilan || 0,
       params.id
     );
 
     const updatedQuickSpec = db
       .prepare(
-        `SELECT q.*, c.name as category_name 
-         FROM material_quick_specs q
-         LEFT JOIN material_categories c ON q.category_id = c.id
+        `SELECT q.*, c.nama as category_name 
+         FROM spesifikasi_cepat_bahan q
+         LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
          WHERE q.id = ?`
       )
       .get(params.id);
@@ -115,7 +115,7 @@ export async function DELETE(
 
     // Check if quick spec exists
     const existing = db
-      .prepare("SELECT id FROM material_quick_specs WHERE id = ?")
+      .prepare("SELECT id FROM spesifikasi_cepat_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -126,7 +126,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM material_quick_specs WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM spesifikasi_cepat_bahan WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

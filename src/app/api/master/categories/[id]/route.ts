@@ -17,7 +17,7 @@ export async function GET(
   try {
     const db = getDb();
     const category = db
-      .prepare("SELECT * FROM material_categories WHERE id = ?")
+      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -47,9 +47,9 @@ export async function PUT(
   const params = await context.params;
   try {
     const body = await req.json();
-    const { name, needs_specifications, display_order } = body;
+    const { nama, butuh_spesifikasi_status, urutan_tampilan } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama kategori harus diisi" },
         { status: 400 }
@@ -60,7 +60,7 @@ export async function PUT(
 
     // Check if category exists
     const existing = db
-      .prepare("SELECT id FROM material_categories WHERE id = ?")
+      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -73,8 +73,8 @@ export async function PUT(
 
     // Check if name is already taken by another category
     const duplicate = db
-      .prepare("SELECT id FROM material_categories WHERE name = ? AND id != ?")
-      .get(name.trim(), params.id);
+      .prepare("SELECT id FROM kategori_bahan WHERE nama = ? AND id != ?")
+      .get(nama.trim(), params.id);
 
     if (duplicate) {
       db.close();
@@ -85,20 +85,20 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE material_categories 
-       SET name = ?, needs_specifications = ?, display_order = ?, updated_at = datetime('now')
+      `UPDATE kategori_bahan 
+       SET nama = ?, butuh_spesifikasi_status = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
 
     stmt.run(
-      name.trim(),
-      needs_specifications ? 1 : 0,
-      display_order || 0,
+      nama.trim(),
+      butuh_spesifikasi_status ? 1 : 0,
+      urutan_tampilan || 0,
       params.id
     );
 
     const updatedCategory = db
-      .prepare("SELECT * FROM material_categories WHERE id = ?")
+      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -127,7 +127,7 @@ export async function DELETE(
 
     // Check if category exists
     const existing = db
-      .prepare("SELECT id FROM material_categories WHERE id = ?")
+      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -140,7 +140,7 @@ export async function DELETE(
 
     // Check if there are bahan using this category
     const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM bahan WHERE category_id = ?")
+      .prepare("SELECT COUNT(*) as count FROM bahan WHERE kategori_id = ?")
       .get(params.id) as { count: number };
 
     if (materialsCount.count > 0) {
@@ -153,7 +153,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM material_categories WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM kategori_bahan WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

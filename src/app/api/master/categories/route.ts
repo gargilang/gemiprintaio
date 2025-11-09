@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const db = getDb();
     const categories = db
-      .prepare("SELECT * FROM material_categories ORDER BY display_order, name")
+      .prepare("SELECT * FROM kategori_bahan ORDER BY urutan_tampilan, nama")
       .all();
     db.close();
 
@@ -35,9 +35,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, needs_specifications, display_order } = body;
+    const { nama, butuh_spesifikasi_status, urutan_tampilan } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama kategori harus diisi" },
         { status: 400 }
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
 
     // Check if category already exists
     const existing = db
-      .prepare("SELECT id FROM material_categories WHERE name = ?")
-      .get(name.trim());
+      .prepare("SELECT id FROM kategori_bahan WHERE nama = ?")
+      .get(nama.trim());
 
     if (existing) {
       db.close();
@@ -61,14 +61,19 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("cat");
     const stmt = db.prepare(
-      `INSERT INTO material_categories (id, name, needs_specifications, display_order, created_at, updated_at)
+      `INSERT INTO kategori_bahan (id, nama, butuh_spesifikasi_status, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
-    stmt.run(id, name.trim(), needs_specifications ? 1 : 0, display_order || 0);
+    stmt.run(
+      id,
+      nama.trim(),
+      butuh_spesifikasi_status ? 1 : 0,
+      urutan_tampilan || 0
+    );
 
     const newCategory = db
-      .prepare("SELECT * FROM material_categories WHERE id = ?")
+      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
       .get(id);
 
     db.close();

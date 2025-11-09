@@ -24,20 +24,20 @@ export async function GET(req: NextRequest) {
     if (categoryId) {
       subcategories = db
         .prepare(
-          `SELECT s.*, c.name as category_name 
-           FROM material_subcategories s
-           LEFT JOIN material_categories c ON s.category_id = c.id
-           WHERE s.category_id = ?
-           ORDER BY s.display_order, s.name`
+          `SELECT s.*, c.nama as category_name 
+           FROM subkategori_bahan s
+           LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+           WHERE s.kategori_id = ?
+           ORDER BY s.urutan_tampilan, s.nama`
         )
         .all(categoryId);
     } else {
       subcategories = db
         .prepare(
-          `SELECT s.*, c.name as category_name 
-           FROM material_subcategories s
-           LEFT JOIN material_categories c ON s.category_id = c.id
-           ORDER BY c.display_order, s.display_order, s.name`
+          `SELECT s.*, c.nama as category_name 
+           FROM subkategori_bahan s
+           LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+           ORDER BY c.urutan_tampilan, s.urutan_tampilan, s.nama`
         )
         .all();
     }
@@ -58,16 +58,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { category_id, name, display_order } = body;
+    const { kategori_id, nama, urutan_tampilan } = body;
 
-    if (!category_id || !category_id.trim()) {
+    if (!kategori_id || !kategori_id.trim()) {
       return NextResponse.json(
         { error: "ID kategori harus diisi" },
         { status: 400 }
       );
     }
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama subkategori harus diisi" },
         { status: 400 }
@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
 
     // Check if category exists
     const category = db
-      .prepare("SELECT id FROM material_categories WHERE id = ?")
-      .get(category_id);
+      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .get(kategori_id);
 
     if (!category) {
       db.close();
@@ -92,9 +92,9 @@ export async function POST(req: NextRequest) {
     // Check if subcategory already exists in this category
     const existing = db
       .prepare(
-        "SELECT id FROM material_subcategories WHERE category_id = ? AND name = ?"
+        "SELECT id FROM subkategori_bahan WHERE kategori_id = ? AND nama = ?"
       )
-      .get(category_id, name.trim());
+      .get(kategori_id, nama.trim());
 
     if (existing) {
       db.close();
@@ -106,17 +106,17 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("sub");
     const stmt = db.prepare(
-      `INSERT INTO material_subcategories (id, category_id, name, display_order, created_at, updated_at)
+      `INSERT INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
-    stmt.run(id, category_id, name.trim(), display_order || 0);
+    stmt.run(id, kategori_id, nama.trim(), urutan_tampilan || 0);
 
     const newSubcategory = db
       .prepare(
-        `SELECT s.*, c.name as category_name 
-         FROM material_subcategories s
-         LEFT JOIN material_categories c ON s.category_id = c.id
+        `SELECT s.*, c.nama as category_name 
+         FROM subkategori_bahan s
+         LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
          WHERE s.id = ?`
       )
       .get(id);

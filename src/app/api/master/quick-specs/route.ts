@@ -24,20 +24,20 @@ export async function GET(req: NextRequest) {
     if (categoryId) {
       quickSpecs = db
         .prepare(
-          `SELECT q.*, c.name as category_name 
-           FROM material_quick_specs q
-           LEFT JOIN material_categories c ON q.category_id = c.id
-           WHERE q.category_id = ?
-           ORDER BY q.spec_type, q.display_order, q.spec_value`
+          `SELECT q.*, c.nama as category_name 
+           FROM spesifikasi_cepat_bahan q
+           LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+           WHERE q.kategori_id = ?
+           ORDER BY q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
         )
         .all(categoryId);
     } else {
       quickSpecs = db
         .prepare(
-          `SELECT q.*, c.name as category_name 
-           FROM material_quick_specs q
-           LEFT JOIN material_categories c ON q.category_id = c.id
-           ORDER BY c.display_order, q.spec_type, q.display_order, q.spec_value`
+          `SELECT q.*, c.nama as category_name 
+           FROM spesifikasi_cepat_bahan q
+           LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+           ORDER BY c.urutan_tampilan, q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
         )
         .all();
     }
@@ -58,23 +58,28 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { category_id, spec_type, spec_value, display_order } = body;
+    const {
+      kategori_id,
+      tipe_spesifikasi,
+      nilai_spesifikasi,
+      urutan_tampilan,
+    } = body;
 
-    if (!category_id || !category_id.trim()) {
+    if (!kategori_id || !kategori_id.trim()) {
       return NextResponse.json(
         { error: "ID kategori harus diisi" },
         { status: 400 }
       );
     }
 
-    if (!spec_type || !spec_type.trim()) {
+    if (!tipe_spesifikasi || !tipe_spesifikasi.trim()) {
       return NextResponse.json(
         { error: "Tipe spesifikasi harus diisi" },
         { status: 400 }
       );
     }
 
-    if (!spec_value || !spec_value.trim()) {
+    if (!nilai_spesifikasi || !nilai_spesifikasi.trim()) {
       return NextResponse.json(
         { error: "Nilai spesifikasi harus diisi" },
         { status: 400 }
@@ -85,8 +90,8 @@ export async function POST(req: NextRequest) {
 
     // Check if category exists
     const category = db
-      .prepare("SELECT id FROM material_categories WHERE id = ?")
-      .get(category_id);
+      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .get(kategori_id);
 
     if (!category) {
       db.close();
@@ -99,9 +104,9 @@ export async function POST(req: NextRequest) {
     // Check if quick spec already exists
     const existing = db
       .prepare(
-        "SELECT id FROM material_quick_specs WHERE category_id = ? AND spec_type = ? AND spec_value = ?"
+        "SELECT id FROM spesifikasi_cepat_bahan WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ?"
       )
-      .get(category_id, spec_type.trim(), spec_value.trim());
+      .get(kategori_id, tipe_spesifikasi.trim(), nilai_spesifikasi.trim());
 
     if (existing) {
       db.close();
@@ -113,23 +118,23 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("spec");
     const stmt = db.prepare(
-      `INSERT INTO material_quick_specs (id, category_id, spec_type, spec_value, display_order, created_at, updated_at)
+      `INSERT INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
     stmt.run(
       id,
-      category_id,
-      spec_type.trim(),
-      spec_value.trim(),
-      display_order || 0
+      kategori_id,
+      tipe_spesifikasi.trim(),
+      nilai_spesifikasi.trim(),
+      urutan_tampilan || 0
     );
 
     const newQuickSpec = db
       .prepare(
-        `SELECT q.*, c.name as category_name 
-         FROM material_quick_specs q
-         LEFT JOIN material_categories c ON q.category_id = c.id
+        `SELECT q.*, c.nama as category_name 
+         FROM spesifikasi_cepat_bahan q
+         LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
          WHERE q.id = ?`
       )
       .get(id);

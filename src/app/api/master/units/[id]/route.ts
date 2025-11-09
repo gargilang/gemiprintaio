@@ -16,9 +16,9 @@ export async function PUT(
   const params = await context.params;
   try {
     const body = await req.json();
-    const { name, display_order } = body;
+    const { nama, urutan_tampilan } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama satuan harus diisi" },
         { status: 400 }
@@ -29,7 +29,7 @@ export async function PUT(
 
     // Check if unit exists
     const existing = db
-      .prepare("SELECT id FROM material_units WHERE id = ?")
+      .prepare("SELECT id FROM satuan_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -42,8 +42,8 @@ export async function PUT(
 
     // Check if name is already taken by another unit
     const duplicate = db
-      .prepare("SELECT id FROM material_units WHERE name = ? AND id != ?")
-      .get(name.trim(), params.id);
+      .prepare("SELECT id FROM satuan_bahan WHERE nama = ? AND id != ?")
+      .get(nama.trim(), params.id);
 
     if (duplicate) {
       db.close();
@@ -54,15 +54,15 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE material_units 
-       SET name = ?, display_order = ?, updated_at = datetime('now')
+      `UPDATE satuan_bahan 
+       SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
 
-    stmt.run(name.trim(), display_order || 0, params.id);
+    stmt.run(nama.trim(), urutan_tampilan || 0, params.id);
 
     const updatedUnit = db
-      .prepare("SELECT * FROM material_units WHERE id = ?")
+      .prepare("SELECT * FROM satuan_bahan WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -91,7 +91,7 @@ export async function DELETE(
 
     // Check if unit exists
     const existing = db
-      .prepare("SELECT id FROM material_units WHERE id = ?")
+      .prepare("SELECT id FROM satuan_bahan WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -102,7 +102,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM material_units WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM satuan_bahan WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const db = getDb();
     const units = db
-      .prepare("SELECT * FROM material_units ORDER BY display_order, name")
+      .prepare("SELECT * FROM satuan_bahan ORDER BY urutan_tampilan, nama")
       .all();
     db.close();
 
@@ -35,9 +35,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, display_order } = body;
+    const { nama, urutan_tampilan } = body;
 
-    if (!name || !name.trim()) {
+    if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama satuan harus diisi" },
         { status: 400 }
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
 
     // Check if unit already exists
     const existing = db
-      .prepare("SELECT id FROM material_units WHERE name = ?")
-      .get(name.trim());
+      .prepare("SELECT id FROM satuan_bahan WHERE nama = ?")
+      .get(nama.trim());
 
     if (existing) {
       db.close();
@@ -61,14 +61,14 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("unit");
     const stmt = db.prepare(
-      `INSERT INTO material_units (id, name, display_order, created_at, updated_at)
+      `INSERT INTO satuan_bahan (id, nama, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, datetime('now'), datetime('now'))`
     );
 
-    stmt.run(id, name.trim(), display_order || 0);
+    stmt.run(id, nama.trim(), urutan_tampilan || 0);
 
     const newUnit = db
-      .prepare("SELECT * FROM material_units WHERE id = ?")
+      .prepare("SELECT * FROM satuan_bahan WHERE id = ?")
       .get(id);
 
     db.close();

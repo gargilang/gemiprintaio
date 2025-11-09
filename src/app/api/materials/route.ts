@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
         `
         SELECT 
           m.*,
-          mc.name as category_name,
-          ms.name as subcategory_name
+          mc.nama as category_name,
+          ms.nama as subcategory_name
         FROM bahan m
-        LEFT JOIN material_categories mc ON m.kategori_id = mc.id
-        LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
+        LEFT JOIN kategori_bahan mc ON m.kategori_id = mc.id
+        LEFT JOIN subkategori_bahan ms ON m.subkategori_id = ms.id
         ORDER BY m.nama
       `
       )
