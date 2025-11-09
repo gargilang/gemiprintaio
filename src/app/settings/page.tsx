@@ -11,21 +11,21 @@ type TabType = "company" | "materials" | "pricing" | "system";
 
 interface Category {
   id: string;
-  name: string;
+  nama: string;
   urutan_tampilan: number;
 }
 
 interface Subcategory {
   id: string;
   kategori_id: string;
-  name: string;
+  nama: string;
   category_name: string;
   urutan_tampilan: number;
 }
 
 interface Unit {
   id: string;
-  name: string;
+  nama: string;
   urutan_tampilan: number;
 }
 
@@ -253,7 +253,7 @@ function CategoriesView({
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
+    nama: "",
     butuh_spesifikasi_status: false,
   });
   const [saving, setSaving] = useState(false);
@@ -310,7 +310,7 @@ function CategoriesView({
 
   const handleAdd = () => {
     setEditingCategory(null);
-    setFormData({ name: "", butuh_spesifikasi_status: false });
+    setFormData({ nama: "", butuh_spesifikasi_status: false });
     setShowModal(true);
   };
 
@@ -327,7 +327,7 @@ function CategoriesView({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.nama.trim()) return;
 
     try {
       setSaving(true);
@@ -524,9 +524,9 @@ function CategoriesView({
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
+                  value={formData.nama}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, nama: e.target.value })
                   }
                   placeholder="Contoh: Finishing"
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -656,7 +656,7 @@ function SubcategoriesView({
   const [editingSubcategory, setEditingSubcategory] =
     useState<Subcategory | null>(null);
   const [editingSpec, setEditingSpec] = useState<QuickSpec | null>(null);
-  const [formData, setFormData] = useState({ name: "" });
+  const [formData, setFormData] = useState({ nama: "" });
   const [specFormData, setSpecFormData] = useState({
     tipe_spesifikasi: "",
     nilai_spesifikasi: "",
@@ -703,7 +703,7 @@ function SubcategoriesView({
   const loadSubcategories = async () => {
     try {
       setLoading(true);
-      const url = `/api/master/subcategories?kategori_id =${category.id}`;
+      const url = `/api/master/subcategories?category_id=${category.id}`;
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
@@ -722,7 +722,7 @@ function SubcategoriesView({
   const loadSpecs = async () => {
     try {
       setSpecsLoading(true);
-      const url = `/api/master/quick-specs?kategori_id =${category.id}`;
+      const url = `/api/master/quick-specs?category_id=${category.id}`;
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
@@ -740,7 +740,7 @@ function SubcategoriesView({
 
   const handleAdd = () => {
     setEditingSubcategory(null);
-    setFormData({ name: "" });
+    setFormData({ nama: "" });
     setShowModal(true);
   };
 
@@ -752,7 +752,7 @@ function SubcategoriesView({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.nama.trim()) return;
 
     try {
       setSaving(true);
@@ -762,7 +762,7 @@ function SubcategoriesView({
       const method = editingSubcategory ? "PUT" : "POST";
 
       const payload = {
-        name: formData.name,
+        nama: formData.nama,
         ...(!editingSubcategory && { kategori_id: category.id }),
       };
 
@@ -1244,8 +1244,8 @@ function SubcategoriesView({
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ name: e.target.value })}
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ nama: e.target.value })}
                   placeholder="Contoh: Mata Ayam"
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   autoFocus
@@ -1419,7 +1419,7 @@ function UnitsSection() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
-  const [formData, setFormData] = useState({ name: "" });
+  const [formData, setFormData] = useState({ nama: "" });
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -1474,7 +1474,7 @@ function UnitsSection() {
 
   const handleAdd = () => {
     setEditingUnit(null);
-    setFormData({ name: "" });
+    setFormData({ nama: "" });
     setShowModal(true);
   };
 
@@ -1486,7 +1486,7 @@ function UnitsSection() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.nama.trim()) return;
 
     try {
       setSaving(true);
@@ -1634,8 +1634,8 @@ function UnitsSection() {
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ name: e.target.value })}
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ nama: e.target.value })}
                   placeholder="Contoh: kg, liter, buah"
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   autoFocus
