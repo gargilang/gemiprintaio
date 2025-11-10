@@ -9,18 +9,18 @@ function ensureTable(db: any) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS kredensial (
       id TEXT PRIMARY KEY,
-      owner_id TEXT NOT NULL,
-      service_name TEXT NOT NULL,
-      account_username TEXT NOT NULL,
-      password_encrypted TEXT NOT NULL,
-      notes TEXT,
-      is_private INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (owner_id) REFERENCES profil(id)
+      pemilik_id TEXT NOT NULL,
+      nama_layanan TEXT NOT NULL,
+      nama_pengguna_akun TEXT NOT NULL,
+      password_terenkripsi TEXT NOT NULL,
+      catatan TEXT,
+      privat_status INTEGER DEFAULT 1,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (pemilik_id) REFERENCES profil(id)
     );
-    CREATE INDEX IF NOT EXISTS idx_credentials_owner ON kredensial(owner_id);
-    CREATE INDEX IF NOT EXISTS idx_credentials_service ON kredensial(service_name);
+    CREATE INDEX IF NOT EXISTS idx_credentials_owner ON kredensial(pemilik_id);
+    CREATE INDEX IF NOT EXISTS idx_credentials_service ON kredensial(nama_layanan);
   `);
 }
 
@@ -51,28 +51,28 @@ export async function GET(request: NextRequest) {
     if (viewerId) {
       rows = db
         .prepare(
-          `SELECT id, owner_id, service_name, account_username, password_encrypted, notes, is_private, created_at, updated_at
+          `SELECT id, pemilik_id, nama_layanan, nama_pengguna_akun, password_terenkripsi, catatan, privat_status, dibuat_pada, diperbarui_pada
            FROM kredensial
-           WHERE is_private = 0 OR owner_id = ?
-           ORDER BY updated_at DESC`
+           WHERE privat_status = 0 OR pemilik_id = ?
+           ORDER BY diperbarui_pada DESC`
         )
         .all(viewerId);
     } else {
       // Without viewer context, only public entries
       rows = db
         .prepare(
-          `SELECT id, owner_id, service_name, account_username, password_encrypted, notes, is_private, created_at, updated_at
+          `SELECT id, pemilik_id, nama_layanan, nama_pengguna_akun, password_terenkripsi, catatan, privat_status, dibuat_pada, diperbarui_pada
            FROM kredensial
-           WHERE is_private = 0
-           ORDER BY updated_at DESC`
+           WHERE privat_status = 0
+           ORDER BY diperbarui_pada DESC`
         )
         .all();
     }
 
     // Never return raw passwords. Return masked preview and a flag indicating ownership.
     const data = rows.map((r) => {
-      const isOwner = viewerId === r.owner_id;
-      const isPrivate = !!r.is_private;
+      const isOwner = viewerId === r.pemilik_id;
+      const isPrivate = !!r.privat_status;
       const isAdminOrManager =
         viewerRole === "admin" || viewerRole === "manager";
 
@@ -83,12 +83,12 @@ export async function GET(request: NextRequest) {
 
       return {
         id: r.id,
-        owner_id: r.owner_id,
-        service_name: r.service_name,
-        account_username: r.account_username,
-        notes: r.notes || "",
-        is_private: isPrivate,
-        can_view_password: canView && !!r.password_encrypted,
+        pemilik_id: r.pemilik_id,
+        nama_layanan: r.nama_layanan,
+        nama_pengguna_akun: r.nama_pengguna_akun,
+        catatan: r.catatan || "",
+        privat_status: isPrivate,
+        dapat_melihat_password: canView && !!r.password_terenkripsi,
       };
     });
 
@@ -107,11 +107,11 @@ export async function POST(request: NextRequest) {
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
     const {
-      service_name,
-      account_username,
+      nama_layanan,
+      nama_pengguna_akun,
       password,
-      notes = "",
-      is_private = 1,
+      catatan = "",
+      privat_status = 1,
     } = await request.json();
 
     if (!viewerId)
@@ -119,9 +119,9 @@ export async function POST(request: NextRequest) {
         { error: "Viewer tidak diketahui" },
         { status: 400 }
       );
-    if (!service_name || !account_username || !password) {
+    if (!nama_layanan || !nama_pengguna_akun || !password) {
       return NextResponse.json(
-        { error: "service_name, account_username, password wajib diisi" },
+        { error: "nama_layanan, nama_pengguna_akun, password wajib diisi" },
         { status: 400 }
       );
     }
@@ -135,18 +135,18 @@ export async function POST(request: NextRequest) {
     ensureTable(db);
 
     const id = uuidv4();
-    const password_encrypted = encryptText(password);
+    const password_terenkripsi = encryptText(password);
     db.prepare(
-      `INSERT INTO kredensial (id, owner_id, service_name, account_username, password_encrypted, notes, is_private)
+      `INSERT INTO kredensial (id, pemilik_id, nama_layanan, nama_pengguna_akun, password_terenkripsi, catatan, privat_status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       viewerId,
-      service_name,
-      account_username,
-      password_encrypted,
-      notes,
-      is_private ? 1 : 0
+      nama_layanan,
+      nama_pengguna_akun,
+      password_terenkripsi,
+      catatan,
+      privat_status ? 1 : 0
     );
 
     return NextResponse.json({ success: true, id }, { status: 201 });

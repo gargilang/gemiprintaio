@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
 
 interface UnitPrice {
@@ -62,6 +63,10 @@ export default function AddMaterialModal({
   const [unitPrices, setUnitPrices] = useState<UnitPrice[]>([]);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Click outside to close modal
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, isOpen);
 
   // Load master data
   useEffect(() => {
@@ -396,7 +401,10 @@ export default function AddMaterialModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -472,9 +480,24 @@ export default function AddMaterialModal({
 
                 {/* Kategori */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Kategori <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Kategori <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem(
+                          "materialFormDraft",
+                          JSON.stringify({ formData, unitPrices })
+                        );
+                        router.push("/settings?tab=materials");
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-semibold"
+                    >
+                      Kelola
+                    </button>
+                  </div>
                   <select
                     required
                     value={formData.category}

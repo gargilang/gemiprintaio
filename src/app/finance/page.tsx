@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import MainShell from "@/components/MainShell";
 import { NotificationToastProps } from "@/components/NotificationToast";
 import { CashBook, KategoriTransaksi } from "@/types/database";
@@ -722,7 +723,7 @@ export default function FinancePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal menghapus data");
 
-      showMsg("success", `✓ ${data.message}`);
+      showMsg("success", data.message);
       setShowDeleteAllModal(false);
       await loadCashBooks();
     } catch (err) {

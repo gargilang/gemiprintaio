@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { CashBook } from "@/types/database";
 import { formatRupiah } from "@/lib/indonesian-helpers";
 
@@ -33,8 +34,13 @@ export default function EditManualModal({
   cashBook,
 }: EditManualModalProps) {
   const [formData, setFormData] = useState<{ [key: string]: string }>({});
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
+
+  // Click outside to close modal (only when not saving)
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, show && !saving);
 
   useEffect(() => {
     if (cashBook) {
@@ -43,6 +49,7 @@ export default function EditManualModal({
         initialData[key] = ((cashBook as any)[key] || 0).toString();
       });
       setFormData(initialData);
+      setTouchedFields(new Set()); // Reset touched fields when modal opens
     }
   }, [cashBook]);
 
@@ -69,10 +76,27 @@ export default function EditManualModal({
 
     try {
       const updateData: { [key: string]: number } = {};
+
+      // Only include fields that were actually touched/edited by user
       EDITABLE_FIELDS.forEach(({ key }) => {
-        const value = parseFloat(formData[key]) || 0;
-        updateData[key] = value;
+        if (
+          touchedFields.has(key) &&
+          formData[key] !== undefined &&
+          formData[key] !== ""
+        ) {
+          const value = parseFloat(formData[key]);
+          if (!isNaN(value)) {
+            updateData[key] = value;
+          }
+        }
       });
+
+      // Check if at least one field is being updated
+      if (Object.keys(updateData).length === 0) {
+        setError("Tidak ada field yang diubah");
+        setSaving(false);
+        return;
+      }
 
       console.log("Sending override request:", {
         id: cashBook.id,
@@ -103,6 +127,7 @@ export default function EditManualModal({
 
   const handleClose = () => {
     setFormData({});
+    setTouchedFields(new Set());
     setSaving(false);
     setError("");
     onClose();
@@ -112,6 +137,8 @@ export default function EditManualModal({
     // Only allow numbers and decimal point
     const sanitized = value.replace(/[^0-9.-]/g, "");
     setFormData({ ...formData, [key]: sanitized });
+    // Mark this field as touched
+    setTouchedFields(new Set(touchedFields).add(key));
   };
 
   const isOverridden = (field: string) => {
@@ -120,7 +147,10 @@ export default function EditManualModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200"
+      >
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white">
             🔧 Edit Manual (Override)

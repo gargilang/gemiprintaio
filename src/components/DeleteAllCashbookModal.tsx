@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface DeleteAllCashbookModalProps {
   show: boolean;
@@ -15,6 +16,10 @@ export default function DeleteAllCashbookModal({
   onConfirm,
   deleting,
 }: DeleteAllCashbookModalProps) {
+  // Click outside to close modal (only when not deleting)
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, show && !deleting);
+
   // Handle ESC key to close modal
   useEffect(() => {
     if (!show || deleting) return;
@@ -33,7 +38,10 @@ export default function DeleteAllCashbookModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200"
+      >
         <div className="p-6 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">

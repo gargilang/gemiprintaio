@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { getTodayJakarta } from "@/lib/date-utils";
 
 interface CloseBooksModalProps {
@@ -21,6 +22,10 @@ export default function CloseBooksModal({
   const [label, setLabel] = useState("");
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState("");
+
+  // Click outside to close modal (only when not closing)
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, () => !closing && handleClose(), show && !closing);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -112,7 +117,10 @@ export default function CloseBooksModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200"
+      >
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg

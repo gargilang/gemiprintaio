@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface Archive {
   archived_label: string;
@@ -29,6 +30,10 @@ export default function SelectMonthModal({
   const [archives, setArchives] = useState<Archive[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Click outside to close modal
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, show);
 
   useEffect(() => {
     if (show) {
@@ -83,7 +88,10 @@ export default function SelectMonthModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200"
+      >
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg

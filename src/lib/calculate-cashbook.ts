@@ -78,13 +78,8 @@ export async function recalculateCashbook(
     return 0;
   }
 
-  const updateStmt = db.prepare(`
-    UPDATE keuangan SET
-      omzet = ?, biaya_operasional = ?, biaya_bahan = ?, saldo = ?, laba_bersih = ?,
-      kasbon_anwar = ?, kasbon_suri = ?, kasbon_cahaya = ?, kasbon_dinil = ?,
-      bagi_hasil_anwar = ?, bagi_hasil_suri = ?, bagi_hasil_gemi = ?
-    WHERE id = ?
-  `);
+  // Prepare dynamic update statements for each entry (to respect overrides)
+  // We'll build the UPDATE query dynamically per row
 
   // Initialize running totals
   let runningOmzet = 0;
@@ -138,6 +133,7 @@ export async function recalculateCashbook(
     if (!row.override_saldo) {
       runningSaldo += debit - kredit;
     } else {
+      // Use the saldo value from database (user manually set it)
       runningSaldo = row.saldo;
     }
 
@@ -213,22 +209,68 @@ export async function recalculateCashbook(
       runningBagiHasilGemi = row.bagi_hasil_gemi;
     }
 
-    // Update the entry with calculated values
-    updateStmt.run(
-      runningOmzet,
-      runningBiayaOps,
-      runningBiayaBahan,
-      runningSaldo,
-      runningLabaBersih,
-      runningKasbonAnwar,
-      runningKasbonSuri,
-      runningKasbonCahaya,
-      runningKasbonDinil,
-      runningBagiHasilAnwar,
-      runningBagiHasilSuri,
-      runningBagiHasilGemi,
-      row.id
-    );
+    // Update the entry with calculated values (respecting overrides)
+    // Build dynamic update to only update non-overridden fields
+    const fieldsToUpdate: string[] = [];
+    const valuesToUpdate: any[] = [];
+
+    if (!row.override_omzet) {
+      fieldsToUpdate.push("omzet = ?");
+      valuesToUpdate.push(runningOmzet);
+    }
+    if (!row.override_biaya_operasional) {
+      fieldsToUpdate.push("biaya_operasional = ?");
+      valuesToUpdate.push(runningBiayaOps);
+    }
+    if (!row.override_biaya_bahan) {
+      fieldsToUpdate.push("biaya_bahan = ?");
+      valuesToUpdate.push(runningBiayaBahan);
+    }
+    if (!row.override_saldo) {
+      fieldsToUpdate.push("saldo = ?");
+      valuesToUpdate.push(runningSaldo);
+    }
+    if (!row.override_laba_bersih) {
+      fieldsToUpdate.push("laba_bersih = ?");
+      valuesToUpdate.push(runningLabaBersih);
+    }
+    if (!row.override_kasbon_anwar) {
+      fieldsToUpdate.push("kasbon_anwar = ?");
+      valuesToUpdate.push(runningKasbonAnwar);
+    }
+    if (!row.override_kasbon_suri) {
+      fieldsToUpdate.push("kasbon_suri = ?");
+      valuesToUpdate.push(runningKasbonSuri);
+    }
+    if (!row.override_kasbon_cahaya) {
+      fieldsToUpdate.push("kasbon_cahaya = ?");
+      valuesToUpdate.push(runningKasbonCahaya);
+    }
+    if (!row.override_kasbon_dinil) {
+      fieldsToUpdate.push("kasbon_dinil = ?");
+      valuesToUpdate.push(runningKasbonDinil);
+    }
+    if (!row.override_bagi_hasil_anwar) {
+      fieldsToUpdate.push("bagi_hasil_anwar = ?");
+      valuesToUpdate.push(runningBagiHasilAnwar);
+    }
+    if (!row.override_bagi_hasil_suri) {
+      fieldsToUpdate.push("bagi_hasil_suri = ?");
+      valuesToUpdate.push(runningBagiHasilSuri);
+    }
+    if (!row.override_bagi_hasil_gemi) {
+      fieldsToUpdate.push("bagi_hasil_gemi = ?");
+      valuesToUpdate.push(runningBagiHasilGemi);
+    }
+
+    // Only update if there are fields to update
+    if (fieldsToUpdate.length > 0) {
+      valuesToUpdate.push(row.id);
+      const updateQuery = `UPDATE keuangan SET ${fieldsToUpdate.join(
+        ", "
+      )} WHERE id = ?`;
+      db.prepare(updateQuery).run(...valuesToUpdate);
+    }
 
     // Store previous laba bersih for next iteration
     prevLabaBersih = runningLabaBersih;

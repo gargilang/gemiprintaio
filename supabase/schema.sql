@@ -79,55 +79,61 @@ create table public.vendors (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Sales/POS Transactions
-create table public.sales (
+-- Sales/POS Transactions (Penjualan)
+create table public.penjualan (
   id uuid default uuid_generate_v4() primary key,
-  invoice_number text unique not null,
-  customer_id uuid references public.customers(id),
-  total_amount decimal(15,2) not null,
-  paid_amount decimal(15,2) not null default 0,
-  change_amount decimal(15,2) not null default 0,
-  payment_method text, -- cash, transfer, etc
-  cashier_id uuid references public.profiles(id),
-  notes text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  nomor_invoice text unique not null,
+  pelanggan_id uuid references public.pelanggan(id),
+  total_jumlah decimal(15,2) not null,
+  jumlah_dibayar decimal(15,2) not null default 0,
+  jumlah_kembalian decimal(15,2) not null default 0,
+  metode_pembayaran text, -- cash, transfer, etc
+  kasir_id uuid references public.profil(id),
+  catatan text,
+  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null,
+  diperbarui_pada timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Sales Items
-create table public.sales_items (
+-- Sales Items (Item Penjualan)
+create table public.item_penjualan (
   id uuid default uuid_generate_v4() primary key,
-  sale_id uuid references public.sales(id) on delete cascade not null,
-  material_id uuid references public.materials(id) not null,
-  quantity decimal(15,3) not null,
-  unit_price decimal(15,2) not null,
+  penjualan_id uuid references public.penjualan(id) on delete cascade not null,
+  bahan_id uuid references public.bahan(id) not null,
+  harga_satuan_id uuid references public.harga_bahan_satuan(id), -- Reference ke harga satuan
+  jumlah decimal(15,3) not null,
+  nama_satuan text not null, -- Nama satuan yang digunakan
+  faktor_konversi decimal(15,3) not null default 1, -- Konversi ke satuan dasar
+  harga_satuan decimal(15,2) not null,
   subtotal decimal(15,2) not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Purchase Orders
-create table public.purchases (
+-- Purchase Orders (Pembelian)
+create table public.pembelian (
   id uuid default uuid_generate_v4() primary key,
-  purchase_number text unique not null,
-  vendor_id uuid references public.vendors(id),
-  total_amount decimal(15,2) not null,
-  paid_amount decimal(15,2) not null default 0,
-  payment_method text,
-  notes text,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  nomor_pembelian text unique not null,
+  vendor_id uuid references public.vendor(id),
+  total_jumlah decimal(15,2) not null,
+  jumlah_dibayar decimal(15,2) not null default 0,
+  metode_pembayaran text,
+  catatan text,
+  dibuat_oleh uuid references public.profil(id),
+  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null,
+  diperbarui_pada timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Purchase Items
-create table public.purchase_items (
+-- Purchase Items (Item Pembelian)
+create table public.item_pembelian (
   id uuid default uuid_generate_v4() primary key,
-  purchase_id uuid references public.purchases(id) on delete cascade not null,
-  material_id uuid references public.materials(id) not null,
-  quantity decimal(15,3) not null,
-  unit_price decimal(15,2) not null,
+  pembelian_id uuid references public.pembelian(id) on delete cascade not null,
+  bahan_id uuid references public.bahan(id) not null,
+  harga_satuan_id uuid references public.harga_bahan_satuan(id), -- Reference ke harga satuan
+  jumlah decimal(15,3) not null,
+  nama_satuan text not null, -- Nama satuan yang digunakan
+  faktor_konversi decimal(15,3) not null default 1, -- Konversi ke satuan dasar
+  harga_satuan decimal(15,2) not null,
   subtotal decimal(15,2) not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Financial Transactions (for debts, receivables, kasbon, and other transactions)
@@ -176,13 +182,13 @@ create table public.inventory_movements (
 
 -- Enable Row Level Security
 alter table public.profiles enable row level security;
-alter table public.materials enable row level security;
-alter table public.customers enable row level security;
-alter table public.vendors enable row level security;
-alter table public.sales enable row level security;
-alter table public.sales_items enable row level security;
-alter table public.purchases enable row level security;
-alter table public.purchase_items enable row level security;
+alter table public.bahan enable row level security;
+alter table public.pelanggan enable row level security;
+alter table public.vendor enable row level security;
+alter table public.penjualan enable row level security;
+alter table public.item_penjualan enable row level security;
+alter table public.pembelian enable row level security;
+alter table public.item_pembelian enable row level security;
 alter table public.financial_transactions enable row level security;
 alter table public.other_transactions enable row level security;
 alter table public.inventory_movements enable row level security;
@@ -247,64 +253,64 @@ create policy "Admin and Manager can manage vendors"
     )
   );
 
--- Sales policies
-create policy "Authenticated users can view sales"
-  on public.sales for select
+-- Penjualan (Sales) policies
+create policy "Authenticated users can view penjualan"
+  on public.penjualan for select
   to authenticated
   using (true);
 
-create policy "Authenticated users can create sales"
-  on public.sales for insert
+create policy "Authenticated users can create penjualan"
+  on public.penjualan for insert
   to authenticated
   with check (true);
 
-create policy "Admin and Manager can manage sales"
-  on public.sales for all
+create policy "Admin and Manager can manage penjualan"
+  on public.penjualan for all
   to authenticated
   using (
     exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
+      select 1 from public.profil
+      where profil.id = auth.uid()
+      and profil.role in ('admin', 'manager')
     )
   );
 
--- Sales items policies
-create policy "Authenticated users can view sales items"
-  on public.sales_items for select
+-- Item Penjualan (Sales items) policies
+create policy "Authenticated users can view item penjualan"
+  on public.item_penjualan for select
   to authenticated
   using (true);
 
-create policy "Authenticated users can create sales items"
-  on public.sales_items for insert
+create policy "Authenticated users can create item penjualan"
+  on public.item_penjualan for insert
   to authenticated
   with check (true);
 
--- Purchases policies
-create policy "Authenticated users can view purchases"
-  on public.purchases for select
+-- Pembelian (Purchases) policies
+create policy "Authenticated users can view pembelian"
+  on public.pembelian for select
   to authenticated
   using (true);
 
-create policy "Admin and Manager can manage purchases"
-  on public.purchases for all
+create policy "Admin and Manager can manage pembelian"
+  on public.pembelian for all
   to authenticated
   using (
     exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
+      select 1 from public.profil
+      where profil.id = auth.uid()
+      and profil.role in ('admin', 'manager')
     )
   );
 
--- Purchase items policies
-create policy "Authenticated users can view purchase items"
-  on public.purchase_items for select
+-- Item Pembelian (Purchase items) policies
+create policy "Authenticated users can view item pembelian"
+  on public.item_pembelian for select
   to authenticated
   using (true);
 
-create policy "Admin and Manager can create purchase items"
-  on public.purchase_items for insert
+create policy "Authenticated users can create item pembelian"
+  on public.item_pembelian for insert
   to authenticated
   with check (
     exists (
@@ -366,13 +372,13 @@ create policy "Admin and Manager can create inventory movements"
   );
 
 -- Create indexes for better performance
-create index idx_customers_name on public.customers(name);
-create index idx_customers_tipe on public.customers(tipe_pelanggan);
-create index idx_vendors_name on public.vendors(name);
-create index idx_sales_invoice on public.sales(invoice_number);
-create index idx_sales_date on public.sales(created_at);
-create index idx_purchases_number on public.purchases(purchase_number);
-create index idx_purchases_date on public.purchases(created_at);
+create index idx_pelanggan_nama on public.pelanggan(nama);
+create index idx_pelanggan_tipe on public.pelanggan(tipe_pelanggan);
+create index idx_vendor_nama on public.vendor(nama_perusahaan);
+create index idx_penjualan_invoice on public.penjualan(nomor_invoice);
+create index idx_penjualan_tanggal on public.penjualan(dibuat_pada);
+create index idx_pembelian_nomor on public.pembelian(nomor_pembelian);
+create index idx_pembelian_tanggal on public.pembelian(dibuat_pada);
 create index idx_financial_transactions_kategori on public.financial_transactions(kategori_transaksi);
 create index idx_financial_transactions_paid on public.financial_transactions(is_paid);
 create index idx_other_transactions_kategori on public.other_transactions(kategori_transaksi);
@@ -398,13 +404,13 @@ create trigger update_materials_updated_at before update on public.materials
 create trigger update_customers_updated_at before update on public.customers
   for each row execute function public.update_updated_at_column();
 
-create trigger update_vendors_updated_at before update on public.vendors
+create trigger update_vendor_diperbarui_pada before update on public.vendor
   for each row execute function public.update_updated_at_column();
 
-create trigger update_sales_updated_at before update on public.sales
+create trigger update_penjualan_diperbarui_pada before update on public.penjualan
   for each row execute function public.update_updated_at_column();
 
-create trigger update_purchases_updated_at before update on public.purchases
+create trigger update_pembelian_diperbarui_pada before update on public.pembelian
   for each row execute function public.update_updated_at_column();
 
 create trigger update_financial_transactions_updated_at before update on public.financial_transactions

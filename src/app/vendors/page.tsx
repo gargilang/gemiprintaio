@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import MainShell from "@/components/MainShell";
 import NotificationToast, {
   NotificationToastProps,
@@ -154,6 +155,10 @@ export default function VendorsPage() {
     type?: "warning" | "danger" | "info";
     onConfirm: () => void;
   } | null>(null);
+
+  // Click outside to close modal
+  const vendorModalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(vendorModalRef, () => setShowModal(false), showModal);
 
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
@@ -604,7 +609,10 @@ export default function VendorsPage() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div
+            ref={vendorModalRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="sticky top-0 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] p-6 text-white">
               <h3 className="text-2xl font-bold">
                 {editingVendor ? "Edit Vendor" : "Tambah Vendor Baru"}

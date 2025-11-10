@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import MainShell from "@/components/MainShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import type { NotificationToastProps } from "@/components/MainShell";
@@ -41,22 +42,22 @@ export default function UsersPage() {
   // Password Manager state
   interface Credential {
     id: string;
-    owner_id: string;
-    service_name: string;
-    account_username: string;
-    notes: string;
-    is_private: boolean;
-    can_view_password: boolean;
+    pemilik_id: string;
+    nama_layanan: string;
+    nama_pengguna_akun: string;
+    catatan: string;
+    privat_status: boolean;
+    dapat_melihat_password: boolean;
   }
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [showCredModal, setShowCredModal] = useState(false);
   const [editingCred, setEditingCred] = useState<Credential | null>(null);
   const [credForm, setCredForm] = useState({
-    service_name: "",
-    account_username: "",
+    nama_layanan: "",
+    nama_pengguna_akun: "",
     password: "",
-    notes: "",
-    is_private: true,
+    catatan: "",
+    privat_status: true,
   });
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<{
@@ -77,6 +78,12 @@ export default function UsersPage() {
     onConfirm: () => void;
   } | null>(null);
 
+  // Click outside to close modals
+  const userModalRef = useRef<HTMLDivElement>(null);
+  const credModalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(userModalRef, () => setShowModal(false), showModal);
+  useClickOutside(credModalRef, () => setShowCredModal(false), showCredModal);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -92,11 +99,11 @@ export default function UsersPage() {
           setEditingCred(null);
           setShowCredPassword(false);
           setCredForm({
-            service_name: "",
-            account_username: "",
+            nama_layanan: "",
+            nama_pengguna_akun: "",
             password: "",
-            notes: "",
-            is_private: true,
+            catatan: "",
+            privat_status: true,
           });
         } else if (confirmDialog?.show) {
           setConfirmDialog(null);
@@ -550,11 +557,11 @@ export default function UsersPage() {
               setEditingCred(null);
               setShowCredPassword(false);
               setCredForm({
-                service_name: "",
-                account_username: "",
+                nama_layanan: "",
+                nama_pengguna_akun: "",
                 password: "",
-                notes: "",
-                is_private: true,
+                catatan: "",
+                privat_status: true,
               });
               setShowCredModal(true);
             }}
@@ -604,13 +611,13 @@ export default function UsersPage() {
               {credentials.map((c) => (
                 <tr key={c.id} className="hover:bg-sky-50/40 transition-colors">
                   <td className="px-6 py-4 text-[#0a1b3d] font-semibold">
-                    {c.service_name}
+                    {c.nama_layanan}
                   </td>
                   <td className="px-6 py-4 text-[#6b7280]">
-                    {c.account_username}
+                    {c.nama_pengguna_akun}
                   </td>
                   <td className="px-6 py-4">
-                    {c.can_view_password ? (
+                    {c.dapat_melihat_password ? (
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm text-[#0a1b3d]">
                           {showingPasswordId === c.id && visiblePasswords[c.id]
@@ -701,17 +708,17 @@ export default function UsersPage() {
                   <td className="px-6 py-4">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        c.is_private
+                        c.privat_status
                           ? "bg-red-100 text-red-700"
                           : "bg-green-100 text-green-700"
                       }`}
                     >
-                      {c.is_private ? "Private" : "Tim"}
+                      {c.privat_status ? "Private" : "Tim"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
-                      {c.can_view_password && (
+                      {c.dapat_melihat_password && (
                         <button
                           onClick={async () => {
                             try {
@@ -773,11 +780,11 @@ export default function UsersPage() {
                           setEditingCred(c);
                           setShowCredPassword(false);
                           setCredForm({
-                            service_name: c.service_name,
-                            account_username: c.account_username,
+                            nama_layanan: c.nama_layanan,
+                            nama_pengguna_akun: c.nama_pengguna_akun,
                             password: "",
-                            notes: c.notes,
-                            is_private: c.is_private,
+                            catatan: c.catatan,
+                            privat_status: c.privat_status,
                           });
                           setShowCredModal(true);
                         }}
@@ -804,7 +811,7 @@ export default function UsersPage() {
                           setConfirmDialog({
                             show: true,
                             title: "Hapus Kredensial",
-                            message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.service_name}\nAkun: ${c.account_username}\n\nTindakan ini tidak dapat dibatalkan!`,
+                            message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.nama_layanan}\nAkun: ${c.nama_pengguna_akun}\n\nTindakan ini tidak dapat dibatalkan!`,
                             confirmText: "Ya, Hapus",
                             cancelText: "Batal",
                             type: "danger",
@@ -872,7 +879,10 @@ export default function UsersPage() {
       {/* Modal Form - Manage Users */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div
+            ref={userModalRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
                 {editingUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
@@ -1050,7 +1060,10 @@ export default function UsersPage() {
       {/* Modal Form - Password Manager */}
       {showCredModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div
+            ref={credModalRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <KeyIcon size={24} className="text-white" />
@@ -1077,6 +1090,19 @@ export default function UsersPage() {
                     const data = await res.json();
                     if (!res.ok)
                       throw new Error(data?.error || "Gagal update kredensial");
+
+                    // Clear cached password if it was being displayed
+                    if (credForm.password && credForm.password.trim() !== "") {
+                      setVisiblePasswords((prev) => {
+                        const updated = { ...prev };
+                        delete updated[editingCred.id];
+                        return updated;
+                      });
+                      if (showingPasswordId === editingCred.id) {
+                        setShowingPasswordId(null);
+                      }
+                    }
+
                     showMsg("success", "Kredensial berhasil diupdate!");
                   } else {
                     const res = await fetch(`/api/passwords`, {
@@ -1098,11 +1124,11 @@ export default function UsersPage() {
                   setEditingCred(null);
                   setShowCredPassword(false);
                   setCredForm({
-                    service_name: "",
-                    account_username: "",
+                    nama_layanan: "",
+                    nama_pengguna_akun: "",
                     password: "",
-                    notes: "",
-                    is_private: true,
+                    catatan: "",
+                    privat_status: true,
                   });
                   await loadCredentials();
                 } catch (err) {
@@ -1123,9 +1149,9 @@ export default function UsersPage() {
                 </label>
                 <input
                   type="text"
-                  value={credForm.service_name}
+                  value={credForm.nama_layanan}
                   onChange={(e) =>
-                    setCredForm({ ...credForm, service_name: e.target.value })
+                    setCredForm({ ...credForm, nama_layanan: e.target.value })
                   }
                   required
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
@@ -1138,11 +1164,11 @@ export default function UsersPage() {
                 </label>
                 <input
                   type="text"
-                  value={credForm.account_username}
+                  value={credForm.nama_pengguna_akun}
                   onChange={(e) =>
                     setCredForm({
                       ...credForm,
-                      account_username: e.target.value,
+                      nama_pengguna_akun: e.target.value,
                     })
                   }
                   required
@@ -1213,9 +1239,9 @@ export default function UsersPage() {
                   Catatan
                 </label>
                 <textarea
-                  value={credForm.notes}
+                  value={credForm.catatan}
                   onChange={(e) =>
-                    setCredForm({ ...credForm, notes: e.target.value })
+                    setCredForm({ ...credForm, catatan: e.target.value })
                   }
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                   placeholder="Keterangan tambahan"
@@ -1225,9 +1251,12 @@ export default function UsersPage() {
                 <input
                   type="checkbox"
                   id="cred_private"
-                  checked={credForm.is_private}
+                  checked={credForm.privat_status}
                   onChange={(e) =>
-                    setCredForm({ ...credForm, is_private: e.target.checked })
+                    setCredForm({
+                      ...credForm,
+                      privat_status: e.target.checked,
+                    })
                   }
                   className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                 />
@@ -1246,11 +1275,11 @@ export default function UsersPage() {
                     setEditingCred(null);
                     setShowCredPassword(false);
                     setCredForm({
-                      service_name: "",
-                      account_username: "",
+                      nama_layanan: "",
+                      nama_pengguna_akun: "",
                       password: "",
-                      notes: "",
-                      is_private: true,
+                      catatan: "",
+                      privat_status: true,
                     });
                   }}
                   className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"

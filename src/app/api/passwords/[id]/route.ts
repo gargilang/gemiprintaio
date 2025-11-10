@@ -8,14 +8,14 @@ function ensureTable(db: any) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS kredensial (
       id TEXT PRIMARY KEY,
-      owner_id TEXT NOT NULL,
-      service_name TEXT NOT NULL,
-      account_username TEXT NOT NULL,
-      password_encrypted TEXT NOT NULL,
-      notes TEXT,
-      is_private INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      pemilik_id TEXT NOT NULL,
+      nama_layanan TEXT NOT NULL,
+      nama_pengguna_akun TEXT NOT NULL,
+      password_terenkripsi TEXT NOT NULL,
+      catatan TEXT,
+      privat_status INTEGER DEFAULT 1,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now'))
     );
   `);
 }
@@ -38,7 +38,7 @@ export async function GET(
 
     const existing = db
       .prepare(
-        `SELECT id, owner_id, password_encrypted, is_private FROM kredensial WHERE id = ?`
+        `SELECT id, pemilik_id, password_terenkripsi, privat_status FROM kredensial WHERE id = ?`
       )
       .get(id) as any;
     if (!existing)
@@ -56,16 +56,16 @@ export async function GET(
     // - Owner can always view
     // - Admin and Manager can view if not private
     // - Regular users can only view their own
-    const isOwner = viewerId === existing.owner_id;
+    const isOwner = viewerId === existing.pemilik_id;
     const isAdminOrManager =
       viewer && (viewer.role === "admin" || viewer.role === "manager");
-    const isPrivate = existing.is_private === 1;
+    const isPrivate = existing.privat_status === 1;
 
     if (!isOwner && (!isAdminOrManager || isPrivate)) {
       return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
     }
 
-    const password = decryptText(existing.password_encrypted);
+    const password = decryptText(existing.password_terenkripsi);
     return NextResponse.json({ password });
   } catch (error) {
     console.error("GET /api/passwords/[id] error:", error);
@@ -84,8 +84,13 @@ export async function PUT(
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
     const { id } = await params;
-    const { service_name, account_username, password, notes, is_private } =
-      await request.json();
+    const {
+      nama_layanan,
+      nama_pengguna_akun,
+      password,
+      catatan,
+      privat_status,
+    } = await request.json();
 
     const db = await initializeDatabase();
     if (!db)
@@ -96,7 +101,9 @@ export async function PUT(
     ensureTable(db);
 
     const existing = db
-      .prepare(`SELECT id, owner_id, is_private FROM kredensial WHERE id = ?`)
+      .prepare(
+        `SELECT id, pemilik_id, privat_status FROM kredensial WHERE id = ?`
+      )
       .get(id) as any;
     if (!existing)
       return NextResponse.json(
@@ -105,30 +112,30 @@ export async function PUT(
       );
 
     // Privacy rule: if private and viewer != owner, forbid
-    if (existing.is_private && viewerId !== existing.owner_id) {
+    if (existing.privat_status && viewerId !== existing.pemilik_id) {
       return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
     }
 
     const fields: string[] = [];
     const values: any[] = [];
-    if (typeof service_name !== "undefined") {
-      fields.push("service_name = ?");
-      values.push(service_name);
+    if (typeof nama_layanan !== "undefined") {
+      fields.push("nama_layanan = ?");
+      values.push(nama_layanan);
     }
-    if (typeof account_username !== "undefined") {
-      fields.push("account_username = ?");
-      values.push(account_username);
+    if (typeof nama_pengguna_akun !== "undefined") {
+      fields.push("nama_pengguna_akun = ?");
+      values.push(nama_pengguna_akun);
     }
-    if (typeof notes !== "undefined") {
-      fields.push("notes = ?");
-      values.push(notes || "");
+    if (typeof catatan !== "undefined") {
+      fields.push("catatan = ?");
+      values.push(catatan || "");
     }
-    if (typeof is_private !== "undefined") {
-      fields.push("is_private = ?");
-      values.push(is_private ? 1 : 0);
+    if (typeof privat_status !== "undefined") {
+      fields.push("privat_status = ?");
+      values.push(privat_status ? 1 : 0);
     }
     if (typeof password !== "undefined" && password !== "") {
-      fields.push("password_encrypted = ?");
+      fields.push("password_terenkripsi = ?");
       values.push(encryptText(password));
     }
     if (fields.length === 0)
@@ -139,7 +146,7 @@ export async function PUT(
 
     const sql = `UPDATE kredensial SET ${fields.join(
       ", "
-    )}, updated_at = datetime('now') WHERE id = ?`;
+    )}, diperbarui_pada = datetime('now') WHERE id = ?`;
     values.push(id);
     db.prepare(sql).run(...values);
 
@@ -170,7 +177,9 @@ export async function DELETE(
     ensureTable(db);
 
     const existing = db
-      .prepare(`SELECT id, owner_id, is_private FROM kredensial WHERE id = ?`)
+      .prepare(
+        `SELECT id, pemilik_id, privat_status FROM kredensial WHERE id = ?`
+      )
       .get(id) as any;
     if (!existing)
       return NextResponse.json(
@@ -179,7 +188,7 @@ export async function DELETE(
       );
 
     // Only owner can delete; if public, allow admin in future (not implemented now)
-    if (viewerId !== existing.owner_id) {
+    if (viewerId !== existing.pemilik_id) {
       return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
     }
 

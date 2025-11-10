@@ -20,7 +20,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       deleted: result.changes,
-      message: `Successfully deleted ${result.changes} active transaction(s). Archived transactions are preserved.`,
+      message: `Transaksi aktif berhasil dihapus. Data arsip tetap tersimpan.`,
     });
   } catch (error: any) {
     console.error("Delete error:", error);

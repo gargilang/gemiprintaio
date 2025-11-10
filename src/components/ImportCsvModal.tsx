@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface ImportCsvModalProps {
   show: boolean;
@@ -18,6 +19,10 @@ export default function ImportCsvModal({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string>("");
+
+  // Click outside to close modal (only when not uploading)
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, () => !uploading && onClose(), show && !uploading);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -97,7 +102,10 @@ export default function ImportCsvModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200"
+      >
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <svg

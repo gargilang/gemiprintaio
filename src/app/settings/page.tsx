@@ -1,11 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import MainShell from "@/components/MainShell";
 import { BoxIcon } from "@/components/icons/ContentIcons";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type TabType = "company" | "materials" | "pricing" | "system";
 
@@ -243,6 +261,159 @@ function MaterialsTab() {
   );
 }
 
+// Sortable Category Component
+function SortableCategory({
+  category,
+  index,
+  onCategoryClick,
+  onEdit,
+  onDelete,
+}: {
+  category: Category;
+  index: number;
+  onCategoryClick: (category: Category) => void;
+  onEdit: (e: React.MouseEvent, category: Category) => void;
+  onDelete: (e: React.MouseEvent, category: Category) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border-2 border-emerald-200 hover:border-emerald-400 flex items-center justify-between group hover:shadow-lg transition-all text-left"
+    >
+      <div className="flex items-center gap-3 flex-1">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-100 rounded cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag untuk mengatur urutan"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8h16M4 16h16"
+            />
+          </svg>
+        </button>
+
+        {/* Number Badge */}
+        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
+          {index + 1}
+        </div>
+
+        {/* Category Info */}
+        <div
+          className="flex-1 cursor-pointer"
+          onClick={() => onCategoryClick(category)}
+        >
+          <span className="font-semibold text-gray-800 block">
+            {category.nama}
+          </span>
+          {(category as any).butuh_spesifikasi_status === 1 && (
+            <span className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Ada Spesifikasi
+            </span>
+          )}
+        </div>
+
+        {/* Arrow Icon */}
+        <svg
+          className="w-5 h-5 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          onClick={() => onCategoryClick(category)}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+        <button
+          onClick={(e) => onEdit(e, category)}
+          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+          title="Edit"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => onDelete(e, category)}
+          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+          title="Hapus"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CategoriesView({
   onCategoryClick,
 }: {
@@ -265,6 +436,10 @@ function CategoriesView({
     onConfirm: () => void;
   } | null>(null);
 
+  // Click outside to close modal
+  const categoryModalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(categoryModalRef, () => setShowModal(false), showModal);
+
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 2500);
@@ -273,6 +448,14 @@ function CategoriesView({
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -289,6 +472,41 @@ function CategoriesView({
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [showModal, confirmDialog]);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = categories.findIndex((c) => c.id === active.id);
+      const newIndex = categories.findIndex((c) => c.id === over.id);
+
+      const newCategories = arrayMove(categories, oldIndex, newIndex);
+      setCategories(newCategories);
+
+      // Update urutan_tampilan based on new positions
+      const updates = newCategories.map((cat, index) => ({
+        id: cat.id,
+        urutan_tampilan: index,
+      }));
+
+      try {
+        const res = await fetch("/api/master/categories/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: updates }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Gagal mengupdate urutan");
+        }
+      } catch (error: any) {
+        showMsg("error", error.message);
+        // Reload categories to revert optimistic update
+        loadCategories();
+      }
+    }
+  };
 
   const loadCategories = async () => {
     try {
@@ -415,103 +633,38 @@ function CategoriesView({
           Belum ada kategori. Klik "Tambah Kategori" untuk memulai.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              onClick={() => onCategoryClick(category)}
-              className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border-2 border-emerald-200 hover:border-emerald-400 flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <span className="font-semibold text-gray-800 block">
-                    {category.nama}
-                  </span>
-                  {(category as any).butuh_spesifikasi_status === 1 && (
-                    <span className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-                      <svg
-                        className="w-3 h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      Ada Spesifikasi
-                    </span>
-                  )}
-                </div>
-                <svg
-                  className="w-5 h-5 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                <button
-                  onClick={(e) => handleEdit(e, category)}
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                  title="Edit"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => handleDelete(e, category)}
-                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                  title="Hapus"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={categories.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories.map((category, index) => (
+                <SortableCategory
+                  key={category.id}
+                  category={category}
+                  index={index}
+                  onCategoryClick={onCategoryClick}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div
+            ref={categoryModalRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}
@@ -640,6 +793,333 @@ function CategoriesView({
   );
 }
 
+// Sortable Subcategory Component
+function SortableSubcategory({
+  subcategory,
+  index,
+  onEdit,
+  onDelete,
+}: {
+  subcategory: Subcategory;
+  index: number;
+  onEdit: (subcategory: Subcategory) => void;
+  onDelete: (subcategory: Subcategory) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: subcategory.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200 flex items-center justify-between group hover:shadow-md transition-all"
+    >
+      <div className="flex items-center gap-2 flex-1">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag untuk mengatur urutan"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8h16M4 16h16"
+            />
+          </svg>
+        </button>
+
+        {/* Number Badge */}
+        <span className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+          {index + 1}
+        </span>
+
+        {/* Subcategory Name */}
+        <span className="text-gray-800 font-semibold flex-1">
+          {subcategory.nama}
+        </span>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => onEdit(subcategory)}
+          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+          title="Edit"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => onDelete(subcategory)}
+          className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+          title="Hapus"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Sortable Unit Component
+function SortableUnit({
+  unit,
+  index,
+  onEdit,
+  onDelete,
+}: {
+  unit: Unit;
+  index: number;
+  onEdit: (unit: Unit) => void;
+  onDelete: (unit: Unit) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: unit.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3 border-2 border-orange-200 flex items-center justify-between group hover:shadow-md transition-all"
+    >
+      <div className="flex items-center gap-2 flex-1">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag untuk mengatur urutan"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8h16M4 16h16"
+            />
+          </svg>
+        </button>
+
+        {/* Number Badge */}
+        <span className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+          {index + 1}
+        </span>
+
+        {/* Unit Name */}
+        <span className="font-semibold text-gray-800 flex-1">{unit.nama}</span>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => onEdit(unit)}
+          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+          title="Edit"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => onDelete(unit)}
+          className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+          title="Hapus"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Sortable Quick Spec Component
+function SortableQuickSpec({
+  spec,
+  onEdit,
+  onDelete,
+}: {
+  spec: QuickSpec;
+  onEdit: (spec: QuickSpec) => void;
+  onDelete: (spec: QuickSpec) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: spec.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white rounded-lg p-2 border border-purple-300 flex items-center justify-between group hover:shadow-md transition-all"
+    >
+      <div className="flex items-center gap-2 flex-1">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-purple-600 hover:bg-purple-100 rounded cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag untuk mengatur urutan"
+        >
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8h16M4 16h16"
+            />
+          </svg>
+        </button>
+
+        {/* Spec Value */}
+        <span className="text-sm font-semibold text-gray-800 truncate flex-1">
+          {spec.nilai_spesifikasi}
+        </span>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+        <button
+          onClick={() => onEdit(spec)}
+          className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+          title="Edit"
+        >
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => onDelete(spec)}
+          className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+          title="Hapus"
+        >
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SubcategoriesView({
   category,
   onBack,
@@ -669,6 +1149,20 @@ function SubcategoriesView({
     message: string;
     onConfirm: () => void;
   } | null>(null);
+
+  // Click outside to close modals
+  const subcategoryModalRef = useRef<HTMLDivElement>(null);
+  const specModalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(subcategoryModalRef, () => setShowModal(false), showModal);
+  useClickOutside(specModalRef, () => setShowSpecModal(false), showSpecModal);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
@@ -719,6 +1213,40 @@ function SubcategoriesView({
     }
   };
 
+  const handleDragEndSubcat = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = subcategories.findIndex((s) => s.id === active.id);
+      const newIndex = subcategories.findIndex((s) => s.id === over.id);
+
+      const newSubcategories = arrayMove(subcategories, oldIndex, newIndex);
+      setSubcategories(newSubcategories);
+
+      // Update urutan_tampilan based on new positions
+      const updates = newSubcategories.map((sub, index) => ({
+        id: sub.id,
+        urutan_tampilan: index,
+      }));
+
+      try {
+        const res = await fetch("/api/master/subcategories/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: updates }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Gagal mengupdate urutan");
+        }
+      } catch (error: any) {
+        showMsg("error", error.message);
+        loadSubcategories();
+      }
+    }
+  };
+
   const loadSpecs = async () => {
     try {
       setSpecsLoading(true);
@@ -735,6 +1263,40 @@ function SubcategoriesView({
       showMsg("error", "Gagal memuat data spesifikasi");
     } finally {
       setSpecsLoading(false);
+    }
+  };
+
+  const handleDragEndSpecs = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = specs.findIndex((s) => s.id === active.id);
+      const newIndex = specs.findIndex((s) => s.id === over.id);
+
+      const newSpecs = arrayMove(specs, oldIndex, newIndex);
+      setSpecs(newSpecs);
+
+      // Update urutan_tampilan based on new positions
+      const updates = newSpecs.map((spec, index) => ({
+        id: spec.id,
+        urutan_tampilan: index,
+      }));
+
+      try {
+        const res = await fetch("/api/master/quick-specs/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: updates }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Gagal mengupdate urutan");
+        }
+      } catch (error: any) {
+        showMsg("error", error.message);
+        loadSpecs();
+      }
     }
   };
 
@@ -976,60 +1538,28 @@ function SubcategoriesView({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {subcategories.map((subcategory) => (
-            <div
-              key={subcategory.id}
-              className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border-2 border-blue-200 hover:border-blue-400 flex items-center justify-between group hover:shadow-md transition-all"
-            >
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-gray-800 block truncate">
-                  {subcategory.nama}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                <button
-                  onClick={() => handleEdit(subcategory)}
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                  title="Edit"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleDelete(subcategory)}
-                  className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors"
-                  title="Hapus"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEndSubcat}
+        >
+          <SortableContext
+            items={subcategories.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {subcategories.map((subcategory, index) => (
+                <SortableSubcategory
+                  key={subcategory.id}
+                  subcategory={subcategory}
+                  index={index}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Quick Specs Section - Only for categories that need specifications */}
@@ -1132,58 +1662,27 @@ function SubcategoriesView({
                       ? "Lebar"
                       : type}
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {typeSpecs.map((spec) => (
-                      <div
-                        key={spec.id}
-                        className="bg-white rounded-lg p-2 border border-purple-300 flex items-center justify-between group hover:shadow-md transition-all"
-                      >
-                        <span className="text-sm font-semibold text-gray-800 truncate">
-                          {spec.nilai_spesifikasi}
-                        </span>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                          <button
-                            onClick={() => handleEditSpec(spec)}
-                            className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSpec(spec)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                            title="Hapus"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEndSpecs}
+                  >
+                    <SortableContext
+                      items={typeSpecs.map((s) => s.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {typeSpecs.map((spec) => (
+                          <SortableQuickSpec
+                            key={spec.id}
+                            spec={spec}
+                            onEdit={handleEditSpec}
+                            onDelete={handleDeleteSpec}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
               ))}
             </div>
@@ -1226,7 +1725,10 @@ function SubcategoriesView({
       {/* Modal Subkategori */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div
+            ref={subcategoryModalRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingSubcategory
@@ -1276,7 +1778,10 @@ function SubcategoriesView({
       {/* Modal Spesifikasi */}
       {showSpecModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div
+            ref={specModalRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingSpec ? "Edit Spesifikasi" : "Tambah Spesifikasi Baru"}
@@ -1429,6 +1934,18 @@ function UnitsSection() {
     onConfirm: () => void;
   } | null>(null);
 
+  // Click outside to close modal
+  const unitModalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(unitModalRef, () => setShowModal(false), showModal);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 2500);
@@ -1469,6 +1986,40 @@ function UnitsSection() {
       showMsg("error", "Gagal memuat data satuan");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDragEndUnits = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = units.findIndex((u) => u.id === active.id);
+      const newIndex = units.findIndex((u) => u.id === over.id);
+
+      const newUnits = arrayMove(units, oldIndex, newIndex);
+      setUnits(newUnits);
+
+      // Update urutan_tampilan based on new positions
+      const updates = newUnits.map((unit, index) => ({
+        id: unit.id,
+        urutan_tampilan: index,
+      }));
+
+      try {
+        const res = await fetch("/api/master/units/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: updates }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Gagal mengupdate urutan");
+        }
+      } catch (error: any) {
+        showMsg("error", error.message);
+        loadUnits();
+      }
     }
   };
 
@@ -1544,7 +2095,7 @@ function UnitsSection() {
         <h3 className="text-lg font-bold text-gray-800">Daftar Satuan</h3>
         <button
           onClick={handleAdd}
-          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold shadow-md flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-semibold shadow-md flex items-center gap-2"
         >
           <svg
             className="w-5 h-5"
@@ -1568,60 +2119,37 @@ function UnitsSection() {
       ) : units.length === 0 ? (
         <div className="text-center py-8 text-gray-500">Belum ada satuan</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {units.map((unit) => (
-            <div
-              key={unit.id}
-              className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-3 border-2 border-orange-200 flex items-center justify-between group hover:shadow-md transition-all"
-            >
-              <span className="font-semibold text-gray-800">{unit.nama}</span>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => handleEdit(unit)}
-                  className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleDelete(unit)}
-                  className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEndUnits}
+        >
+          <SortableContext
+            items={units.map((u) => u.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {units.map((unit, index) => (
+                <SortableUnit
+                  key={unit.id}
+                  unit={unit}
+                  index={index}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div
+            ref={unitModalRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingUnit ? "Edit Satuan" : "Tambah Satuan Baru"}
@@ -1637,7 +2165,7 @@ function UnitsSection() {
                   value={formData.nama}
                   onChange={(e) => setFormData({ nama: e.target.value })}
                   placeholder="Contoh: kg, liter, buah"
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   autoFocus
                   required
                 />
@@ -1653,7 +2181,7 @@ function UnitsSection() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
                 >
                   {saving ? "Menyimpan..." : "Simpan"}
                 </button>
