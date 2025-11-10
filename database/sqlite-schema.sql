@@ -164,10 +164,13 @@ CREATE TABLE IF NOT EXISTS item_penjualan (
 CREATE TABLE IF NOT EXISTS pembelian (
   id TEXT PRIMARY KEY,
   nomor_pembelian TEXT UNIQUE NOT NULL,
+  tanggal TEXT,
+  nomor_faktur TEXT,
   vendor_id TEXT,
   total_jumlah REAL NOT NULL,
   jumlah_dibayar REAL DEFAULT 0,
-  metode_pembayaran TEXT,
+  metode_pembayaran TEXT DEFAULT 'CASH' CHECK(metode_pembayaran IN ('CASH', 'NET30', 'COD')),
+  status_pembayaran TEXT DEFAULT 'LUNAS' CHECK(status_pembayaran IN ('LUNAS', 'HUTANG', 'SEBAGIAN')),
   catatan TEXT,
   dibuat_oleh TEXT,
   dibuat_pada TEXT DEFAULT (datetime('now')),
@@ -193,8 +196,35 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
 );
 
+-- Hutang Pembelian (Accounts Payable)
+CREATE TABLE IF NOT EXISTS hutang_pembelian (
+  id TEXT PRIMARY KEY,
+  id_pembelian TEXT NOT NULL,
+  jumlah_hutang REAL NOT NULL,
+  jumlah_terbayar REAL DEFAULT 0,
+  sisa_hutang REAL NOT NULL,
+  jatuh_tempo TEXT,
+  status TEXT DEFAULT 'AKTIF' CHECK(status IN ('AKTIF', 'LUNAS', 'JATUH_TEMPO')),
+  catatan TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (id_pembelian) REFERENCES pembelian(id) ON DELETE CASCADE
+);
 
-
+-- Pelunasan Hutang (Debt Payments)
+CREATE TABLE IF NOT EXISTS pelunasan_hutang (
+  id TEXT PRIMARY KEY,
+  id_hutang TEXT NOT NULL,
+  tanggal_bayar TEXT NOT NULL,
+  jumlah_bayar REAL NOT NULL,
+  metode_pembayaran TEXT DEFAULT 'CASH',
+  referensi TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (id_hutang) REFERENCES hutang_pembelian(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
 
 
 -- =====================================================

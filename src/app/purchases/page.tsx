@@ -26,6 +26,7 @@ export default function PurchasesPage() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPurchase, setEditingPurchase] = useState<any>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -81,6 +82,7 @@ export default function PurchasesPage() {
       loadVendors(),
       loadCategories(),
       loadSubcategories(),
+      loadUnits(),
     ]);
     setLoading(false);
   };
@@ -142,6 +144,18 @@ export default function PurchasesPage() {
       }
     } catch (error) {
       console.error("Error loading subcategories:", error);
+    }
+  };
+
+  const loadUnits = async () => {
+    try {
+      const res = await fetch("/api/master/units");
+      const data = await res.json();
+      if (res.ok) {
+        setUnits(data.units || []);
+      }
+    } catch (error) {
+      console.error("Error loading units:", error);
     }
   };
 
@@ -223,7 +237,7 @@ export default function PurchasesPage() {
   };
 
   const handleMaterialAdded = async () => {
-    showMsg("success", "Bahan berhasil ditambahkan!");
+    showMsg("success", "Barang berhasil ditambahkan!");
     await loadMaterials();
   };
 
@@ -261,6 +275,7 @@ export default function PurchasesPage() {
             vendors={vendors}
             onQuickAddVendor={() => setShowVendorModal(true)}
             onQuickAddMaterial={() => setShowMaterialModal(true)}
+            showNotification={(type, message) => setNotice({ type, message })}
           />
         </div>
 
@@ -289,6 +304,7 @@ export default function PurchasesPage() {
         show={showVendorModal}
         onClose={() => setShowVendorModal(false)}
         onSuccess={handleVendorAdded}
+        showNotification={(type, message) => setNotice({ type, message })}
       />
 
       <QuickAddMaterialModal
@@ -297,6 +313,8 @@ export default function PurchasesPage() {
         onSuccess={handleMaterialAdded}
         categories={categories}
         subcategories={subcategories}
+        units={units}
+        showNotification={(type, message) => setNotice({ type, message })}
       />
 
       {/* Confirm Dialog */}

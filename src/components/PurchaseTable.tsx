@@ -8,6 +8,8 @@ interface Purchase {
   nomor_faktur: string;
   id_vendor: string | null;
   vendor_name: string | null;
+  metode_pembayaran?: string;
+  status_pembayaran?: string;
   catatan: string | null;
   total_harga: number;
   items: {
@@ -81,6 +83,21 @@ const PurchaseRow = memo(
             <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
               {purchase.items.length} item
             </span>
+          </td>
+          <td className="px-4 py-3 text-center">
+            {purchase.status_pembayaran === "LUNAS" ? (
+              <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                ✓ LUNAS
+              </span>
+            ) : purchase.status_pembayaran === "HUTANG" ? (
+              <span className="inline-block px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
+                ⏳ HUTANG
+              </span>
+            ) : (
+              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                💵 {purchase.metode_pembayaran || "CASH"}
+              </span>
+            )}
           </td>
           <td className="px-4 py-3 text-right font-semibold text-gray-800">
             Rp {purchase.total_harga.toLocaleString("id-ID")}
@@ -303,7 +320,7 @@ export default function PurchaseTable({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[700px] overflow-y-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
               <tr>
@@ -328,6 +345,9 @@ export default function PurchaseTable({
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold">
                   Items
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-semibold">
+                  Status
                 </th>
                 <th
                   className="px-4 py-3 text-right text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"

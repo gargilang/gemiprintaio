@@ -15,12 +15,19 @@ interface Subcategory {
   kategori_id: string;
 }
 
+interface Unit {
+  id: string;
+  nama: string;
+}
+
 interface QuickAddMaterialModalProps {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
   categories: Category[];
   subcategories: Subcategory[];
+  units: Unit[];
+  showNotification: (type: "success" | "error", message: string) => void;
 }
 
 export default function QuickAddMaterialModal({
@@ -29,6 +36,8 @@ export default function QuickAddMaterialModal({
   onSuccess,
   categories,
   subcategories,
+  units,
+  showNotification,
 }: QuickAddMaterialModalProps) {
   const [formData, setFormData] = useState({
     nama: "",
@@ -77,12 +86,12 @@ export default function QuickAddMaterialModal({
     e.preventDefault();
 
     if (!formData.nama.trim()) {
-      alert("Nama bahan harus diisi!");
+      showNotification("error", "Nama barang harus diisi!");
       return;
     }
 
     if (!formData.satuan_dasar.trim()) {
-      alert("Satuan dasar harus diisi!");
+      showNotification("error", "Satuan dasar harus diisi!");
       return;
     }
 
@@ -121,14 +130,15 @@ export default function QuickAddMaterialModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Gagal menambahkan bahan");
+        throw new Error(data.error || "Gagal menambahkan barang");
       }
 
+      showNotification("success", "Barang berhasil ditambahkan!");
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error("Error adding material:", error);
-      alert(error.message || "Gagal menambahkan bahan");
+      showNotification("error", error.message || "Gagal menambahkan barang");
     } finally {
       setSaving(false);
     }
@@ -145,7 +155,9 @@ export default function QuickAddMaterialModal({
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4 rounded-t-xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Tambah Bahan Cepat</h2>
+            <h2 className="text-xl font-bold text-white">
+              Tambah Barang Cepat
+            </h2>
             <button
               onClick={onClose}
               className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
@@ -172,7 +184,7 @@ export default function QuickAddMaterialModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Nama Bahan <span className="text-red-500">*</span>
+              Nama Barang <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -180,7 +192,7 @@ export default function QuickAddMaterialModal({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, nama: e.target.value }))
               }
-              placeholder="Nama bahan"
+              placeholder="Nama barang"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
               autoFocus
@@ -241,8 +253,7 @@ export default function QuickAddMaterialModal({
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Satuan Dasar <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               value={formData.satuan_dasar}
               onChange={(e) =>
                 setFormData((prev) => ({
@@ -250,10 +261,16 @@ export default function QuickAddMaterialModal({
                   satuan_dasar: e.target.value,
                 }))
               }
-              placeholder="pcs, kg, meter, dll"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
-            />
+            >
+              <option value="">-- Pilih Satuan --</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.nama}>
+                  {unit.nama}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -315,9 +332,9 @@ export default function QuickAddMaterialModal({
           </div>
 
           <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-            <strong>Info:</strong> Bahan akan ditambahkan dengan stok awal 0 dan
-            status tracking inventori aktif. Anda bisa edit detail lengkap di
-            halaman Data Bahan.
+            <strong>Info:</strong> Barang akan ditambahkan dengan stok awal 0
+            dan status tracking inventori aktif. Anda bisa edit detail lengkap
+            di halaman Data Barang.
           </div>
 
           {/* Action Buttons */}
@@ -327,7 +344,7 @@ export default function QuickAddMaterialModal({
               disabled={saving}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Menyimpan..." : "Simpan Bahan"}
+              {saving ? "Menyimpan..." : "Simpan Barang"}
             </button>
             <button
               type="button"

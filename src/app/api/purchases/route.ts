@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       nomor_pembelian,
+      nomor_faktur,
       vendor_id,
       tanggal,
       metode_pembayaran,
@@ -91,9 +92,9 @@ export async function POST(req: NextRequest) {
       dibuat_oleh,
     } = body;
 
-    if (!nomor_pembelian || !nomor_pembelian.trim()) {
+    if (!nomor_faktur || !nomor_faktur.trim()) {
       return NextResponse.json(
-        { error: "Nomor pembelian harus diisi" },
+        { error: "Nomor faktur harus diisi" },
         { status: 400 }
       );
     }
@@ -132,20 +133,40 @@ export async function POST(req: NextRequest) {
 
     const db = getDb();
 
-    // Check if nomor_pembelian already exists
+    // Check if nomor_faktur already exists
     const existing = db
-      .prepare("SELECT id FROM pembelian WHERE nomor_pembelian = ?")
-      .get(nomor_pembelian.trim());
+      .prepare("SELECT id FROM pembelian WHERE nomor_faktur = ?")
+      .get(nomor_faktur.trim());
 
     if (existing) {
       db.close();
       return NextResponse.json(
-        { error: "Nomor pembelian sudah digunakan" },
+        { error: "Nomor faktur sudah digunakan" },
         { status: 400 }
       );
     }
 
     const purchaseId = generateId("purchase");
+    const metodePembayaran = metode_pembayaran || "CASH";
+    const isLunas = metodePembayaran === "CASH";
+    const statusPembayaran = isLunas ? "LUNAS" : "HUTANG";
+    const jumlahDibayar = isLunas ? total_jumlah : 0;
+
+    // Generate nomor_pembelian (auto-increment style)
+    const lastPurchase: any = db
+      .prepare(
+        "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1"
+      )
+      .get();
+
+    let nextNumber = 1;
+    if (lastPurchase && lastPurchase.nomor_pembelian) {
+      const match = lastPurchase.nomor_pembelian.match(/(\d+)$/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    const nomorPembelian = `PO-${nextNumber.toString().padStart(5, "0")}`;
 
     // Begin transaction
     db.exec("BEGIN TRANSACTION");
@@ -154,20 +175,23 @@ export async function POST(req: NextRequest) {
       // Insert purchase
       const purchaseStmt = db.prepare(`
         INSERT INTO pembelian (
-          id, nomor_pembelian, vendor_id, total_jumlah,
-          jumlah_dibayar, metode_pembayaran, catatan,
+          id, nomor_pembelian, nomor_faktur, tanggal, vendor_id, total_jumlah,
+          jumlah_dibayar, metode_pembayaran, status_pembayaran, catatan,
           dibuat_oleh, dibuat_pada, diperbarui_pada
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `);
 
       purchaseStmt.run(
         purchaseId,
-        nomor_pembelian.trim(),
+        nomorPembelian,
+        nomor_faktur.trim(),
+        tanggal || new Date().toISOString().split("T")[0],
         vendor_id || null,
         total_jumlah,
-        metode_pembayaran === "cash" ? total_jumlah : 0,
-        metode_pembayaran || null,
+        jumlahDibayar,
+        metodePembayaran,
+        statusPembayaran,
         catatan?.trim() || null,
         dibuat_oleh || null
       );
@@ -217,31 +241,62 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Create keuangan entry (SUPPLY category for purchases)
-      const keuanganId = generateId("keu");
-      const keuanganStmt = db.prepare(`
-        INSERT INTO keuangan (
-          id, tanggal, kategori_transaksi,
-          debit, kredit, keperluan,
-          biaya_bahan, catatan, dibuat_oleh,
-          dibuat_pada, diperbarui_pada
-        )
-        VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `);
+      // Only create keuangan entry if CASH (LUNAS)
+      if (isLunas) {
+        const keuanganId = generateId("keu");
+        const keuanganStmt = db.prepare(`
+          INSERT INTO keuangan (
+            id, tanggal, kategori_transaksi,
+            debit, kredit, keperluan,
+            biaya_bahan, catatan, dibuat_oleh,
+            dibuat_pada, diperbarui_pada
+          )
+          VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `);
 
-      const keperluan = vendor_id
-        ? `Pembelian ${nomor_pembelian}`
-        : `Pembelian ${nomor_pembelian} (Tanpa Vendor)`;
+        const keperluan = vendor_id
+          ? `Pembelian ${nomorPembelian} (${nomor_faktur})`
+          : `Pembelian ${nomorPembelian} (${nomor_faktur}) - Tanpa Vendor`;
 
-      keuanganStmt.run(
-        keuanganId,
-        tanggal || new Date().toISOString().split("T")[0],
-        total_jumlah,
-        keperluan,
-        total_jumlah,
-        catatan || null,
-        dibuat_oleh || null
-      );
+        keuanganStmt.run(
+          keuanganId,
+          tanggal || new Date().toISOString().split("T")[0],
+          total_jumlah,
+          keperluan,
+          total_jumlah,
+          catatan || null,
+          dibuat_oleh || null
+        );
+      } else {
+        // Create hutang entry for NET30 or COD
+        const hutangId = generateId("hutang");
+        const jatuhTempo =
+          metodePembayaran === "NET30"
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0]
+            : null;
+
+        const hutangStmt = db.prepare(`
+          INSERT INTO hutang_pembelian (
+            id, id_pembelian, jumlah_hutang, jumlah_terbayar,
+            sisa_hutang, jatuh_tempo, status, catatan,
+            dibuat_pada, diperbarui_pada
+          )
+          VALUES (?, ?, ?, 0, ?, ?, 'AKTIF', ?, datetime('now'), datetime('now'))
+        `);
+
+        hutangStmt.run(
+          hutangId,
+          purchaseId,
+          total_jumlah,
+          total_jumlah,
+          jatuhTempo,
+          metodePembayaran === "NET30"
+            ? `Hutang dengan jatuh tempo 30 hari`
+            : `Hutang COD - bayar saat terima barang`
+        );
+      }
 
       db.exec("COMMIT");
 

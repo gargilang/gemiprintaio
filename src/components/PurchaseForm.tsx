@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { PlusIcon, TrashIcon } from "./icons/ContentIcons";
+import {
+  PlusIcon,
+  TrashIcon,
+  CashIcon,
+  CalendarIcon,
+  PackageIcon,
+  AlertIcon,
+} from "./icons/ContentIcons";
+import SearchableSelect from "./SearchableSelect";
 
 interface PurchaseItem {
   id_barang: string;
@@ -17,6 +25,7 @@ interface PurchaseFormData {
   tanggal: string;
   nomor_faktur: string;
   id_vendor: string | null;
+  metode_pembayaran: "CASH" | "NET30" | "COD";
   catatan: string;
   items: PurchaseItem[];
 }
@@ -47,6 +56,7 @@ interface PurchaseFormProps {
   vendors: Vendor[];
   onQuickAddVendor: () => void;
   onQuickAddMaterial: () => void;
+  showNotification: (type: "success" | "error", message: string) => void;
 }
 
 export default function PurchaseForm({
@@ -57,11 +67,13 @@ export default function PurchaseForm({
   vendors,
   onQuickAddVendor,
   onQuickAddMaterial,
+  showNotification,
 }: PurchaseFormProps) {
   const [formData, setFormData] = useState<PurchaseFormData>({
     tanggal: new Date().toISOString().split("T")[0],
     nomor_faktur: "",
     id_vendor: null,
+    metode_pembayaran: "CASH",
     catatan: "",
     items: [
       {
@@ -75,22 +87,54 @@ export default function PurchaseForm({
 
   const [saving, setSaving] = useState(false);
 
+  // Keyboard shortcuts untuk tambah dan hapus item
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Hanya jalankan jika Ctrl/Cmd ditekan
+      const isModifierPressed = e.ctrlKey || e.metaKey;
+
+      if (!saving && isModifierPressed) {
+        // Press Ctrl/Cmd + "+" or "=" key to add new item
+        if (e.key === "+" || e.key === "=") {
+          e.preventDefault();
+          handleAddItem();
+        }
+        // Press Ctrl/Cmd + "-" key to remove last item
+        else if (e.key === "-" && formData.items.length > 1) {
+          e.preventDefault();
+          handleRemoveItem(formData.items.length - 1);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [saving, formData.items.length]);
+
   // Load edit data
   useEffect(() => {
     if (editData) {
+      // Handle tanggal safely - could be from dibuat_pada
+      let tanggalValue = new Date().toISOString().split("T")[0];
+      if (editData.tanggal) {
+        tanggalValue = editData.tanggal.split("T")[0];
+      } else if (editData.dibuat_pada) {
+        tanggalValue = editData.dibuat_pada.split("T")[0];
+      }
+
       setFormData({
-        tanggal: editData.tanggal.split("T")[0],
-        nomor_faktur: editData.nomor_faktur,
-        id_vendor: editData.id_vendor || null,
+        tanggal: tanggalValue,
+        nomor_faktur: editData.nomor_pembelian || editData.nomor_faktur || "",
+        id_vendor: editData.vendor_id || editData.id_vendor || null,
+        metode_pembayaran: editData.metode_pembayaran || "CASH",
         catatan: editData.catatan || "",
-        items: editData.items.map((item: any) => ({
-          id_barang: item.id_barang,
+        items: (editData.items || []).map((item: any) => ({
+          id_barang: item.barang_id || item.id_barang,
           nama_barang: item.nama_barang,
-          id_satuan: item.id_satuan,
+          id_satuan: item.harga_satuan_id || item.id_satuan,
           nama_satuan: item.nama_satuan,
-          faktor_konversi: item.faktor_konversi,
+          faktor_konversi: item.faktor_konversi || 1,
           jumlah: item.jumlah,
-          harga_beli: item.harga_beli,
+          harga_beli: item.harga_satuan || item.harga_beli || 0,
         })),
       });
     }
@@ -177,27 +221,33 @@ export default function PurchaseForm({
 
     // Validation
     if (!formData.nomor_faktur.trim()) {
-      alert("Nomor faktur harus diisi!");
+      showNotification("error", "Nomor faktur harus diisi!");
       return;
     }
 
     if (formData.items.length === 0) {
-      alert("Minimal harus ada 1 item pembelian!");
+      showNotification("error", "Minimal harus ada 1 item pembelian!");
       return;
     }
 
     for (let i = 0; i < formData.items.length; i++) {
       const item = formData.items[i];
       if (!item.id_barang || !item.id_satuan) {
-        alert(`Item #${i + 1}: Barang dan satuan harus dipilih!`);
+        showNotification(
+          "error",
+          `Item #${i + 1}: Barang dan satuan harus dipilih!`
+        );
         return;
       }
       if (item.jumlah <= 0) {
-        alert(`Item #${i + 1}: Jumlah harus lebih dari 0!`);
+        showNotification("error", `Item #${i + 1}: Jumlah harus lebih dari 0!`);
         return;
       }
       if (item.harga_beli < 0) {
-        alert(`Item #${i + 1}: Harga beli tidak boleh negatif!`);
+        showNotification(
+          "error",
+          `Item #${i + 1}: Harga beli tidak boleh negatif!`
+        );
         return;
       }
     }
@@ -207,10 +257,10 @@ export default function PurchaseForm({
 
       const payload = {
         tanggal: formData.tanggal,
-        nomor_pembelian: formData.nomor_faktur,
+        nomor_faktur: formData.nomor_faktur,
         vendor_id: formData.id_vendor,
         catatan: formData.catatan,
-        metode_pembayaran: "cash", // Default cash
+        metode_pembayaran: formData.metode_pembayaran,
         items: formData.items.map((item) => ({
           barang_id: item.id_barang,
           harga_satuan_id: item.id_satuan,
@@ -254,6 +304,7 @@ export default function PurchaseForm({
           tanggal: new Date().toISOString().split("T")[0],
           nomor_faktur: "",
           id_vendor: null,
+          metode_pembayaran: "CASH",
           catatan: "",
           items: [
             {
@@ -267,7 +318,7 @@ export default function PurchaseForm({
       }
     } catch (error: any) {
       console.error("Error saving purchase:", error);
-      alert(error.message || "Gagal menyimpan pembelian");
+      showNotification("error", error.message || "Gagal menyimpan pembelian");
     } finally {
       setSaving(false);
     }
@@ -310,25 +361,24 @@ export default function PurchaseForm({
             <button
               type="button"
               onClick={onQuickAddVendor}
-              className="ml-2 text-xs text-indigo-600 hover:text-indigo-700 font-semibold"
+              className="ml-2 text-xs text-emerald-600 hover:text-emerald-700 font-semibold"
             >
               + Tambah Vendor
             </button>
           </label>
-          <select
+          <SearchableSelect
+            options={[
+              { value: "", label: "-- Tanpa Vendor (Warung/Nota-less) --" },
+              ...activeVendors.map((v) => ({
+                value: v.id,
+                label: v.nama_perusahaan,
+              })),
+            ]}
             value={formData.id_vendor || ""}
-            onChange={(e) =>
-              handleInputChange("id_vendor", e.target.value || null)
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">-- Tanpa Vendor (Warung/Nota-less) --</option>
-            {activeVendors.map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>
-                {vendor.nama_perusahaan}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleInputChange("id_vendor", value || null)}
+            placeholder="Pilih vendor atau tanpa vendor"
+            emptyText="Tidak ada vendor aktif"
+          />
         </div>
       </div>
 
@@ -343,13 +393,13 @@ export default function PurchaseForm({
             onClick={onQuickAddMaterial}
             className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold"
           >
-            + Tambah Bahan Baru
+            + Tambah Barang Baru
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-300 rounded-lg">
-            <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+        <div className="border border-gray-300 rounded-lg max-h-[400px] overflow-y-auto">
+          <table className="w-full">
+            <thead className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold">
                   Barang
@@ -367,14 +417,7 @@ export default function PurchaseForm({
                   Subtotal
                 </th>
                 <th className="px-3 py-2 text-center text-xs font-semibold w-12">
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="p-1 hover:bg-white/20 rounded transition-colors"
-                    title="Tambah Item"
-                  >
-                    <PlusIcon size={16} />
-                  </button>
+                  Aksi
                 </th>
               </tr>
             </thead>
@@ -393,21 +436,21 @@ export default function PurchaseForm({
                     }`}
                   >
                     <td className="px-3 py-2">
-                      <select
+                      <SearchableSelect
+                        options={[
+                          { value: "", label: "-- Pilih Barang --" },
+                          ...materials.map((m) => ({
+                            value: m.id,
+                            label: m.nama,
+                          })),
+                        ]}
                         value={item.id_barang}
-                        onChange={(e) =>
-                          handleItemChange(index, "id_barang", e.target.value)
+                        onChange={(value) =>
+                          handleItemChange(index, "id_barang", value)
                         }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                      >
-                        <option value="">-- Pilih Barang --</option>
-                        {materials.map((material) => (
-                          <option key={material.id} value={material.id}>
-                            {material.nama}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Cari barang..."
+                        emptyText="Tidak ada barang"
+                      />
                     </td>
                     <td className="px-3 py-2">
                       <select
@@ -456,7 +499,7 @@ export default function PurchaseForm({
                           )
                         }
                         min="0"
-                        step="100"
+                        step="any"
                         className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         required
                       />
@@ -465,19 +508,29 @@ export default function PurchaseForm({
                       Rp {subtotal.toLocaleString("id-ID")}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(index)}
-                        disabled={formData.items.length === 1}
-                        className={`p-1 rounded transition-colors ${
-                          formData.items.length === 1
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "text-red-600 hover:bg-red-50"
-                        }`}
-                        title="Hapus Item"
-                      >
-                        <TrashIcon size={16} />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={handleAddItem}
+                          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          title="Tambah Item (tekan +)"
+                        >
+                          <PlusIcon size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          disabled={formData.items.length === 1}
+                          className={`p-1 rounded transition-colors ${
+                            formData.items.length === 1
+                              ? "text-gray-400 cursor-not-allowed"
+                              : "text-red-600 hover:bg-red-50"
+                          }`}
+                          title="Hapus Item (tekan -)"
+                        >
+                          <TrashIcon size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -499,6 +552,74 @@ export default function PurchaseForm({
             </tfoot>
           </table>
         </div>
+      </div>
+
+      {/* Payment Method */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Metode Pembayaran <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="metode_pembayaran"
+              value="CASH"
+              checked={formData.metode_pembayaran === "CASH"}
+              onChange={(e) =>
+                handleInputChange("metode_pembayaran", e.target.value)
+              }
+              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="flex items-center gap-1.5 text-sm text-gray-700">
+              <CashIcon size={16} className="text-green-600" />
+              Cash (Lunas Langsung)
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="metode_pembayaran"
+              value="NET30"
+              checked={formData.metode_pembayaran === "NET30"}
+              onChange={(e) =>
+                handleInputChange("metode_pembayaran", e.target.value)
+              }
+              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="flex items-center gap-1.5 text-sm text-gray-700">
+              <CalendarIcon size={16} className="text-amber-600" />
+              NET 30 (Jatuh Tempo 30 Hari)
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="metode_pembayaran"
+              value="COD"
+              checked={formData.metode_pembayaran === "COD"}
+              onChange={(e) =>
+                handleInputChange("metode_pembayaran", e.target.value)
+              }
+              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="flex items-center gap-1.5 text-sm text-gray-700">
+              <PackageIcon size={16} className="text-blue-600" />
+              COD (Bayar Saat Terima)
+            </span>
+          </label>
+        </div>
+        {formData.metode_pembayaran !== "CASH" && (
+          <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="flex items-start gap-2 text-xs text-amber-700">
+              <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Catatan:</strong> Pembelian ini akan dicatat sebagai
+                hutang dan tidak akan masuk ke buku keuangan sampai dilunaskan.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Catatan */}
