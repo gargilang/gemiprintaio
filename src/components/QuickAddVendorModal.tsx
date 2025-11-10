@@ -105,7 +105,7 @@ export default function QuickAddVendorModal({
         className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4 rounded-t-xl">
+        <div className="sticky top-0 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 rounded-t-xl">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-white">
               Tambah Vendor Cepat
@@ -148,7 +148,7 @@ export default function QuickAddVendorModal({
                 }))
               }
               placeholder="PT. Contoh Vendor"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
               autoFocus
             />
@@ -168,7 +168,7 @@ export default function QuickAddVendorModal({
                 }))
               }
               placeholder="Nama contact person"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -183,7 +183,7 @@ export default function QuickAddVendorModal({
                 setFormData((prev) => ({ ...prev, telepon: e.target.value }))
               }
               placeholder="08123456789"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
@@ -199,7 +199,7 @@ export default function QuickAddVendorModal({
                 setFormData((prev) => ({ ...prev, email: e.target.value }))
               }
               placeholder="vendor@email.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -214,7 +214,7 @@ export default function QuickAddVendorModal({
               }
               placeholder="Alamat lengkap vendor"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -223,7 +223,7 @@ export default function QuickAddVendorModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white font-semibold rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Menyimpan..." : "Simpan Vendor"}
             </button>

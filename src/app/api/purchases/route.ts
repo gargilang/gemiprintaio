@@ -298,6 +298,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Recalculate cashbook if keuangan entry was created
+      if (isLunas) {
+        const { recalculateCashbook } = await import(
+          "@/lib/calculate-cashbook"
+        );
+        await recalculateCashbook(db);
+      }
+
       db.exec("COMMIT");
 
       // Get created purchase with items

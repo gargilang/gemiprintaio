@@ -309,6 +309,10 @@ export async function DELETE(
       // Delete purchase (items will cascade delete)
       db.prepare("DELETE FROM pembelian WHERE id = ?").run(params.id);
 
+      // Recalculate cashbook after deletion
+      const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+      await recalculateCashbook(db);
+
       db.exec("COMMIT");
       db.close();
 

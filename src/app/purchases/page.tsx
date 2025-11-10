@@ -268,6 +268,7 @@ export default function PurchasesPage() {
           </div>
 
           <PurchaseForm
+            key={editingPurchase ? editingPurchase.id : "new-purchase"}
             editData={editingPurchase}
             onSuccess={handleFormSuccess}
             onCancel={editingPurchase ? handleCancelEdit : undefined}

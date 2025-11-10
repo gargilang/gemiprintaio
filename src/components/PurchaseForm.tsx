@@ -361,7 +361,7 @@ export default function PurchaseForm({
             <button
               type="button"
               onClick={onQuickAddVendor}
-              className="ml-2 text-xs text-emerald-600 hover:text-emerald-700 font-semibold"
+              className="ml-2 text-xs text-[#2266ff] hover:text-[#0a1b3d] font-semibold"
             >
               + Tambah Vendor
             </button>
@@ -549,91 +549,96 @@ export default function PurchaseForm({
                 </td>
                 <td></td>
               </tr>
+              {/* Payment Method Row */}
+              <tr className="bg-white border-t-2 border-gray-300">
+                <td colSpan={6} className="px-4 py-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Metode Pembayaran <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="metode_pembayaran"
+                        value="CASH"
+                        checked={formData.metode_pembayaran === "CASH"}
+                        onChange={(e) =>
+                          handleInputChange("metode_pembayaran", e.target.value)
+                        }
+                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <CashIcon size={16} className="text-green-600" />
+                        Cash (Lunas Langsung)
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="metode_pembayaran"
+                        value="NET30"
+                        checked={formData.metode_pembayaran === "NET30"}
+                        onChange={(e) =>
+                          handleInputChange("metode_pembayaran", e.target.value)
+                        }
+                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <CalendarIcon size={16} className="text-amber-600" />
+                        NET 30 (Jatuh Tempo 30 Hari)
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="metode_pembayaran"
+                        value="COD"
+                        checked={formData.metode_pembayaran === "COD"}
+                        onChange={(e) =>
+                          handleInputChange("metode_pembayaran", e.target.value)
+                        }
+                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <PackageIcon size={16} className="text-blue-600" />
+                        COD (Bayar Saat Terima)
+                      </span>
+                    </label>
+                  </div>
+                  {formData.metode_pembayaran !== "CASH" && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="flex items-start gap-2 text-xs text-amber-700">
+                        <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Catatan:</strong> Pembelian ini akan dicatat
+                          sebagai hutang dan tidak akan masuk ke buku keuangan
+                          sampai dilunaskan.
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </td>
+              </tr>
+              {/* Catatan Row */}
+              <tr className="bg-white border-t border-gray-200">
+                <td colSpan={6} className="px-4 py-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Catatan
+                  </label>
+                  <textarea
+                    value={formData.catatan}
+                    onChange={(e) =>
+                      handleInputChange("catatan", e.target.value)
+                    }
+                    placeholder="Catatan tambahan (opsional)"
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </td>
+              </tr>
             </tfoot>
           </table>
         </div>
-      </div>
-
-      {/* Payment Method */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Metode Pembayaran <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="metode_pembayaran"
-              value="CASH"
-              checked={formData.metode_pembayaran === "CASH"}
-              onChange={(e) =>
-                handleInputChange("metode_pembayaran", e.target.value)
-              }
-              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="flex items-center gap-1.5 text-sm text-gray-700">
-              <CashIcon size={16} className="text-green-600" />
-              Cash (Lunas Langsung)
-            </span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="metode_pembayaran"
-              value="NET30"
-              checked={formData.metode_pembayaran === "NET30"}
-              onChange={(e) =>
-                handleInputChange("metode_pembayaran", e.target.value)
-              }
-              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="flex items-center gap-1.5 text-sm text-gray-700">
-              <CalendarIcon size={16} className="text-amber-600" />
-              NET 30 (Jatuh Tempo 30 Hari)
-            </span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="metode_pembayaran"
-              value="COD"
-              checked={formData.metode_pembayaran === "COD"}
-              onChange={(e) =>
-                handleInputChange("metode_pembayaran", e.target.value)
-              }
-              className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="flex items-center gap-1.5 text-sm text-gray-700">
-              <PackageIcon size={16} className="text-blue-600" />
-              COD (Bayar Saat Terima)
-            </span>
-          </label>
-        </div>
-        {formData.metode_pembayaran !== "CASH" && (
-          <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="flex items-start gap-2 text-xs text-amber-700">
-              <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
-              <span>
-                <strong>Catatan:</strong> Pembelian ini akan dicatat sebagai
-                hutang dan tidak akan masuk ke buku keuangan sampai dilunaskan.
-              </span>
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Catatan */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-1">
-          Catatan
-        </label>
-        <textarea
-          value={formData.catatan}
-          onChange={(e) => handleInputChange("catatan", e.target.value)}
-          placeholder="Catatan tambahan (opsional)"
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
       </div>
 
       {/* Action Buttons */}
