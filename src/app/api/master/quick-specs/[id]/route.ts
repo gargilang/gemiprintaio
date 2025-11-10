@@ -36,7 +36,7 @@ export async function PUT(
 
     // Check if quick spec exists
     const existing = db
-      .prepare("SELECT * FROM spesifikasi_cepat_bahan WHERE id = ?")
+      .prepare("SELECT * FROM spesifikasi_cepat_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -50,7 +50,7 @@ export async function PUT(
     // Check if duplicate exists
     const duplicate = db
       .prepare(
-        "SELECT id FROM spesifikasi_cepat_bahan WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ? AND id != ?"
+        "SELECT id FROM spesifikasi_cepat_barang WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ? AND id != ?"
       )
       .get(
         (existing as any).kategori_id,
@@ -68,7 +68,7 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE spesifikasi_cepat_bahan 
+      `UPDATE spesifikasi_cepat_barang 
        SET tipe_spesifikasi = ?, nilai_spesifikasi = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
@@ -83,8 +83,8 @@ export async function PUT(
     const updatedQuickSpec = db
       .prepare(
         `SELECT q.*, c.nama as category_name 
-         FROM spesifikasi_cepat_bahan q
-         LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+         FROM spesifikasi_cepat_barang q
+         LEFT JOIN kategori_barang c ON q.kategori_id = c.id
          WHERE q.id = ?`
       )
       .get(params.id);
@@ -115,7 +115,7 @@ export async function DELETE(
 
     // Check if quick spec exists
     const existing = db
-      .prepare("SELECT id FROM spesifikasi_cepat_bahan WHERE id = ?")
+      .prepare("SELECT id FROM spesifikasi_cepat_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -126,7 +126,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM spesifikasi_cepat_bahan WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM spesifikasi_cepat_barang WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

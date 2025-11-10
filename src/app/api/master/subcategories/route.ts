@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
       subcategories = db
         .prepare(
           `SELECT s.*, c.nama as category_name 
-           FROM subkategori_bahan s
-           LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+           FROM subkategori_barang s
+           LEFT JOIN kategori_barang c ON s.kategori_id = c.id
            WHERE s.kategori_id = ?
            ORDER BY s.urutan_tampilan, s.nama`
         )
@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
       subcategories = db
         .prepare(
           `SELECT s.*, c.nama as category_name 
-           FROM subkategori_bahan s
-           LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+           FROM subkategori_barang s
+           LEFT JOIN kategori_barang c ON s.kategori_id = c.id
            ORDER BY c.urutan_tampilan, s.urutan_tampilan, s.nama`
         )
         .all();
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     // Check if category exists
     const category = db
-      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
       .get(kategori_id);
 
     if (!category) {
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     // Check if subcategory already exists in this category
     const existing = db
       .prepare(
-        "SELECT id FROM subkategori_bahan WHERE kategori_id = ? AND nama = ?"
+        "SELECT id FROM subkategori_barang WHERE kategori_id = ? AND nama = ?"
       )
       .get(kategori_id, nama.trim());
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("sub");
     const stmt = db.prepare(
-      `INSERT INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan, dibuat_pada, diperbarui_pada)
+      `INSERT INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest) {
     const newSubcategory = db
       .prepare(
         `SELECT s.*, c.nama as category_name 
-         FROM subkategori_bahan s
-         LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+         FROM subkategori_barang s
+         LEFT JOIN kategori_barang c ON s.kategori_id = c.id
          WHERE s.id = ?`
       )
       .get(id);

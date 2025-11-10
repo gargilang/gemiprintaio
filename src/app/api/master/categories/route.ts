@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const db = getDb();
     const categories = db
-      .prepare("SELECT * FROM kategori_bahan ORDER BY urutan_tampilan, nama")
+      .prepare("SELECT * FROM kategori_barang ORDER BY urutan_tampilan, nama")
       .all();
     db.close();
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     // Check if category already exists
     const existing = db
-      .prepare("SELECT id FROM kategori_bahan WHERE nama = ?")
+      .prepare("SELECT id FROM kategori_barang WHERE nama = ?")
       .get(nama.trim());
 
     if (existing) {
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("cat");
     const stmt = db.prepare(
-      `INSERT INTO kategori_bahan (id, nama, butuh_spesifikasi_status, urutan_tampilan, dibuat_pada, diperbarui_pada)
+      `INSERT INTO kategori_barang (id, nama, butuh_spesifikasi_status, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     );
 
     const newCategory = db
-      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
       .get(id);
 
     db.close();

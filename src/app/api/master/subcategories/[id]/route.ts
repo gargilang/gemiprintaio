@@ -29,7 +29,7 @@ export async function PUT(
 
     // Check if subcategory exists
     const existing = db
-      .prepare("SELECT * FROM subkategori_bahan WHERE id = ?")
+      .prepare("SELECT * FROM subkategori_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -43,7 +43,7 @@ export async function PUT(
     // Check if name is already taken by another subcategory in the same category
     const duplicate = db
       .prepare(
-        "SELECT id FROM subkategori_bahan WHERE kategori_id = ? AND nama = ? AND id != ?"
+        "SELECT id FROM subkategori_barang WHERE kategori_id = ? AND nama = ? AND id != ?"
       )
       .get((existing as any).kategori_id, nama.trim(), params.id);
 
@@ -56,7 +56,7 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE subkategori_bahan 
+      `UPDATE subkategori_barang 
        SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
@@ -66,8 +66,8 @@ export async function PUT(
     const updatedSubcategory = db
       .prepare(
         `SELECT s.*, c.nama as category_name 
-         FROM subkategori_bahan s
-         LEFT JOIN kategori_bahan c ON s.kategori_id = c.id
+         FROM subkategori_barang s
+         LEFT JOIN kategori_barang c ON s.kategori_id = c.id
          WHERE s.id = ?`
       )
       .get(params.id);
@@ -98,7 +98,7 @@ export async function DELETE(
 
     // Check if subcategory exists
     const existing = db
-      .prepare("SELECT id FROM subkategori_bahan WHERE id = ?")
+      .prepare("SELECT id FROM subkategori_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -111,20 +111,20 @@ export async function DELETE(
 
     // Check if there are bahan using this subcategory
     const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM bahan WHERE subkategori_id = ?")
+      .prepare("SELECT COUNT(*) as count FROM barang WHERE subkategori_id = ?")
       .get(params.id) as { count: number };
 
     if (materialsCount.count > 0) {
       db.close();
       return NextResponse.json(
         {
-          error: `Tidak dapat menghapus subkategori karena masih ada ${materialsCount.count} bahan yang menggunakan subkategori ini`,
+          error: `Tidak dapat menghapus subkategori karena masih ada ${materialsCount.count} barang yang menggunakan subkategori ini`,
         },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare("DELETE FROM subkategori_bahan WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM subkategori_barang WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

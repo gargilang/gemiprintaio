@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
       quickSpecs = db
         .prepare(
           `SELECT q.*, c.nama as category_name 
-           FROM spesifikasi_cepat_bahan q
-           LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+           FROM spesifikasi_cepat_barang q
+           LEFT JOIN kategori_barang c ON q.kategori_id = c.id
            WHERE q.kategori_id = ?
            ORDER BY q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
         )
@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
       quickSpecs = db
         .prepare(
           `SELECT q.*, c.nama as category_name 
-           FROM spesifikasi_cepat_bahan q
-           LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+           FROM spesifikasi_cepat_barang q
+           LEFT JOIN kategori_barang c ON q.kategori_id = c.id
            ORDER BY c.urutan_tampilan, q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
         )
         .all();
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // Check if category exists
     const category = db
-      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
       .get(kategori_id);
 
     if (!category) {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     // Check if quick spec already exists
     const existing = db
       .prepare(
-        "SELECT id FROM spesifikasi_cepat_bahan WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ?"
+        "SELECT id FROM spesifikasi_cepat_barang WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ?"
       )
       .get(kategori_id, tipe_spesifikasi.trim(), nilai_spesifikasi.trim());
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     const id = generateId("spec");
     const stmt = db.prepare(
-      `INSERT INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan, dibuat_pada, diperbarui_pada)
+      `INSERT INTO spesifikasi_cepat_barang (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan, dibuat_pada, diperbarui_pada)
        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
@@ -133,8 +133,8 @@ export async function POST(req: NextRequest) {
     const newQuickSpec = db
       .prepare(
         `SELECT q.*, c.nama as category_name 
-         FROM spesifikasi_cepat_bahan q
-         LEFT JOIN kategori_bahan c ON q.kategori_id = c.id
+         FROM spesifikasi_cepat_barang q
+         LEFT JOIN kategori_barang c ON q.kategori_id = c.id
          WHERE q.id = ?`
       )
       .get(id);

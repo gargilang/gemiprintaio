@@ -17,7 +17,7 @@ export async function GET(
   try {
     const db = getDb();
     const category = db
-      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -60,7 +60,7 @@ export async function PUT(
 
     // Check if category exists
     const existing = db
-      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -73,7 +73,7 @@ export async function PUT(
 
     // Check if name is already taken by another category
     const duplicate = db
-      .prepare("SELECT id FROM kategori_bahan WHERE nama = ? AND id != ?")
+      .prepare("SELECT id FROM kategori_barang WHERE nama = ? AND id != ?")
       .get(nama.trim(), params.id);
 
     if (duplicate) {
@@ -85,7 +85,7 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE kategori_bahan 
+      `UPDATE kategori_barang 
        SET nama = ?, butuh_spesifikasi_status = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
@@ -98,7 +98,7 @@ export async function PUT(
     );
 
     const updatedCategory = db
-      .prepare("SELECT * FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -127,7 +127,7 @@ export async function DELETE(
 
     // Check if category exists
     const existing = db
-      .prepare("SELECT id FROM kategori_bahan WHERE id = ?")
+      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -140,20 +140,20 @@ export async function DELETE(
 
     // Check if there are bahan using this category
     const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM bahan WHERE kategori_id = ?")
+      .prepare("SELECT COUNT(*) as count FROM barang WHERE kategori_id = ?")
       .get(params.id) as { count: number };
 
     if (materialsCount.count > 0) {
       db.close();
       return NextResponse.json(
         {
-          error: `Tidak dapat menghapus kategori karena masih ada ${materialsCount.count} bahan yang menggunakan kategori ini`,
+          error: `Tidak dapat menghapus kategori karena masih ada ${materialsCount.count} barang yang menggunakan kategori ini`,
         },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare("DELETE FROM kategori_bahan WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM kategori_barang WHERE id = ?");
     stmt.run(params.id);
 
     db.close();

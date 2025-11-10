@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest) {
 
     // Update each spec's urutan_tampilan in a transaction
     const updateStmt = db.prepare(
-      "UPDATE spesifikasi_cepat_bahan SET urutan_tampilan = ?, diperbarui_pada = datetime('now') WHERE id = ?"
+      "UPDATE spesifikasi_cepat_barang SET urutan_tampilan = ?, diperbarui_pada = datetime('now') WHERE id = ?"
     );
 
     const transaction = db.transaction((itemsToUpdate: any[]) => {

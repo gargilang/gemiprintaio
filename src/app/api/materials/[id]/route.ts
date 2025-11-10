@@ -22,11 +22,11 @@ export async function GET(
         `
         SELECT 
           m.*,
-          mc.name as category_name,
-          ms.name as subcategory_name
-        FROM bahan m
-        LEFT JOIN material_categories mc ON m.kategori_id = mc.id
-        LEFT JOIN material_subcategories ms ON m.subkategori_id = ms.id
+          mc.nama as category_name,
+          ms.nama as subcategory_name
+        FROM barang m
+        LEFT JOIN kategori_barang mc ON m.kategori_id = mc.id
+        LEFT JOIN subkategori_barang ms ON m.subkategori_id = ms.id
         WHERE m.id = ?
       `
       )
@@ -35,7 +35,7 @@ export async function GET(
     if (!material) {
       db.close();
       return NextResponse.json(
-        { error: "Material tidak ditemukan" },
+        { error: "Barang tidak ditemukan" },
         { status: 404 }
       );
     }
@@ -43,8 +43,8 @@ export async function GET(
     const unitPrices = db
       .prepare(
         `
-        SELECT * FROM harga_bahan_satuan
-        WHERE bahan_id = ?
+        SELECT * FROM harga_barang_satuan
+        WHERE barang_id = ?
         ORDER BY urutan_tampilan, nama_satuan
       `
       )
@@ -96,7 +96,7 @@ export async function PUT(
 
     // Check if material exists
     const existing = db
-      .prepare("SELECT id FROM bahan WHERE id = ?")
+      .prepare("SELECT id FROM barang WHERE id = ?")
       .get(params.id);
 
     console.log("🔎 Material lookup result:", existing);
@@ -111,7 +111,7 @@ export async function PUT(
 
     // Update material
     const updateStmt = db.prepare(`
-      UPDATE bahan
+      UPDATE barang
       SET nama = ?, deskripsi = ?, kategori_id = ?, subkategori_id = ?,
           satuan_dasar = ?, spesifikasi = ?, jumlah_stok = ?,
           level_stok_minimum = ?, lacak_inventori_status = ?, butuh_dimensi_status = ?, 
@@ -136,14 +136,14 @@ export async function PUT(
     // Update unit prices if provided
     if (unit_prices && Array.isArray(unit_prices)) {
       // Delete existing unit prices
-      db.prepare("DELETE FROM harga_bahan_satuan WHERE bahan_id = ?").run(
+      db.prepare("DELETE FROM harga_barang_satuan WHERE barang_id = ?").run(
         params.id
       );
 
       // Insert new unit prices
       const unitPriceStmt = db.prepare(`
-        INSERT INTO harga_bahan_satuan (
-          id, bahan_id, nama_satuan, faktor_konversi,
+        INSERT INTO harga_barang_satuan (
+          id, barang_id, nama_satuan, faktor_konversi,
           harga_beli, harga_jual, harga_member,
           default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
         )
@@ -170,17 +170,17 @@ export async function PUT(
 
     // Get updated material
     const updatedMaterial: any = db
-      .prepare("SELECT * FROM bahan WHERE id = ?")
+      .prepare("SELECT * FROM barang WHERE id = ?")
       .get(params.id);
 
     const updatedUnitPrices = db
-      .prepare("SELECT * FROM harga_bahan_satuan WHERE bahan_id = ?")
+      .prepare("SELECT * FROM harga_barang_satuan WHERE barang_id = ?")
       .all(params.id);
 
     db.close();
 
     return NextResponse.json({
-      message: "Material berhasil diupdate",
+      message: "Barang berhasil diupdate",
       material: {
         ...updatedMaterial,
         unit_prices: updatedUnitPrices,
@@ -206,24 +206,24 @@ export async function DELETE(
 
     // Check if material exists
     const existing = db
-      .prepare("SELECT id FROM bahan WHERE id = ?")
+      .prepare("SELECT id FROM barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
       db.close();
       return NextResponse.json(
-        { error: "Material tidak ditemukan" },
+        { error: "Barang tidak ditemukan" },
         { status: 404 }
       );
     }
 
     // Delete material (unit prices will be cascade deleted)
-    db.prepare("DELETE FROM bahan WHERE id = ?").run(params.id);
+    db.prepare("DELETE FROM barang WHERE id = ?").run(params.id);
 
     db.close();
 
     return NextResponse.json({
-      message: "Material berhasil dihapus",
+      message: "Barang berhasil dihapus",
     });
   } catch (error: any) {
     console.error("Error deleting material:", error);

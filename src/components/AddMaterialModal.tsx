@@ -271,7 +271,7 @@ export default function AddMaterialModal({
 
       // Validation
       if (!formData.name.trim()) {
-        alert("Nama bahan harus diisi");
+        alert("Nama barang harus diisi");
         return;
       }
 
@@ -344,7 +344,7 @@ export default function AddMaterialModal({
 
         // Close modal first, then show notification in parent
         onClose();
-        onSuccess(`Bahan berhasil ${editData ? "diupdate" : "ditambahkan"}!`);
+        onSuccess(`Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`);
       } catch (err) {
         console.error(err);
         alert(

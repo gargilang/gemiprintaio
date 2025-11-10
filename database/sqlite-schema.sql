@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS profil (
   diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
--- Master Kategori Bahan
-CREATE TABLE IF NOT EXISTS kategori_bahan (
+-- Master Kategori Barang
+CREATE TABLE IF NOT EXISTS kategori_barang (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL UNIQUE,
   butuh_spesifikasi_status INTEGER DEFAULT 0, -- Flag: apakah kategori ini perlu quick specs
@@ -28,19 +28,19 @@ CREATE TABLE IF NOT EXISTS kategori_bahan (
   diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
--- Master Subkategori Bahan
-CREATE TABLE IF NOT EXISTS subkategori_bahan (
+-- Master Subkategori Barang
+CREATE TABLE IF NOT EXISTS subkategori_barang (
   id TEXT PRIMARY KEY,
   kategori_id TEXT NOT NULL,
   nama TEXT NOT NULL,
   urutan_tampilan INTEGER DEFAULT 0,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (kategori_id) REFERENCES kategori_bahan(id) ON DELETE CASCADE
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
 
--- Master Satuan Bahan
-CREATE TABLE IF NOT EXISTS satuan_bahan (
+-- Master Satuan Barang
+CREATE TABLE IF NOT EXISTS satuan_barang (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL UNIQUE,
   urutan_tampilan INTEGER DEFAULT 0,
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS satuan_bahan (
   diperbarui_pada TEXT DEFAULT (datetime('now'))
 );
 
--- Master Spesifikasi Cepat Bahan (untuk Spek Cepat seperti ukuran kertas, gramasi, dll)
-CREATE TABLE IF NOT EXISTS spesifikasi_cepat_bahan (
+-- Master Spesifikasi Cepat Barang (untuk Spek Cepat seperti ukuran kertas, gramasi, dll)
+CREATE TABLE IF NOT EXISTS spesifikasi_cepat_barang (
   id TEXT PRIMARY KEY,
   kategori_id TEXT NOT NULL,
   tipe_spesifikasi TEXT NOT NULL, -- 'size', 'weight', 'width', 'thickness', dll
@@ -57,11 +57,11 @@ CREATE TABLE IF NOT EXISTS spesifikasi_cepat_bahan (
   urutan_tampilan INTEGER DEFAULT 0,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (kategori_id) REFERENCES kategori_bahan(id) ON DELETE CASCADE
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
 
--- Materials/Bahan table (updated with category/subcategory references)
-CREATE TABLE IF NOT EXISTS bahan (
+-- Materials/Barang table (updated with category/subcategory references)
+CREATE TABLE IF NOT EXISTS barang (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL,
   deskripsi TEXT,
@@ -75,14 +75,14 @@ CREATE TABLE IF NOT EXISTS bahan (
   butuh_dimensi_status INTEGER DEFAULT 0, -- 1 = perlu input P×L di POS (banner, vinyl, flexi), 0 = input qty biasa
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (kategori_id) REFERENCES material_categories(id) ON DELETE SET NULL,
-  FOREIGN KEY (subkategori_id) REFERENCES material_subcategories(id) ON DELETE SET NULL
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
+  FOREIGN KEY (subkategori_id) REFERENCES subkategori_barang(id) ON DELETE SET NULL
 );
 
 -- Material Unit Prices (Multiple satuan dengan harga berbeda)
-CREATE TABLE IF NOT EXISTS harga_bahan_satuan (
+CREATE TABLE IF NOT EXISTS harga_barang_satuan (
   id TEXT PRIMARY KEY,
-  bahan_id TEXT NOT NULL,
+  barang_id TEXT NOT NULL,
   nama_satuan TEXT NOT NULL, -- pcs, lusin, pack, box, meter, roll, dll
   faktor_konversi REAL NOT NULL, -- Konversi ke satuan_dasar (contoh: 1 lusin = 12 pcs, maka faktor_konversi = 12)
   harga_beli REAL DEFAULT 0,
@@ -92,8 +92,8 @@ CREATE TABLE IF NOT EXISTS harga_bahan_satuan (
   urutan_tampilan INTEGER DEFAULT 0,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (bahan_id) REFERENCES bahan(id) ON DELETE CASCADE,
-  UNIQUE(bahan_id, nama_satuan)
+  FOREIGN KEY (barang_id) REFERENCES barang(id) ON DELETE CASCADE,
+  UNIQUE(barang_id, nama_satuan)
 );
 
 -- Customers table
@@ -147,8 +147,8 @@ CREATE TABLE IF NOT EXISTS penjualan (
 CREATE TABLE IF NOT EXISTS item_penjualan (
   id TEXT PRIMARY KEY,
   penjualan_id TEXT NOT NULL,
-  bahan_id TEXT NOT NULL,
-  harga_satuan_id TEXT, -- Reference ke harga_bahan_satuan untuk tahu satuan & harga yang dipakai
+  barang_id TEXT NOT NULL,
+  harga_satuan_id TEXT, -- Reference ke harga_barang_satuan untuk tahu satuan & harga yang dipakai
   jumlah REAL NOT NULL, -- Jumlah dalam satuan yang dipilih
   nama_satuan TEXT NOT NULL, -- Nama satuan yang digunakan (pcs, lusin, pack)
   faktor_konversi REAL NOT NULL, -- Konversi ke satuan_dasar untuk update stok
@@ -156,8 +156,8 @@ CREATE TABLE IF NOT EXISTS item_penjualan (
   subtotal REAL NOT NULL,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
-  FOREIGN KEY (bahan_id) REFERENCES bahan(id),
-  FOREIGN KEY (harga_satuan_id) REFERENCES harga_bahan_satuan(id)
+  FOREIGN KEY (barang_id) REFERENCES barang(id),
+  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
 );
 
 -- Purchase Orders
@@ -180,8 +180,8 @@ CREATE TABLE IF NOT EXISTS pembelian (
 CREATE TABLE IF NOT EXISTS item_pembelian (
   id TEXT PRIMARY KEY,
   pembelian_id TEXT NOT NULL,
-  bahan_id TEXT NOT NULL,
-  harga_satuan_id TEXT, -- Reference ke harga_bahan_satuan
+  barang_id TEXT NOT NULL,
+  harga_satuan_id TEXT, -- Reference ke harga_barang_satuan
   jumlah REAL NOT NULL, -- Jumlah dalam satuan yang dipilih
   nama_satuan TEXT NOT NULL, -- Nama satuan yang digunakan
   faktor_konversi REAL NOT NULL, -- Konversi ke satuan_dasar
@@ -189,8 +189,8 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   subtotal REAL NOT NULL,
   dibuat_pada TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (pembelian_id) REFERENCES pembelian(id) ON DELETE CASCADE,
-  FOREIGN KEY (bahan_id) REFERENCES bahan(id),
-  FOREIGN KEY (harga_satuan_id) REFERENCES harga_bahan_satuan(id)
+  FOREIGN KEY (barang_id) REFERENCES barang(id),
+  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
 );
 
 

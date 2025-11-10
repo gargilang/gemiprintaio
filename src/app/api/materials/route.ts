@@ -12,34 +12,34 @@ function generateId(prefix: string = "mat") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// GET all bahan with their unit prices
+// GET all barang with their unit prices
 export async function GET(req: NextRequest) {
   try {
     const db = getDb();
 
-    // Get all bahan
-    const bahan = db
+    // Get all barang
+    const barang = db
       .prepare(
         `
         SELECT 
           m.*,
           mc.nama as category_name,
           ms.nama as subcategory_name
-        FROM bahan m
-        LEFT JOIN kategori_bahan mc ON m.kategori_id = mc.id
-        LEFT JOIN subkategori_bahan ms ON m.subkategori_id = ms.id
+        FROM barang m
+        LEFT JOIN kategori_barang mc ON m.kategori_id = mc.id
+        LEFT JOIN subkategori_barang ms ON m.subkategori_id = ms.id
         ORDER BY m.nama
       `
       )
       .all();
 
     // Get unit prices for each material
-    const materialsWithUnits = bahan.map((material: any) => {
+    const materialsWithUnits = barang.map((material: any) => {
       const unitPrices = db
         .prepare(
           `
-          SELECT * FROM harga_bahan_satuan
-          WHERE bahan_id = ?
+          SELECT * FROM harga_barang_satuan
+          WHERE barang_id = ?
           ORDER BY urutan_tampilan, nama_satuan
         `
         )
@@ -53,11 +53,11 @@ export async function GET(req: NextRequest) {
 
     db.close();
 
-    return NextResponse.json({ bahan: materialsWithUnits });
+    return NextResponse.json({ barang: materialsWithUnits });
   } catch (error: any) {
-    console.error("Error fetching bahan:", error);
+    console.error("Error fetching materials:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch bahan" },
+      { error: error.message || "Failed to fetch materials" },
       { status: 500 }
     );
   }
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     if (!nama || !nama.trim()) {
       return NextResponse.json(
-        { error: "Nama bahan harus diisi" },
+        { error: "Nama barang harus diisi" },
         { status: 400 }
       );
     }
@@ -106,13 +106,13 @@ export async function POST(req: NextRequest) {
 
     // Check if material already exists
     const existing = db
-      .prepare("SELECT id FROM bahan WHERE nama = ?")
+      .prepare("SELECT id FROM barang WHERE nama = ?")
       .get(nama.trim());
 
     if (existing) {
       db.close();
       return NextResponse.json(
-        { error: "Bahan dengan nama ini sudah ada" },
+        { error: "Barang dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     // Insert material
     const materialStmt = db.prepare(`
-      INSERT INTO bahan (
+      INSERT INTO barang (
         id, nama, deskripsi, kategori_id, subkategori_id,
         satuan_dasar, spesifikasi, jumlah_stok, level_stok_minimum,
         lacak_inventori_status, butuh_dimensi_status, dibuat_pada, diperbarui_pada
@@ -145,8 +145,8 @@ export async function POST(req: NextRequest) {
 
     // Insert unit prices
     const unitPriceStmt = db.prepare(`
-      INSERT INTO harga_bahan_satuan (
-        id, bahan_id, nama_satuan, faktor_konversi,
+      INSERT INTO harga_barang_satuan (
+        id, barang_id, nama_satuan, faktor_konversi,
         harga_beli, harga_jual, harga_member,
         default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
       )
@@ -170,18 +170,18 @@ export async function POST(req: NextRequest) {
 
     // Get the created material with unit prices
     const newMaterial: any = db
-      .prepare("SELECT * FROM bahan WHERE id = ?")
+      .prepare("SELECT * FROM barang WHERE id = ?")
       .get(materialId);
 
     const newUnitPrices = db
-      .prepare("SELECT * FROM harga_bahan_satuan WHERE bahan_id = ?")
+      .prepare("SELECT * FROM harga_barang_satuan WHERE barang_id = ?")
       .all(materialId);
 
     db.close();
 
     return NextResponse.json(
       {
-        message: "Bahan berhasil ditambahkan",
+        message: "Barang berhasil ditambahkan",
         material: {
           ...newMaterial,
           unit_prices: newUnitPrices,

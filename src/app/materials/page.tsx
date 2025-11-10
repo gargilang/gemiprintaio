@@ -267,7 +267,7 @@ export default function MaterialsPage() {
       const res = await fetch("/api/materials");
       const data = await res.json();
       if (res.ok) {
-        setMaterials(data.bahan || []);
+        setMaterials(data.barang || []);
       }
     } catch (error) {
       console.error("Error loading materials:", error);
@@ -290,8 +290,8 @@ export default function MaterialsPage() {
   const handleDelete = (material: any) => {
     setConfirmDialog({
       show: true,
-      title: "Hapus Bahan",
-      message: `Yakin ingin menghapus bahan "${material.nama}"?\n\nKategori: ${
+      title: "Hapus Barang",
+      message: `Yakin ingin menghapus barang "${material.nama}"?\n\nKategori: ${
         material.category_name || "-"
       }\nSpesifikasi: ${
         material.spesifikasi || "-"
@@ -310,7 +310,7 @@ export default function MaterialsPage() {
             loadMaterials();
             setNotice({
               type: "success",
-              message: `Bahan "${material.nama}" berhasil dihapus`,
+              message: `Barang "${material.nama}" berhasil dihapus`,
             });
             setTimeout(() => setNotice(null), 3000);
           } else {
@@ -319,7 +319,7 @@ export default function MaterialsPage() {
           }
         } catch (error) {
           console.error("Error deleting material:", error);
-          alert("Terjadi kesalahan saat menghapus bahan");
+          alert("Terjadi kesalahan saat menghapus barang");
         }
       },
     });
@@ -342,7 +342,7 @@ export default function MaterialsPage() {
   ).length;
 
   return (
-    <MainShell title="Data Bahan">
+    <MainShell title="Data Barang">
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -354,7 +354,9 @@ export default function MaterialsPage() {
                   <BoxIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
-                  {searchQuery.trim() ? "Hasil Pencarian" : "Total Jenis Bahan"}
+                  {searchQuery.trim()
+                    ? "Hasil Pencarian"
+                    : "Total Jenis Barang"}
                 </h3>
               </div>
             </div>
@@ -451,7 +453,7 @@ export default function MaterialsPage() {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Tambah Bahan
+                Tambah Barang
               </button>
             </div>
 
@@ -459,7 +461,7 @@ export default function MaterialsPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Cari bahan atau kategori..."
+                  placeholder="Cari barang atau kategori..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -493,7 +495,7 @@ export default function MaterialsPage() {
               <thead className="bg-gradient-to-r from-emerald-500 to-green-600 text-white sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Nama Bahan
+                    Nama Barang
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Kategori
@@ -551,13 +553,13 @@ export default function MaterialsPage() {
                         <BoxIcon size={48} className="text-gray-300" />
                         <p className="text-lg font-semibold">
                           {searchQuery.trim()
-                            ? "Tidak ada bahan yang sesuai"
-                            : "Belum ada data bahan"}
+                            ? "Tidak ada barang yang sesuai"
+                            : "Belum ada data barang"}
                         </p>
                         <p className="text-sm">
                           {searchQuery.trim()
-                            ? `Tidak ditemukan bahan dengan keyword "${searchQuery}"`
-                            : 'Klik tombol "Tambah Bahan" untuk menambahkan data baru'}
+                            ? `Tidak ditemukan barang dengan keyword "${searchQuery}"`
+                            : 'Klik tombol "Tambah Barang" untuk menambahkan data baru'}
                         </p>
                       </div>
                     </td>

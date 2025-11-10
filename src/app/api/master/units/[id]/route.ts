@@ -29,7 +29,7 @@ export async function PUT(
 
     // Check if unit exists
     const existing = db
-      .prepare("SELECT id FROM satuan_bahan WHERE id = ?")
+      .prepare("SELECT id FROM satuan_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -42,7 +42,7 @@ export async function PUT(
 
     // Check if name is already taken by another unit
     const duplicate = db
-      .prepare("SELECT id FROM satuan_bahan WHERE nama = ? AND id != ?")
+      .prepare("SELECT id FROM satuan_barang WHERE nama = ? AND id != ?")
       .get(nama.trim(), params.id);
 
     if (duplicate) {
@@ -54,7 +54,7 @@ export async function PUT(
     }
 
     const stmt = db.prepare(
-      `UPDATE satuan_bahan 
+      `UPDATE satuan_barang 
        SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
        WHERE id = ?`
     );
@@ -62,7 +62,7 @@ export async function PUT(
     stmt.run(nama.trim(), urutan_tampilan || 0, params.id);
 
     const updatedUnit = db
-      .prepare("SELECT * FROM satuan_bahan WHERE id = ?")
+      .prepare("SELECT * FROM satuan_barang WHERE id = ?")
       .get(params.id);
 
     db.close();
@@ -91,7 +91,7 @@ export async function DELETE(
 
     // Check if unit exists
     const existing = db
-      .prepare("SELECT id FROM satuan_bahan WHERE id = ?")
+      .prepare("SELECT id FROM satuan_barang WHERE id = ?")
       .get(params.id);
 
     if (!existing) {
@@ -102,7 +102,7 @@ export async function DELETE(
       );
     }
 
-    const stmt = db.prepare("DELETE FROM satuan_bahan WHERE id = ?");
+    const stmt = db.prepare("DELETE FROM satuan_barang WHERE id = ?");
     stmt.run(params.id);
 
     db.close();
