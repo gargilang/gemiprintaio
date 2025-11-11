@@ -241,7 +241,9 @@ export default function PayDebtModal({
                             }`}
                           >
                             <ClockIcon size={12} />
-                            {debt.status_pembayaran}
+                            {debt.status_pembayaran === "HUTANG"
+                              ? "TAGIHAN"
+                              : debt.status_pembayaran}
                           </span>
                         </div>
                         <div className="text-sm text-gray-600 mb-2">
