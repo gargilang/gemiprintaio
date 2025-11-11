@@ -233,6 +233,19 @@ export default function FinancePage() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const debitInputRef = useRef<HTMLInputElement>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
+
+  // Close edit form when clicking outside
+  useClickOutside(
+    editFormRef,
+    () => {
+      if (showModal) {
+        setShowModal(false);
+        setEditingCashBook(null);
+      }
+    },
+    showModal
+  );
 
   const kategoriOptions: KategoriTransaksi[] = [
     "KAS",
@@ -1528,7 +1541,10 @@ export default function FinancePage() {
       {/* Modal Form */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div
+            ref={editFormRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+          >
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white">
                 {editingCashBook

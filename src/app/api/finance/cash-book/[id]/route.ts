@@ -26,6 +26,21 @@ export async function DELETE(
       );
     }
 
+    // Check if this transaction is from purchases (has [REF:purchase-xxx])
+    if (
+      existingEntry.keperluan &&
+      existingEntry.keperluan.includes("[REF:purchase-")
+    ) {
+      console.log(`Cannot delete purchase transaction: ${id}`);
+      return NextResponse.json(
+        {
+          error: "Transaksi pembelian harus dihapus melalui Halaman Pembelian",
+          isPurchaseTransaction: true,
+        },
+        { status: 403 }
+      );
+    }
+
     console.log(`Deleting transaction: ${id}`);
 
     // Delete transaksi
@@ -70,6 +85,21 @@ export async function PUT(
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
         { status: 404 }
+      );
+    }
+
+    // Check if this transaction is from purchases (has [REF:purchase-xxx])
+    if (
+      existingEntry.keperluan &&
+      existingEntry.keperluan.includes("[REF:purchase-")
+    ) {
+      console.log(`Cannot edit purchase transaction: ${id}`);
+      return NextResponse.json(
+        {
+          error: "Transaksi pembelian harus diubah melalui Halaman Pembelian",
+          isPurchaseTransaction: true,
+        },
+        { status: 403 }
       );
     }
 

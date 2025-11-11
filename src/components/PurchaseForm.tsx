@@ -124,7 +124,7 @@ export default function PurchaseForm({
 
       setFormData({
         tanggal: tanggalValue,
-        nomor_faktur: editData.nomor_pembelian || editData.nomor_faktur || "",
+        nomor_faktur: editData.nomor_faktur || editData.nomor_pembelian || "",
         id_vendor: editData.vendor_id || editData.id_vendor || null,
         metode_pembayaran: editData.metode_pembayaran || "CASH",
         catatan: editData.catatan || "",
@@ -259,6 +259,10 @@ export default function PurchaseForm({
       const payload = {
         tanggal: formData.tanggal,
         nomor_faktur: formData.nomor_faktur,
+        nomor_pembelian:
+          editData?.nomor_pembelian ||
+          editData?.nomor_faktur ||
+          formData.nomor_faktur,
         vendor_id: formData.id_vendor,
         catatan: formData.catatan,
         metode_pembayaran: formData.metode_pembayaran,
@@ -369,7 +373,7 @@ export default function PurchaseForm({
           </label>
           <SearchableSelect
             options={[
-              { value: "", label: "-- Tanpa Vendor (Warung/Nota-less) --" },
+              { value: "", label: "-- Tanpa Vendor (Tanpa Nota) --" },
               ...activeVendors.map((v) => ({
                 value: v.id,
                 label: v.nama_perusahaan,

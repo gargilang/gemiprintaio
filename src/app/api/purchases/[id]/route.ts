@@ -80,6 +80,7 @@ export async function PUT(
     const body = await req.json();
     const {
       nomor_pembelian,
+      nomor_faktur,
       vendor_id,
       tanggal,
       metode_pembayaran,
@@ -136,7 +137,8 @@ export async function PUT(
       // Update purchase
       const updateStmt = db.prepare(`
         UPDATE pembelian
-        SET nomor_pembelian = ?, vendor_id = ?, total_jumlah = ?,
+        SET nomor_pembelian = ?, nomor_faktur = ?, tanggal = ?, 
+            vendor_id = ?, total_jumlah = ?,
             jumlah_dibayar = ?, metode_pembayaran = ?, catatan = ?,
             diperbarui_pada = datetime('now')
         WHERE id = ?
@@ -144,9 +146,11 @@ export async function PUT(
 
       updateStmt.run(
         nomor_pembelian?.trim(),
+        nomor_faktur?.trim() || nomor_pembelian?.trim(),
+        tanggal || new Date().toISOString().split("T")[0],
         vendor_id || null,
         total_jumlah,
-        metode_pembayaran === "cash" ? total_jumlah : 0,
+        metode_pembayaran === "CASH" ? total_jumlah : 0,
         metode_pembayaran || null,
         catatan?.trim() || null,
         params.id
@@ -199,23 +203,45 @@ export async function PUT(
         }
       }
 
-      // Update keuangan entry
-      db.prepare(
-        `UPDATE keuangan 
+      // Update keuangan entry (only if it exists - LUNAS purchases)
+      const keperluanText = vendor_id
+        ? `Pembelian ${nomor_pembelian} (${
+            nomor_faktur || nomor_pembelian
+          }) [REF:${params.id}]`
+        : `Pembelian ${nomor_pembelian} (${
+            nomor_faktur || nomor_pembelian
+          }) - Tanpa Vendor [REF:${params.id}]`;
+
+      const updateResult = db
+        .prepare(
+          `UPDATE keuangan 
          SET kredit = ?, biaya_bahan = ?,
              tanggal = ?,
              keperluan = ?,
              catatan = ?,
              diperbarui_pada = datetime('now')
          WHERE keperluan LIKE ?`
-      ).run(
-        total_jumlah,
-        total_jumlah,
-        tanggal || new Date().toISOString().split("T")[0],
-        `Pembelian ${nomor_pembelian}`,
-        catatan || null,
-        `%${params.id}%`
+        )
+        .run(
+          total_jumlah,
+          total_jumlah,
+          tanggal || new Date().toISOString().split("T")[0],
+          keperluanText,
+          catatan || null,
+          `%[REF:${params.id}]%`
+        );
+
+      console.log(
+        `Updated ${updateResult.changes} keuangan record(s) for purchase ${params.id}`
       );
+
+      // Recalculate cashbook after update (if keuangan was updated)
+      if (updateResult.changes > 0) {
+        const { recalculateCashbook } = await import(
+          "@/lib/calculate-cashbook"
+        );
+        await recalculateCashbook(db);
+      }
 
       db.exec("COMMIT");
 
@@ -301,9 +327,13 @@ export async function DELETE(
         ).run(stockToRemove, item.barang_id);
       }
 
-      // Delete keuangan entry
-      db.prepare("DELETE FROM keuangan WHERE keperluan LIKE ?").run(
-        `%${params.id}%`
+      // Delete keuangan entry by finding reference to purchase ID
+      const deleteResult = db
+        .prepare("DELETE FROM keuangan WHERE keperluan LIKE ?")
+        .run(`%[REF:${params.id}]%`);
+
+      console.log(
+        `Deleted ${deleteResult.changes} keuangan record(s) for purchase ${params.id}`
       );
 
       // Delete purchase (items will cascade delete)

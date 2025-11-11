@@ -235,15 +235,23 @@ export async function POST(req: NextRequest) {
 
       // Only create keuangan entry if CASH (LUNAS)
       if (isLunas) {
+        // Get the highest urutan_tampilan to assign next value
+        const maxDisplayOrder = db
+          .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
+          .get() as any;
+
+        const nextDisplayOrder = (maxDisplayOrder?.max_order || 0) + 1;
+
         const keuanganId = generateId("keu");
         const keuanganStmt = db.prepare(`
           INSERT INTO keuangan (
             id, tanggal, kategori_transaksi,
             debit, kredit, keperluan,
             biaya_bahan, catatan, dibuat_oleh,
+            urutan_tampilan,
             dibuat_pada, diperbarui_pada
           )
-          VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `);
 
         const keperluan = vendor_id
@@ -257,7 +265,8 @@ export async function POST(req: NextRequest) {
           keperluan,
           total_jumlah,
           catatan || null,
-          dibuat_oleh || null
+          dibuat_oleh || null,
+          nextDisplayOrder
         );
       } else {
         // Create hutang entry for NET30 or COD
