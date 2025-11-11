@@ -11,6 +11,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import PayDebtModal from "@/components/PayDebtModal";
 
 interface User {
   id: string;
@@ -31,6 +32,7 @@ export default function PurchasesPage() {
   const [editingPurchase, setEditingPurchase] = useState<any>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [showPayDebtModal, setShowPayDebtModal] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -293,13 +295,34 @@ export default function PurchasesPage() {
 
         {/* Table Section */}
         <div id="purchases-table" className="bg-white rounded-xl shadow-lg p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">
-              Daftar Pembelian
-            </h2>
-            <p className="text-sm text-gray-500">
-              Riwayat semua transaksi pembelian bahan
-            </p>
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-1">
+                Daftar Pembelian
+              </h2>
+              <p className="text-sm text-gray-500">
+                Riwayat semua transaksi pembelian bahan
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPayDebtModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-lg"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Bayar Hutang
+            </button>
           </div>
 
           <PurchaseTable
@@ -327,6 +350,17 @@ export default function PurchasesPage() {
         subcategories={subcategories}
         units={units}
         showNotification={(type, message) => setNotice({ type, message })}
+      />
+
+      {/* Pay Debt Modal */}
+      <PayDebtModal
+        isOpen={showPayDebtModal}
+        onClose={() => setShowPayDebtModal(false)}
+        onSuccess={() => {
+          showMsg("success", "Pembayaran hutang berhasil dicatat!");
+          loadPurchases();
+        }}
+        currentUserId={currentUser?.id || null}
       />
 
       {/* Confirm Dialog */}

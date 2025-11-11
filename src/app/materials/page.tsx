@@ -175,6 +175,10 @@ export default function MaterialsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -190,16 +194,52 @@ export default function MaterialsPage() {
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Filtered materials based on search query
+  // Filtered and sorted materials
   const filteredMaterials = useMemo(() => {
-    if (!searchQuery.trim()) return materials;
-    const query = searchQuery.toLowerCase();
-    return materials.filter(
-      (m) =>
-        m.nama.toLowerCase().includes(query) ||
-        (m.category_name && m.category_name.toLowerCase().includes(query))
-    );
-  }, [materials, searchQuery]);
+    let filtered = [...materials];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (m) =>
+          m.nama.toLowerCase().includes(query) ||
+          (m.category_name && m.category_name.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply low stock filter
+    if (showLowStockOnly) {
+      filtered = filtered.filter(
+        (m) => m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortBy === "name") {
+        comparison = a.nama.localeCompare(b.nama);
+      } else if (sortBy === "stock") {
+        comparison = a.jumlah_stok - b.jumlah_stok;
+      } else if (sortBy === "value") {
+        const aValue =
+          a.jumlah_stok *
+          (a.unit_prices?.find((up: any) => up.default_status)?.harga_beli ||
+            0);
+        const bValue =
+          b.jumlah_stok *
+          (b.unit_prices?.find((up: any) => up.default_status)?.harga_beli ||
+            0);
+        comparison = aValue - bValue;
+      }
+
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [materials, searchQuery, showLowStockOnly, sortBy, sortOrder]);
 
   // Visible materials - hanya render yang terlihat (virtualization)
   const visibleMaterials = useMemo(() => {
@@ -276,13 +316,37 @@ export default function MaterialsPage() {
     }
   };
 
+  const showNotification = useCallback(
+    (type: "success" | "error", message: string) => {
+      setNotice({ type, message });
+      setTimeout(() => setNotice(null), 3000);
+    },
+    []
+  );
+
   const handleSuccess = (message: string) => {
+    // Save scroll position before reload
+    if (tableContainerRef.current) {
+      setScrollPosition(tableContainerRef.current.scrollTop);
+    }
+
     loadMaterials();
-    setNotice({ type: "success", message });
-    setTimeout(() => setNotice(null), 3000);
+    showNotification("success", message);
+
+    // Restore scroll position after reload
+    setTimeout(() => {
+      if (tableContainerRef.current && scrollPosition > 0) {
+        tableContainerRef.current.scrollTop = scrollPosition;
+      }
+    }, 100);
   };
 
   const handleEdit = (material: any) => {
+    // Save scroll position before opening modal
+    if (tableContainerRef.current) {
+      setScrollPosition(tableContainerRef.current.scrollTop);
+    }
+
     setSelectedMaterial(material);
     setShowModal(true);
   };
@@ -328,6 +392,22 @@ export default function MaterialsPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedMaterial(null);
+
+    // Restore scroll position after closing modal
+    setTimeout(() => {
+      if (tableContainerRef.current && scrollPosition > 0) {
+        tableContainerRef.current.scrollTop = scrollPosition;
+      }
+    }, 100);
+  };
+
+  const handleSort = (field: "name" | "stock" | "value") => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder(field === "stock" ? "asc" : "desc");
+    }
   };
 
   // Calculate totals
@@ -400,8 +480,13 @@ export default function MaterialsPage() {
             <p className="text-sm mt-2 text-blue-100">Total nilai inventory</p>
           </div>
 
-          {/* Low Stock Alert */}
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg p-6 text-white">
+          {/* Low Stock Alert - Clickable */}
+          <div
+            onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+            className={`bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg p-6 text-white cursor-pointer hover:shadow-xl transition-all ${
+              showLowStockOnly ? "ring-4 ring-orange-300" : ""
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -423,9 +508,28 @@ export default function MaterialsPage() {
                   Stok Menipis
                 </h3>
               </div>
+              {showLowStockOnly && (
+                <div className="bg-white/20 rounded-full px-2 py-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
             <p className="text-3xl font-bold">{lowStockItems}</p>
-            <p className="text-sm mt-2 text-orange-100">Item perlu restock</p>
+            <p className="text-sm mt-2 text-orange-100">
+              {showLowStockOnly
+                ? "Menampilkan item menipis"
+                : "Klik untuk filter"}
+            </p>
           </div>
         </div>
 
@@ -494,8 +598,18 @@ export default function MaterialsPage() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-emerald-500 to-green-600 text-white sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Nama Barang
+                  <th
+                    className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => handleSort("name")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Nama Barang
+                      {sortBy === "name" && (
+                        <span className="text-xs">
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Kategori
@@ -506,8 +620,18 @@ export default function MaterialsPage() {
                   <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                     Satuan Jual
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">
-                    Stok
+                  <th
+                    className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => handleSort("stock")}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Stok
+                      {sortBy === "stock" && (
+                        <span className="text-xs">
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                     Aksi
@@ -585,6 +709,7 @@ export default function MaterialsPage() {
           isOpen={showModal}
           onClose={handleCloseModal}
           onSuccess={handleSuccess}
+          showNotification={showNotification}
           editData={selectedMaterial}
         />
 

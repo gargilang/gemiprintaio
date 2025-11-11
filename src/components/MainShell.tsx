@@ -67,22 +67,34 @@ export default function MainShell({
   }, [router]);
 
   // Preserve sidebar scroll position across route changes
+  // Handle sidebar scroll persistence - separated for better dev mode behavior
   useEffect(() => {
     const key = "sidebarScroll";
     const el = navRef.current;
     if (!el) return;
 
-    // Restore saved scrollTop immediately
+    // Restore scroll position on mount/pathname change
     const saved = sessionStorage.getItem(key);
     if (saved) {
       const scrollPos = parseInt(saved, 10) || 0;
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        el.scrollTop = scrollPos;
-      });
+      // Multiple attempts to restore scroll (helps with dev mode hot reload)
+      const restore = () => {
+        if (el) el.scrollTop = scrollPos;
+      };
+      restore(); // Immediate
+      setTimeout(restore, 0); // Next tick
+      setTimeout(restore, 50); // After render
+      requestAnimationFrame(restore); // After paint
     }
+  }, [pathname]);
 
-    // Save scroll position on every scroll event
+  // Separate effect for scroll saving (doesn't depend on pathname)
+  useEffect(() => {
+    const key = "sidebarScroll";
+    const el = navRef.current;
+    if (!el) return;
+
+    // Save scroll position continuously
     const onScroll = () => {
       sessionStorage.setItem(key, String(el.scrollTop));
     };
@@ -91,7 +103,7 @@ export default function MainShell({
     return () => {
       el.removeEventListener("scroll", onScroll);
     };
-  }, [pathname]);
+  }, []); // Empty deps - only runs once
 
   const computedTitle = useMemo(() => {
     if (title) return title;
@@ -108,13 +120,6 @@ export default function MainShell({
     localStorage.removeItem("user");
     router.push("/auth/login");
   }, [router]);
-
-  // Save scroll position before navigation
-  const handleLinkClick = useCallback(() => {
-    if (navRef.current) {
-      sessionStorage.setItem("sidebarScroll", String(navRef.current.scrollTop));
-    }
-  }, []);
 
   if (loading) {
     return (
@@ -193,7 +198,6 @@ export default function MainShell({
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={handleLinkClick}
                     className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#00afef]/10 to-[#2266ff]/10 border-l-4 border-l-[#00afef] transition-all duration-200"
                   >
                     <span className="text-[#00afef]">{item.icon}</span>
@@ -208,7 +212,6 @@ export default function MainShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={handleLinkClick}
                   className="group block rounded-xl border p-3 transition-all duration-200 bg-gray-50 border-gray-200 hover:bg-white hover:border-[#00afef]/60 hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">

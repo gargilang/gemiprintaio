@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { getDatabaseAsync } from "@/lib/sqlite-db";
+import { getTodayJakarta } from "@/lib/date-utils";
 
 function generateId(prefix: string = "purchase") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -178,7 +179,7 @@ export async function POST(req: NextRequest) {
         purchaseId,
         nomorPembelian,
         nomor_faktur.trim(),
-        tanggal || new Date().toISOString().split("T")[0],
+        tanggal || getTodayJakarta(),
         vendor_id || null,
         total_jumlah,
         jumlahDibayar,
@@ -222,14 +223,30 @@ export async function POST(req: NextRequest) {
            WHERE id = ?`
         ).run(stockToAdd, item.barang_id);
 
-        // Update harga_beli if harga_satuan_id exists
-        if (item.harga_satuan_id) {
-          db.prepare(
+        // Update harga_beli for ALL unit prices based on the purchased unit's price
+        if (item.harga_satuan_id && item.faktor_konversi) {
+          // Calculate price per base unit (e.g., price per lembar)
+          const pricePerBaseUnit = item.harga_satuan / item.faktor_konversi;
+
+          // Get all unit prices for this material
+          const allUnitPrices = db
+            .prepare(
+              `SELECT id, faktor_konversi FROM harga_barang_satuan WHERE barang_id = ?`
+            )
+            .all(item.barang_id);
+
+          // Update each unit price proportionally
+          const updatePriceStmt = db.prepare(
             `UPDATE harga_barang_satuan 
              SET harga_beli = ?,
                  diperbarui_pada = datetime('now')
              WHERE id = ?`
-          ).run(item.harga_satuan, item.harga_satuan_id);
+          );
+
+          allUnitPrices.forEach((unitPrice: any) => {
+            const newPrice = pricePerBaseUnit * unitPrice.faktor_konversi;
+            updatePriceStmt.run(newPrice, unitPrice.id);
+          });
         }
       }
 
@@ -260,7 +277,7 @@ export async function POST(req: NextRequest) {
 
         keuanganStmt.run(
           keuanganId,
-          tanggal || new Date().toISOString().split("T")[0],
+          tanggal || getTodayJakarta(),
           total_jumlah,
           keperluan,
           total_jumlah,

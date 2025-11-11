@@ -46,7 +46,10 @@ const PurchaseRow = memo(
     onDelete: (purchase: Purchase) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false);
-    const tanggalFormatted = new Date(purchase.tanggal).toLocaleDateString(
+    // Parse date as local date (YYYY-MM-DD format from database)
+    // Don't use new Date() directly as it treats YYYY-MM-DD as UTC midnight
+    const [year, month, day] = purchase.tanggal.split("-").map(Number);
+    const tanggalFormatted = new Date(year, month - 1, day).toLocaleDateString(
       "id-ID",
       {
         day: "2-digit",
@@ -211,7 +214,9 @@ export default function PurchaseTable({
   onDelete,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"date" | "total" | "created">("created");
+  const [sortBy, setSortBy] = useState<"date" | "total" | "status" | "created">(
+    "created"
+  );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Filter and sort
@@ -237,6 +242,19 @@ export default function PurchaseTable({
           new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
       } else if (sortBy === "total") {
         comparison = a.total_harga - b.total_harga;
+      } else if (sortBy === "status") {
+        // Sort by status: HUTANG > SEBAGIAN > LUNAS
+        const statusOrder = { HUTANG: 0, SEBAGIAN: 1, LUNAS: 2 };
+        const aStatus = a.status_pembayaran || "LUNAS";
+        const bStatus = b.status_pembayaran || "LUNAS";
+        comparison =
+          (statusOrder[aStatus as keyof typeof statusOrder] || 3) -
+          (statusOrder[bStatus as keyof typeof statusOrder] || 3);
+        // If same status, sort by date (oldest first for debts)
+        if (comparison === 0) {
+          comparison =
+            new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
+        }
       } else if (sortBy === "created") {
         // Sort by creation date (dibuat_pada)
         const aTime = a.dibuat_pada ? new Date(a.dibuat_pada).getTime() : 0;
@@ -253,12 +271,12 @@ export default function PurchaseTable({
     return filteredPurchases.reduce((sum, p) => sum + p.total_harga, 0);
   }, [filteredPurchases]);
 
-  const handleSort = (field: "date" | "total") => {
+  const handleSort = (field: "date" | "total" | "status") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortBy(field);
-      setSortOrder("desc");
+      setSortOrder(field === "status" ? "asc" : "desc");
     }
   };
 
@@ -355,8 +373,18 @@ export default function PurchaseTable({
                 <th className="px-4 py-3 text-center text-xs font-semibold">
                   Items
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
-                  Status
+                <th
+                  className="px-4 py-3 text-center text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"
+                  onClick={() => handleSort("status")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Status
+                    {sortBy === "status" && (
+                      <span className="text-xs">
+                        {sortOrder === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   className="px-4 py-3 text-right text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"

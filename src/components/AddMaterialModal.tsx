@@ -19,6 +19,7 @@ interface AddMaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (message: string) => void;
+  showNotification: (type: "success" | "error", message: string) => void;
   editData?: any | null;
 }
 
@@ -26,6 +27,7 @@ export default function AddMaterialModal({
   isOpen,
   onClose,
   onSuccess,
+  showNotification,
   editData,
 }: AddMaterialModalProps) {
   const router = useRouter();
@@ -307,18 +309,33 @@ export default function AddMaterialModal({
       setLoading(true);
 
       try {
+        // Find kategori_id - hanya set jika kategori dipilih dan valid
+        let kategori_id = null;
+        if (formData.category && formData.category.trim()) {
+          const foundCategory = categoriesData.find(
+            (c) => c.nama === formData.category
+          );
+          if (foundCategory) {
+            kategori_id = foundCategory.id;
+          }
+        }
+
+        // Find subkategori_id - hanya set jika subkategori dipilih dan valid
+        let subkategori_id = null;
+        if (formData.subcategory && formData.subcategory.trim()) {
+          const foundSubcategory = subcategoriesData.find(
+            (s) => s.nama === formData.subcategory
+          );
+          if (foundSubcategory) {
+            subkategori_id = foundSubcategory.id;
+          }
+        }
+
         const payload = {
           nama: formData.name.trim(),
           deskripsi: formData.description.trim() || null,
-          kategori_id:
-            categoriesData.find((c) => c.nama === formData.category)?.id ||
-            editData?.kategori_id ||
-            null,
-          subkategori_id:
-            subcategoriesData.find((s) => s.nama === formData.subcategory)
-              ?.id ||
-            editData?.subkategori_id ||
-            null,
+          kategori_id,
+          subkategori_id,
           satuan_dasar: formData.base_unit.trim(),
           spesifikasi: formData.specifications.trim() || null,
           jumlah_stok: parseFloat(formData.stock_quantity) || 0,
@@ -340,14 +357,21 @@ export default function AddMaterialModal({
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
+        if (!res.ok) {
+          // Use showNotification from parent instead of alert
+          onClose();
+          showNotification("error", data.error || "Gagal menyimpan data");
+          return;
+        }
 
         // Close modal first, then show notification in parent
         onClose();
         onSuccess(`Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`);
       } catch (err) {
         console.error(err);
-        alert(
+        onClose();
+        showNotification(
+          "error",
           `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`
         );
       } finally {
@@ -986,37 +1010,37 @@ export default function AddMaterialModal({
                       })
                     }
                     placeholder="0"
-                    disabled={!formData.track_inventory}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Jumlah stok dalam satuan dasar ({formData.base_unit})
                   </p>
                 </div>
 
-                {/* Min Stock Level */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Min. Stok Alert ({formData.base_unit})
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.min_stock_level}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        min_stock_level: e.target.value,
-                      })
-                    }
-                    placeholder="0"
-                    disabled={!formData.track_inventory}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Warning jika stok di bawah nilai ini
-                  </p>
-                </div>
+                {/* Min Stock Level - Hidden if tracking is off */}
+                {formData.track_inventory && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Min. Stok Alert ({formData.base_unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.min_stock_level}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          min_stock_level: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Warning jika stok di bawah nilai ini
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -175,6 +175,8 @@ export default function FinancePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [cashBooks, setCashBooks] = useState<CashBook[]>([]);
+  const [totalHutang, setTotalHutang] = useState(0);
+  const [hutangCount, setHutangCount] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
   const [formData, setFormData] = useState({
@@ -296,6 +298,8 @@ export default function FinancePage() {
         kasbonSuri: 0,
         kasbonCahaya: 0,
         kasbonDinil: 0,
+        hutang: totalHutang,
+        hutangCount: hutangCount,
       };
     }
 
@@ -320,8 +324,10 @@ export default function FinancePage() {
       kasbonSuri: latest.kasbon_suri,
       kasbonCahaya: latest.kasbon_cahaya,
       kasbonDinil: latest.kasbon_dinil,
+      hutang: totalHutang,
+      hutangCount: hutangCount,
     };
-  }, [cashBooks, viewingArchive]);
+  }, [cashBooks, viewingArchive, totalHutang, hutangCount]);
 
   useEffect(() => {
     checkAuth();
@@ -453,9 +459,32 @@ export default function FinancePage() {
       if (!archiveLabel) {
         setCurrentArchiveInfo(null);
       }
+
+      // Load hutang data (only for active table, not archive)
+      if (!archiveLabel) {
+        loadHutangData();
+      }
     } catch (err) {
       console.error("Gagal memuat cash books:", err);
       showMsg("error", "Tidak bisa memuat data buku keuangan dari database.");
+    }
+  };
+
+  const loadHutangData = async () => {
+    try {
+      const res = await fetch("/api/purchases/debts", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        const debts = data.debts || [];
+        const total = debts.reduce(
+          (sum: number, debt: any) => sum + debt.sisa_hutang,
+          0
+        );
+        setTotalHutang(total);
+        setHutangCount(debts.length);
+      }
+    } catch (err) {
+      console.error("Gagal memuat data hutang:", err);
     }
   };
 
@@ -898,7 +927,7 @@ export default function FinancePage() {
         </div>
       </div>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {/* Card 1: Saldo */}
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-pink-600">
           <p className="text-sm text-gray-500 font-semibold mb-1">Saldo</p>
@@ -959,6 +988,28 @@ export default function FinancePage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Card 4: Hutang (NEW) */}
+        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500">
+          <p className="text-sm text-gray-500 font-semibold mb-1">
+            Hutang Vendor
+          </p>
+          <p className="text-2xl font-bold text-amber-600">
+            {formatRupiah(summaryData.hutang)}
+          </p>
+          {summaryData.hutangCount > 0 && (
+            <p className="text-xs text-gray-500 mt-1">
+              {summaryData.hutangCount} pembelian
+            </p>
+          )}
+        </div>
+
+        {/* Card 5: Piutang (Placeholder for future POS) */}
+        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500 opacity-50">
+          <p className="text-sm text-gray-500 font-semibold mb-1">Piutang</p>
+          <p className="text-2xl font-bold text-blue-600">{formatRupiah(0)}</p>
+          <p className="text-xs text-gray-400 mt-1 italic">(Coming soon)</p>
         </div>
       </div>
       {/* Bagi Hasil Summary - Hanya untuk Admin, Manager & Chief */}

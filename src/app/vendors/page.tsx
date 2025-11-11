@@ -163,6 +163,7 @@ export default function VendorsPage() {
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   // Filtered vendors based on search and filter
   const filteredVendors = useMemo(() => {
@@ -296,6 +297,11 @@ export default function VendorsPage() {
   };
 
   const handleEdit = (vendor: Vendor) => {
+    // Save scroll position before opening modal
+    if (tableContainerRef.current) {
+      setScrollPosition(tableContainerRef.current.scrollTop);
+    }
+
     setEditingVendor(vendor);
     setFormData({
       nama_perusahaan: vendor.nama_perusahaan || "",
@@ -342,6 +348,13 @@ export default function VendorsPage() {
       );
       setShowModal(false);
       loadVendors();
+
+      // Restore scroll position after reload
+      setTimeout(() => {
+        if (tableContainerRef.current && scrollPosition > 0) {
+          tableContainerRef.current.scrollTop = scrollPosition;
+        }
+      }, 100);
     } catch (error: any) {
       showMsg("error", error.message || "Gagal menyimpan data");
     } finally {

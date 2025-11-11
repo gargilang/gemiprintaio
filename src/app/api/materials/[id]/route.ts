@@ -135,13 +135,64 @@ export async function PUT(
 
     // Update unit prices if provided
     if (unit_prices && Array.isArray(unit_prices)) {
-      // Delete existing unit prices
-      db.prepare("DELETE FROM harga_barang_satuan WHERE barang_id = ?").run(
-        params.id
+      // Get existing unit price IDs to track which ones to delete
+      const existingIds = db
+        .prepare("SELECT id FROM harga_barang_satuan WHERE barang_id = ?")
+        .all(params.id)
+        .map((row: any) => row.id);
+
+      const submittedIds = unit_prices
+        .map((up: any) => up.id)
+        .filter((id) => id);
+
+      // Delete only unit prices that are no longer in the submitted list
+      // BUT only if they're not referenced by any transactions
+      const idsToDelete = existingIds.filter(
+        (id: string) => !submittedIds.includes(id)
       );
 
-      // Insert new unit prices
-      const unitPriceStmt = db.prepare(`
+      if (idsToDelete.length > 0) {
+        // Check if any of these IDs are referenced in transactions
+        const placeholders = idsToDelete.map(() => "?").join(",");
+        const referenced = db
+          .prepare(
+            `SELECT DISTINCT harga_satuan_id FROM (
+              SELECT harga_satuan_id FROM item_pembelian WHERE harga_satuan_id IN (${placeholders})
+              UNION
+              SELECT harga_satuan_id FROM item_penjualan WHERE harga_satuan_id IN (${placeholders})
+            )`
+          )
+          .all(...idsToDelete, ...idsToDelete)
+          .map((row: any) => row.harga_satuan_id);
+
+        // Only delete IDs that are NOT referenced
+        const safeToDelete = idsToDelete.filter(
+          (id: string) => !referenced.includes(id)
+        );
+
+        if (safeToDelete.length > 0) {
+          const deletePlaceholders = safeToDelete.map(() => "?").join(",");
+          db.prepare(
+            `DELETE FROM harga_barang_satuan WHERE id IN (${deletePlaceholders})`
+          ).run(...safeToDelete);
+        }
+      }
+
+      // Update or insert unit prices
+      const updateStmt = db.prepare(`
+        UPDATE harga_barang_satuan 
+        SET nama_satuan = ?,
+            faktor_konversi = ?,
+            harga_beli = ?,
+            harga_jual = ?,
+            harga_member = ?,
+            default_status = ?,
+            urutan_tampilan = ?,
+            diperbarui_pada = datetime('now')
+        WHERE id = ?
+      `);
+
+      const insertStmt = db.prepare(`
         INSERT INTO harga_barang_satuan (
           id, barang_id, nama_satuan, faktor_konversi,
           harga_beli, harga_jual, harga_member,
@@ -151,20 +202,35 @@ export async function PUT(
       `);
 
       unit_prices.forEach((up: any, index: number) => {
-        const unitPriceId =
-          up.id ||
-          `up-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        unitPriceStmt.run(
-          unitPriceId,
-          params.id,
-          up.nama_satuan,
-          up.faktor_konversi,
-          up.harga_beli || 0,
-          up.harga_jual || 0,
-          up.harga_member || 0,
-          up.default_status ? 1 : 0,
-          index
-        );
+        if (up.id && existingIds.includes(up.id)) {
+          // Update existing unit price
+          updateStmt.run(
+            up.nama_satuan,
+            up.faktor_konversi || 1,
+            up.harga_beli || 0,
+            up.harga_jual || 0,
+            up.harga_member || 0,
+            up.default_status ? 1 : 0,
+            up.urutan_tampilan ?? index,
+            up.id
+          );
+        } else {
+          // Insert new unit price
+          const unitPriceId =
+            up.id ||
+            `up-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          insertStmt.run(
+            unitPriceId,
+            params.id,
+            up.nama_satuan,
+            up.faktor_konversi || 1,
+            up.harga_beli || 0,
+            up.harga_jual || 0,
+            up.harga_member || 0,
+            up.default_status ? 1 : 0,
+            up.urutan_tampilan ?? index
+          );
+        }
       });
     }
 

@@ -2366,13 +2366,13 @@ function SystemTab() {
       } else {
         setNotice({
           type: "error",
-          message: "❌ Gagal membuat backup",
+          message: "Gagal membuat backup",
         });
       }
     } catch (error) {
       setNotice({
         type: "error",
-        message: "❌ Error saat membuat backup",
+        message: "Error saat membuat backup",
       });
     } finally {
       setCreating(false);
@@ -2389,7 +2389,7 @@ function SystemTab() {
     if (intervalMs < 30000) {
       setNotice({
         type: "error",
-        message: "❌ Minimal 30 detik",
+        message: "Minimal 30 detik",
       });
       setTimeout(() => setNotice(null), 3000);
       return;
@@ -2398,7 +2398,7 @@ function SystemTab() {
     if (intervalMs > 86400000) {
       setNotice({
         type: "error",
-        message: "❌ Maksimal 24 jam",
+        message: "Maksimal 24 jam",
       });
       setTimeout(() => setNotice(null), 3000);
       return;
@@ -2416,19 +2416,19 @@ function SystemTab() {
       if (data.success) {
         setNotice({
           type: "success",
-          message: `✅ Interval diubah menjadi ${intervalValue} ${intervalUnit.toLowerCase()}`,
+          message: `Interval diubah menjadi ${intervalValue} ${intervalUnit.toLowerCase()}`,
         });
         await loadBackupStatus();
       } else {
         setNotice({
           type: "error",
-          message: "❌ Gagal mengubah interval",
+          message: "Gagal mengubah interval",
         });
       }
     } catch (error) {
       setNotice({
         type: "error",
-        message: "❌ Error saat mengubah interval",
+        message: "Error saat mengubah interval",
       });
     } finally {
       setUpdatingInterval(false);

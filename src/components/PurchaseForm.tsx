@@ -40,6 +40,7 @@ interface Material {
     nama_satuan: string;
     faktor_konversi: number;
     harga_jual: number;
+    harga_beli: number;
   }[];
 }
 
@@ -187,6 +188,10 @@ export default function PurchaseForm({
         if (unit) {
           newItems[index].nama_satuan = unit.nama_satuan;
           newItems[index].faktor_konversi = unit.faktor_konversi;
+          // Auto-populate harga_beli from materials data if available
+          if (unit.harga_beli && unit.harga_beli > 0) {
+            newItems[index].harga_beli = unit.harga_beli;
+          }
         }
       }
     }

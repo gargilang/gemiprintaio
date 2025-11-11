@@ -165,6 +165,7 @@ export default function CustomersPage() {
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   // Filtered customers based on search and filter
   const filteredCustomers = useMemo(() => {
@@ -298,6 +299,11 @@ export default function CustomersPage() {
   };
 
   const handleEdit = (customer: Customer) => {
+    // Save scroll position before opening modal
+    if (tableContainerRef.current) {
+      setScrollPosition(tableContainerRef.current.scrollTop);
+    }
+
     setEditingCustomer(customer);
     setFormData({
       nama: customer.nama || "",
@@ -344,6 +350,13 @@ export default function CustomersPage() {
       );
       setShowModal(false);
       loadCustomers();
+
+      // Restore scroll position after reload
+      setTimeout(() => {
+        if (tableContainerRef.current && scrollPosition > 0) {
+          tableContainerRef.current.scrollTop = scrollPosition;
+        }
+      }, 100);
     } catch (error: any) {
       showMsg("error", error.message || "Gagal menyimpan data");
     } finally {

@@ -262,7 +262,7 @@ export default function UsersPage() {
     console.log("Current user ID:", currentUser?.id);
 
     if (userId === currentUser?.id) {
-      showMsg("error", "❌ Tidak bisa menghapus user yang sedang login!");
+      showMsg("error", "Tidak bisa menghapus user yang sedang login!");
       return;
     }
 
@@ -301,7 +301,7 @@ export default function UsersPage() {
 
   const handleToggleActive = async (userId: string) => {
     if (userId === currentUser?.id) {
-      showMsg("error", "❌ Tidak bisa menonaktifkan user yang sedang login!");
+      showMsg("error", "Tidak bisa menonaktifkan user yang sedang login!");
       return;
     }
 
