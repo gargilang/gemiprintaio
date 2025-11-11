@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // exclude from static export
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 
@@ -12,13 +12,7 @@ async function simpleHash(text: string): Promise<string> {
 
 export async function GET() {
   try {
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     const users = db
       .prepare(
@@ -56,13 +50,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail: string | null =
       email && String(email).trim() ? String(email).trim() : null;
 
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Uniqueness checks
     const byUsername = db

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
+import { ClockIcon, CheckIcon } from "./icons/ContentIcons";
 
 interface Purchase {
   id: string;
@@ -12,6 +13,7 @@ interface Purchase {
   status_pembayaran?: string;
   catatan: string | null;
   total_harga: number;
+  dibuat_pada?: string;
   items: {
     id: string;
     id_barang: string;
@@ -86,16 +88,18 @@ const PurchaseRow = memo(
           </td>
           <td className="px-4 py-3 text-center">
             {purchase.status_pembayaran === "LUNAS" ? (
-              <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
-                ✓ LUNAS
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                <CheckIcon size={14} />
+                LUNAS
               </span>
             ) : purchase.status_pembayaran === "HUTANG" ? (
-              <span className="inline-block px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
-                ⏳ HUTANG
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
+                <ClockIcon size={14} />
+                HUTANG
               </span>
             ) : (
               <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                💵 {purchase.metode_pembayaran || "CASH"}
+                {purchase.metode_pembayaran || "CASH"}
               </span>
             )}
           </td>
@@ -175,15 +179,15 @@ const PurchaseRow = memo(
                         <span>
                           Rp{" "}
                           <span className="font-semibold">
-                            {item.harga_beli.toLocaleString("id-ID")}
+                            {(item.harga_beli || 0).toLocaleString("id-ID")}
                           </span>
                         </span>
                         <span>=</span>
                         <span className="font-semibold text-indigo-700">
                           Rp{" "}
-                          {(item.jumlah * item.harga_beli).toLocaleString(
-                            "id-ID"
-                          )}
+                          {(
+                            item.jumlah * (item.harga_beli || 0)
+                          ).toLocaleString("id-ID")}
                         </span>
                       </div>
                     </div>
@@ -207,7 +211,7 @@ export default function PurchaseTable({
   onDelete,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"date" | "total">("date");
+  const [sortBy, setSortBy] = useState<"date" | "total" | "created">("created");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Filter and sort
@@ -233,6 +237,11 @@ export default function PurchaseTable({
           new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
       } else if (sortBy === "total") {
         comparison = a.total_harga - b.total_harga;
+      } else if (sortBy === "created") {
+        // Sort by creation date (dibuat_pada)
+        const aTime = a.dibuat_pada ? new Date(a.dibuat_pada).getTime() : 0;
+        const bTime = b.dibuat_pada ? new Date(b.dibuat_pada).getTime() : 0;
+        comparison = aTime - bTime;
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });

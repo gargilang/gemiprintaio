@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import { v4 as uuidv4 } from "uuid";
 import { encryptText, decryptText } from "@/lib/crypto";
 
@@ -28,12 +28,7 @@ function ensureTable(db: any) {
 export async function GET(request: NextRequest) {
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
-    const db = await initializeDatabase();
-    if (!db)
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
+    const db = await getDatabaseAsync();
     ensureTable(db);
 
     // Get viewer's role
@@ -126,12 +121,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = await initializeDatabase();
-    if (!db)
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
+    const db = await getDatabaseAsync();
     ensureTable(db);
 
     const id = uuidv4();

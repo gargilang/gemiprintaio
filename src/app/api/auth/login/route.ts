@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import crypto from "crypto";
 
 // Simple hash function for password verification
@@ -22,16 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("📂 Initializing database...");
-    const db = await initializeDatabase();
-    if (!db) {
-      console.log("❌ Database not available");
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
-
+    const db = await getDatabaseAsync();
     console.log("✅ Database connected");
     console.log("🔍 Looking up user:", username);
 

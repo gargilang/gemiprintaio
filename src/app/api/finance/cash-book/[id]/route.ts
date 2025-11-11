@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import { recalculateCashbook } from "@/lib/calculate-cashbook";
 
 export async function DELETE(
@@ -11,13 +11,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Cek apakah transaksi ada
     const existingEntry = db
@@ -65,13 +59,7 @@ export async function PUT(
     const { tanggal, kategori_transaksi, debit, kredit, keperluan, catatan } =
       body;
 
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Cek apakah transaksi ada
     const existingEntry = db

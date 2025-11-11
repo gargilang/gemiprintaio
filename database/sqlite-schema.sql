@@ -308,20 +308,15 @@ CREATE TABLE IF NOT EXISTS keuangan (
 
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
-CREATE INDEX IF NOT EXISTS idx_customers_tipe ON customers(tipe_pelanggan);
-CREATE INDEX IF NOT EXISTS idx_vendors_name ON vendors(name);
-CREATE INDEX IF NOT EXISTS idx_sales_invoice ON sales(invoice_number);
-CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(created_at);
-CREATE INDEX IF NOT EXISTS idx_purchases_number ON purchases(purchase_number);
-CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(created_at);
-CREATE INDEX IF NOT EXISTS idx_financial_kategori ON financial_transactions(kategori_transaksi);
-CREATE INDEX IF NOT EXISTS idx_financial_paid ON financial_transactions(is_paid);
-CREATE INDEX IF NOT EXISTS idx_other_kategori ON other_transactions(kategori_transaksi);
-CREATE INDEX IF NOT EXISTS idx_inventory_material ON inventory_movements(material_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_date ON inventory_movements(created_at);
-CREATE INDEX IF NOT EXISTS idx_sync_queue_synced ON sync_queue(synced);
-CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name);
+CREATE INDEX IF NOT EXISTS idx_pelanggan_nama ON pelanggan(nama);
+CREATE INDEX IF NOT EXISTS idx_pelanggan_tipe ON pelanggan(tipe_pelanggan);
+CREATE INDEX IF NOT EXISTS idx_vendor_nama ON vendor(nama_perusahaan);
+CREATE INDEX IF NOT EXISTS idx_penjualan_invoice ON penjualan(nomor_invoice);
+CREATE INDEX IF NOT EXISTS idx_penjualan_date ON penjualan(dibuat_pada);
+CREATE INDEX IF NOT EXISTS idx_pembelian_number ON pembelian(nomor_pembelian);
+CREATE INDEX IF NOT EXISTS idx_pembelian_date ON pembelian(dibuat_pada);
+CREATE INDEX IF NOT EXISTS idx_barang_kategori ON barang(kategori_id);
+CREATE INDEX IF NOT EXISTS idx_barang_nama ON barang(nama);
 
 -- Credentials / Password Manager
 CREATE TABLE IF NOT EXISTS kredensial (
@@ -353,28 +348,28 @@ CREATE INDEX IF NOT EXISTS idx_monthly_reports_periode ON monthly_financial_repo
 
 
 -- Triggers for updated_at timestamp
-CREATE TRIGGER IF NOT EXISTS update_profiles_timestamp 
-  AFTER UPDATE ON profiles
+CREATE TRIGGER IF NOT EXISTS update_profil_timestamp 
+  AFTER UPDATE ON profil
   BEGIN
-    UPDATE profil SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE profil SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
-CREATE TRIGGER IF NOT EXISTS update_materials_timestamp 
-  AFTER UPDATE ON materials
+CREATE TRIGGER IF NOT EXISTS update_barang_timestamp 
+  AFTER UPDATE ON barang
   BEGIN
-    UPDATE bahan SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE barang SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
-CREATE TRIGGER IF NOT EXISTS update_customers_timestamp 
-  AFTER UPDATE ON customers
+CREATE TRIGGER IF NOT EXISTS update_pelanggan_timestamp 
+  AFTER UPDATE ON pelanggan
   BEGIN
-    UPDATE pelanggan SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE pelanggan SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
-CREATE TRIGGER IF NOT EXISTS update_vendors_timestamp 
-  AFTER UPDATE ON vendors
+CREATE TRIGGER IF NOT EXISTS update_vendor_timestamp 
+  AFTER UPDATE ON vendor
   BEGIN
-    UPDATE vendor SET updated_at = datetime('now') WHERE id = NEW.id;
+    UPDATE vendor SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
 CREATE TRIGGER IF NOT EXISTS update_sales_timestamp 

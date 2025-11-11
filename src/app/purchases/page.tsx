@@ -76,17 +76,28 @@ export default function PurchasesPage() {
 
   const loadAllData = async () => {
     setLoading(true);
-    await Promise.all([
-      loadPurchases(),
-      loadMaterials(),
-      loadVendors(),
-      loadCategories(),
-      loadSubcategories(),
-      loadUnits(),
-    ]);
+    try {
+      // Use aggregate endpoint - 1 request instead of 8!
+      const res = await fetch("/api/purchases/init-data");
+      const data = await res.json();
+
+      if (res.ok) {
+        setPurchases(data.purchases || []);
+        setMaterials(data.materials || []);
+        setVendors(data.vendors || []);
+        setCategories(data.categories || []);
+        setSubcategories(data.subcategories || []);
+        setUnits(data.units || []);
+      } else {
+        console.error("Error loading data:", data.error);
+      }
+    } catch (error) {
+      console.error("Error loading all data:", error);
+    }
     setLoading(false);
   };
 
+  // Keep individual loaders for refresh after operations
   const loadPurchases = async () => {
     try {
       const res = await fetch("/api/purchases");

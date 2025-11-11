@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // exclude from static export
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import crypto from "crypto";
 
 // Keep hashing consistent with login
@@ -19,13 +19,7 @@ export async function PUT(
     const { email, nama_lengkap, role, aktif_status, password, nama_pengguna } =
       await request.json();
 
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Ensure user exists
     let existing = db
@@ -114,13 +108,7 @@ export async function DELETE(
       const body = await request.json();
       nama_pengguna = body?.nama_pengguna;
     } catch {}
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     let existing = db
       .prepare(`SELECT id FROM profil WHERE id = ?`)

@@ -19,9 +19,11 @@ const SCHEMA_FILE = isTauriApp()
   : path.join(DB_DIR, "sqlite-schema.sql");
 
 let db: Database.Database | null = null;
+let isInitializing = false;
+let initPromise: Promise<Database.Database | null> | null = null;
 
 /**
- * Initialize SQLite database
+ * Initialize SQLite database (SINGLETON - only runs once)
  * Handles both Tauri and Node.js environments
  */
 export async function initializeDatabase(): Promise<Database.Database | null> {
@@ -32,30 +34,51 @@ export async function initializeDatabase(): Promise<Database.Database | null> {
     return null;
   }
 
-  // Node.js mode (development)
-  if (db) return db;
-
-  // Create database directory if it doesn't exist
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+  // Return existing database if already initialized
+  if (db) {
+    return db;
   }
 
-  // Initialize database
-  db = new Database(DB_FILE, { verbose: console.log });
-
-  // Enable WAL mode for better concurrent access
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-
-  // Run schema if database is new
-  if (!isDatabaseInitialized()) {
-    console.log("Initializing database schema...");
-    const schema = fs.readFileSync(SCHEMA_FILE, "utf-8");
-    db.exec(schema);
-    console.log("Database schema initialized successfully");
+  // If initialization is in progress, wait for it
+  if (isInitializing && initPromise) {
+    return initPromise;
   }
 
-  return db;
+  // Start initialization
+  isInitializing = true;
+  initPromise = (async () => {
+    try {
+      // Create database directory if it doesn't exist
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+      }
+
+      // Initialize database
+      db = new Database(DB_FILE, { verbose: console.log });
+
+      // Enable WAL mode for better concurrent access
+      db.pragma("journal_mode = WAL");
+      db.pragma("foreign_keys = ON");
+
+      // Run schema if database is new
+      if (!isDatabaseInitialized()) {
+        console.log("Initializing database schema...");
+        const schema = fs.readFileSync(SCHEMA_FILE, "utf-8");
+        db.exec(schema);
+        console.log("Database schema initialized successfully");
+      }
+
+      isInitializing = false;
+      return db;
+    } catch (error) {
+      isInitializing = false;
+      initPromise = null;
+      console.error("Failed to initialize database:", error);
+      throw error;
+    }
+  })();
+
+  return initPromise;
 }
 
 /**
@@ -67,7 +90,7 @@ function isDatabaseInitialized(): boolean {
   try {
     const result = db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='profil'"
       )
       .get();
     return !!result;
@@ -77,25 +100,45 @@ function isDatabaseInitialized(): boolean {
 }
 
 /**
- * Get database instance
- * In Tauri mode, returns null (use Tauri commands instead)
- * In Node.js mode, throws error if not initialized
+ * Get database instance (synchronous)
+ * Ensures database is initialized before use
+ * In Tauri mode, throws error (use Tauri commands instead)
+ * In Node.js mode, returns cached db or throws error if not initialized
  */
 export function getDatabase(): Database.Database {
   if (isTauriApp()) {
-    // In Tauri, return null - database operations via Tauri commands
     throw new Error(
       "Database not available in Tauri mode. Use Tauri commands."
     );
   }
 
   if (!db) {
-    // For Node.js mode, initialize if needed
-    // Note: initializeDatabase is now async, but we handle it elsewhere
     throw new Error(
-      "Database not initialized. Call initializeDatabase() first."
+      "Database not initialized. This should not happen in API routes."
     );
   }
+  return db;
+}
+
+/**
+ * Get database instance (async version for API routes)
+ * Automatically initializes if needed
+ */
+export async function getDatabaseAsync(): Promise<Database.Database> {
+  if (isTauriApp()) {
+    throw new Error(
+      "Database not available in Tauri mode. Use Tauri commands."
+    );
+  }
+
+  if (!db) {
+    await initializeDatabase();
+  }
+
+  if (!db) {
+    throw new Error("Failed to initialize database");
+  }
+
   return db;
 }
 
@@ -339,8 +382,11 @@ export function getTotalPendingChanges(): number {
   return result?.total || 0;
 }
 
-// Initialize database on import
-if (typeof window === "undefined") {
-  // Only initialize on server-side
-  initializeDatabase();
+// Initialize database on server startup (not on every import)
+// This runs once when Next.js server starts
+if (typeof window === "undefined" && !isTauriApp()) {
+  // Only initialize on server-side, run in background
+  initializeDatabase().catch((error) => {
+    console.error("Failed to initialize database on startup:", error);
+  });
 }

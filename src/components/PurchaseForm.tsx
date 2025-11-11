@@ -10,6 +10,7 @@ import {
   AlertIcon,
 } from "./icons/ContentIcons";
 import SearchableSelect from "./SearchableSelect";
+import { getTodayJakarta } from "@/lib/date-utils";
 
 interface PurchaseItem {
   id_barang: string;
@@ -70,7 +71,7 @@ export default function PurchaseForm({
   showNotification,
 }: PurchaseFormProps) {
   const [formData, setFormData] = useState<PurchaseFormData>({
-    tanggal: new Date().toISOString().split("T")[0],
+    tanggal: getTodayJakarta(),
     nomor_faktur: "",
     id_vendor: null,
     metode_pembayaran: "CASH",
@@ -114,7 +115,7 @@ export default function PurchaseForm({
   useEffect(() => {
     if (editData) {
       // Handle tanggal safely - could be from dibuat_pada
-      let tanggalValue = new Date().toISOString().split("T")[0];
+      let tanggalValue = getTodayJakarta();
       if (editData.tanggal) {
         tanggalValue = editData.tanggal.split("T")[0];
       } else if (editData.dibuat_pada) {
@@ -399,7 +400,7 @@ export default function PurchaseForm({
 
         <div className="border border-gray-300 rounded-lg max-h-[400px] overflow-y-auto">
           <table className="w-full">
-            <thead className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+            <thead className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 text-white z-10">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold">
                   Barang

@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   try {
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Get only active transactions (not archived)
     // Sort by urutan_tampilan DESC (newest first = highest urutan_tampilan)
@@ -70,13 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = await initializeDatabase();
-    if (!db) {
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
-    }
+    const db = await getDatabaseAsync();
 
     // Get the highest urutan_tampilan to assign next value
     const maxDisplayOrder = db

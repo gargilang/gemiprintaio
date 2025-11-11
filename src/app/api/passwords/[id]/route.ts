@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { initializeDatabase } from "@/lib/sqlite-db";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 import { encryptText, decryptText } from "@/lib/crypto";
 
 function ensureTable(db: any) {
@@ -28,12 +28,7 @@ export async function GET(
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
     const { id } = await params;
-    const db = await initializeDatabase();
-    if (!db)
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
+    const db = await getDatabaseAsync();
     ensureTable(db);
 
     const existing = db
@@ -92,12 +87,7 @@ export async function PUT(
       privat_status,
     } = await request.json();
 
-    const db = await initializeDatabase();
-    if (!db)
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
+    const db = await getDatabaseAsync();
     ensureTable(db);
 
     const existing = db
@@ -168,12 +158,7 @@ export async function DELETE(
   try {
     const viewerId = request.headers.get("x-user-id") || undefined;
     const { id } = await params;
-    const db = await initializeDatabase();
-    if (!db)
-      return NextResponse.json(
-        { error: "Database tidak tersedia" },
-        { status: 500 }
-      );
+    const db = await getDatabaseAsync();
     ensureTable(db);
 
     const existing = db

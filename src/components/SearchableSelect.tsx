@@ -29,8 +29,10 @@ export default function SearchableSelect({
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useClickOutside(
     containerRef,
@@ -72,15 +74,45 @@ export default function SearchableSelect({
     if (e.key === "Escape") {
       setIsOpen(false);
       setSearchQuery("");
-    } else if (e.key === "ArrowDown" && filteredOptions.length > 0) {
+      setHighlightedIndex(-1);
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      // Focus first option
-      const firstOption = containerRef.current?.querySelector(
-        '[role="option"]'
-      ) as HTMLElement;
-      firstOption?.focus();
+      if (!isOpen) {
+        setIsOpen(true);
+      } else if (filteredOptions.length > 0) {
+        const nextIndex = Math.min(
+          highlightedIndex + 1,
+          filteredOptions.length - 1
+        );
+        setHighlightedIndex(nextIndex);
+        // Scroll option into view
+        optionsRef.current[nextIndex]?.scrollIntoView({
+          block: "nearest",
+        });
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (isOpen && filteredOptions.length > 0) {
+        const prevIndex = Math.max(highlightedIndex - 1, 0);
+        setHighlightedIndex(prevIndex);
+        // Scroll option into view
+        optionsRef.current[prevIndex]?.scrollIntoView({
+          block: "nearest",
+        });
+      }
+    } else if (e.key === "Enter" && highlightedIndex >= 0 && isOpen) {
+      e.preventDefault();
+      const selectedOption = filteredOptions[highlightedIndex];
+      if (selectedOption) {
+        handleSelect(selectedOption.value);
+      }
     }
   };
+
+  // Reset highlighted index when filtered options change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [searchQuery]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -132,18 +164,24 @@ export default function SearchableSelect({
                 {emptyText}
               </div>
             ) : (
-              filteredOptions.map((option) => (
+              filteredOptions.map((option, index) => (
                 <div
                   key={option.value}
+                  ref={(el) => {
+                    optionsRef.current[index] = el;
+                  }}
                   role="option"
                   tabIndex={0}
                   onClick={() => handleSelect(option.value)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSelect(option.value);
                   }}
                   className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
                     option.value === value
                       ? "bg-indigo-100 text-indigo-700 font-semibold"
+                      : index === highlightedIndex
+                      ? "bg-gray-200"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >

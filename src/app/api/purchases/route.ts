@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
-
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
-
-function getDb() {
-  return new Database(DB_PATH);
-}
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+import { getDatabaseAsync } from "@/lib/sqlite-db";
 
 function generateId(prefix: string = "purchase") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -15,7 +10,7 @@ function generateId(prefix: string = "purchase") {
 // GET all purchases with details
 export async function GET(req: NextRequest) {
   try {
-    const db = getDb();
+    const db = await getDatabaseAsync();
 
     // Get all purchases with vendor info
     const purchases = db
@@ -64,8 +59,6 @@ export async function GET(req: NextRequest) {
         total_harga,
       };
     });
-
-    db.close();
 
     return NextResponse.json({ purchases: purchasesWithItems });
   } catch (error: any) {
@@ -131,7 +124,7 @@ export async function POST(req: NextRequest) {
       total_jumlah += item.subtotal;
     }
 
-    const db = getDb();
+    const db = await getDatabaseAsync();
 
     // Check if nomor_faktur already exists
     const existing = db
@@ -139,7 +132,6 @@ export async function POST(req: NextRequest) {
       .get(nomor_faktur.trim());
 
     if (existing) {
-      db.close();
       return NextResponse.json(
         { error: "Nomor faktur sudah digunakan" },
         { status: 400 }
@@ -326,8 +318,6 @@ export async function POST(req: NextRequest) {
            WHERE ip.pembelian_id = ?`
         )
         .all(purchaseId);
-
-      db.close();
 
       return NextResponse.json(
         {
