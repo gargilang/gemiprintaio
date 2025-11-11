@@ -169,26 +169,27 @@ export async function POST(req: NextRequest) {
 
       const keperluan = `Pembayaran Hutang ${purchase.nomor_faktur}${
         vendorInfo ? ` - ${vendorInfo.nama_perusahaan}` : ""
-      }${referensi ? ` (Ref: ${referensi})` : ""}`;
+      }${referensi ? ` (Ref: ${referensi})` : ""} [REF:${purchase_id}]`;
 
+      // Insert keuangan entry WITHOUT running balance calculation
+      // Same pattern as CASH purchase - let recalculateCashbook() handle all calculations
       db.prepare(
         `
         INSERT INTO keuangan (
           id, tanggal, kategori_transaksi,
           debit, kredit, keperluan,
           biaya_bahan, catatan, dibuat_oleh,
-          urutan_tampilan, dibuat_pada, diperbarui_pada
+          urutan_tampilan,
+          dibuat_pada, diperbarui_pada
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `
       ).run(
         keuanganId,
         tanggal_bayar || new Date().toISOString().split("T")[0],
-        "SUPPLY", // Use SUPPLY for payment of goods debt
-        0, // debit
-        jumlah_bayar, // kredit (outgoing money)
+        jumlah_bayar, // kredit
         keperluan,
-        jumlah_bayar, // biaya_bahan
+        jumlah_bayar, // biaya_bahan same as kredit for SUPPLY
         catatan ||
           `Pelunasan ${newStatus === "LUNAS" ? "LUNAS" : "SEBAGIAN"} - ${
             purchase.nomor_faktur
@@ -196,6 +197,10 @@ export async function POST(req: NextRequest) {
         dibuat_oleh || null,
         nextDisplayOrder
       );
+
+      // Recalculate all cashbook entries (same as CASH purchase)
+      const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+      await recalculateCashbook(db);
 
       // Commit transaction
       db.exec("COMMIT");

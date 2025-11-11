@@ -95,7 +95,11 @@ export async function GET(req: NextRequest) {
               `
           SELECT 
             ip.*,
-            b.nama as nama_barang
+            b.nama as nama_barang,
+            ip.harga_satuan_id as id_satuan,
+            ip.nama_satuan,
+            ip.faktor_konversi,
+            ip.harga_satuan as harga_beli
           FROM item_pembelian ip
           LEFT JOIN barang b ON ip.barang_id = b.id
           WHERE ip.pembelian_id IN (${purchaseIds.map(() => "?").join(",")})

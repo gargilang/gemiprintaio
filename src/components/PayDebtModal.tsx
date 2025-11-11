@@ -69,11 +69,11 @@ export default function PayDebtModal({
         setDebts(data.debts || []);
       } else {
         const data = await res.json();
-        setError(data.error || "Gagal memuat data hutang");
+        setError(data.error || "Gagal memuat data tagihan");
       }
     } catch (err) {
       console.error("Error loading debts:", err);
-      setError("Terjadi kesalahan saat memuat data hutang");
+      setError("Terjadi kesalahan saat memuat data tagihan");
     }
     setLoading(false);
   };
@@ -98,7 +98,7 @@ export default function PayDebtModal({
     }
 
     if (amount > selectedDebt.sisa_hutang) {
-      setError("Jumlah pembayaran tidak boleh melebihi sisa hutang");
+      setError("Jumlah pembayaran tidak boleh melebihi sisa tagihan");
       return;
     }
 
@@ -163,7 +163,7 @@ export default function PayDebtModal({
             <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
               <MoneyIcon size={24} className="text-white" />
             </div>
-            <h2 className="text-xl font-bold text-white">Pembayaran Hutang</h2>
+            <h2 className="text-xl font-bold text-white">Pembayaran Tagihan</h2>
           </div>
           <button
             onClick={onClose}
@@ -194,10 +194,10 @@ export default function PayDebtModal({
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Daftar Hutang */}
+              {/* Daftar Tagihan */}
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
-                  Daftar Pembelian Berhutang
+                  Daftar Pembelian Bertagihan
                 </h3>
                 {debts.length === 0 ? (
                   <div className="text-center py-8 bg-green-50 rounded-lg border border-green-200">
@@ -206,7 +206,7 @@ export default function PayDebtModal({
                       className="mx-auto text-green-500 mb-2"
                     />
                     <p className="text-green-700 font-semibold">
-                      Tidak ada hutang pembelian
+                      Tidak ada tagihan pembelian
                     </p>
                     <p className="text-green-600 text-sm mt-1">
                       Semua pembelian sudah lunas
@@ -264,7 +264,7 @@ export default function PayDebtModal({
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-gray-500">
-                              Sisa Hutang
+                              Sisa Tagihan
                             </div>
                             <div className="text-lg font-bold text-red-600">
                               {formatRupiah(debt.sisa_hutang)}
@@ -308,7 +308,7 @@ export default function PayDebtModal({
                         {selectedDebt.nomor_faktur}
                       </div>
                       <div className="text-sm text-gray-600">
-                        Sisa Hutang:{" "}
+                        Sisa Tagihan:{" "}
                         <span className="font-bold text-red-600">
                           {formatRupiah(selectedDebt.sisa_hutang)}
                         </span>

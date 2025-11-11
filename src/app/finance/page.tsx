@@ -22,6 +22,12 @@ import {
   CheckIcon,
 } from "@/components/icons/ContentIcons";
 
+// Helper function to strip [REF:xxx] from display while keeping it in database
+const stripReferenceId = (text: string | null | undefined): string => {
+  if (!text) return "";
+  return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
+};
+
 // Memoized CashBook Row Component - mencegah re-render yang tidak perlu
 const CashBookRow = memo(
   ({
@@ -82,7 +88,7 @@ const CashBookRow = memo(
           )}
         </td>
         <td className="px-3 py-3 text-sm text-gray-700 max-w-xs truncate">
-          {cashBook.keperluan || "-"}
+          {stripReferenceId(cashBook.keperluan) || "-"}
         </td>
         <td className="px-3 py-3 text-sm text-right font-bold text-pink-600">
           {formatRupiah(cashBook.saldo)}
@@ -194,7 +200,7 @@ export default function FinancePage() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    type?: "warning" | "danger" | "info";
+    type?: "warning" | "danger" | "info" | "purchases";
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
@@ -506,6 +512,33 @@ export default function FinancePage() {
   };
 
   const handleOpenEditModal = (cashBook: CashBook) => {
+    // Check if this transaction is from purchases (pembelian cash or pembayaran hutang)
+    const isFromPurchase =
+      cashBook.keperluan?.toLowerCase().includes("pembelian") ||
+      cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
+      cashBook.keperluan?.toLowerCase().includes("pelunasan");
+
+    if (isFromPurchase) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Diedit",
+        message: `Transaksi ini berasal dari sistem Pembelian dan tidak dapat diedit langsung dari halaman Finance.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nUntuk mengubah transaksi ini:\n\n1. Buka halaman PEMBELIAN\n2. Cari data pembelian terkait\n3. Klik tombol Edit pada data pembelian tersebut`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
     setEditingCashBook(cashBook);
     setFormData({
       tanggal: cashBook.tanggal,
@@ -716,12 +749,41 @@ export default function FinancePage() {
   }, []);
 
   const handleDelete = (cashBook: CashBook) => {
+    // Check if this transaction is from purchases (pembelian cash or pembayaran hutang)
+    const isFromPurchase =
+      cashBook.keperluan?.toLowerCase().includes("pembelian") ||
+      cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
+      cashBook.keperluan?.toLowerCase().includes("pelunasan");
+
+    if (isFromPurchase) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Dihapus",
+        message: `Transaksi ini berasal dari sistem Pembelian dan tidak dapat dihapus langsung dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nUntuk menghapus atau membatalkan transaksi ini:\n\n1. Buka halaman PEMBELIAN\n2. Untuk pembelian yang sudah Lunas lewat pembayaran Cash: Klik tombol Hapus pada Daftar Pembelian\n3. Untuk pembayaran tagihan yang sudah Lunas (sudah dibayar): Klik tombol Revert untuk mengembalikan ke status TAGIHAN`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
     setConfirmDialog({
       show: true,
       title: "🗑️ Hapus Transaksi",
       message: `Yakin ingin menghapus transaksi berikut?\n\nKategori: ${
         cashBook.kategori_transaksi
-      }\nKeperluan: ${cashBook.keperluan || "-"}\nTanggal: ${formatDateJakarta(
+      }\nKeperluan: ${
+        stripReferenceId(cashBook.keperluan) || "-"
+      }\nTanggal: ${formatDateJakarta(
         cashBook.tanggal
       )}\n\nData akan dikalkulasi ulang otomatis setelah penghapusan.`,
       confirmText: "Ya, Hapus",
@@ -990,10 +1052,10 @@ export default function FinancePage() {
           )}
         </div>
 
-        {/* Card 4: Hutang (NEW) */}
+        {/* Card 4: Tagihan (NEW) */}
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500">
           <p className="text-sm text-gray-500 font-semibold mb-1">
-            Hutang Vendor
+            Tagihan Vendor
           </p>
           <p className="text-2xl font-bold text-amber-600">
             {formatRupiah(summaryData.hutang)}

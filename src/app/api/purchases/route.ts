@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
           SELECT 
             ip.*,
             b.nama as nama_barang,
+            ip.harga_satuan_id as id_satuan,
             ip.nama_satuan,
             ip.faktor_konversi,
             ip.harga_satuan as harga_beli
@@ -271,9 +272,28 @@ export async function POST(req: NextRequest) {
           VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `);
 
-        const keperluan = vendor_id
-          ? `Pembelian ${nomorPembelian} (${nomor_faktur})`
-          : `Pembelian ${nomorPembelian} (${nomor_faktur}) - Tanpa Vendor`;
+        // Get vendor name if vendor_id exists
+        const vendorInfo: any = vendor_id
+          ? db
+              .prepare("SELECT nama_perusahaan FROM vendor WHERE id = ?")
+              .get(vendor_id)
+          : null;
+
+        // Format catatan - take first 25 chars if exists
+        const catatanExcerpt =
+          catatan && catatan.trim()
+            ? catatan.trim().substring(0, 25) +
+              (catatan.trim().length > 25 ? "..." : "")
+            : null;
+
+        // Build keperluan string with vendor and/or catatan
+        let keperluan = `Pembelian ${nomorPembelian} (${nomor_faktur})`;
+        if (vendorInfo?.nama_perusahaan) {
+          keperluan += ` - ${vendorInfo.nama_perusahaan}`;
+        } else if (catatanExcerpt) {
+          keperluan += ` (${catatanExcerpt})`;
+        }
+        keperluan += ` [REF:${purchaseId}]`;
 
         keuanganStmt.run(
           keuanganId,
@@ -311,8 +331,8 @@ export async function POST(req: NextRequest) {
           total_jumlah,
           jatuhTempo,
           metodePembayaran === "NET30"
-            ? `Hutang dengan jatuh tempo 30 hari`
-            : `Hutang COD - bayar saat terima barang`
+            ? `Tagihan dengan jatuh tempo 30 hari`
+            : `Tagihan COD - bayar saat terima barang`
         );
       }
 

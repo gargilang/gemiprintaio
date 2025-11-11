@@ -621,7 +621,7 @@ export default function PurchaseForm({
                         <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
                         <span>
                           <strong>Catatan:</strong> Pembelian ini akan dicatat
-                          sebagai hutang dan tidak akan masuk ke buku keuangan
+                          sebagai tagihan dan tidak akan masuk ke buku keuangan
                           sampai dilunaskan.
                         </span>
                       </p>

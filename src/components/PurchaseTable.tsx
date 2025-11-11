@@ -31,6 +31,7 @@ interface PurchaseTableProps {
   loading: boolean;
   onEdit: (purchase: Purchase) => void;
   onDelete: (purchase: Purchase) => void;
+  onRevert?: (purchase: Purchase) => void;
 }
 
 const PurchaseRow = memo(
@@ -39,11 +40,13 @@ const PurchaseRow = memo(
     index,
     onEdit,
     onDelete,
+    onRevert,
   }: {
     purchase: Purchase;
     index: number;
     onEdit: (purchase: Purchase) => void;
     onDelete: (purchase: Purchase) => void;
+    onRevert?: (purchase: Purchase) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false);
     // Parse date as local date (YYYY-MM-DD format from database)
@@ -98,7 +101,7 @@ const PurchaseRow = memo(
             ) : purchase.status_pembayaran === "HUTANG" ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
                 <ClockIcon size={14} />
-                HUTANG
+                TAGIHAN
               </span>
             ) : (
               <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
@@ -111,25 +114,53 @@ const PurchaseRow = memo(
           </td>
           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => onEdit(purchase)}
-                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                title="Edit"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              {/* Show Edit button for HUTANG or CASH purchases */}
+              {(purchase.status_pembayaran !== "LUNAS" ||
+                purchase.metode_pembayaran === "CASH") && (
+                <button
+                  onClick={() => onEdit(purchase)}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Edit"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              )}
+              {/* Show Revert button only for LUNAS purchases that were paid (not CASH) */}
+              {purchase.status_pembayaran === "LUNAS" &&
+                purchase.metode_pembayaran !== "CASH" &&
+                onRevert && (
+                  <button
+                    onClick={() => onRevert(purchase)}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    title="Kembalikan ke Status TAGIHAN"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                      />
+                    </svg>
+                  </button>
+                )}
               <button
                 onClick={() => onDelete(purchase)}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -212,6 +243,7 @@ export default function PurchaseTable({
   loading,
   onEdit,
   onDelete,
+  onRevert,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "total" | "status" | "created">(
@@ -412,6 +444,7 @@ export default function PurchaseTable({
                   index={index}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onRevert={onRevert}
                 />
               ))}
             </tbody>

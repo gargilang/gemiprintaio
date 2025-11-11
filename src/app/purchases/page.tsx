@@ -40,7 +40,7 @@ export default function PurchasesPage() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    type?: "warning" | "danger" | "info";
+    type?: "warning" | "danger" | "info" | "purchases";
     onConfirm: () => void;
   } | null>(null);
 
@@ -244,6 +244,57 @@ export default function PurchasesPage() {
     });
   };
 
+  const handleRevert = (purchase: any) => {
+    setConfirmDialog({
+      show: true,
+      title: "Kembalikan ke Status TAGIHAN",
+      message: `Yakin ingin mengembalikan pembelian "${
+        purchase.nomor_faktur
+      }" ke status TAGIHAN?\n\nVendor: ${
+        purchase.vendor_name || "Tanpa Vendor"
+      }\nTotal: Rp ${purchase.total_harga.toLocaleString(
+        "id-ID"
+      )}\n\nTindakan ini akan:\n- Mengubah status pembelian menjadi TAGIHAN\n- Menghapus semua catatan pembayaran tagihan\n- Menghapus catatan keuangan pembayaran\n- Menghitung ulang saldo dan laporan keuangan\n\nGunakan fitur ini jika salah memilih tagihan yang dibayar.`,
+      confirmText: "Ya, Kembalikan ke TAGIHAN",
+      cancelText: "Batal",
+      type: "purchases",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/purchases/revert-payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              purchase_id: purchase.id,
+              dibuat_oleh: currentUser?.id || null,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(
+              data.error || "Gagal mengembalikan status pembelian"
+            );
+          }
+
+          showMsg(
+            "success",
+            "Pembelian berhasil dikembalikan ke status TAGIHAN!"
+          );
+          await loadPurchases();
+        } catch (error: any) {
+          console.error("Error reverting purchase:", error);
+          showMsg(
+            "error",
+            error.message || "Gagal mengembalikan status pembelian"
+          );
+        } finally {
+          setConfirmDialog(null);
+        }
+      },
+    });
+  };
+
   const handleVendorAdded = async () => {
     showMsg("success", "Vendor berhasil ditambahkan!");
     await loadVendors();
@@ -321,7 +372,7 @@ export default function PurchasesPage() {
                   d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              Bayar Hutang
+              Bayar Tagihan
             </button>
           </div>
 
@@ -330,6 +381,7 @@ export default function PurchasesPage() {
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onRevert={handleRevert}
           />
         </div>
       </div>
@@ -357,7 +409,7 @@ export default function PurchasesPage() {
         isOpen={showPayDebtModal}
         onClose={() => setShowPayDebtModal(false)}
         onSuccess={() => {
-          showMsg("success", "Pembayaran hutang berhasil dicatat!");
+          showMsg("success", "Pembayaran tagihan berhasil dicatat!");
           loadPurchases();
         }}
         currentUserId={currentUser?.id || null}
