@@ -240,7 +240,7 @@ export default function PayDebtModal({
                                 : "bg-amber-100 text-amber-700"
                             }`}
                           >
-                            <ClockIcon size={12} />
+                            <ClockIcon size={12} className="text-[#2266ff]" />
                             {debt.status_pembayaran === "HUTANG"
                               ? "TAGIHAN"
                               : debt.status_pembayaran}

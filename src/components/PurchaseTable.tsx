@@ -100,7 +100,7 @@ const PurchaseRow = memo(
               </span>
             ) : purchase.status_pembayaran === "HUTANG" ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
-                <ClockIcon size={14} />
+                <ClockIcon size={14} className="text-[#2266ff]" />
                 TAGIHAN
               </span>
             ) : (

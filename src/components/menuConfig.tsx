@@ -33,7 +33,7 @@ export const MENU_ITEMS: MenuItem[] = [
     href: "/pos",
     icon: <CartIcon size={20} />,
     label: "POS / Kasir",
-    color: "from-[#00afef] to-[#2fd3ff]",
+    color: "from-[#00afef] to-[#2266ff]",
   },
   {
     href: "/materials",
