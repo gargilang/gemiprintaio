@@ -109,7 +109,12 @@ export async function GET() {
           WHEN pip.status IS NOT NULL THEN pip.status
           ELSE 'LUNAS'
         END as status_pembayaran,
-        COALESCE(pip.sisa_piutang, 0) as sisa_piutang
+        COALESCE(pip.sisa_piutang, 0) as sisa_piutang,
+        CASE 
+          WHEN EXISTS (SELECT 1 FROM pelunasan_piutang pp WHERE pp.id_piutang = pip.id)
+          THEN 1
+          ELSE 0
+        END as has_pelunasan
       FROM penjualan p
       LEFT JOIN pelanggan pel ON p.pelanggan_id = pel.id
       LEFT JOIN profil prof ON p.kasir_id = prof.id

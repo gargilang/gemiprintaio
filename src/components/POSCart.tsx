@@ -293,8 +293,8 @@ export default function POSCart({
           {kembalian > 0 ? (
             <div className="bg-green-500/20 border-2 border-green-400 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold">KEMBALIAN</span>
-                <span className="text-2xl font-bold text-green-300">
+                <span className="font-bold text-green-800">KEMBALIAN</span>
+                <span className="text-2xl font-bold text-green-800">
                   Rp {kembalian.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -302,7 +302,7 @@ export default function POSCart({
                 <div>
                   <button
                     onClick={() => setShowChangeDetail(!showChangeDetail)}
-                    className="text-xs text-green-200 hover:text-green-100 underline mb-2"
+                    className="text-xs hover:text-green-700 underline mb-2"
                   >
                     {showChangeDetail ? "Sembunyikan" : "Lihat"} Pecahan
                   </button>

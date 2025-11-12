@@ -14,6 +14,7 @@ interface Sale {
   sisa_piutang: number;
   dibuat_pada: string;
   kasir_nama: string | null;
+  has_pelunasan?: number; // 1 if has payment records, 0 if not
   items?: any[];
 }
 
@@ -21,6 +22,7 @@ interface SalesHistoryTableProps {
   sales: Sale[];
   loading: boolean;
   onDelete?: (saleId: string) => Promise<void>;
+  onRevert?: (sale: Sale) => void;
   onPayReceivable?: () => void;
 }
 
@@ -28,6 +30,7 @@ export default function SalesHistoryTable({
   sales,
   loading,
   onDelete,
+  onRevert,
   onPayReceivable,
 }: SalesHistoryTableProps) {
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
@@ -224,11 +227,11 @@ export default function SalesHistoryTable({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        {filteredSales.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+      {filteredSales.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-gray-400 mb-2">
             <svg
-              className="w-16 h-16 mx-auto mb-3 opacity-30"
+              className="w-16 h-16 mx-auto"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -236,48 +239,52 @@ export default function SalesHistoryTable({
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <p className="font-semibold">Belum ada transaksi</p>
-            <p className="text-sm mt-1">Transaksi akan muncul di sini</p>
           </div>
-        ) : (
+          <p className="text-gray-600 font-semibold">Belum ada transaksi</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Transaksi akan muncul di sini
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[700px] overflow-y-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-cyan-50 to-blue-50 border-b-2 border-[#00afef]/30">
+            <thead className="bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-semibold">
                   Invoice
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-semibold">
                   Pelanggan
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-right text-xs font-semibold">
                   Total
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-center text-xs font-semibold">
                   Pembayaran
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-center text-xs font-semibold">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-semibold">
                   Tanggal
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                <th className="px-4 py-3 text-center text-xs font-semibold">
                   Aksi
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody>
               {filteredSales.map((sale, index) => (
                 <React.Fragment key={sale.id}>
                   <tr
                     onClick={() =>
                       setExpandedSale(expandedSale === sale.id ? null : sale.id)
                     }
-                    className={`hover:bg-cyan-50 transition-colors cursor-pointer ${
+                    className={`border-b border-gray-200 hover:bg-cyan-50 transition-all cursor-pointer ${
                       index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}
                   >
@@ -324,32 +331,47 @@ export default function SalesHistoryTable({
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        {sale.status_pembayaran === "LUNAS" &&
-                          sale.sisa_piutang === 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Implement revert function
-                                console.log("Revert sale:", sale.id);
-                              }}
-                              className="p-2 hover:bg-blue-100 rounded-lg transition-all group"
-                              title="Revert Transaksi"
+                        {/* Revert button logic:
+                            - Only show if has_pelunasan = 1 (meaning there are payment records to revert)
+                            - This means the transaction had piutang and received payment(s)
+                            - Clicking revert will delete all pelunasan records and reset to original piutang
+                        */}
+                        {sale.has_pelunasan === 1 && onRevert && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRevert(sale);
+                            }}
+                            className={`p-2 rounded-lg transition-all group ${
+                              sale.status_pembayaran === "LUNAS"
+                                ? "hover:bg-blue-100"
+                                : "hover:bg-orange-100"
+                            }`}
+                            title={
+                              sale.status_pembayaran === "LUNAS"
+                                ? "Kembalikan pembayaran piutang (ke status AKTIF)"
+                                : "Batalkan pembayaran sebagian"
+                            }
+                          >
+                            <svg
+                              className={`w-5 h-5 ${
+                                sale.status_pembayaran === "LUNAS"
+                                  ? "text-blue-600 group-hover:text-blue-700"
+                                  : "text-orange-600 group-hover:text-orange-700"
+                              }`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <svg
-                                className="w-5 h-5 text-blue-700 group-hover:text-blue-800"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                                />
-                              </svg>
-                            </button>
-                          )}
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                              />
+                            </svg>
+                          </button>
+                        )}
                         {onDelete && (
                           <button
                             onClick={(e) => {
@@ -377,29 +399,46 @@ export default function SalesHistoryTable({
 
                   {/* Expanded Row - Items */}
                   {expandedSale === sale.id && sale.items && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-4 bg-cyan-50">
-                        <div className="space-y-2">
-                          <div className="font-bold text-gray-700 mb-3">
+                    <tr className="bg-gradient-to-r from-cyan-50/50 to-blue-50/50">
+                      <td colSpan={7} className="px-4 py-3">
+                        <div className="text-xs">
+                          <div className="font-semibold text-gray-700 mb-2">
                             Detail Item:
                           </div>
-                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                          <div className="space-y-1">
                             {sale.items.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                                className="flex items-center justify-between py-1 px-2 bg-white/60 rounded"
                               >
                                 <div className="flex-1">
-                                  <div className="font-semibold text-gray-800">
-                                    {item.barang_nama}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {item.jumlah} {item.nama_satuan} @ Rp{" "}
-                                    {item.harga_satuan.toLocaleString("id-ID")}
-                                  </div>
+                                  <span className="font-semibold text-gray-800">
+                                    {idx + 1}. {item.barang_nama}
+                                  </span>
+                                  <span className="text-gray-500 ml-2">
+                                    ({item.nama_satuan})
+                                  </span>
                                 </div>
-                                <div className="font-bold text-gray-800">
-                                  {formatRupiah(item.subtotal)}
+                                <div className="flex items-center gap-4 text-gray-700">
+                                  <span>
+                                    Qty:{" "}
+                                    <span className="font-semibold">
+                                      {item.jumlah}
+                                    </span>
+                                  </span>
+                                  <span>×</span>
+                                  <span>
+                                    Rp{" "}
+                                    <span className="font-semibold">
+                                      {item.harga_satuan.toLocaleString(
+                                        "id-ID"
+                                      )}
+                                    </span>
+                                  </span>
+                                  <span>=</span>
+                                  <span className="font-semibold text-[#00afef]">
+                                    Rp {item.subtotal.toLocaleString("id-ID")}
+                                  </span>
                                 </div>
                               </div>
                             ))}
@@ -412,8 +451,15 @@ export default function SalesHistoryTable({
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Info Text */}
+      {filteredSales.length > 0 && (
+        <div className="text-xs text-gray-500 text-center">
+          Klik baris untuk melihat detail item penjualan
+        </div>
+      )}
 
       {/* Confirm Dialog */}
       {confirmDialog && (

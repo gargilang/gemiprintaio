@@ -878,7 +878,7 @@ export default function FinancePage() {
 
     setConfirmDialog({
       show: true,
-      title: "🗑️ Hapus Transaksi",
+      title: "Hapus Transaksi",
       message: `Yakin ingin menghapus transaksi berikut?\n\nKategori: ${
         cashBook.kategori_transaksi
       }\nKeperluan: ${

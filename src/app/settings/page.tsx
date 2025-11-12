@@ -57,13 +57,13 @@ interface QuickSpec {
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>("materials");
+  const [activeTab, setActiveTab] = useState<TabType>("system");
 
   const tabs = [
+    { id: "system" as TabType, label: "System" },
     { id: "company" as TabType, label: "Company Info" },
     { id: "materials" as TabType, label: "Master Bahan" },
     { id: "pricing" as TabType, label: "Pricing" },
-    { id: "system" as TabType, label: "System" },
   ];
 
   return (
@@ -2603,6 +2603,87 @@ function SystemTab() {
         </div>
       </div>
 
+      {/* Printer Settings - Coming Soon */}
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="p-3 bg-purple-500 rounded-xl">
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">
+              Printer Settings
+            </h3>
+            <p className="text-sm text-gray-600">
+              Print receipt termal & dokumen (Invoice, PO, Surat Jalan, dll)
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white/80 rounded-lg p-5 border-2 border-purple-300">
+          <div className="flex items-start gap-3 mb-4">
+            <svg
+              className="w-6 h-6 text-orange-500 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h4 className="font-bold text-gray-800 mb-2">
+                🚧 Fitur Dalam Pengembangan
+              </h4>
+              <p className="text-sm text-gray-700 mb-3">
+                <strong>Catatan Teknis:</strong> Browser tidak dapat mendeteksi
+                printer yang terinstall di komputer karena security
+                restrictions.
+              </p>
+              <p className="text-sm text-gray-700 mb-3">
+                Untuk saat ini, aplikasi ini menggunakan{" "}
+                <strong>system print dialog</strong> default browser (
+                <code className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                  window.print()
+                </code>
+                ). Anda bisa memilih printer dari dialog yang muncul.
+              </p>
+              <div className="bg-purple-100 rounded-lg p-3 border border-purple-200">
+                <p className="text-sm text-purple-900 font-semibold mb-2">
+                  🎯 Rencana Implementasi:
+                </p>
+                <ul className="text-sm text-purple-800 space-y-1 ml-4">
+                  <li>• Deteksi printer terinstall otomatis</li>
+                  <li>• Pilih printer default untuk receipt & dokumen</li>
+                  <li>• Auto-print tanpa dialog (untuk thermal printer)</li>
+                  <li>• Print queue management</li>
+                </ul>
+                <p className="text-xs text-purple-700 mt-3">
+                  ⚡ Fitur ini akan tersedia setelah aplikasi di-wrap dengan{" "}
+                  <strong>Tauri</strong> atau <strong>Electron</strong> yang
+                  memiliki akses ke native printer API.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Future Features */}
       <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
         <p className="text-gray-600 flex items-start gap-2 mb-4">
@@ -2624,8 +2705,8 @@ function SystemTab() {
         <ul className="space-y-2 text-gray-600 ml-7">
           <li>• Restore Database dari backup</li>
           <li>• Export Data (CSV/Excel)</li>
-          <li>• Printer Settings</li>
           <li>• Invoice Template</li>
+          <li>• Test Print untuk semua jenis dokumen</li>
         </ul>
       </div>
     </div>

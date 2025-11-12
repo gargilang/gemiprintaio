@@ -313,6 +313,64 @@ export default function POSPage() {
     }
   };
 
+  const handleRevertSale = (sale: any) => {
+    const currentStatus =
+      sale.status_pembayaran === "LUNAS"
+        ? "LUNAS (sudah dibayar penuh)"
+        : sale.status_pembayaran === "SEBAGIAN"
+        ? "SEBAGIAN (masih ada sisa tagihan)"
+        : sale.status_pembayaran;
+
+    setConfirmDialog({
+      show: true,
+      title: "Batalkan Pembayaran Piutang",
+      message: `Apakah Anda yakin ingin membatalkan pembayaran piutang untuk transaksi ${
+        sale.nomor_invoice
+      }?\n\nPelanggan: ${
+        sale.pelanggan_nama || "Walk-in"
+      }\nTotal Transaksi: Rp ${sale.total_jumlah.toLocaleString(
+        "id-ID"
+      )}\nStatus Sekarang: ${currentStatus}\n${
+        sale.sisa_piutang > 0
+          ? `Sisa Tagihan: Rp ${sale.sisa_piutang.toLocaleString("id-ID")}\n`
+          : ""
+      }\nTindakan ini akan:\n✗ Menghapus SEMUA catatan pembayaran piutang (termasuk pembayaran pertama/parsial)\n✗ Mengembalikan tagihan ke jumlah awal penuh\n✗ Menghapus catatan keuangan dari semua pembayaran\n✗ Menghitung ulang saldo dan laporan\n\n⚠️ PERINGATAN: Fitur ini menghapus SEMUA riwayat pembayaran!\n⚠️ Gunakan hanya jika salah memilih tagihan yang dibayar!\n\nSetelah revert, kasir harus membayar ulang dengan benar dari awal.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          const res = await fetch("/api/pos/sales/revert-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sale_id: sale.id,
+              dibuat_oleh: currentUser?.id || null,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(
+              data.error || "Gagal mengembalikan status penjualan"
+            );
+          }
+
+          showMsg(
+            "success",
+            data.message || "Status berhasil dikembalikan ke PIUTANG"
+          );
+          await loadAllData();
+        } catch (error: any) {
+          console.error("Error reverting sale:", error);
+          showMsg(
+            "error",
+            error.message || "Gagal mengembalikan status penjualan"
+          );
+        }
+      },
+    });
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) {
       showMsg("error", "Keranjang kosong");
@@ -866,6 +924,7 @@ export default function POSPage() {
             sales={sales}
             loading={loading}
             onDelete={handleDeleteSale}
+            onRevert={handleRevertSale}
           />
         </div>
       </div>

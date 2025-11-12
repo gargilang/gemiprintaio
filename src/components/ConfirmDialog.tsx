@@ -40,8 +40,15 @@ export default function ConfirmDialog({
   useEffect(() => {
     if (!show) return;
 
+    // Add a small delay to prevent immediate Enter key from triggering confirm
+    // This prevents the Enter key that opened the dialog from also confirming it
+    let isReady = false;
+    const readyTimeout = setTimeout(() => {
+      isReady = true;
+    }, 200); // 200ms delay
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && isReady) {
         e.preventDefault();
         onConfirm();
       } else if (e.key === "Escape") {
@@ -51,7 +58,10 @@ export default function ConfirmDialog({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(readyTimeout);
+    };
   }, [show, onConfirm, onCancel]);
 
   if (!show) return null;

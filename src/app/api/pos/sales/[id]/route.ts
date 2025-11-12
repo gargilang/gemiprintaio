@@ -45,12 +45,14 @@ export async function DELETE(
     // 4. Reverse stock changes (add back to inventory)
     for (const item of items) {
       if (item.lacak_inventori_status === 1) {
-        // Add back the quantity that was sold
+        // Convert to base unit using faktor_konversi before adding back
+        // For example: if sold 6 rims and 1 rim = 500 sheets, return 3000 sheets
+        const stockAddition = item.jumlah * (item.faktor_konversi || 1);
         db.prepare(
           `UPDATE barang 
            SET jumlah_stok = jumlah_stok + ? 
            WHERE id = ?`
-        ).run(item.jumlah, item.barang_id);
+        ).run(stockAddition, item.barang_id);
       }
     }
 
