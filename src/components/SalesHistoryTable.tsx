@@ -1,0 +1,410 @@
+"use client";
+
+import React, { useState } from "react";
+import { TrashIcon } from "./icons/ContentIcons";
+import ConfirmDialog from "./ConfirmDialog";
+
+interface Sale {
+  id: string;
+  nomor_invoice: string;
+  pelanggan_nama: string | null;
+  total_jumlah: number;
+  metode_pembayaran: string;
+  status_pembayaran: string;
+  sisa_piutang: number;
+  dibuat_pada: string;
+  kasir_nama: string | null;
+  items?: any[];
+}
+
+interface SalesHistoryTableProps {
+  sales: Sale[];
+  loading: boolean;
+  onDelete?: (saleId: string) => Promise<void>;
+}
+
+export default function SalesHistoryTable({
+  sales,
+  loading,
+  onDelete,
+}: SalesHistoryTableProps) {
+  const [expandedSale, setExpandedSale] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    saleId: string;
+    invoiceNumber: string;
+  } | null>(null);
+
+  const filteredSales = sales.filter(
+    (sale) =>
+      sale.nomor_invoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const formatRupiah = (amount: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      LUNAS: "bg-green-100 text-green-700 border-green-200",
+      AKTIF: "bg-red-100 text-red-700 border-red-200",
+      SEBAGIAN: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    };
+
+    return (
+      <span
+        className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
+          styles[status as keyof typeof styles] || "bg-gray-100 text-gray-700"
+        }`}
+      >
+        {status}
+      </span>
+    );
+  };
+
+  const getPaymentMethodIcon = (method: string) => {
+    const iconMap: { [key: string]: React.ReactNode } = {
+      CASH: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      TRANSFER: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+          <path
+            fillRule="evenodd"
+            d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      QRIS: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z"
+            clipRule="evenodd"
+          />
+          <path d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM7 11a1 1 0 100-2H4a1 1 0 100 2h3zM17 13a1 1 0 01-1 1h-2a1 1 0 110-2h2a1 1 0 011 1zM16 17a1 1 0 100-2h-3a1 1 0 100 2h3z" />
+        </svg>
+      ),
+      DEBIT: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+          <path
+            fillRule="evenodd"
+            d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      DOWN_PAYMENT: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      NET30: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+    };
+
+    return iconMap[method] || iconMap.CASH;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00afef]"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari invoice atau nama pelanggan..."
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        {filteredSales.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <svg
+              className="w-16 h-16 mx-auto mb-3 opacity-30"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p className="font-semibold">Belum ada transaksi</p>
+            <p className="text-sm mt-1">Transaksi akan muncul di sini</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-cyan-50 to-blue-50 border-b-2 border-[#00afef]/30">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                  Invoice
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                  Pelanggan
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                  Pembayaran
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">
+                  Tanggal
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredSales.map((sale, index) => (
+                <React.Fragment key={sale.id}>
+                  <tr
+                    className={`hover:bg-cyan-50 transition-colors ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-gray-800">
+                        {sale.nomor_invoice}
+                      </div>
+                      {sale.kasir_nama && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Kasir: {sale.kasir_nama}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-800">
+                        {sale.pelanggan_nama || (
+                          <span className="text-gray-400 italic">Walk-in</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="font-bold text-gray-800">
+                        {formatRupiah(sale.total_jumlah)}
+                      </div>
+                      {sale.sisa_piutang > 0 && (
+                        <div className="text-xs text-red-600 mt-1">
+                          Sisa: {formatRupiah(sale.sisa_piutang)}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700">
+                        {getPaymentMethodIcon(sale.metode_pembayaran)}
+                        {sale.metode_pembayaran}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {getStatusBadge(sale.status_pembayaran)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-gray-700">
+                        {formatDate(sale.dibuat_pada)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() =>
+                            setExpandedSale(
+                              expandedSale === sale.id ? null : sale.id
+                            )
+                          }
+                          className="p-2 hover:bg-cyan-100 rounded-lg transition-all"
+                          title="Lihat Detail"
+                        >
+                          <svg
+                            className={`w-5 h-5 text-[#00afef] transition-transform ${
+                              expandedSale === sale.id ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        {onDelete && (
+                          <button
+                            onClick={() => {
+                              setConfirmDialog({
+                                show: true,
+                                saleId: sale.id,
+                                invoiceNumber: sale.nomor_invoice,
+                              });
+                            }}
+                            disabled={deletingId === sale.id}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-all disabled:opacity-50"
+                            title="Hapus Transaksi"
+                          >
+                            {deletingId === sale.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                            ) : (
+                              <TrashIcon size={20} className="text-red-500" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Expanded Row - Items */}
+                  {expandedSale === sale.id && sale.items && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-4 bg-cyan-50">
+                        <div className="space-y-2">
+                          <div className="font-bold text-gray-700 mb-3">
+                            Detail Item:
+                          </div>
+                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                            {sale.items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                              >
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-800">
+                                    {item.barang_nama}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    {item.jumlah} {item.nama_satuan} @ Rp{" "}
+                                    {item.harga_satuan.toLocaleString("id-ID")}
+                                  </div>
+                                </div>
+                                <div className="font-bold text-gray-800">
+                                  {formatRupiah(item.subtotal)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Summary */}
+      {filteredSales.length > 0 && (
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+          <div className="text-sm text-gray-600">
+            Menampilkan {filteredSales.length} dari {sales.length} transaksi
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-gray-600">Total Penjualan</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {formatRupiah(
+                filteredSales.reduce((sum, sale) => sum + sale.total_jumlah, 0)
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title="Hapus Transaksi"
+          message={`Apakah Anda yakin ingin menghapus transaksi ${confirmDialog.invoiceNumber}?\n\nStok barang akan dikembalikan dan data keuangan akan dihapus.`}
+          onConfirm={async () => {
+            setConfirmDialog(null);
+            setDeletingId(confirmDialog.saleId);
+            try {
+              if (onDelete) {
+                await onDelete(confirmDialog.saleId);
+              }
+            } finally {
+              setDeletingId(null);
+            }
+          }}
+          onCancel={() => setConfirmDialog(null)}
+          type="danger"
+        />
+      )}
+    </div>
+  );
+}

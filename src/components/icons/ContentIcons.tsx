@@ -665,3 +665,117 @@ export const ClockIcon = ({ className = "", size = 16 }: IconProps) => (
     />
   </svg>
 );
+
+// Card/Debit-Credit icon for payment methods
+export const CardIcon = ({ className = "", size = 16 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect
+      x="2"
+      y="6"
+      width="20"
+      height="12"
+      rx="2"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <path d="M2 10h20" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M6 14h4"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M6 16h2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+// Transfer/Bank icon for bank transfer payments
+export const TransferIcon = ({ className = "", size = 16 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M3 21h18M3 10h18"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M5 10V21M9 10V21M15 10V21M19 10V21"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M2 10L12 3L22 10"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// QRIS/QR Code icon for QRIS payments
+export const QRISIcon = ({ className = "", size = 16 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect
+      x="3"
+      y="3"
+      width="8"
+      height="8"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <rect
+      x="13"
+      y="3"
+      width="8"
+      height="8"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <rect
+      x="3"
+      y="13"
+      width="8"
+      height="8"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <rect x="5" y="5" width="4" height="4" fill="currentColor" />
+    <rect x="15" y="5" width="4" height="4" fill="currentColor" />
+    <rect x="5" y="15" width="4" height="4" fill="currentColor" />
+    <rect x="13" y="13" width="3" height="3" fill="currentColor" />
+    <rect x="18" y="13" width="3" height="3" fill="currentColor" />
+    <rect x="13" y="18" width="3" height="3" fill="currentColor" />
+    <rect x="18" y="18" width="3" height="3" fill="currentColor" />
+  </svg>
+);

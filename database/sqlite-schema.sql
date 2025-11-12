@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS barang (
   level_stok_minimum REAL DEFAULT 0,
   lacak_inventori_status INTEGER DEFAULT 1, -- 1 = track stok, 0 = tidak perlu track (contoh: lem, minyak goreng, tinta)
   butuh_dimensi_status INTEGER DEFAULT 0, -- 1 = perlu input P×L di POS (banner, vinyl, flexi), 0 = input qty biasa
+  frekuensi_terjual INTEGER DEFAULT 0, -- Jumlah berapa kali barang ini terjual (untuk sorting favorites di POS)
   dibuat_pada TEXT DEFAULT (datetime('now')),
   diperbarui_pada TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
@@ -226,6 +227,36 @@ CREATE TABLE IF NOT EXISTS pelunasan_hutang (
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
 
+-- Piutang Penjualan (Accounts Receivable from Sales)
+CREATE TABLE IF NOT EXISTS piutang_penjualan (
+  id TEXT PRIMARY KEY,
+  id_penjualan TEXT NOT NULL,
+  jumlah_piutang REAL NOT NULL,
+  jumlah_terbayar REAL DEFAULT 0,
+  sisa_piutang REAL NOT NULL,
+  jatuh_tempo TEXT,
+  status TEXT DEFAULT 'AKTIF' CHECK(status IN ('AKTIF', 'LUNAS', 'JATUH_TEMPO')),
+  catatan TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (id_penjualan) REFERENCES penjualan(id) ON DELETE CASCADE
+);
+
+-- Pelunasan Piutang (Receivable Payments)
+CREATE TABLE IF NOT EXISTS pelunasan_piutang (
+  id TEXT PRIMARY KEY,
+  id_piutang TEXT NOT NULL,
+  tanggal_bayar TEXT NOT NULL,
+  jumlah_bayar REAL NOT NULL,
+  metode_pembayaran TEXT DEFAULT 'CASH',
+  referensi TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (id_piutang) REFERENCES piutang_penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
+
 
 -- =====================================================
 -- SISTEM KEUANGAN TERPISAH (Independent Finance System)
@@ -317,6 +348,9 @@ CREATE INDEX IF NOT EXISTS idx_pembelian_number ON pembelian(nomor_pembelian);
 CREATE INDEX IF NOT EXISTS idx_pembelian_date ON pembelian(dibuat_pada);
 CREATE INDEX IF NOT EXISTS idx_barang_kategori ON barang(kategori_id);
 CREATE INDEX IF NOT EXISTS idx_barang_nama ON barang(nama);
+CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_status ON piutang_penjualan(status);
+CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_date ON piutang_penjualan(dibuat_pada);
+CREATE INDEX IF NOT EXISTS idx_pelunasan_piutang_date ON pelunasan_piutang(tanggal_bayar);
 
 -- Credentials / Password Manager
 CREATE TABLE IF NOT EXISTS kredensial (
@@ -403,13 +437,45 @@ CREATE TRIGGER IF NOT EXISTS update_keuangan_timestamp
     UPDATE keuangan SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
   END;
 
+-- Trigger untuk auto-update piutang_penjualan timestamp
+CREATE TRIGGER IF NOT EXISTS update_piutang_penjualan_timestamp 
+  AFTER UPDATE ON piutang_penjualan
+  BEGIN
+    UPDATE piutang_penjualan SET diperbarui_pada = datetime('now') WHERE id = NEW.id;
+  END;
 
-
-
-
-
-
-
+-- Trigger untuk auto-update sisa_piutang ketika ada pembayaran
+CREATE TRIGGER IF NOT EXISTS update_piutang_penjualan_after_payment
+  AFTER INSERT ON pelunasan_piutang
+  BEGIN
+    UPDATE piutang_penjualan
+    SET 
+      jumlah_terbayar = (
+        SELECT COALESCE(SUM(jumlah_bayar), 0)
+        FROM pelunasan_piutang
+        WHERE id_piutang = NEW.id_piutang
+      ),
+      sisa_piutang = jumlah_piutang - (
+        SELECT COALESCE(SUM(jumlah_bayar), 0)
+        FROM pelunasan_piutang
+        WHERE id_piutang = NEW.id_piutang
+      ),
+      status = CASE
+        WHEN jumlah_piutang - (
+          SELECT COALESCE(SUM(jumlah_bayar), 0)
+          FROM pelunasan_piutang
+          WHERE id_piutang = NEW.id_piutang
+        ) <= 0 THEN 'LUNAS'
+        WHEN (
+          SELECT COALESCE(SUM(jumlah_bayar), 0)
+          FROM pelunasan_piutang
+          WHERE id_piutang = NEW.id_piutang
+        ) > 0 THEN 'SEBAGIAN'
+        ELSE 'AKTIF'
+      END,
+      diperbarui_pada = datetime('now')
+    WHERE id = NEW.id_piutang;
+  END;
 
 -- Trigger untuk auto-update sisa_hutang kasbon ketika ada pembayaran
 CREATE TRIGGER IF NOT EXISTS update_kasbon_sisa_hutang

@@ -48,29 +48,11 @@ export const CartIcon = ({ className = "", size = 24 }: IconProps) => (
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="M9 2L7.2 5.5H2L5 13H19L22 5.5H16.8L15 2H9Z"
+      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      fill="currentColor"
-      fillOpacity="0.1"
-    />
-    <circle
-      cx="7.5"
-      cy="20"
-      r="1.5"
-      stroke="currentColor"
-      strokeWidth="2"
-      fill="currentColor"
-    />
-    <circle
-      cx="16.5"
-      cy="20"
-      r="1.5"
-      stroke="currentColor"
-      strokeWidth="2"
-      fill="currentColor"
     />
   </svg>
 );
