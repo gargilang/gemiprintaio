@@ -208,7 +208,7 @@ export default function POSPage() {
 
   const handleSelectMaterial = (material: Material) => {
     setSelectedMaterial(material);
-    setMaterialSearch("");
+    setMaterialSearch(material.nama);
     setPanjang("");
     setLebar("");
     setQuantity("1");
@@ -343,9 +343,7 @@ export default function POSPage() {
       if (kembalian > 0) {
         confirmMsg += `Kembalian: Rp ${kembalian.toLocaleString("id-ID")}\n`;
       } else if (kurang > 0) {
-        confirmMsg += `Kurang: Rp ${kurang.toLocaleString(
-          "id-ID"
-        )} (akan jadi piutang)\n`;
+        confirmMsg += `Kurang: Rp ${kurang.toLocaleString("id-ID")}\n`;
       }
     }
 
@@ -504,7 +502,7 @@ export default function POSPage() {
                   onClick={() => setShowCustomerModal(true)}
                   className="absolute right-2 top-2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
                 >
-                  + Tambah
+                  + Pelanggan Baru
                 </button>
               </div>
 
@@ -636,26 +634,19 @@ export default function POSPage() {
                             : "border-gray-200 hover:border-[#00afef]/50 hover:bg-cyan-50/50"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div
-                              className={`font-bold text-sm truncate ${
-                                selectedMaterial?.id === material.id
-                                  ? "text-[#00afef]"
-                                  : "text-gray-800"
-                              }`}
-                            >
-                              {material.nama}
-                            </div>
-                            {material.kategori_nama && (
-                              <div className="text-xs text-gray-500 mt-0.5 truncate">
-                                {material.kategori_nama}
-                              </div>
-                            )}
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`font-bold text-sm truncate ${
+                              selectedMaterial?.id === material.id
+                                ? "text-[#00afef]"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {material.nama}
                           </div>
-                          {material.frekuensi_terjual > 0 && (
-                            <div className="flex-shrink-0 bg-amber-100 text-amber-700 text-xs font-bold px-1.5 py-0.5 rounded">
-                              {material.frekuensi_terjual}
+                          {material.kategori_nama && (
+                            <div className="text-xs text-gray-500 mt-0.5 truncate">
+                              {material.kategori_nama}
                             </div>
                           )}
                         </div>
@@ -684,90 +675,140 @@ export default function POSPage() {
                 </div>
 
                 {selectedMaterial && (
-                  <div className="space-y-4 p-4 bg-white rounded-lg border-2 border-[#00afef]/30 shadow-sm">
-                    <div className="font-bold text-gray-800">
+                  <div className="p-4 bg-white rounded-lg border-2 border-[#00afef]/30 shadow-sm">
+                    <div className="font-bold text-gray-800 mb-4">
                       {selectedMaterial.nama}
                     </div>
 
-                    {/* Unit Selection */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Satuan & Harga
-                      </label>
-                      <select
-                        value={selectedUnit?.id || ""}
-                        onChange={(e) => {
-                          const unit = selectedMaterial.unit_prices.find(
-                            (u) => u.id === e.target.value
-                          );
-                          setSelectedUnit(unit || null);
-                        }}
-                        className="w-full px-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
-                      >
-                        {selectedMaterial.unit_prices.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.nama_satuan} - Rp{" "}
-                            {(selectedCustomer?.member_status
-                              ? unit.harga_member || unit.harga_jual
-                              : unit.harga_jual
-                            ).toLocaleString("id-ID")}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Left: Material Details & Unit */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                            Satuan & Harga
+                          </label>
+                          <select
+                            value={selectedUnit?.id || ""}
+                            onChange={(e) => {
+                              const unit = selectedMaterial.unit_prices.find(
+                                (u) => u.id === e.target.value
+                              );
+                              setSelectedUnit(unit || null);
+                            }}
+                            className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                          >
+                            {selectedMaterial.unit_prices.map((unit) => (
+                              <option key={unit.id} value={unit.id}>
+                                {unit.nama_satuan} - Rp{" "}
+                                {(selectedCustomer?.member_status
+                                  ? unit.harga_member || unit.harga_jual
+                                  : unit.harga_jual
+                                ).toLocaleString("id-ID")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Dimensions for materials that need it */}
+                        {selectedMaterial.butuh_dimensi_status === 1 && (
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                              Dimensi (m)
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={panjang}
+                                  onChange={(e) => setPanjang(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleAddToCart();
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                                  placeholder="Panjang"
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={lebar}
+                                  onChange={(e) => setLebar(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleAddToCart();
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                                  placeholder="Lebar"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Quantity Controls */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                            Jumlah
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                const current = parseFloat(quantity) || 0;
+                                if (current > 0.01) {
+                                  setQuantity((current - 1).toString());
+                                }
+                              }}
+                              className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 text-gray-700 font-bold transition-colors"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              step={
+                                selectedMaterial.butuh_dimensi_status === 1
+                                  ? "0.01"
+                                  : "1"
+                              }
+                              value={quantity}
+                              onChange={(e) => setQuantity(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddToCart();
+                                }
+                              }}
+                              className="flex-1 px-3 py-2 text-sm text-center border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold"
+                              placeholder="1"
+                            />
+                            <button
+                              onClick={() => {
+                                const current = parseFloat(quantity) || 0;
+                                setQuantity((current + 1).toString());
+                              }}
+                              className="w-10 h-10 flex items-center justify-center bg-[#00afef] hover:bg-[#0099dd] rounded-lg border-2 border-[#00afef] text-white font-bold transition-colors"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleAddToCart}
+                          className="w-full py-2.5 bg-gradient-to-r from-[#00afef] to-[#0088cc] text-white rounded-lg font-bold hover:from-[#0099dd] hover:to-[#0077bb] transition-all shadow-md text-sm"
+                        >
+                          Tambah ke Keranjang
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Quantity or Dimensions */}
-                    {selectedMaterial.butuh_dimensi_status === 1 ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Panjang (m)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={panjang}
-                            onChange={(e) => setPanjang(e.target.value)}
-                            className="w-full px-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Lebar (m)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={lebar}
-                            onChange={(e) => setLebar(e.target.value)}
-                            className="w-full px-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Jumlah
-                        </label>
-                        <input
-                          type="number"
-                          step="1"
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          className="w-full px-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
-                          placeholder="1"
-                        />
-                      </div>
-                    )}
-
-                    <button
-                      onClick={handleAddToCart}
-                      className="w-full py-3 bg-gradient-to-r from-[#00afef] to-[#0088cc] text-white rounded-lg font-bold hover:from-[#0099dd] hover:to-[#0077bb] transition-all shadow-md flex items-center justify-center gap-2"
-                    >
-                      + Tambah ke Keranjang
-                    </button>
                   </div>
                 )}
               </div>
@@ -790,12 +831,20 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Sales History */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex gap-4">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-1">
+                Riwayat Penjualan
+              </h2>
+              <p className="text-sm text-gray-500">
+                Riwayat semua transaksi penjualan
+              </p>
+            </div>
             <button
               onClick={() => setShowReceivableModal(true)}
-              className="flex-1 py-3 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-bold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md flex items-center justify-center gap-2"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md hover:shadow-lg"
             >
               <svg
                 className="w-5 h-5"
@@ -810,16 +859,9 @@ export default function POSPage() {
                   d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              Terima Pembayaran Piutang
+              Terima Piutang
             </button>
           </div>
-        </div>
-
-        {/* Sales History */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Riwayat Penjualan
-          </h2>
           <SalesHistoryTable
             sales={sales}
             loading={loading}

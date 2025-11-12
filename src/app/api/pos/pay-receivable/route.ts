@@ -105,10 +105,28 @@ export async function POST(request: Request) {
         dibuat_oleh || null
       );
 
-      // Trigger will automatically update piutang_penjualan
-      // But we need to create keuangan entry
+      // Update piutang_penjualan manually
+      const newJumlahTerbayar = piutang.jumlah_terbayar + jumlah_bayar;
+      const newSisaPiutang = piutang.sisa_piutang - jumlah_bayar;
+      const newStatus =
+        newSisaPiutang <= 0
+          ? "LUNAS"
+          : newJumlahTerbayar > 0
+          ? "SEBAGIAN"
+          : "AKTIF";
 
-      // Get updated piutang status after trigger
+      db.prepare(
+        `
+        UPDATE piutang_penjualan 
+        SET jumlah_terbayar = ?,
+            sisa_piutang = ?,
+            status = ?,
+            diperbarui_pada = datetime('now')
+        WHERE id = ?
+      `
+      ).run(newJumlahTerbayar, newSisaPiutang, newStatus, piutang_id);
+
+      // Get updated piutang status
       const updatedPiutang: any = db
         .prepare(`SELECT * FROM piutang_penjualan WHERE id = ?`)
         .get(piutang_id);

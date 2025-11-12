@@ -38,7 +38,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     href: "/materials",
     icon: <BoxIcon size={20} />,
-    label: "Data Bahan",
+    label: "Data Barang",
     color: "from-[#10b981] to-[#059669]",
   },
   {

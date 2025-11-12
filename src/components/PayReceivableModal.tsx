@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { MoneyIcon } from "./icons/PageIcons";
 
 interface Receivable {
@@ -42,6 +43,12 @@ export default function PayReceivableModal({
   const [catatan, setCatatan] = useState("");
   const [error, setError] = useState("");
 
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(modalRef, () => {
+    if (!loading) onClose();
+  });
+
   useEffect(() => {
     if (isOpen) {
       loadReceivables();
@@ -49,6 +56,22 @@ export default function PayReceivableModal({
       resetForm();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === "Escape") {
+        if (!loading) onClose();
+      } else if (e.key === "Enter" && selectedReceivable) {
+        e.preventDefault();
+        handleSubmit(e as any);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [isOpen, loading, selectedReceivable]);
 
   const resetForm = () => {
     setSelectedReceivable(null);
@@ -156,7 +179,10 @@ export default function PayReceivableModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -337,6 +363,32 @@ export default function PayReceivableModal({
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
                         required
                       />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setJumlahBayar(
+                              selectedReceivable.sisa_piutang.toString()
+                            )
+                          }
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
+                        >
+                          Lunas ({formatRupiah(selectedReceivable.sisa_piutang)}
+                          )
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setJumlahBayar(
+                              (selectedReceivable.sisa_piutang / 2).toString()
+                            )
+                          }
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
+                        >
+                          50% (
+                          {formatRupiah(selectedReceivable.sisa_piutang / 2)})
+                        </button>
+                      </div>
                     </div>
 
                     <div>

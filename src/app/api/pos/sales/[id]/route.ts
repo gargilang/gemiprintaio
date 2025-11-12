@@ -59,17 +59,32 @@ export async function DELETE(
       `%[REF:${id}]%`
     );
 
-    // 6. Delete sale items
+    // 6. Check and delete piutang if exists (explicit, though CASCADE should handle it)
+    const piutang = db
+      .prepare(`SELECT id FROM piutang_penjualan WHERE id_penjualan = ?`)
+      .get(id) as any;
+
+    if (piutang) {
+      // Delete pelunasan records first (though CASCADE should handle it)
+      db.prepare(`DELETE FROM pelunasan_piutang WHERE id_piutang = ?`).run(
+        piutang.id
+      );
+
+      // Delete piutang entry
+      db.prepare(`DELETE FROM piutang_penjualan WHERE id = ?`).run(piutang.id);
+    }
+
+    // 7. Delete sale items (CASCADE will handle this, but explicit for clarity)
     db.prepare(`DELETE FROM item_penjualan WHERE penjualan_id = ?`).run(id);
 
-    // 7. Delete the sale
+    // 8. Delete the sale (this will CASCADE delete piutang and items if not done above)
     db.prepare(`DELETE FROM penjualan WHERE id = ?`).run(id);
 
-    // 8. Commit transaction
+    // 9. Commit transaction
     db.exec("COMMIT");
     transactionStarted = false;
 
-    // 9. Recalculate cashbook
+    // 10. Recalculate cashbook
     await recalculateCashbook(db);
 
     db.close();

@@ -44,7 +44,7 @@ export default function DashboardPage() {
     {
       href: "/materials",
       icon: <PackageIcon size={28} />,
-      label: "Data Bahan",
+      label: "Data Barang",
       color: "from-[#2266ff] to-[#00afef]",
       description: "Material Inventory",
     },

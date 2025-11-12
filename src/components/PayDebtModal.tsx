@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { MoneyIcon } from "./icons/PageIcons";
 import { ClockIcon, CheckIcon } from "./icons/ContentIcons";
 
@@ -41,6 +42,12 @@ export default function PayDebtModal({
   const [catatan, setCatatan] = useState("");
   const [error, setError] = useState("");
 
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(modalRef, () => {
+    if (!loading) onClose();
+  });
+
   useEffect(() => {
     if (isOpen) {
       loadDebts();
@@ -49,6 +56,22 @@ export default function PayDebtModal({
       resetForm();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === "Escape") {
+        if (!loading) onClose();
+      } else if (e.key === "Enter" && selectedDebt) {
+        e.preventDefault();
+        handleSubmit(e as any);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [isOpen, loading, selectedDebt]);
 
   const resetForm = () => {
     setSelectedDebt(null);
@@ -156,7 +179,10 @@ export default function PayDebtModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -378,10 +404,10 @@ export default function PayDebtModal({
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
                       >
-                        <option value="CASH">CASH</option>
-                        <option value="TRANSFER">TRANSFER</option>
-                        <option value="GIRO">GIRO</option>
-                        <option value="CEK">CEK</option>
+                        <option value="CASH">Cash</option>
+                        <option value="TRANSFER">Transfer</option>
+                        <option value="GIRO">Giro</option>
+                        <option value="CEK">Cek</option>
                       </select>
                     </div>
 

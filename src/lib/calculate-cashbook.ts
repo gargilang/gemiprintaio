@@ -102,9 +102,9 @@ export async function recalculateCashbook(
     const kredit = row.kredit || 0;
     const keperluan = (row.keperluan || "").toLowerCase();
 
-    // OMZET: Accumulate from OMZET or PIUTANG
+    // OMZET: Accumulate from OMZET, PIUTANG, or LUNAS
     if (!row.override_omzet) {
-      if (cat === "OMZET" || cat === "PIUTANG") {
+      if (cat === "OMZET" || cat === "PIUTANG" || cat === "LUNAS") {
         runningOmzet += debit;
       }
     } else {

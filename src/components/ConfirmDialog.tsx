@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { AlertIcon } from "./icons/ContentIcons";
 
 interface ConfirmDialogProps {
@@ -23,6 +25,35 @@ export default function ConfirmDialog({
   onCancel,
   type = "warning",
 }: ConfirmDialogProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useClickOutside(
+    modalRef,
+    () => {
+      if (onCancel) onCancel();
+    },
+    show
+  );
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    if (!show) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onConfirm();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        if (onCancel) onCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [show, onConfirm, onCancel]);
+
   if (!show) return null;
 
   const typeStyles = {
@@ -105,7 +136,10 @@ export default function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in duration-200">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in duration-200"
+      >
         <div
           className={`p-6 border-b border-gray-200 bg-gradient-to-r ${styles.gradient} rounded-t-2xl`}
         >

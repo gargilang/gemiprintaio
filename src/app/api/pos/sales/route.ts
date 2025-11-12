@@ -71,13 +71,19 @@ export async function POST(request: Request) {
       }
 
       // Determine payment status
-      const isLunas =
+      // Check if payment is sufficient for full payment methods
+      const actualPaid = jumlah_dibayar || 0;
+      const isFullPaymentMethod =
         metode_pembayaran === "CASH" ||
         metode_pembayaran === "TRANSFER" ||
         metode_pembayaran === "QRIS" ||
         metode_pembayaran === "DEBIT";
+
+      const isLunas = isFullPaymentMethod && actualPaid >= total_jumlah;
       const isPiutang =
-        metode_pembayaran === "DOWN_PAYMENT" || metode_pembayaran === "NET30";
+        metode_pembayaran === "DOWN_PAYMENT" ||
+        metode_pembayaran === "NET30" ||
+        (isFullPaymentMethod && actualPaid < total_jumlah && actualPaid > 0);
 
       // Create sale record
       const saleStmt = db.prepare(`
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
         invoiceNumber,
         pelanggan_id || null,
         total_jumlah,
-        jumlah_dibayar || (isLunas ? total_jumlah : 0),
+        actualPaid,
         jumlah_kembalian || 0,
         metode_pembayaran,
         kasir_id || null,
@@ -226,11 +232,10 @@ export async function POST(request: Request) {
                 .split("T")[0]
             : null;
 
-        // For DOWN_PAYMENT, customer has paid something
-        const jumlahPiutang =
-          metode_pembayaran === "DOWN_PAYMENT"
-            ? total_jumlah - (jumlah_dibayar || 0)
-            : total_jumlah;
+        // Calculate piutang amount
+        const jumlahTerbayar = actualPaid;
+        const jumlahPiutang = total_jumlah;
+        const sisaPiutang = jumlahPiutang - jumlahTerbayar;
 
         const piutangStmt = db.prepare(`
           INSERT INTO piutang_penjualan (
@@ -238,11 +243,27 @@ export async function POST(request: Request) {
             sisa_piutang, jatuh_tempo, status, catatan,
             dibuat_pada, diperbarui_pada
           )
-          VALUES (?, ?, ?, ?, ?, ?, 'AKTIF', ?, datetime('now'), datetime('now'))
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `);
 
-        const jumlahTerbayar = jumlah_dibayar || 0;
-        const sisaPiutang = jumlahPiutang - jumlahTerbayar;
+        // Determine status and catatan
+        let statusPiutang = "AKTIF";
+        let catatanPiutang = "";
+
+        if (metode_pembayaran === "NET30") {
+          catatanPiutang = "Piutang dengan jatuh tempo 30 hari";
+        } else if (metode_pembayaran === "DOWN_PAYMENT") {
+          catatanPiutang = "Down Payment - pembayaran sebagian";
+          if (sisaPiutang > 0 && jumlahTerbayar > 0) {
+            statusPiutang = "SEBAGIAN";
+          }
+        } else {
+          // For CASH, TRANSFER, QRIS, DEBIT with partial payment
+          catatanPiutang = `Pembayaran ${metode_pembayaran} tidak mencukupi`;
+          if (sisaPiutang > 0 && jumlahTerbayar > 0) {
+            statusPiutang = "SEBAGIAN";
+          }
+        }
 
         piutangStmt.run(
           piutangId,
@@ -251,13 +272,12 @@ export async function POST(request: Request) {
           jumlahTerbayar,
           sisaPiutang,
           jatuhTempo,
-          metode_pembayaran === "NET30"
-            ? "Piutang dengan jatuh tempo 30 hari"
-            : "Down Payment - pembayaran sebagian"
+          statusPiutang,
+          catatanPiutang
         );
 
-        // If there's a down payment, record it in finance as PIUTANG category
-        if (metode_pembayaran === "DOWN_PAYMENT" && jumlahTerbayar > 0) {
+        // If there's a partial payment (down payment or partial payment), record it in finance
+        if (jumlahTerbayar > 0) {
           const maxDisplayOrder = db
             .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
             .get() as any;
@@ -282,9 +302,17 @@ export async function POST(request: Request) {
                 .get(pelanggan_id)
             : null;
 
-          let keperluan = `DP ${invoiceNumber}`;
+          let keperluan = "";
+          if (metode_pembayaran === "DOWN_PAYMENT") {
+            keperluan = `DP ${invoiceNumber}`;
+          } else {
+            keperluan = `Pembayaran Sebagian ${invoiceNumber}`;
+          }
+
           if (customerInfo?.nama) {
             keperluan += ` - ${customerInfo.nama}`;
+          } else {
+            keperluan += " - Walk-in";
           }
           keperluan += ` (Rp ${jumlahTerbayar.toLocaleString(
             "id-ID"

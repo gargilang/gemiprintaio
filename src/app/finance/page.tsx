@@ -183,6 +183,8 @@ export default function FinancePage() {
   const [cashBooks, setCashBooks] = useState<CashBook[]>([]);
   const [totalHutang, setTotalHutang] = useState(0);
   const [hutangCount, setHutangCount] = useState(0);
+  const [totalPiutang, setTotalPiutang] = useState(0);
+  const [piutangCount, setPiutangCount] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
   const [formData, setFormData] = useState({
@@ -200,7 +202,7 @@ export default function FinancePage() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    type?: "warning" | "danger" | "info" | "purchases";
+    type?: "warning" | "danger" | "info" | "purchases" | "pos";
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
@@ -306,6 +308,8 @@ export default function FinancePage() {
         kasbonDinil: 0,
         hutang: totalHutang,
         hutangCount: hutangCount,
+        piutang: totalPiutang,
+        piutangCount: piutangCount,
       };
     }
 
@@ -332,8 +336,17 @@ export default function FinancePage() {
       kasbonDinil: latest.kasbon_dinil,
       hutang: totalHutang,
       hutangCount: hutangCount,
+      piutang: totalPiutang,
+      piutangCount: piutangCount,
     };
-  }, [cashBooks, viewingArchive, totalHutang, hutangCount]);
+  }, [
+    cashBooks,
+    viewingArchive,
+    totalHutang,
+    hutangCount,
+    totalPiutang,
+    piutangCount,
+  ]);
 
   useEffect(() => {
     checkAuth();
@@ -466,9 +479,10 @@ export default function FinancePage() {
         setCurrentArchiveInfo(null);
       }
 
-      // Load hutang data (only for active table, not archive)
+      // Load hutang and piutang data (only for active table, not archive)
       if (!archiveLabel) {
         loadHutangData();
+        loadPiutangData();
       }
     } catch (err) {
       console.error("Gagal memuat cash books:", err);
@@ -491,6 +505,24 @@ export default function FinancePage() {
       }
     } catch (err) {
       console.error("Gagal memuat data hutang:", err);
+    }
+  };
+
+  const loadPiutangData = async () => {
+    try {
+      const res = await fetch("/api/pos/receivables", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        const receivables = data.receivables || [];
+        const total = receivables.reduce(
+          (sum: number, rec: any) => sum + rec.sisa_piutang,
+          0
+        );
+        setTotalPiutang(total);
+        setPiutangCount(receivables.length);
+      }
+    } catch (err) {
+      console.error("Gagal memuat data piutang:", err);
     }
   };
 
@@ -518,6 +550,20 @@ export default function FinancePage() {
       cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
       cashBook.keperluan?.toLowerCase().includes("pelunasan");
 
+    // Check if this transaction is from POS
+    const isFromPOS =
+      cashBook.keperluan?.toLowerCase().includes("penjualan") ||
+      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      (cashBook.kategori_transaksi === "OMZET" &&
+        cashBook.keperluan?.includes("[REF:sale_")) ||
+      (cashBook.kategori_transaksi === "PIUTANG" &&
+        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
+          cashBook.keperluan
+            ?.toLowerCase()
+            .includes("pembayaran sebagian inv-"))) ||
+      (cashBook.kategori_transaksi === "LUNAS" &&
+        cashBook.keperluan?.toLowerCase().includes("bayar piutang inv-"));
+
     if (isFromPurchase) {
       setConfirmDialog({
         show: true,
@@ -532,6 +578,27 @@ export default function FinancePage() {
         confirmText: "Mengerti",
         cancelText: "",
         type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
+    if (isFromPOS) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Diedit",
+        message: `Transaksi ini berasal dari sistem POS (Point of Sale) dan tidak dapat diedit langsung dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nTransaksi POS hanya dapat dimodifikasi melalui halaman POS dengan menghapus dan membuat transaksi baru.`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "pos",
         onConfirm: () => {
           setConfirmDialog(null);
         },
@@ -755,6 +822,18 @@ export default function FinancePage() {
       cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
       cashBook.keperluan?.toLowerCase().includes("pelunasan");
 
+    // Check if this transaction is from POS (penjualan)
+    const isFromPOS =
+      cashBook.keperluan?.toLowerCase().includes("penjualan") ||
+      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      (cashBook.kategori_transaksi === "OMZET" &&
+        cashBook.keperluan?.includes("[REF:sale_")) ||
+      (cashBook.kategori_transaksi === "PIUTANG" &&
+        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
+          cashBook.keperluan
+            ?.toLowerCase()
+            .includes("pembayaran sebagian inv-")));
+
     if (isFromPurchase) {
       setConfirmDialog({
         show: true,
@@ -769,6 +848,27 @@ export default function FinancePage() {
         confirmText: "Mengerti",
         cancelText: "",
         type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
+    if (isFromPOS) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Dihapus",
+        message: `Transaksi ini berasal dari sistem POS (Point of Sale) dan tidak dapat dihapus langsung dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nUntuk menghapus transaksi ini:\n\n1. Buka halaman POS\n2. Scroll ke bagian RIWAYAT PENJUALAN\n3. Cari transaksi yang ingin dihapus\n4. Klik tombol Hapus (ikon tempat sampah) pada transaksi tersebut\n\nPerhatian: Menghapus transaksi penjualan akan mengembalikan stok barang dan menghapus semua data terkait termasuk piutang (jika ada).`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "pos",
         onConfirm: () => {
           setConfirmDialog(null);
         },
@@ -842,6 +942,68 @@ export default function FinancePage() {
   };
 
   const handleOpenEditManual = (cashBook: CashBook) => {
+    // Check if this transaction is from purchases
+    const isFromPurchase =
+      cashBook.keperluan?.toLowerCase().includes("pembelian") ||
+      cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
+      cashBook.keperluan?.toLowerCase().includes("pelunasan");
+
+    // Check if this transaction is from POS
+    const isFromPOS =
+      cashBook.keperluan?.toLowerCase().includes("penjualan") ||
+      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      (cashBook.kategori_transaksi === "OMZET" &&
+        cashBook.keperluan?.includes("[REF:sale_")) ||
+      (cashBook.kategori_transaksi === "PIUTANG" &&
+        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
+          cashBook.keperluan
+            ?.toLowerCase()
+            .includes("pembayaran sebagian inv-"))) ||
+      (cashBook.kategori_transaksi === "LUNAS" &&
+        cashBook.keperluan?.toLowerCase().includes("bayar piutang inv-"));
+
+    if (isFromPurchase) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Di-Override",
+        message: `Transaksi ini berasal dari sistem Pembelian dan tidak dapat di-override dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nData akan dihitung otomatis berdasarkan transaksi pembelian.`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
+    if (isFromPOS) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Di-Override",
+        message: `Transaksi ini berasal dari sistem POS (Point of Sale) dan tidak dapat di-override dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nData akan dihitung otomatis berdasarkan transaksi penjualan.`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "pos",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
     setEditManualCashBook(cashBook);
     setShowEditManualModal(true);
   };
@@ -1067,11 +1229,19 @@ export default function FinancePage() {
           )}
         </div>
 
-        {/* Card 5: Piutang (Placeholder for future POS) */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500 opacity-50">
-          <p className="text-sm text-gray-500 font-semibold mb-1">Piutang</p>
-          <p className="text-2xl font-bold text-blue-600">{formatRupiah(0)}</p>
-          <p className="text-xs text-gray-400 mt-1 italic">(Coming soon)</p>
+        {/* Card 5: Piutang */}
+        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+          <p className="text-sm text-gray-500 font-semibold mb-1">
+            Piutang Pelanggan
+          </p>
+          <p className="text-2xl font-bold text-blue-600">
+            {formatRupiah(summaryData.piutang)}
+          </p>
+          {summaryData.piutangCount > 0 && (
+            <p className="text-xs text-gray-500 mt-1">
+              {summaryData.piutangCount} penjualan
+            </p>
+          )}
         </div>
       </div>
       {/* Bagi Hasil Summary - Hanya untuk Admin, Manager & Chief */}

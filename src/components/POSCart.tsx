@@ -262,6 +262,12 @@ export default function POSCart({
           step="1000"
           value={jumlahBayar}
           onChange={(e) => onJumlahBayarChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onCheckout();
+            }
+          }}
           placeholder="0"
           className="w-full px-4 py-3 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-xl"
         />
@@ -325,7 +331,7 @@ export default function POSCart({
                 </span>
               </div>
               <p className="text-xs text-yellow-700 mt-2">
-                Sisa akan dicatat sebagai piutang
+                Kekurangan akan masuk ke Tagihan
               </p>
             </div>
           ) : (

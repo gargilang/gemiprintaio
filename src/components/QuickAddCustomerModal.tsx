@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface QuickAddCustomerModalProps {
   show: boolean;
@@ -29,6 +30,28 @@ export default function QuickAddCustomerModal({
   const [email, setEmail] = useState("");
   const [alamat, setAlamat] = useState("");
   const [memberStatus, setMemberStatus] = useState(false);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(modalRef, () => {
+    if (!loading) onClose();
+  });
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!show) return;
+
+      if (e.key === "Escape") {
+        if (!loading) onClose();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSubmit(e as any);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [show, loading]);
 
   const resetForm = () => {
     setNama("");
@@ -88,7 +111,10 @@ export default function QuickAddCustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -133,7 +159,7 @@ export default function QuickAddCustomerModal({
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             {/* Tipe Pelanggan */}
             <div>
@@ -259,49 +285,27 @@ export default function QuickAddCustomerModal({
                 </p>
               </label>
             </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white font-semibold rounded-lg hover:from-[#0d9488] hover:to-[#0891b2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Menyimpan..." : "Simpan Pelanggan"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </form>
-
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all disabled:opacity-50"
-          >
-            Batal
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-lg font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Menyimpan...
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Simpan Pelanggan
-              </>
-            )}
-          </button>
-        </div>
       </div>
     </div>
   );
