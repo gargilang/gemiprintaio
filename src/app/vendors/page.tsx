@@ -162,7 +162,13 @@ export default function VendorsPage() {
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
+
+  // Helper function to update a single vendor in state without reloading
+  function updateVendorInState(updated: Vendor) {
+    setVendors((prev) =>
+      prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v))
+    );
+  }
 
   // Filtered vendors based on search and filter
   const filteredVendors = useMemo(() => {
@@ -296,11 +302,6 @@ export default function VendorsPage() {
   };
 
   const handleEdit = (vendor: Vendor) => {
-    // Save scroll position before opening modal
-    if (tableContainerRef.current) {
-      setScrollPosition(tableContainerRef.current.scrollTop);
-    }
-
     setEditingVendor(vendor);
     setFormData({
       nama_perusahaan: vendor.nama_perusahaan || "",
@@ -339,21 +340,20 @@ export default function VendorsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      showMsg(
-        "success",
-        editingVendor
-          ? "Vendor berhasil diupdate"
-          : "Vendor berhasil ditambahkan"
-      );
-      setShowModal(false);
-      loadVendors();
+      const successMessage = editingVendor
+        ? "Vendor berhasil diupdate"
+        : "Vendor berhasil ditambahkan";
 
-      // Restore scroll position after reload
-      setTimeout(() => {
-        if (tableContainerRef.current && scrollPosition > 0) {
-          tableContainerRef.current.scrollTop = scrollPosition;
-        }
-      }, 100);
+      setShowModal(false);
+
+      // If editing, update local state; if new, reload list
+      if (editingVendor && data.vendor) {
+        updateVendorInState(data.vendor);
+        showMsg("success", successMessage);
+      } else {
+        loadVendors();
+        showMsg("success", successMessage);
+      }
     } catch (error: any) {
       showMsg("error", error.message || "Gagal menyimpan data");
     } finally {
@@ -382,8 +382,9 @@ export default function VendorsPage() {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
+          // Remove from local state instead of reloading
+          setVendors((prev) => prev.filter((v) => v.id !== vendor.id));
           showMsg("success", "Vendor berhasil dihapus");
-          loadVendors();
         } catch (error: any) {
           showMsg("error", error.message || "Gagal menghapus vendor");
         }

@@ -164,7 +164,13 @@ export default function CustomersPage() {
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
+
+  // Helper function to update a single customer in state without reloading
+  function updateCustomerInState(updated: Customer) {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+    );
+  }
 
   // Filtered customers based on search and filter
   const filteredCustomers = useMemo(() => {
@@ -298,11 +304,6 @@ export default function CustomersPage() {
   };
 
   const handleEdit = (customer: Customer) => {
-    // Save scroll position before opening modal
-    if (tableContainerRef.current) {
-      setScrollPosition(tableContainerRef.current.scrollTop);
-    }
-
     setEditingCustomer(customer);
     setFormData({
       nama: customer.nama || "",
@@ -341,21 +342,20 @@ export default function CustomersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      showMsg(
-        "success",
-        editingCustomer
-          ? "Pelanggan berhasil diupdate"
-          : "Pelanggan berhasil ditambahkan"
-      );
-      setShowModal(false);
-      loadCustomers();
+      const successMessage = editingCustomer
+        ? "Pelanggan berhasil diupdate"
+        : "Pelanggan berhasil ditambahkan";
 
-      // Restore scroll position after reload
-      setTimeout(() => {
-        if (tableContainerRef.current && scrollPosition > 0) {
-          tableContainerRef.current.scrollTop = scrollPosition;
-        }
-      }, 100);
+      setShowModal(false);
+
+      // If editing, update local state; if new, reload list
+      if (editingCustomer && data.customer) {
+        updateCustomerInState(data.customer);
+        showMsg("success", successMessage);
+      } else {
+        loadCustomers();
+        showMsg("success", successMessage);
+      }
     } catch (error: any) {
       showMsg("error", error.message || "Gagal menyimpan data");
     } finally {
@@ -384,8 +384,9 @@ export default function CustomersPage() {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
+          // Remove from local state instead of reloading
+          setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
           showMsg("success", "Pelanggan berhasil dihapus");
-          loadCustomers();
         } catch (error: any) {
           showMsg("error", error.message || "Gagal menghapus pelanggan");
         }

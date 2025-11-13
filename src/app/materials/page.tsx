@@ -168,6 +168,8 @@ const MaterialRow = memo(
 
 MaterialRow.displayName = "MaterialRow";
 
+type Material = { id: string; [k: string]: any };
+
 export default function MaterialsPage() {
   const [showModal, setShowModal] = useState(false);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -177,7 +179,6 @@ export default function MaterialsPage() {
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -192,6 +193,13 @@ export default function MaterialsPage() {
   // Virtualization state - untuk performance dengan banyak rows
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to update a single material in state without reloading
+  function updateMaterialInState(updated: Material) {
+    setMaterials((prev) =>
+      prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+    );
+  }
 
   // Filtered and sorted materials
   const filteredMaterials = useMemo(() => {
@@ -323,29 +331,35 @@ export default function MaterialsPage() {
     []
   );
 
-  const handleSuccess = (message: string) => {
-    // Save scroll position before reload
-    if (tableContainerRef.current) {
-      setScrollPosition(tableContainerRef.current.scrollTop);
-    }
-
-    loadMaterials();
-    showNotification("success", message);
-
-    // Restore scroll position after reload
-    setTimeout(() => {
-      if (tableContainerRef.current && scrollPosition > 0) {
-        tableContainerRef.current.scrollTop = scrollPosition;
+  const handleSuccess = async (message: string, updatedMaterial?: any) => {
+    // If we have updated material data (from edit), update state directly
+    if (updatedMaterial) {
+      // Fetch full material data with category names if not present
+      try {
+        const res = await fetch(`/api/materials/${updatedMaterial.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          updateMaterialInState(data.material);
+          showNotification("success", message);
+        } else {
+          // Fallback to full reload if fetch fails
+          loadMaterials();
+          showNotification("success", message);
+        }
+      } catch (error) {
+        console.error("Error fetching updated material:", error);
+        // Fallback to full reload if error occurs
+        loadMaterials();
+        showNotification("success", message);
       }
-    }, 100);
+    } else {
+      // For new materials, do a full reload
+      loadMaterials();
+      showNotification("success", message);
+    }
   };
 
   const handleEdit = (material: any) => {
-    // Save scroll position before opening modal
-    if (tableContainerRef.current) {
-      setScrollPosition(tableContainerRef.current.scrollTop);
-    }
-
     setSelectedMaterial(material);
     setShowModal(true);
   };
@@ -370,19 +384,19 @@ export default function MaterialsPage() {
           });
 
           if (res.ok) {
-            loadMaterials();
-            setNotice({
-              type: "success",
-              message: `Barang "${material.nama}" berhasil dihapus`,
-            });
-            setTimeout(() => setNotice(null), 3000);
+            // Remove from local state instead of reloading
+            setMaterials((prev) => prev.filter((m) => m.id !== material.id));
+            showNotification(
+              "success",
+              `Barang "${material.nama}" berhasil dihapus`
+            );
           } else {
             const data = await res.json();
-            alert(`Error: ${data.error}`);
+            showNotification("error", data.error || "Gagal menghapus barang");
           }
         } catch (error) {
           console.error("Error deleting material:", error);
-          alert("Terjadi kesalahan saat menghapus barang");
+          showNotification("error", "Terjadi kesalahan saat menghapus barang");
         }
       },
     });
@@ -391,13 +405,6 @@ export default function MaterialsPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedMaterial(null);
-
-    // Restore scroll position after closing modal
-    setTimeout(() => {
-      if (tableContainerRef.current && scrollPosition > 0) {
-        tableContainerRef.current.scrollTop = scrollPosition;
-      }
-    }, 100);
   };
 
   const handleSort = (field: "name" | "stock" | "value") => {

@@ -176,9 +176,21 @@ export default function PurchasesPage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
-  const handleFormSuccess = async (message: string) => {
+  const handleFormSuccess = async (message: string, updatedPurchase?: any) => {
     showMsg("success", message);
-    await loadPurchases();
+
+    // If editing and we have updated data, update local state
+    if (editingPurchase && updatedPurchase) {
+      setPurchases((prev) =>
+        prev.map((p) =>
+          p.id === updatedPurchase.id ? { ...p, ...updatedPurchase } : p
+        )
+      );
+    } else {
+      // For new purchases, reload the list
+      await loadPurchases();
+    }
+
     setEditingPurchase(null);
 
     // Scroll to table after successful add
@@ -231,8 +243,9 @@ export default function PurchasesPage() {
             throw new Error(data.error || "Gagal menghapus pembelian");
           }
 
+          // Remove from local state instead of reloading
+          setPurchases((prev) => prev.filter((p) => p.id !== purchase.id));
           showMsg("success", "Pembelian berhasil dihapus!");
-          await loadPurchases();
         } catch (error: any) {
           console.error("Error deleting purchase:", error);
           showMsg("error", error.message || "Gagal menghapus pembelian");
@@ -276,11 +289,21 @@ export default function PurchasesPage() {
             );
           }
 
+          // Update local state with reverted purchase
+          if (data.purchase) {
+            setPurchases((prev) =>
+              prev.map((p) =>
+                p.id === purchase.id ? { ...p, ...data.purchase } : p
+              )
+            );
+          } else {
+            await loadPurchases();
+          }
+
           showMsg(
             "success",
             "Pembelian berhasil dikembalikan ke status TAGIHAN!"
           );
-          await loadPurchases();
         } catch (error: any) {
           console.error("Error reverting purchase:", error);
           showMsg(

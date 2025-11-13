@@ -168,13 +168,13 @@ export async function POST(request: NextRequest) {
         omzet, biaya_operasional, biaya_bahan, saldo, laba_bersih,
         kasbon_anwar, kasbon_suri, kasbon_cahaya, kasbon_dinil,
         bagi_hasil_anwar, bagi_hasil_suri, bagi_hasil_gemi,
-        urutan_tampilan
+        urutan_tampilan, dibuat_pada, diperbarui_pada
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         0, 0, 0, 0, 0,
         0, 0, 0, 0,
         0, 0, 0,
-        ?
+        ?, datetime('now'), datetime('now')
       )
     `);
 

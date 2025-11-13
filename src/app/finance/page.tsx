@@ -233,6 +233,13 @@ export default function FinancePage() {
     archived_at: string;
   } | null>(null);
 
+  // Helper function to update a single cashbook in state without reloading
+  function updateCashBookInState(updated: CashBook) {
+    setCashBooks((prev) =>
+      prev.map((cb) => (cb.id === updated.id ? { ...cb, ...updated } : cb))
+    );
+  }
+
   // Filter state - multi-select dengan checkbox
   const [selectedKategoriFilters, setSelectedKategoriFilters] = useState<
     Set<KategoriTransaksi>
@@ -687,6 +694,13 @@ export default function FinancePage() {
         if (!res.ok)
           throw new Error(data?.error || "Gagal mengupdate transaksi");
 
+        // Update local state for edits
+        if (data.cashBook) {
+          updateCashBookInState(data.cashBook);
+        } else {
+          await loadCashBooks();
+        }
+
         showMsg("success", " Transaksi berhasil diupdate!");
       } else {
         // Create new transaction
@@ -712,7 +726,11 @@ export default function FinancePage() {
       }
 
       handleCloseModal();
-      await loadCashBooks();
+
+      // For new transactions, reload; for edits, state already updated
+      if (!editingCashBook) {
+        await loadCashBooks();
+      }
     } catch (err) {
       console.error(err);
       showMsg(
@@ -905,7 +923,9 @@ export default function FinancePage() {
             "success",
             " Transaksi berhasil dihapus dan data telah dikalkulasi ulang!"
           );
-          await loadCashBooks();
+
+          // Remove from local state instead of reloading
+          setCashBooks((prev) => prev.filter((cb) => cb.id !== cashBook.id));
         } catch (err) {
           console.error(err);
           showMsg(
@@ -930,7 +950,9 @@ export default function FinancePage() {
 
       showMsg("success", data.message);
       setShowDeleteAllModal(false);
-      await loadCashBooks();
+
+      // Clear local state instead of reloading
+      setCashBooks([]);
     } catch (err) {
       console.error(err);
       showMsg(
@@ -1009,9 +1031,15 @@ export default function FinancePage() {
     setShowEditManualModal(true);
   };
 
-  const handleImportSuccess = async () => {
+  const handleImportSuccess = async (updatedCashBooks?: CashBook[]) => {
     showMsg("success", " Data berhasil diimport!");
-    await loadCashBooks();
+
+    // If new cashbooks provided, update state; otherwise reload
+    if (updatedCashBooks && updatedCashBooks.length > 0) {
+      setCashBooks(updatedCashBooks);
+    } else {
+      await loadCashBooks();
+    }
   };
 
   const handleEditManualSuccess = async () => {
@@ -1775,12 +1803,8 @@ export default function FinancePage() {
                       <td className="px-3 py-3">&nbsp;</td>
                     </tr>
                   )}
-                  {/* Render visible rows */}
-                  {visibleCashBooks.map((cb, relativeIndex) => {
-                    const actualIndex =
-                      filteredCashBooks.length <= 100
-                        ? relativeIndex
-                        : visibleRange.start + relativeIndex;
+                  {visibleCashBooks.map((cb, idx) => {
+                    const actualIndex = visibleRange.start + idx;
                     return (
                       <CashBookRow
                         key={cb.id}

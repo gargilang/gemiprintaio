@@ -18,7 +18,7 @@ interface UnitPrice {
 interface AddMaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (message: string) => void;
+  onSuccess: (message: string, updatedMaterial?: any) => void;
   showNotification: (type: "success" | "error", message: string) => void;
   editData?: any | null;
 }
@@ -366,7 +366,14 @@ export default function AddMaterialModal({
 
         // Close modal first, then show notification in parent
         onClose();
-        onSuccess(`Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`);
+
+        // For edits, pass the updated material back; for new items, still reload the list
+        const updatedMaterial =
+          editData && data.material ? data.material : null;
+        onSuccess(
+          `Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`,
+          updatedMaterial
+        );
       } catch (err) {
         console.error(err);
         onClose();
