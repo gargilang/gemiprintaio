@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       catatan,
       kasir_id,
       tanggal, // Optional, defaults to today
+      prioritas = "NORMAL", // NORMAL, KILAT
     } = body;
 
     // Validation
@@ -338,6 +339,110 @@ export async function POST(request: Request) {
         }
       }
 
+      // Create production order automatically
+      const lastOrder = db
+        .prepare(
+          "SELECT nomor_spk FROM order_produksi ORDER BY dibuat_pada DESC LIMIT 1"
+        )
+        .get() as any;
+
+      let spkNumber = "SPK-0001";
+      if (lastOrder) {
+        const lastNum = parseInt(lastOrder.nomor_spk.split("-")[1]);
+        spkNumber = `SPK-${String(lastNum + 1).padStart(4, "0")}`;
+      }
+
+      const customerInfo: any = pelanggan_id
+        ? db
+            .prepare("SELECT nama FROM pelanggan WHERE id = ?")
+            .get(pelanggan_id)
+        : null;
+
+      const orderId = `OP-${Date.now()}`;
+      db.prepare(
+        `
+        INSERT INTO order_produksi (
+          id, penjualan_id, nomor_spk, pelanggan_nama, total_item, 
+          status, prioritas, catatan, dibuat_oleh
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+      ).run(
+        orderId,
+        saleId,
+        spkNumber,
+        customerInfo?.nama || null,
+        items.length,
+        "MENUNGGU",
+        prioritas,
+        catatan || null,
+        kasir_id || null
+      );
+
+      // Create item_produksi for each sold item
+      const insertedItemIds = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const itemPenjualanId = db
+          .prepare(
+            `SELECT id FROM item_penjualan WHERE penjualan_id = ? ORDER BY dibuat_pada LIMIT 1 OFFSET ?`
+          )
+          .get(saleId, i) as any;
+
+        if (itemPenjualanId) {
+          const itemProdId = `IP-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+
+          // Get material name
+          const material: any = db
+            .prepare(`SELECT nama FROM barang WHERE id = ?`)
+            .get(item.barang_id);
+
+          db.prepare(
+            `
+            INSERT INTO item_produksi (
+              id, order_produksi_id, item_penjualan_id, barang_nama, jumlah, nama_satuan,
+              panjang, lebar, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `
+          ).run(
+            itemProdId,
+            orderId,
+            itemPenjualanId.id,
+            material?.nama || "Unknown",
+            item.jumlah,
+            item.nama_satuan,
+            item.panjang || null,
+            item.lebar || null,
+            "MENUNGGU"
+          );
+
+          insertedItemIds.push(itemProdId);
+
+          // Create finishing items if specified
+          if (item.finishing && Array.isArray(item.finishing)) {
+            for (const fin of item.finishing) {
+              const finId = `FIN-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+              db.prepare(
+                `
+                INSERT INTO item_finishing (
+                  id, item_produksi_id, jenis_finishing, keterangan, status
+                ) VALUES (?, ?, ?, ?, ?)
+              `
+              ).run(
+                finId,
+                itemProdId,
+                fin.jenis_finishing,
+                fin.keterangan || null,
+                "MENUNGGU"
+              );
+            }
+          }
+        }
+      }
+
       db.exec("COMMIT");
 
       // Get created sale with items
@@ -398,6 +503,7 @@ export async function POST(request: Request) {
           ...newSale,
           items: saleItems,
         },
+        spk_number: spkNumber,
       });
     } catch (error) {
       db.exec("ROLLBACK");

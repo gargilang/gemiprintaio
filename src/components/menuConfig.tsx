@@ -11,6 +11,7 @@ import {
   ChartIcon,
   UserIcon,
   SettingsIcon,
+  PrinterIcon,
 } from "./icons/PageIcons";
 import { BoxIcon } from "./icons/ContentIcons";
 
@@ -34,6 +35,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: <CartIcon size={20} />,
     label: "POS / Kasir",
     color: "from-[#00afef] to-[#2266ff]",
+  },
+  {
+    href: "/production",
+    icon: <PrinterIcon size={20} />,
+    label: "Produksi",
+    color: "from-amber-700 to-amber-900",
   },
   {
     href: "/materials",
@@ -91,6 +98,7 @@ export const MENU_ITEMS: MenuItem[] = [
 export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/dashboard": "Dashboard",
   "/pos": "POS / Kasir",
+  "/production": "Produksi",
   "/materials": "Data Bahan",
   "/customers": "Pelanggan",
   "/vendors": "Vendor",

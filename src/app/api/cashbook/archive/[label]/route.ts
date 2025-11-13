@@ -6,11 +6,12 @@ const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { label: string } }
+  { params }: { params: Promise<{ label: string }> }
 ) {
   try {
     // Next already decodes segments; keep as-is but trim whitespace for robustness
-    const label = params.label?.trim();
+    const { label: labelParam } = await params;
+    const label = labelParam?.trim();
 
     const db = new Database(DB_FILE);
 

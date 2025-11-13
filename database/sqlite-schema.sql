@@ -334,3 +334,88 @@ CREATE TABLE "vendor" (
       diperbarui_pada TEXT DEFAULT (datetime('now'))
     );
 
+-- Table: order_produksi
+CREATE TABLE order_produksi (
+  id TEXT PRIMARY KEY,
+  penjualan_id TEXT NOT NULL,
+  nomor_spk TEXT UNIQUE NOT NULL,
+  pelanggan_nama TEXT,
+  total_item INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI', 'DIBATALKAN')),
+  prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('NORMAL', 'KILAT')),
+  tanggal_deadline TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  diselesaikan_pada TEXT,
+  FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
+
+-- Indexes for order_produksi
+CREATE INDEX idx_order_produksi_status ON order_produksi(status);
+CREATE INDEX idx_order_produksi_penjualan ON order_produksi(penjualan_id);
+
+-- Table: item_produksi
+CREATE TABLE item_produksi (
+  id TEXT PRIMARY KEY,
+  order_produksi_id TEXT NOT NULL,
+  item_penjualan_id TEXT NOT NULL,
+  barang_nama TEXT NOT NULL,
+  jumlah REAL NOT NULL,
+  nama_satuan TEXT NOT NULL,
+  panjang REAL,
+  lebar REAL,
+  keterangan_dimensi TEXT,
+  mesin_printing TEXT,
+  jenis_bahan TEXT,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PRINTING', 'FINISHING', 'SELESAI')),
+  catatan_produksi TEXT,
+  operator_id TEXT,
+  mulai_proses TEXT,
+  selesai_proses TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (order_produksi_id) REFERENCES order_produksi(id) ON DELETE CASCADE,
+  FOREIGN KEY (item_penjualan_id) REFERENCES item_penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (operator_id) REFERENCES profil(id)
+);
+
+-- Indexes for item_produksi
+CREATE INDEX idx_item_produksi_order ON item_produksi(order_produksi_id);
+CREATE INDEX idx_item_produksi_status ON item_produksi(status);
+
+-- Table: item_finishing
+CREATE TABLE item_finishing (
+  id TEXT PRIMARY KEY,
+  item_produksi_id TEXT NOT NULL,
+  jenis_finishing TEXT NOT NULL,
+  keterangan TEXT,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI')),
+  operator_id TEXT,
+  mulai_proses TEXT,
+  selesai_proses TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (item_produksi_id) REFERENCES item_produksi(id) ON DELETE CASCADE,
+  FOREIGN KEY (operator_id) REFERENCES profil(id)
+);
+
+-- Indexes for item_finishing
+CREATE INDEX idx_item_finishing_item ON item_finishing(item_produksi_id);
+
+-- Table: opsi_finishing
+CREATE TABLE opsi_finishing (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL UNIQUE,
+  urutan_tampilan INTEGER DEFAULT 0,
+  aktif_status INTEGER DEFAULT 1,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now'))
+);
+
+-- Indexes for opsi_finishing
+CREATE INDEX idx_opsi_finishing_aktif ON opsi_finishing(aktif_status, urutan_tampilan);
+
+

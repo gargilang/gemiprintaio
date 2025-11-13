@@ -42,6 +42,11 @@ interface UnitPrice {
   default_status: number;
 }
 
+interface FinishingItem {
+  jenis_finishing: string;
+  keterangan?: string;
+}
+
 interface CartItem {
   barang_id: string;
   barang_nama: string;
@@ -53,7 +58,60 @@ interface CartItem {
   panjang?: number;
   lebar?: number;
   butuh_dimensi?: boolean;
+  useRounding?: boolean;
   subtotal: number;
+  finishing?: FinishingItem[];
+}
+
+// Helper function to round dimension to nearest roll size
+function getRoundedDimensions(
+  panjang: number,
+  lebar: number,
+  useRounding: boolean
+): { panjang: number; lebar: number } {
+  if (!useRounding) {
+    return { panjang, lebar };
+  }
+
+  // Get roll sizes from localStorage
+  let rollSizes: number[] = [];
+  try {
+    const stored = localStorage.getItem("rollSizes");
+    rollSizes = stored ? JSON.parse(stored) : [0.5, 1, 1.5, 2, 2.5, 3];
+  } catch {
+    rollSizes = [0.5, 1, 1.5, 2, 2.5, 3];
+  }
+
+  // Sort to ensure ascending order
+  rollSizes.sort((a, b) => a - b);
+
+  // Determine smaller dimension
+  const smallerDim = Math.min(panjang, lebar);
+  const largerDim = Math.max(panjang, lebar);
+
+  // Find the nearest roll size (round up)
+  let roundedSmaller = smallerDim;
+  for (const size of rollSizes) {
+    if (size >= smallerDim) {
+      roundedSmaller = size;
+      break;
+    }
+  }
+
+  // If smallerDim is larger than the largest roll size, use the largest
+  if (
+    roundedSmaller === smallerDim &&
+    smallerDim > rollSizes[rollSizes.length - 1]
+  ) {
+    roundedSmaller = rollSizes[rollSizes.length - 1];
+  }
+
+  // Return with the same order (panjang, lebar)
+  if (panjang < lebar) {
+    return { panjang: roundedSmaller, lebar: largerDim };
+  } else {
+    return { panjang: largerDim, lebar: roundedSmaller };
+  }
 }
 
 export default function POSPage() {
@@ -78,9 +136,11 @@ export default function POSPage() {
   const [quantity, setQuantity] = useState("1");
   const [panjang, setPanjang] = useState("");
   const [lebar, setLebar] = useState("");
+  const [useRounding, setUseRounding] = useState(false);
   const [catatan, setCatatan] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
+  const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
 
   // Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -230,6 +290,9 @@ export default function POSPage() {
     }
 
     let finalQuantity = parseFloat(quantity);
+    let originalPanjang: number | undefined;
+    let originalLebar: number | undefined;
+
     if (selectedMaterial.butuh_dimensi_status === 1) {
       const p = parseFloat(panjang);
       const l = parseFloat(lebar);
@@ -237,7 +300,20 @@ export default function POSPage() {
         showMsg("error", "Masukkan panjang dan lebar yang valid");
         return;
       }
-      finalQuantity = p * l;
+
+      // Store original dimensions
+      originalPanjang = p;
+      originalLebar = l;
+
+      // Apply rounding if enabled
+      const { panjang: roundedP, lebar: roundedL } = getRoundedDimensions(
+        p,
+        l,
+        useRounding
+      );
+
+      // Calculate quantity using rounded dimensions for pricing
+      finalQuantity = roundedP * roundedL;
     } else {
       if (isNaN(finalQuantity) || finalQuantity <= 0) {
         showMsg("error", "Masukkan jumlah yang valid");
@@ -261,14 +337,9 @@ export default function POSPage() {
       jumlah: finalQuantity,
       subtotal,
       butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
-      panjang:
-        selectedMaterial.butuh_dimensi_status === 1
-          ? parseFloat(panjang)
-          : undefined,
-      lebar:
-        selectedMaterial.butuh_dimensi_status === 1
-          ? parseFloat(lebar)
-          : undefined,
+      panjang: originalPanjang,
+      lebar: originalLebar,
+      useRounding: selectedMaterial.butuh_dimensi_status === 1 && useRounding,
     };
 
     setCart([...cart, newItem]);
@@ -280,10 +351,17 @@ export default function POSPage() {
     setQuantity("1");
     setPanjang("");
     setLebar("");
+    setUseRounding(false);
   };
 
   const handleRemoveFromCart = (index: number) => {
     setCart(cart.filter((_, i) => i !== index));
+  };
+
+  const handleEditFinishing = (index: number, finishing: FinishingItem[]) => {
+    const newCart = [...cart];
+    newCart[index] = { ...newCart[index], finishing };
+    setCart(newCart);
   };
 
   const handleDeleteSale = async (saleId: string) => {
@@ -436,6 +514,7 @@ export default function POSPage() {
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || null,
           kasir_id: currentUser?.id,
+          prioritas: prioritas,
         }),
       });
 
@@ -444,8 +523,39 @@ export default function POSPage() {
       if (res.ok) {
         showMsg(
           "success",
-          `Transaksi berhasil! Invoice: ${data.sale.nomor_invoice}`
+          `Transaksi berhasil! Invoice: ${data.sale.nomor_invoice} | SPK: ${data.spk_number}`
         );
+
+        // Print thermal invoice
+        try {
+          const { printThermalInvoice } = await import("@/lib/thermal-print");
+
+          printThermalInvoice({
+            nomor_invoice: data.sale.nomor_invoice,
+            tanggal: data.sale.dibuat_pada,
+            pelanggan_nama: data.sale.pelanggan_nama,
+            pelanggan_telepon: selectedCustomer?.telepon,
+            kasir_nama: currentUser?.nama_pengguna || "Kasir",
+            items: cart.map((item) => ({
+              nama: item.barang_nama,
+              jumlah: item.jumlah,
+              satuan: item.nama_satuan,
+              harga: item.harga_satuan,
+              subtotal: item.subtotal,
+              dimensi:
+                item.panjang && item.lebar
+                  ? `${item.panjang} x ${item.lebar} cm`
+                  : undefined,
+            })),
+            total: total,
+            jumlah_bayar: bayar,
+            kembalian: kembalian,
+            metode_pembayaran: paymentMethod,
+            catatan: catatan.trim() || undefined,
+          });
+        } catch (printError) {
+          console.error("Error printing invoice:", printError);
+        }
 
         // Reset form
         setCart([]);
@@ -454,6 +564,8 @@ export default function POSPage() {
         setCatatan("");
         setPaymentMethod("CASH");
         setJumlahBayar("");
+        setPrioritas("NORMAL");
+        setUseRounding(false);
 
         // Reload data
         await loadAllData();
@@ -766,7 +878,7 @@ export default function POSPage() {
 
                         {/* Dimensions for materials that need it */}
                         {selectedMaterial.butuh_dimensi_status === 1 && (
-                          <div>
+                          <div className="space-y-2">
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                               Dimensi (m)
                             </label>
@@ -804,6 +916,23 @@ export default function POSPage() {
                                 />
                               </div>
                             </div>
+
+                            {/* Rounding Checkbox - show only when both dimensions have values */}
+                            {panjang && lebar && (
+                              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={useRounding}
+                                  onChange={(e) =>
+                                    setUseRounding(e.target.checked)
+                                  }
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="font-medium">
+                                  Gunakan Rounding Roll Size
+                                </span>
+                              </label>
+                            )}
                           </div>
                         )}
                       </div>
@@ -877,11 +1006,14 @@ export default function POSPage() {
               paymentMethod={paymentMethod}
               jumlahBayar={jumlahBayar}
               catatan={catatan}
+              prioritas={prioritas}
               onRemoveItem={handleRemoveFromCart}
               onPaymentMethodChange={setPaymentMethod}
               onJumlahBayarChange={setJumlahBayar}
               onCatatanChange={setCatatan}
+              onPrioritasChange={setPrioritas}
               onCheckout={handleCheckout}
+              onEditFinishing={handleEditFinishing}
             />
           </div>
         </div>

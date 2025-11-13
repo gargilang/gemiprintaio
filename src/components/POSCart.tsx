@@ -8,6 +8,12 @@ import {
   CardIcon,
   CalendarIcon,
 } from "./icons/ContentIcons";
+import AddFinishingModal from "./AddFinishingModal";
+
+interface FinishingItem {
+  jenis_finishing: string;
+  keterangan?: string;
+}
 
 interface CartItem {
   barang_id: string;
@@ -18,7 +24,9 @@ interface CartItem {
   panjang?: number;
   lebar?: number;
   butuh_dimensi?: boolean;
+  useRounding?: boolean;
   subtotal: number;
+  finishing?: FinishingItem[];
 }
 
 interface POSCartProps {
@@ -26,11 +34,14 @@ interface POSCartProps {
   paymentMethod: string;
   jumlahBayar: string;
   catatan: string;
+  prioritas: "NORMAL" | "KILAT";
   onRemoveItem: (index: number) => void;
   onPaymentMethodChange: (method: string) => void;
   onJumlahBayarChange: (jumlah: string) => void;
   onCatatanChange: (catatan: string) => void;
+  onPrioritasChange: (prioritas: "NORMAL" | "KILAT") => void;
   onCheckout: () => void;
+  onEditFinishing?: (index: number, finishing: FinishingItem[]) => void;
 }
 
 // Pecahan uang Indonesia
@@ -71,11 +82,14 @@ export default function POSCart({
   paymentMethod,
   jumlahBayar,
   catatan,
+  prioritas,
   onRemoveItem,
   onPaymentMethodChange,
   onJumlahBayarChange,
   onCatatanChange,
+  onPrioritasChange,
   onCheckout,
+  onEditFinishing,
 }: POSCartProps) {
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const bayar = parseFloat(jumlahBayar) || 0;
@@ -83,6 +97,9 @@ export default function POSCart({
   const kurang = Math.max(0, total - bayar);
   const changeBreakdown = calculateChange(kembalian);
   const [showChangeDetail, setShowChangeDetail] = useState(false);
+  const [editingFinishingIndex, setEditingFinishingIndex] = useState<
+    number | null
+  >(null);
 
   const paymentMethods = [
     {
@@ -164,7 +181,7 @@ export default function POSCart({
               key={index}
               className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-[#00afef]/50 hover:shadow-md transition-all"
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-gray-800 truncate">
                     {item.barang_nama}
@@ -172,8 +189,10 @@ export default function POSCart({
                   <div className="text-sm text-gray-600 mt-1">
                     {item.butuh_dimensi && item.panjang && item.lebar ? (
                       <span>
-                        {item.panjang} × {item.lebar} m ={" "}
-                        {item.jumlah.toFixed(2)} m²
+                        {item.panjang} × {item.lebar} m
+                        {!item.useRounding && (
+                          <> = {item.jumlah.toFixed(2)} m²</>
+                        )}
                       </span>
                     ) : (
                       <span>
@@ -191,7 +210,7 @@ export default function POSCart({
                 </div>
                 <button
                   onClick={() => onRemoveItem(index)}
-                  className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg transition-all flex-shrink-0"
+                  className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg transition-all flex-shrink-0 text-white"
                 >
                   <svg
                     className="w-5 h-5"
@@ -208,6 +227,51 @@ export default function POSCart({
                   </svg>
                 </button>
               </div>
+
+              {/* Finishing Section */}
+              {item.finishing && item.finishing.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-xs font-semibold text-orange-700 mb-1">
+                    Finishing:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {item.finishing.map((fin, finIndex) => (
+                      <span
+                        key={finIndex}
+                        className="inline-block text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded"
+                      >
+                        {fin.jenis_finishing}
+                        {fin.keterangan && ` (${fin.keterangan})`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Finishing Button */}
+              {onEditFinishing && (
+                <button
+                  onClick={() => setEditingFinishingIndex(index)}
+                  className="w-full mt-2 px-3 py-1.5 bg-gradient-to-r from-amber-700/10 to-amber-900/10 border border-amber-700/30 text-amber-800 rounded-lg hover:from-amber-700/20 hover:to-amber-900/20 transition-all text-xs font-semibold flex items-center justify-center gap-1"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                    />
+                  </svg>
+                  {item.finishing && item.finishing.length > 0
+                    ? "Edit Finishing"
+                    : "Tambah Finishing"}
+                </button>
+              )}
             </div>
           ))
         )}
@@ -250,6 +314,21 @@ export default function POSCart({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Priority Selection */}
+      <div className="mb-4">
+        <label className="flex items-center gap-2 cursor-pointer p-3 bg-gray-50 rounded-lg border-2 border-gray-300 hover:border-amber-700 transition-all">
+          <input
+            type="checkbox"
+            checked={prioritas === "KILAT"}
+            onChange={(e) =>
+              onPrioritasChange(e.target.checked ? "KILAT" : "NORMAL")
+            }
+            className="w-5 h-5 text-amber-700 rounded focus:ring-amber-700 focus:ring-2 cursor-pointer"
+          />
+          <span className="text-sm font-bold text-gray-700">Orderan Kilat</span>
+        </label>
       </div>
 
       {/* Amount Paid Input */}
@@ -382,6 +461,19 @@ export default function POSCart({
         </svg>
         Proses Pembayaran
       </button>
+
+      {/* Finishing Modal */}
+      {editingFinishingIndex !== null && onEditFinishing && (
+        <AddFinishingModal
+          onClose={() => setEditingFinishingIndex(null)}
+          onAdd={(finishing) => {
+            onEditFinishing(editingFinishingIndex, finishing);
+            setEditingFinishingIndex(null);
+          }}
+          existingFinishing={cart[editingFinishingIndex]?.finishing}
+          itemName={cart[editingFinishingIndex]?.barang_nama || ""}
+        />
+      )}
     </div>
   );
 }

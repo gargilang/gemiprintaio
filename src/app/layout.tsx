@@ -25,7 +25,7 @@ export default function RootLayout({
   const isAuthPage = pathname?.startsWith("/auth/");
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>app gemiprint</title>
         <meta
@@ -34,7 +34,9 @@ export default function RootLayout({
         />
         <link rel="icon" href="/assets/images/logo-gemiprint-default.svg" />
       </head>
-      <body>{isAuthPage ? children : <MainShell>{children}</MainShell>}</body>
+      <body suppressHydrationWarning>
+        {isAuthPage ? children : <MainShell>{children}</MainShell>}
+      </body>
     </html>
   );
 }
