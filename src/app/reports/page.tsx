@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import MainShell from "@/components/MainShell";
-import { NotificationToastProps } from "@/components/NotificationToast";
+import NotificationToast, {
+  NotificationToastProps,
+} from "@/components/NotificationToast";
 import { ChartIcon } from "@/components/icons/PageIcons";
 import {
   CoinIcon,
@@ -169,16 +170,14 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <MainShell title="Laporan">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
-        </div>
-      </MainShell>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+      </div>
     );
   }
 
   return (
-    <MainShell title="Laporan" notice={notice}>
+    <>
       {/* Header Section */}
       <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
         <div className="flex items-center gap-3">
@@ -445,6 +444,11 @@ export default function ReportsPage() {
           </p>
         </div>
       )}
-    </MainShell>
+
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
+      )}
+    </>
   );
 }

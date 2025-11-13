@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import MainShell from "@/components/MainShell";
 import PurchaseForm from "@/components/PurchaseForm";
 import PurchaseTable from "@/components/PurchaseTable";
 import QuickAddVendorModal from "@/components/QuickAddVendorModal";
@@ -307,16 +306,14 @@ export default function PurchasesPage() {
 
   if (!currentUser) {
     return (
-      <MainShell>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      </MainShell>
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
     );
   }
 
   return (
-    <MainShell>
+    <>
       <div className="space-y-8">
         {/* Form Section */}
         <div ref={formSectionRef} className="bg-white rounded-xl shadow-lg p-6">
@@ -433,6 +430,6 @@ export default function PurchasesPage() {
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
-    </MainShell>
+    </>
   );
 }

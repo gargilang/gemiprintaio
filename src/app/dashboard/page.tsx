@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import MainShell from "@/components/MainShell";
 import {
   CartIcon,
   PackageIcon,
@@ -87,7 +86,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <MainShell title="Dashboard">
+    <>
       {/* Welcome Card */}
       <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-8 mb-8 text-white">
         <div className="flex items-center justify-between">
@@ -166,11 +165,11 @@ export default function DashboardPage() {
         <p className="text-[#6b7280] text-sm">
           <span className="font-bauhaus italic">
             <span className="text-[#00afef]">gemi</span>
-            <span className="text-[#0a1b3d]">print</span>
-          </span>{" "}
-          - All-in-One Management System © 2025
-        </p>
-      </div>
-    </MainShell>
+          <span className="text-[#0a1b3d]">print</span>
+        </span>{" "}
+        - All-in-One Management System © 2025
+      </p>
+    </div>
+    </>
   );
 }

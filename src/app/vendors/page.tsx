@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import MainShell from "@/components/MainShell";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
@@ -398,16 +397,14 @@ export default function VendorsPage() {
 
   if (loading) {
     return (
-      <MainShell title="Vendor">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-        </div>
-      </MainShell>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+      </div>
     );
   }
 
   return (
-    <MainShell title="Vendor">
+    <>
       <div className="space-y-6">
         {/* Header Section */}
         <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-2xl shadow-lg p-6 text-white">
@@ -825,6 +822,6 @@ export default function VendorsPage() {
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
-    </MainShell>
+    </>
   );
 }

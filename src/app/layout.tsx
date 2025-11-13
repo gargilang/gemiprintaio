@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import MainShell from "@/components/MainShell";
 
 export const metadata: Metadata = {
   title: "app gemiprint",
@@ -16,8 +17,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className="antialiased">{children}</body>
+    <html lang="en">
+      <body>
+        <MainShell>{children}</MainShell>
+      </body>
     </html>
   );
 }

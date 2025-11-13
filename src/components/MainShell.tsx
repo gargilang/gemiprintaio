@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { LogoutIcon } from "./icons/PageIcons";
 import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
-
-// Lazy load NotificationToast since it's conditionally rendered
-const NotificationToast = dynamic(() => import("./NotificationToast"), {
-  ssr: false,
-});
-
-export type { NotificationToastProps } from "./NotificationToast";
 
 interface User {
   id: string;
@@ -24,19 +17,10 @@ interface User {
   aktif_status: number;
 }
 
-interface NotificationToastProps {
-  type: "success" | "error";
-  message: string;
-}
-
 export default function MainShell({
   children,
-  title,
-  notice,
 }: {
   children: React.ReactNode;
-  title?: string;
-  notice?: NotificationToastProps | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -66,26 +50,12 @@ export default function MainShell({
     }
   }, [router]);
 
-  // Preserve sidebar scroll position across route changes
-  // Handle sidebar scroll persistence - separated for better dev mode behavior
-  useEffect(() => {
-    const key = "sidebarScroll";
+  // Restore sidebar scroll position before paint to prevent flicker
+  useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
-
-    // Restore scroll position on mount/pathname change
-    const saved = sessionStorage.getItem(key);
-    if (saved) {
-      const scrollPos = parseInt(saved, 10) || 0;
-      // Multiple attempts to restore scroll (helps with dev mode hot reload)
-      const restore = () => {
-        if (el) el.scrollTop = scrollPos;
-      };
-      restore(); // Immediate
-      setTimeout(restore, 0); // Next tick
-      setTimeout(restore, 50); // After render
-      requestAnimationFrame(restore); // After paint
-    }
+    const saved = sessionStorage.getItem('sidebarScroll');
+    if (saved) el.scrollTop = parseInt(saved, 10) || 0;
   }, [pathname]);
 
   // Separate effect for scroll saving (doesn't depend on pathname)
@@ -106,7 +76,6 @@ export default function MainShell({
   }, []); // Empty deps - only runs once
 
   const computedTitle = useMemo(() => {
-    if (title) return title;
     if (!pathname) return "Dashboard";
     const exact = PAGE_TITLE_MAP[pathname];
     if (exact) return exact;
@@ -114,7 +83,7 @@ export default function MainShell({
       pathname.startsWith(k)
     );
     return found ? PAGE_TITLE_MAP[found] : "Dashboard";
-  }, [pathname, title]);
+  }, [pathname]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("user");
@@ -244,11 +213,6 @@ export default function MainShell({
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Notification Toast */}
-        {notice && (
-          <NotificationToast type={notice.type} message={notice.message} />
-        )}
-
         {/* Header with indicators */}
         <header className="bg-white shadow-sm sticky top-0 z-30 border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">

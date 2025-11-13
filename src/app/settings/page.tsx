@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import MainShell from "@/components/MainShell";
 import { BoxIcon } from "@/components/icons/ContentIcons";
 import NotificationToast, {
   NotificationToastProps,
@@ -67,40 +66,38 @@ export default function SettingsPage() {
   ];
 
   return (
-    <MainShell title="Pengaturan">
-      <div className="space-y-6">
-        {/* Tabs Navigation */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
-          <div className="flex gap-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200
-                  flex items-center justify-center gap-2
-                  ${
-                    activeTab === tab.id
-                      ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                  }
-                `}
-              >
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {activeTab === "company" && <CompanyTab />}
-          {activeTab === "materials" && <MaterialsTab />}
-          {activeTab === "pricing" && <PricingTab />}
-          {activeTab === "system" && <SystemTab />}
+    <div className="space-y-6">
+      {/* Tabs Navigation */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+        <div className="flex gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200
+                flex items-center justify-center gap-2
+                ${
+                  activeTab === tab.id
+                    ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                }
+              `}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
       </div>
-    </MainShell>
+
+      {/* Tab Content */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {activeTab === "company" && <CompanyTab />}
+        {activeTab === "materials" && <MaterialsTab />}
+        {activeTab === "pricing" && <PricingTab />}
+        {activeTab === "system" && <SystemTab />}
+      </div>
+    </div>
   );
 }
 

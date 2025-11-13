@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import MainShell from "@/components/MainShell";
-import { NotificationToastProps } from "@/components/NotificationToast";
+import NotificationToast, {
+  NotificationToastProps,
+} from "@/components/NotificationToast";
 import { CashBook, KategoriTransaksi } from "@/types/database";
 import { getTodayJakarta, formatDateJakarta } from "@/lib/date-utils";
 import ImportCsvModal from "@/components/ImportCsvModal";
@@ -1100,7 +1101,7 @@ export default function FinancePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-pink-600 border-t-transparent"></div>
           <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
@@ -1110,7 +1111,7 @@ export default function FinancePage() {
   }
 
   return (
-    <MainShell title="Buku Keuangan" notice={notice}>
+    <>
       {/* Header Section */}
       <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
@@ -2021,6 +2022,11 @@ export default function FinancePage() {
         onClose={() => setShowSelectMonthModal(false)}
         onSelectArchive={handleSelectArchive}
       />
-    </MainShell>
+
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
+      )}
+    </>
   );
 }

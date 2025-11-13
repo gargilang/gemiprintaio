@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import MainShell from "@/components/MainShell";
 import POSCart from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
 import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
@@ -470,16 +469,14 @@ export default function POSPage() {
 
   if (!currentUser) {
     return (
-      <MainShell>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00afef]"></div>
-        </div>
-      </MainShell>
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00afef]"></div>
+      </div>
     );
   }
 
   return (
-    <MainShell>
+    <>
       <div className="space-y-6">
         {/* POS Interface */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -964,6 +961,6 @@ export default function POSPage() {
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
-    </MainShell>
+    </>
   );
 }

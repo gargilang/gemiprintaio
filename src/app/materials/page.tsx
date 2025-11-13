@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
-import MainShell from "@/components/MainShell";
 import AddMaterialModal from "@/components/AddMaterialModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BoxIcon } from "@/components/icons/ContentIcons";
@@ -422,8 +421,7 @@ export default function MaterialsPage() {
   ).length;
 
   return (
-    <MainShell title="Data Barang">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Total Items */}
@@ -727,11 +725,10 @@ export default function MaterialsPage() {
           />
         )}
 
-        {/* Notification Toast */}
-        {notice && (
-          <NotificationToast type={notice.type} message={notice.message} />
-        )}
-      </div>
-    </MainShell>
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
+      )}
+    </div>
   );
 }

@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import MainShell from "@/components/MainShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import type { NotificationToastProps } from "@/components/MainShell";
+import NotificationToast, {
+  NotificationToastProps,
+} from "@/components/NotificationToast";
 import {
   UsersIcon,
   CheckIcon,
@@ -335,7 +336,7 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-blue-100 to-cyan-100">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
           <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
@@ -345,7 +346,7 @@ export default function UsersPage() {
   }
 
   return (
-    <MainShell title="Manajemen User" notice={notice}>
+    <>
       {/* Main Content */}
       {currentUser?.role === "admin" && (
         <>
@@ -1311,6 +1312,11 @@ export default function UsersPage() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-    </MainShell>
+
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
+      )}
+    </>
   );
 }
