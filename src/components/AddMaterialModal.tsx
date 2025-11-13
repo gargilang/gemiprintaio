@@ -455,7 +455,7 @@ export default function AddMaterialModal({
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-white">
-              {editData ? "Edit Bahan" : "Tambah Bahan Baru"}
+              {editData ? "Edit Barang" : "Tambah Barang Baru"}
             </h2>
           </div>
           <button
@@ -1107,7 +1107,7 @@ export default function AddMaterialModal({
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
-                {editData ? "Update Bahan" : "Simpan Bahan"}
+                {editData ? "Update Barang" : "Simpan Barang"}
               </>
             )}
           </button>

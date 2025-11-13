@@ -1,420 +1,608 @@
+-- SUPABASE SCHEMA FOR GEMIPRINT
+-- Generated: 2025-11-13
+-- PostgreSQL Schema for Supabase Sync
+--
+-- This schema is designed to sync with SQLite local database
+-- All tables include sync tracking columns:
+-- - sync_status: 'pending' | 'synced' | 'conflict'
+-- - last_synced_at: timestamp of last successful sync
+-- - sync_version: integer version for conflict resolution
+--
+-- Usage:
+-- 1. Create a new Supabase project
+-- 2. Run this schema in the SQL Editor
+-- 3. Configure RLS policies as needed
+--
+
 -- Enable UUID extension
-create extension if not exists "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- User Roles Enum
-create type user_role as enum ('admin', 'manager', 'user');
+-- ============================================================================
+-- MASTER DATA TABLES
+-- ============================================================================
 
--- Customer Type Enum (Indonesian)
-create type tipe_pelanggan as enum ('perorangan', 'perusahaan');
-
--- Transaction Category Enum (Indonesian)
-create type kategori_transaksi as enum (
-  'KAS',          -- Cash
-  'BIAYA',        -- Expense
-  'OMZET',        -- Revenue/Sales
-  'INVESTOR',     -- Investment
-  'SUBSIDI',      -- Subsidy
-  'LUNAS',        -- Paid/Settled
-  'SUPPLY',       -- Supply/Purchase
-  'LABA',         -- Profit
-  'KOMISI',       -- Commission
-  'TABUNGAN',     -- Savings
-  'HUTANG',       -- Debt (payable)
-  'PIUTANG',      -- Receivable
-  'PRIBADI-A',    -- Personal Add
-  'PRIBADI-S'     -- Personal Subtract
+-- Table: kategori_barang (Material Categories)
+CREATE TABLE IF NOT EXISTS kategori_barang (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL UNIQUE,
+  butuh_spesifikasi_status INTEGER DEFAULT 0,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Users table (extends Supabase auth.users)
-create table public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  username text unique not null,
-  email text unique not null,
-  full_name text,
-  role user_role default 'user',
-  is_active boolean default true,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_kategori_barang_nama ON kategori_barang(nama);
+CREATE INDEX IF NOT EXISTS idx_kategori_barang_sync_status ON kategori_barang(sync_status);
+
+-- Table: subkategori_barang (Material Subcategories)
+CREATE TABLE IF NOT EXISTS subkategori_barang (
+  id TEXT PRIMARY KEY,
+  kategori_id TEXT NOT NULL,
+  nama TEXT NOT NULL,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
 
--- Materials/Bahan table
-create table public.materials (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null,
-  description text,
-  unit text not null, -- unit of measurement (kg, meter, pcs, etc)
-  purchase_price decimal(15,2) not null default 0,
-  selling_price decimal(15,2) not null default 0,
-  member_price decimal(15,2) not null default 0, -- discounted price for loyal customers
-  stock_quantity decimal(15,3) not null default 0,
-  min_stock_level decimal(15,3) default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_subkategori_barang_kategori ON subkategori_barang(kategori_id);
+CREATE INDEX IF NOT EXISTS idx_subkategori_barang_nama ON subkategori_barang(nama);
+CREATE INDEX IF NOT EXISTS idx_subkategori_barang_sync_status ON subkategori_barang(sync_status);
+
+-- Table: satuan_barang (Material Units)
+CREATE TABLE IF NOT EXISTS satuan_barang (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL UNIQUE,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Customers table
-create table public.customers (
-  id uuid default uuid_generate_v4() primary key,
-  tipe_pelanggan tipe_pelanggan not null,
-  name text not null,
-  company_name text, -- for company type
-  tax_id text, -- NPWP for Indonesian companies
-  email text,
-  phone text,
-  address text,
-  is_member boolean default false, -- for loyal customer status
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_satuan_barang_nama ON satuan_barang(nama);
+CREATE INDEX IF NOT EXISTS idx_satuan_barang_sync_status ON satuan_barang(sync_status);
+
+-- Table: spesifikasi_cepat_barang (Quick Specifications)
+CREATE TABLE IF NOT EXISTS spesifikasi_cepat_barang (
+  id TEXT PRIMARY KEY,
+  kategori_id TEXT NOT NULL,
+  tipe_spesifikasi TEXT NOT NULL,
+  nilai_spesifikasi TEXT NOT NULL,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
 
--- Vendors table
-create table public.vendors (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null,
-  company_name text,
-  email text,
-  phone text,
-  address text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_spesifikasi_cepat_kategori ON spesifikasi_cepat_barang(kategori_id);
+CREATE INDEX IF NOT EXISTS idx_spesifikasi_cepat_barang_sync_status ON spesifikasi_cepat_barang(sync_status);
+
+-- Table: barang (Materials/Products)
+CREATE TABLE IF NOT EXISTS barang (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL,
+  deskripsi TEXT,
+  kategori_id TEXT,
+  subkategori_id TEXT,
+  satuan_dasar TEXT NOT NULL,
+  spesifikasi TEXT,
+  jumlah_stok REAL DEFAULT 0,
+  level_stok_minimum REAL DEFAULT 0,
+  lacak_inventori_status INTEGER DEFAULT 1,
+  butuh_dimensi_status INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  frekuensi_terjual INTEGER DEFAULT 0,
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
+  FOREIGN KEY (subkategori_id) REFERENCES subkategori_barang(id) ON DELETE SET NULL
 );
 
--- Sales/POS Transactions (Penjualan)
-create table public.penjualan (
-  id uuid default uuid_generate_v4() primary key,
-  nomor_invoice text unique not null,
-  pelanggan_id uuid references public.pelanggan(id),
-  total_jumlah decimal(15,2) not null,
-  jumlah_dibayar decimal(15,2) not null default 0,
-  jumlah_kembalian decimal(15,2) not null default 0,
-  metode_pembayaran text, -- cash, transfer, etc
-  kasir_id uuid references public.profil(id),
-  catatan text,
-  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null,
-  diperbarui_pada timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_barang_sync_status ON barang(sync_status);
+
+-- Table: harga_barang_satuan (Material Unit Prices)
+CREATE TABLE IF NOT EXISTS harga_barang_satuan (
+  id TEXT PRIMARY KEY,
+  barang_id TEXT NOT NULL,
+  nama_satuan TEXT NOT NULL,
+  faktor_konversi REAL NOT NULL,
+  harga_beli REAL DEFAULT 0,
+  harga_jual REAL DEFAULT 0,
+  harga_member REAL DEFAULT 0,
+  default_status INTEGER DEFAULT 0,
+  urutan_tampilan INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (barang_id) REFERENCES barang(id) ON DELETE CASCADE,
+  UNIQUE(barang_id, nama_satuan)
 );
 
--- Sales Items (Item Penjualan)
-create table public.item_penjualan (
-  id uuid default uuid_generate_v4() primary key,
-  penjualan_id uuid references public.penjualan(id) on delete cascade not null,
-  bahan_id uuid references public.bahan(id) not null,
-  harga_satuan_id uuid references public.harga_bahan_satuan(id), -- Reference ke harga satuan
-  jumlah decimal(15,3) not null,
-  nama_satuan text not null, -- Nama satuan yang digunakan
-  faktor_konversi decimal(15,3) not null default 1, -- Konversi ke satuan dasar
-  harga_satuan decimal(15,2) not null,
-  subtotal decimal(15,2) not null,
-  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_harga_barang_satuan_sync_status ON harga_barang_satuan(sync_status);
+
+-- Table: opsi_finishing (Finishing Options)
+CREATE TABLE IF NOT EXISTS opsi_finishing (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL UNIQUE,
+  urutan_tampilan INTEGER DEFAULT 0,
+  aktif_status INTEGER DEFAULT 1,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Purchase Orders (Pembelian)
-create table public.pembelian (
-  id uuid default uuid_generate_v4() primary key,
-  nomor_pembelian text unique not null,
-  vendor_id uuid references public.vendor(id),
-  total_jumlah decimal(15,2) not null,
-  jumlah_dibayar decimal(15,2) not null default 0,
-  metode_pembayaran text,
-  catatan text,
-  dibuat_oleh uuid references public.profil(id),
-  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null,
-  diperbarui_pada timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_opsi_finishing_aktif ON opsi_finishing(aktif_status, urutan_tampilan);
+CREATE INDEX IF NOT EXISTS idx_opsi_finishing_sync_status ON opsi_finishing(sync_status);
+
+-- ============================================================================
+-- PARTY TABLES (Customers, Vendors, Users)
+-- ============================================================================
+
+-- Table: pelanggan (Customers)
+CREATE TABLE IF NOT EXISTS pelanggan (
+  id TEXT PRIMARY KEY,
+  tipe_pelanggan TEXT,
+  nama TEXT NOT NULL,
+  nama_perusahaan TEXT,
+  npwp TEXT,
+  email TEXT,
+  telepon TEXT,
+  alamat TEXT,
+  member_status INTEGER DEFAULT 0,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Purchase Items (Item Pembelian)
-create table public.item_pembelian (
-  id uuid default uuid_generate_v4() primary key,
-  pembelian_id uuid references public.pembelian(id) on delete cascade not null,
-  bahan_id uuid references public.bahan(id) not null,
-  harga_satuan_id uuid references public.harga_bahan_satuan(id), -- Reference ke harga satuan
-  jumlah decimal(15,3) not null,
-  nama_satuan text not null, -- Nama satuan yang digunakan
-  faktor_konversi decimal(15,3) not null default 1, -- Konversi ke satuan dasar
-  harga_satuan decimal(15,2) not null,
-  subtotal decimal(15,2) not null,
-  dibuat_pada timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_pelanggan_sync_status ON pelanggan(sync_status);
+
+-- Table: vendor (Vendors)
+CREATE TABLE IF NOT EXISTS vendor (
+  id TEXT PRIMARY KEY,
+  nama_perusahaan TEXT NOT NULL,
+  email TEXT,
+  telepon TEXT,
+  alamat TEXT,
+  kontak_person TEXT,
+  ketentuan_bayar TEXT,
+  aktif_status INTEGER DEFAULT 1,
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Financial Transactions (for debts, receivables, kasbon, and other transactions)
-create table public.financial_transactions (
-  id uuid default uuid_generate_v4() primary key,
-  kategori_transaksi kategori_transaksi not null,
-  reference_type text, -- 'sale', 'purchase', 'kasbon', 'other'
-  reference_id uuid, -- reference to sales, purchases, or profiles
-  customer_id uuid references public.customers(id),
-  vendor_id uuid references public.vendors(id),
-  employee_id uuid references public.profiles(id), -- for kasbon
-  amount decimal(15,2) not null,
-  description text not null,
-  is_paid boolean default false,
-  payment_date timestamp with time zone,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_vendor_sync_status ON vendor(sync_status);
+
+-- Table: profil (User Profiles)
+CREATE TABLE IF NOT EXISTS profil (
+  id TEXT PRIMARY KEY,
+  nama_pengguna TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE,
+  nama_lengkap TEXT,
+  password_hash TEXT NOT NULL,
+  role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'chief', 'user')),
+  aktif_status INTEGER DEFAULT 1,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
 );
 
--- Additional Income/Expense (outside POS and inventory)
-create table public.other_transactions (
-  id uuid default uuid_generate_v4() primary key,
-  kategori_transaksi kategori_transaksi not null,
-  category text not null, -- e.g., 'utilities', 'rent', 'salary', 'other'
-  amount decimal(15,2) not null,
-  description text not null,
-  transaction_date date not null,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_profil_sync_status ON profil(sync_status);
+
+-- Table: kredensial (Credentials)
+CREATE TABLE IF NOT EXISTS kredensial (
+  id TEXT PRIMARY KEY,
+  pemilik_id TEXT NOT NULL,
+  nama_layanan TEXT NOT NULL,
+  nama_pengguna_akun TEXT NOT NULL,
+  password_terenkripsi TEXT NOT NULL,
+  catatan TEXT,
+  privat_status INTEGER DEFAULT 1,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (pemilik_id) REFERENCES profil(id)
 );
 
--- Inventory Movements (for tracking stock changes)
-create table public.inventory_movements (
-  id uuid default uuid_generate_v4() primary key,
-  material_id uuid references public.materials(id) not null,
-  movement_type text not null, -- 'in', 'out', 'adjustment'
-  quantity decimal(15,3) not null,
-  reference_type text, -- 'sale', 'purchase', 'adjustment'
-  reference_id uuid,
-  notes text,
-  created_by uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE INDEX IF NOT EXISTS idx_kredensial_owner ON kredensial(pemilik_id);
+CREATE INDEX IF NOT EXISTS idx_kredensial_service ON kredensial(nama_layanan);
+CREATE INDEX IF NOT EXISTS idx_kredensial_sync_status ON kredensial(sync_status);
+
+-- ============================================================================
+-- TRANSACTION TABLES (Sales & Purchases)
+-- ============================================================================
+
+-- Table: penjualan (Sales)
+CREATE TABLE IF NOT EXISTS penjualan (
+  id TEXT PRIMARY KEY,
+  nomor_invoice TEXT UNIQUE NOT NULL,
+  pelanggan_id TEXT,
+  total_jumlah REAL NOT NULL,
+  jumlah_dibayar REAL DEFAULT 0,
+  jumlah_kembalian REAL DEFAULT 0,
+  metode_pembayaran TEXT,
+  kasir_id TEXT,
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (pelanggan_id) REFERENCES pelanggan(id),
+  FOREIGN KEY (kasir_id) REFERENCES profil(id)
 );
 
--- Enable Row Level Security
-alter table public.profiles enable row level security;
-alter table public.bahan enable row level security;
-alter table public.pelanggan enable row level security;
-alter table public.vendor enable row level security;
-alter table public.penjualan enable row level security;
-alter table public.item_penjualan enable row level security;
-alter table public.pembelian enable row level security;
-alter table public.item_pembelian enable row level security;
-alter table public.financial_transactions enable row level security;
-alter table public.other_transactions enable row level security;
-alter table public.inventory_movements enable row level security;
+CREATE INDEX IF NOT EXISTS idx_penjualan_sync_status ON penjualan(sync_status);
 
--- RLS Policies for profiles
-create policy "Users can view their own profile"
-  on public.profiles for select
-  using (auth.uid() = id);
+-- Table: item_penjualan (Sales Items)
+CREATE TABLE IF NOT EXISTS item_penjualan (
+  id TEXT PRIMARY KEY,
+  penjualan_id TEXT NOT NULL,
+  barang_id TEXT NOT NULL,
+  harga_satuan_id TEXT,
+  jumlah REAL NOT NULL,
+  nama_satuan TEXT NOT NULL,
+  faktor_konversi REAL NOT NULL,
+  harga_satuan REAL NOT NULL,
+  subtotal REAL NOT NULL,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (barang_id) REFERENCES barang(id),
+  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
+);
 
-create policy "Users can update their own profile"
-  on public.profiles for update
-  using (auth.uid() = id);
+CREATE INDEX IF NOT EXISTS idx_item_penjualan_sync_status ON item_penjualan(sync_status);
 
--- RLS Policies for materials (all authenticated users can read, only admin/manager can modify)
-create policy "Authenticated users can view materials"
-  on public.materials for select
-  to authenticated
-  using (true);
+-- Table: pembelian (Purchases)
+CREATE TABLE IF NOT EXISTS pembelian (
+  id TEXT PRIMARY KEY,
+  nomor_pembelian TEXT UNIQUE NOT NULL,
+  vendor_id TEXT,
+  total_jumlah REAL NOT NULL,
+  jumlah_dibayar REAL DEFAULT 0,
+  metode_pembayaran TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  tanggal DATE DEFAULT CURRENT_DATE,
+  nomor_faktur TEXT,
+  status_pembayaran TEXT DEFAULT 'LUNAS' CHECK(status_pembayaran IN ('LUNAS', 'HUTANG', 'SEBAGIAN')),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id),
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
 
-create policy "Admin and Manager can manage materials"
-  on public.materials for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+CREATE INDEX IF NOT EXISTS idx_pembelian_sync_status ON pembelian(sync_status);
 
--- RLS Policies for customers (all authenticated users can read, only admin/manager can modify)
-create policy "Authenticated users can view customers"
-  on public.customers for select
-  to authenticated
-  using (true);
+-- Table: item_pembelian (Purchase Items)
+CREATE TABLE IF NOT EXISTS item_pembelian (
+  id TEXT PRIMARY KEY,
+  pembelian_id TEXT NOT NULL,
+  barang_id TEXT NOT NULL,
+  harga_satuan_id TEXT,
+  jumlah REAL NOT NULL,
+  nama_satuan TEXT NOT NULL,
+  faktor_konversi REAL NOT NULL,
+  harga_satuan REAL NOT NULL,
+  subtotal REAL NOT NULL,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (pembelian_id) REFERENCES pembelian(id) ON DELETE CASCADE,
+  FOREIGN KEY (barang_id) REFERENCES barang(id),
+  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
+);
 
-create policy "Admin and Manager can manage customers"
-  on public.customers for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+CREATE INDEX IF NOT EXISTS idx_item_pembelian_sync_status ON item_pembelian(sync_status);
 
--- Similar policies for other tables
-create policy "Authenticated users can view vendors"
-  on public.vendors for select
-  to authenticated
-  using (true);
+-- ============================================================================
+-- RECEIVABLES & PAYABLES
+-- ============================================================================
 
-create policy "Admin and Manager can manage vendors"
-  on public.vendors for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+-- Table: piutang_penjualan (Accounts Receivable)
+CREATE TABLE IF NOT EXISTS piutang_penjualan (
+  id TEXT PRIMARY KEY,
+  id_penjualan TEXT NOT NULL,
+  jumlah_piutang REAL NOT NULL,
+  jumlah_terbayar REAL DEFAULT 0,
+  sisa_piutang REAL NOT NULL,
+  jatuh_tempo TEXT,
+  status TEXT DEFAULT 'AKTIF' CHECK(status IN ('AKTIF', 'LUNAS', 'JATUH_TEMPO', 'SEBAGIAN')),
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (id_penjualan) REFERENCES penjualan(id) ON DELETE CASCADE
+);
 
--- Penjualan (Sales) policies
-create policy "Authenticated users can view penjualan"
-  on public.penjualan for select
-  to authenticated
-  using (true);
+CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_status ON piutang_penjualan(status);
+CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_date ON piutang_penjualan(dibuat_pada);
+CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_sync_status ON piutang_penjualan(sync_status);
 
-create policy "Authenticated users can create penjualan"
-  on public.penjualan for insert
-  to authenticated
-  with check (true);
+-- Table: pelunasan_piutang (Receivable Payments)
+CREATE TABLE IF NOT EXISTS pelunasan_piutang (
+  id TEXT PRIMARY KEY,
+  id_piutang TEXT NOT NULL,
+  tanggal_bayar TEXT NOT NULL,
+  jumlah_bayar REAL NOT NULL,
+  metode_pembayaran TEXT DEFAULT 'CASH',
+  referensi TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (id_piutang) REFERENCES piutang_penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
 
-create policy "Admin and Manager can manage penjualan"
-  on public.penjualan for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profil
-      where profil.id = auth.uid()
-      and profil.role in ('admin', 'manager')
-    )
-  );
+CREATE INDEX IF NOT EXISTS idx_pelunasan_piutang_date ON pelunasan_piutang(tanggal_bayar);
+CREATE INDEX IF NOT EXISTS idx_pelunasan_piutang_sync_status ON pelunasan_piutang(sync_status);
 
--- Item Penjualan (Sales items) policies
-create policy "Authenticated users can view item penjualan"
-  on public.item_penjualan for select
-  to authenticated
-  using (true);
+-- Table: hutang_pembelian (Accounts Payable)
+CREATE TABLE IF NOT EXISTS hutang_pembelian (
+  id TEXT PRIMARY KEY,
+  id_pembelian TEXT NOT NULL,
+  jumlah_hutang REAL NOT NULL,
+  jumlah_terbayar REAL DEFAULT 0,
+  sisa_hutang REAL NOT NULL,
+  jatuh_tempo TEXT,
+  status TEXT DEFAULT 'AKTIF' CHECK(status IN ('AKTIF', 'LUNAS', 'JATUH_TEMPO')),
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (id_pembelian) REFERENCES pembelian(id) ON DELETE CASCADE
+);
 
-create policy "Authenticated users can create item penjualan"
-  on public.item_penjualan for insert
-  to authenticated
-  with check (true);
+CREATE INDEX IF NOT EXISTS idx_hutang_pembelian_sync_status ON hutang_pembelian(sync_status);
 
--- Pembelian (Purchases) policies
-create policy "Authenticated users can view pembelian"
-  on public.pembelian for select
-  to authenticated
-  using (true);
+-- Table: pelunasan_hutang (Payable Payments)
+CREATE TABLE IF NOT EXISTS pelunasan_hutang (
+  id TEXT PRIMARY KEY,
+  id_hutang TEXT NOT NULL,
+  tanggal_bayar TEXT NOT NULL,
+  jumlah_bayar REAL NOT NULL,
+  metode_pembayaran TEXT DEFAULT 'CASH',
+  referensi TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (id_hutang) REFERENCES hutang_pembelian(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
 
-create policy "Admin and Manager can manage pembelian"
-  on public.pembelian for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profil
-      where profil.id = auth.uid()
-      and profil.role in ('admin', 'manager')
-    )
-  );
+CREATE INDEX IF NOT EXISTS idx_pelunasan_hutang_sync_status ON pelunasan_hutang(sync_status);
 
--- Item Pembelian (Purchase items) policies
-create policy "Authenticated users can view item pembelian"
-  on public.item_pembelian for select
-  to authenticated
-  using (true);
+-- ============================================================================
+-- PRODUCTION TABLES
+-- ============================================================================
 
-create policy "Authenticated users can create item pembelian"
-  on public.item_pembelian for insert
-  to authenticated
-  with check (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+-- Table: order_produksi (Production Orders)
+CREATE TABLE IF NOT EXISTS order_produksi (
+  id TEXT PRIMARY KEY,
+  penjualan_id TEXT NOT NULL,
+  nomor_spk TEXT UNIQUE NOT NULL,
+  pelanggan_nama TEXT,
+  total_item INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI', 'DIBATALKAN')),
+  prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('NORMAL', 'KILAT')),
+  tanggal_deadline TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  diselesaikan_pada TIMESTAMPTZ,
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
 
--- Financial transactions policies
-create policy "Authenticated users can view financial transactions"
-  on public.financial_transactions for select
-  to authenticated
-  using (true);
+CREATE INDEX IF NOT EXISTS idx_order_produksi_status ON order_produksi(status);
+CREATE INDEX IF NOT EXISTS idx_order_produksi_penjualan ON order_produksi(penjualan_id);
+CREATE INDEX IF NOT EXISTS idx_order_produksi_sync_status ON order_produksi(sync_status);
 
-create policy "Admin and Manager can manage financial transactions"
-  on public.financial_transactions for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+-- Table: item_produksi (Production Items)
+CREATE TABLE IF NOT EXISTS item_produksi (
+  id TEXT PRIMARY KEY,
+  order_produksi_id TEXT NOT NULL,
+  item_penjualan_id TEXT NOT NULL,
+  barang_nama TEXT NOT NULL,
+  jumlah REAL NOT NULL,
+  nama_satuan TEXT NOT NULL,
+  panjang REAL,
+  lebar REAL,
+  keterangan_dimensi TEXT,
+  mesin_printing TEXT,
+  jenis_bahan TEXT,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PRINTING', 'FINISHING', 'SELESAI')),
+  catatan_produksi TEXT,
+  operator_id TEXT,
+  mulai_proses TEXT,
+  selesai_proses TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (order_produksi_id) REFERENCES order_produksi(id) ON DELETE CASCADE,
+  FOREIGN KEY (item_penjualan_id) REFERENCES item_penjualan(id) ON DELETE CASCADE,
+  FOREIGN KEY (operator_id) REFERENCES profil(id)
+);
 
--- Other transactions policies
-create policy "Authenticated users can view other transactions"
-  on public.other_transactions for select
-  to authenticated
-  using (true);
+CREATE INDEX IF NOT EXISTS idx_item_produksi_order ON item_produksi(order_produksi_id);
+CREATE INDEX IF NOT EXISTS idx_item_produksi_status ON item_produksi(status);
+CREATE INDEX IF NOT EXISTS idx_item_produksi_sync_status ON item_produksi(sync_status);
 
-create policy "Admin and Manager can manage other transactions"
-  on public.other_transactions for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+-- Table: item_finishing (Finishing Items)
+CREATE TABLE IF NOT EXISTS item_finishing (
+  id TEXT PRIMARY KEY,
+  item_produksi_id TEXT NOT NULL,
+  jenis_finishing TEXT NOT NULL,
+  keterangan TEXT,
+  status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI')),
+  operator_id TEXT,
+  mulai_proses TEXT,
+  selesai_proses TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (item_produksi_id) REFERENCES item_produksi(id) ON DELETE CASCADE,
+  FOREIGN KEY (operator_id) REFERENCES profil(id)
+);
 
--- Inventory movements policies
-create policy "Authenticated users can view inventory movements"
-  on public.inventory_movements for select
-  to authenticated
-  using (true);
+CREATE INDEX IF NOT EXISTS idx_item_finishing_item ON item_finishing(item_produksi_id);
+CREATE INDEX IF NOT EXISTS idx_item_finishing_sync_status ON item_finishing(sync_status);
 
-create policy "Admin and Manager can create inventory movements"
-  on public.inventory_movements for insert
-  to authenticated
-  with check (
-    exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('admin', 'manager')
-    )
-  );
+-- ============================================================================
+-- FINANCE TABLE
+-- ============================================================================
 
--- Create indexes for better performance
-create index idx_pelanggan_nama on public.pelanggan(nama);
-create index idx_pelanggan_tipe on public.pelanggan(tipe_pelanggan);
-create index idx_vendor_nama on public.vendor(nama_perusahaan);
-create index idx_penjualan_invoice on public.penjualan(nomor_invoice);
-create index idx_penjualan_tanggal on public.penjualan(dibuat_pada);
-create index idx_pembelian_nomor on public.pembelian(nomor_pembelian);
-create index idx_pembelian_tanggal on public.pembelian(dibuat_pada);
-create index idx_financial_transactions_kategori on public.financial_transactions(kategori_transaksi);
-create index idx_financial_transactions_paid on public.financial_transactions(is_paid);
-create index idx_other_transactions_kategori on public.other_transactions(kategori_transaksi);
-create index idx_inventory_movements_material on public.inventory_movements(material_id);
-create index idx_inventory_movements_date on public.inventory_movements(created_at);
+-- Table: keuangan (Finance/Accounting)
+CREATE TABLE IF NOT EXISTS keuangan (
+  id TEXT PRIMARY KEY,
+  tanggal TEXT NOT NULL,
+  kategori_transaksi TEXT NOT NULL,
+  debit REAL DEFAULT 0,
+  kredit REAL DEFAULT 0,
+  keperluan TEXT,
+  omzet REAL DEFAULT 0,
+  biaya_operasional REAL DEFAULT 0,
+  biaya_bahan REAL DEFAULT 0,
+  saldo REAL DEFAULT 0,
+  laba_bersih REAL DEFAULT 0,
+  kasbon_anwar REAL DEFAULT 0,
+  kasbon_suri REAL DEFAULT 0,
+  kasbon_cahaya REAL DEFAULT 0,
+  kasbon_dinil REAL DEFAULT 0,
+  bagi_hasil_anwar REAL DEFAULT 0,
+  bagi_hasil_suri REAL DEFAULT 0,
+  bagi_hasil_gemi REAL DEFAULT 0,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  diarsipkan_pada TEXT,
+  label_arsip TEXT,
+  dibuat_pada TIMESTAMPTZ NOT NULL,
+  diperbarui_pada TIMESTAMPTZ NOT NULL,
+  urutan_tampilan INTEGER DEFAULT 0,
+  override_saldo INTEGER DEFAULT 0,
+  override_omzet INTEGER DEFAULT 0,
+  override_biaya_operasional INTEGER DEFAULT 0,
+  override_biaya_bahan INTEGER DEFAULT 0,
+  override_laba_bersih INTEGER DEFAULT 0,
+  override_kasbon_anwar INTEGER DEFAULT 0,
+  override_kasbon_suri INTEGER DEFAULT 0,
+  override_kasbon_cahaya INTEGER DEFAULT 0,
+  override_kasbon_dinil INTEGER DEFAULT 0,
+  override_bagi_hasil_anwar INTEGER DEFAULT 0,
+  override_bagi_hasil_suri INTEGER DEFAULT 0,
+  override_bagi_hasil_gemi INTEGER DEFAULT 0,
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
+);
 
--- Function to automatically update updated_at timestamp
-create or replace function public.update_updated_at_column()
-returns trigger as $$
-begin
-  new.updated_at = timezone('utc'::text, now());
-  return new;
-end;
-$$ language plpgsql;
+CREATE INDEX IF NOT EXISTS idx_keuangan_sync_status ON keuangan(sync_status);
 
--- Create triggers for updated_at
-create trigger update_profiles_updated_at before update on public.profiles
-  for each row execute function public.update_updated_at_column();
+-- ============================================================================
+-- TRIGGERS FOR UPDATED_AT
+-- ============================================================================
 
-create trigger update_materials_updated_at before update on public.materials
-  for each row execute function public.update_updated_at_column();
+-- Function to update diperbarui_pada timestamp
+CREATE OR REPLACE FUNCTION update_diperbarui_pada()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.diperbarui_pada = NOW();
+  NEW.sync_status = 'pending';
+  NEW.sync_version = OLD.sync_version + 1;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-create trigger update_customers_updated_at before update on public.customers
-  for each row execute function public.update_updated_at_column();
+-- Apply trigger to all tables with diperbarui_pada
+CREATE TRIGGER update_barang_diperbarui_pada BEFORE UPDATE ON barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_harga_barang_satuan_diperbarui_pada BEFORE UPDATE ON harga_barang_satuan FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_kategori_barang_diperbarui_pada BEFORE UPDATE ON kategori_barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_subkategori_barang_diperbarui_pada BEFORE UPDATE ON subkategori_barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_satuan_barang_diperbarui_pada BEFORE UPDATE ON satuan_barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_spesifikasi_cepat_barang_diperbarui_pada BEFORE UPDATE ON spesifikasi_cepat_barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_pelanggan_diperbarui_pada BEFORE UPDATE ON pelanggan FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_vendor_diperbarui_pada BEFORE UPDATE ON vendor FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_profil_diperbarui_pada BEFORE UPDATE ON profil FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_kredensial_diperbarui_pada BEFORE UPDATE ON kredensial FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_penjualan_diperbarui_pada BEFORE UPDATE ON penjualan FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_pembelian_diperbarui_pada BEFORE UPDATE ON pembelian FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_piutang_penjualan_diperbarui_pada BEFORE UPDATE ON piutang_penjualan FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_hutang_pembelian_diperbarui_pada BEFORE UPDATE ON hutang_pembelian FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_order_produksi_diperbarui_pada BEFORE UPDATE ON order_produksi FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_item_produksi_diperbarui_pada BEFORE UPDATE ON item_produksi FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_item_finishing_diperbarui_pada BEFORE UPDATE ON item_finishing FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
+CREATE TRIGGER update_opsi_finishing_diperbarui_pada BEFORE UPDATE ON opsi_finishing FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
 
-create trigger update_vendor_diperbarui_pada before update on public.vendor
-  for each row execute function public.update_updated_at_column();
-
-create trigger update_penjualan_diperbarui_pada before update on public.penjualan
-  for each row execute function public.update_updated_at_column();
-
-create trigger update_pembelian_diperbarui_pada before update on public.pembelian
-  for each row execute function public.update_updated_at_column();
-
-create trigger update_financial_transactions_updated_at before update on public.financial_transactions
-  for each row execute function public.update_updated_at_column();
-
-create trigger update_other_transactions_updated_at before update on public.other_transactions
-  for each row execute function public.update_updated_at_column();
+-- ============================================================================
+-- NOTES
+-- ============================================================================
+--
+-- Sync Strategy:
+-- 1. Local SQLite is the primary source of truth for user operations
+-- 2. Every 20 minutes, sync pending records (sync_status='pending') to Supabase
+-- 3. Remote users pull from Supabase to get latest data
+-- 4. Conflict resolution uses sync_version (higher version wins)
+-- 5. last_synced_at tracks last successful sync timestamp
+--
+-- To use this schema:
+-- 1. Create a Supabase project at https://supabase.com
+-- 2. Copy this entire file and paste in SQL Editor
+-- 3. Run the schema
+-- 4. Get your API URL and anon key from Project Settings > API
+-- 5. Configure in your app: /src/lib/supabase.ts
+--
+-- For Row Level Security (RLS):
+-- - Consider adding RLS policies based on your security requirements
+-- - Example: Only allow users to see their own data, admins see all
+--

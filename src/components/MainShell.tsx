@@ -24,12 +24,44 @@ interface User {
   aktif_status: number;
 }
 
+interface SyncStatus {
+  localDb: "active" | "error";
+  cloudBackup: "connected" | "disconnected" | "syncing";
+  lastSyncAt: string | null;
+  pendingChanges: number;
+}
+
+// Helper function to format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "baru saja";
+  if (diffMins < 60) return `${diffMins} menit lalu`;
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+  if (diffDays < 7) return `${diffDays} hari lalu`;
+  return date.toLocaleDateString("id-ID");
+}
+
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync status state
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    localDb: "active",
+    cloudBackup: "disconnected",
+    lastSyncAt: null,
+    pendingChanges: 0,
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     try {
@@ -78,6 +110,109 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       el.removeEventListener("scroll", onScroll);
     };
   }, []); // Empty deps - only runs once
+
+  // Check sync status on mount and periodically
+  useEffect(() => {
+    const checkSyncStatus = async () => {
+      try {
+        // Call API to get sync status
+        const response = await fetch("/api/sync/manual");
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.success && data.status) {
+            setSyncStatus({
+              localDb: data.status.localDb,
+              cloudBackup: data.status.cloudBackup,
+              lastSyncAt: data.status.lastSyncAt,
+              pendingChanges: data.status.pendingChanges,
+            });
+          }
+        } else {
+          // If API fails, mark as disconnected
+          setSyncStatus((prev) => ({
+            ...prev,
+            cloudBackup: "disconnected",
+          }));
+        }
+      } catch (error) {
+        console.error("Error checking sync status:", error);
+        setSyncStatus((prev) => ({
+          ...prev,
+          cloudBackup: "disconnected",
+        }));
+      }
+    };
+
+    checkSyncStatus();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkSyncStatus, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Manual sync handler
+  const handleManualSync = async () => {
+    if (isSyncing) return;
+
+    setIsSyncing(true);
+    setSyncStatus((prev) => ({ ...prev, cloudBackup: "syncing" }));
+
+    try {
+      const response = await fetch("/api/sync/manual", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.success && data.result) {
+          const { synced, errors } = data.result;
+
+          // Refresh status to get updated counts
+          const statusResponse = await fetch("/api/sync/manual");
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            if (statusData.success && statusData.status) {
+              setSyncStatus({
+                localDb: statusData.status.localDb,
+                cloudBackup: "connected",
+                lastSyncAt: statusData.status.lastSyncAt,
+                pendingChanges: statusData.status.pendingChanges,
+              });
+            }
+          }
+
+          // Show success notification with details
+          if (synced > 0) {
+            alert(
+              `Sinkronisasi berhasil!\n${synced} record berhasil di-sync${
+                errors > 0 ? `\n${errors} error` : ""
+              }`
+            );
+          } else {
+            alert("Tidak ada perubahan untuk di-sync.");
+          }
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Sync failed");
+      }
+    } catch (error) {
+      console.error("Sync error:", error);
+      setSyncStatus((prev) => ({ ...prev, cloudBackup: "disconnected" }));
+      alert(
+        "Gagal sinkronisasi. " +
+          (error instanceof Error
+            ? error.message
+            : "Periksa koneksi internet Anda.")
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const computedTitle = useMemo(() => {
     if (!pathname) return "Dashboard";
@@ -226,28 +361,164 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
               </h1>
             </div>
 
-            <div className="flex items-center gap-4">
-              {/* Database Indicator */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                <span className="text-lg">💾</span>
+            <div className="flex items-center gap-3">
+              {/* Local Database Indicator */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                <svg
+                  className="w-4 h-4 text-gray-700"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+                  />
+                </svg>
                 <div className="text-left">
-                  <div className="text-xs font-semibold text-[#0a1b3d]">
-                    SQLite
+                  <div className="text-xs font-semibold text-gray-700">
+                    Database Lokal
                   </div>
-                  <div className="text-xs text-[#6b7280]">Offline</div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <span className="text-[10px] text-gray-600">Aktif</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Status Indicator */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
-                <span className="text-lg">⚡</span>
+              {/* Cloud Backup Indicator */}
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                  syncStatus.cloudBackup === "connected"
+                    ? "bg-blue-50 border-blue-200"
+                    : syncStatus.cloudBackup === "syncing"
+                    ? "bg-amber-50 border-amber-200"
+                    : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                {syncStatus.cloudBackup === "syncing" ? (
+                  <svg
+                    className="w-4 h-4 text-amber-600 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className={`w-4 h-4 ${
+                      syncStatus.cloudBackup === "connected"
+                        ? "text-blue-600"
+                        : "text-gray-400"
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                    />
+                  </svg>
+                )}
                 <div className="text-left">
-                  <div className="text-xs font-semibold text-green-700">
-                    Active
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-xs font-semibold ${
+                        syncStatus.cloudBackup === "connected"
+                          ? "text-blue-700"
+                          : syncStatus.cloudBackup === "syncing"
+                          ? "text-amber-700"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      Cloud Backup
+                    </span>
+                    {syncStatus.pendingChanges > 0 && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded-full">
+                        {syncStatus.pendingChanges}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-green-600">Online</div>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        syncStatus.cloudBackup === "connected"
+                          ? "bg-blue-500"
+                          : syncStatus.cloudBackup === "syncing"
+                          ? "bg-amber-500"
+                          : "bg-gray-400"
+                      }`}
+                    ></div>
+                    <span
+                      className={`text-[10px] ${
+                        syncStatus.cloudBackup === "connected"
+                          ? "text-blue-600"
+                          : syncStatus.cloudBackup === "syncing"
+                          ? "text-amber-600"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {syncStatus.cloudBackup === "connected"
+                        ? syncStatus.lastSyncAt
+                          ? `Sync ${formatRelativeTime(syncStatus.lastSyncAt)}`
+                          : "Tersambung"
+                        : syncStatus.cloudBackup === "syncing"
+                        ? "Sinkronisasi..."
+                        : "Tidak Aktif"}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Manual Sync Button */}
+              <button
+                onClick={handleManualSync}
+                disabled={
+                  isSyncing || syncStatus.cloudBackup === "disconnected"
+                }
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-semibold text-xs transition-all ${
+                  isSyncing || syncStatus.cloudBackup === "disconnected"
+                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-blue-500 border-blue-600 text-white hover:bg-blue-600 hover:shadow-md active:scale-95"
+                }`}
+                title={
+                  syncStatus.cloudBackup === "disconnected"
+                    ? "Cloud backup tidak tersedia"
+                    : "Sinkronisasi manual ke cloud"
+                }
+              >
+                <svg
+                  className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>{isSyncing ? "Sync..." : "Sync"}</span>
+              </button>
             </div>
           </div>
         </header>

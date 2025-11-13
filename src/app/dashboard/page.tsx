@@ -3,23 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  CartIcon,
-  PackageIcon,
-  UsersIcon,
-  BuildingIcon,
-  MoneyIcon,
-  ChartIcon,
-  UserIcon,
-} from "@/components/icons/PageIcons";
 
 interface User {
   id: string;
-  username: string;
+  nama_pengguna: string;
   email: string;
-  full_name?: string;
+  nama_lengkap?: string;
   role: string;
-  is_active: number;
+  aktif_status: number;
 }
 
 export default function DashboardPage() {
@@ -32,59 +23,6 @@ export default function DashboardPage() {
     } catch {}
   }, []);
 
-  const quickAccessItems = [
-    {
-      href: "/pos",
-      icon: <CartIcon size={28} />,
-      label: "POS / Kasir",
-      color: "from-[#00afef] to-[#2fd3ff]",
-      description: "Point of Sale",
-    },
-    {
-      href: "/materials",
-      icon: <PackageIcon size={28} />,
-      label: "Data Barang",
-      color: "from-[#2266ff] to-[#00afef]",
-      description: "Material Inventory",
-    },
-    {
-      href: "/customers",
-      icon: <UsersIcon size={28} />,
-      label: "Pelanggan",
-      color: "from-[#2fd3ff] to-[#00afef]",
-      description: "Customer Data",
-    },
-    {
-      href: "/vendors",
-      icon: <BuildingIcon size={28} />,
-      label: "Vendor",
-      color: "from-[#0a1b3d] to-[#2266ff]",
-      description: "Vendor Management",
-    },
-    {
-      href: "/finance",
-      icon: <MoneyIcon size={28} />,
-      label: "Keuangan",
-      color: "from-[#ffd400] to-[#ff2f91]",
-      description: "Financial Management",
-    },
-    {
-      href: "/reports",
-      icon: <ChartIcon size={28} />,
-      label: "Laporan",
-      color: "from-[#ff2f91] to-[#2266ff]",
-      description: "Reports & Analytics",
-    },
-    {
-      href: "/users",
-      icon: <UserIcon size={28} />,
-      label: "Manajemen User",
-      color: "from-[#0a1b3d] to-[#00afef]",
-      description: "User Management",
-      managerOnly: true,
-    },
-  ];
-
   return (
     <>
       {/* Welcome Card */}
@@ -92,7 +30,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-2 font-twcenmt">
-              Selamat Datang, {user?.full_name || user?.username}! 👋
+              Selamat Datang, {user?.nama_lengkap || user?.nama_pengguna}! 👋
             </h2>
             <p className="text-white/90 font-twcenmt">
               Sistem Manajemen Internal gemiprint
@@ -110,54 +48,47 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Access Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {quickAccessItems.map((item) => {
-          // Filter based on role
-          if (
-            item.managerOnly &&
-            user?.role !== "admin" &&
-            user?.role !== "manager"
-          ) {
-            return null;
-          }
-
-          return (
-            <Link key={item.href} href={item.href} className="group">
-              <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-2 border-transparent hover:border-[#00afef] transform hover:-translate-y-1">
-                <div className="flex items-center gap-4 mb-4">
-                  <div
-                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg text-white`}
-                  >
-                    {item.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[#0a1b3d] font-twcenmt group-hover:text-[#00afef] transition-colors">
-                      {item.label}
-                    </h3>
-                    <p className="text-xs text-[#6b7280]">{item.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center text-[#00afef] font-semibold text-sm">
-                  Buka modul
-                  <svg
-                    className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
-              </div>
+      {/* Under Development Notice */}
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="mb-6">
+            <svg
+              className="w-24 h-24 mx-auto text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+            Dashboard Dalam Pengembangan
+          </h3>
+          <p className="text-gray-600 mb-8">
+            Halaman dashboard sedang dalam proses pengembangan.
+            <br />
+            Gunakan menu navigasi untuk mengakses fitur-fitur yang tersedia.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link
+              href="/pos"
+              className="px-6 py-3 bg-gradient-to-r from-[#00afef] to-[#2fd3ff] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              Buka POS
             </Link>
-          );
-        })}
+            <Link
+              href="/production"
+              className="px-6 py-3 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              Lihat Produksi
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Footer Info */}
