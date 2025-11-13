@@ -3157,6 +3157,14 @@ function SystemTab() {
   const [intervalUnit, setIntervalUnit] = useState<string>("Menit");
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
+  // Sync state
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncLoading, setSyncLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [updatingSyncInterval, setUpdatingSyncInterval] = useState(false);
+  const [syncIntervalValue, setSyncIntervalValue] = useState<number>(20);
+  const [syncIntervalUnit, setSyncIntervalUnit] = useState<string>("Menit");
+
   const intervalUnits = [
     { label: "Detik", multiplier: 1000 },
     { label: "Menit", multiplier: 60000 },
@@ -3190,9 +3198,119 @@ function SystemTab() {
     }
   };
 
+  const loadSyncStatus = async () => {
+    try {
+      const res = await fetch("/api/sync/manual");
+      const data = await res.json();
+      if (data.success) {
+        setSyncStatus(data.status);
+      }
+    } catch (error) {
+      console.error("Failed to load sync status:", error);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/sync/manual", { method: "POST" });
+      const data = await res.json();
+
+      if (data.success) {
+        setNotice({
+          type: "success",
+          message: `✅ Sync berhasil! ${data.result.synced} record`,
+        });
+        await loadSyncStatus();
+      } else {
+        setNotice({
+          type: "error",
+          message: data.error || "Gagal sync",
+        });
+      }
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: "Error saat sync",
+      });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setNotice(null), 3000);
+    }
+  };
+
+  const handleUpdateSyncInterval = async () => {
+    const intervalMs =
+      syncIntervalValue * (syncIntervalUnit === "Jam" ? 60 : 1);
+
+    if (intervalMs < 5) {
+      setNotice({
+        type: "error",
+        message: "Minimal 5 menit",
+      });
+      setTimeout(() => setNotice(null), 3000);
+      return;
+    }
+
+    if (intervalMs > 1440) {
+      setNotice({
+        type: "error",
+        message: "Maksimal 24 jam (1440 menit)",
+      });
+      setTimeout(() => setNotice(null), 3000);
+      return;
+    }
+
+    setUpdatingSyncInterval(true);
+    try {
+      // Stop current auto-sync
+      await fetch("/api/sync/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stop" }),
+      });
+
+      // Start with new interval
+      const res = await fetch("/api/sync/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", intervalMinutes: intervalMs }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setNotice({
+          type: "success",
+          message: `Interval sync diubah menjadi ${syncIntervalValue} ${syncIntervalUnit.toLowerCase()}`,
+        });
+        await loadSyncStatus();
+      } else {
+        setNotice({
+          type: "error",
+          message: "Gagal mengubah interval",
+        });
+      }
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: "Error saat mengubah interval",
+      });
+    } finally {
+      setUpdatingSyncInterval(false);
+      setTimeout(() => setNotice(null), 3000);
+    }
+  };
+
   useEffect(() => {
     loadBackupStatus();
-    const interval = setInterval(loadBackupStatus, 30000);
+    loadSyncStatus();
+    const interval = setInterval(() => {
+      loadBackupStatus();
+      loadSyncStatus();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -3444,6 +3562,169 @@ function SystemTab() {
           <span>💡 Minimal: 30 detik • Rekomendasi: 5-10 menit</span>
           <span className="text-blue-600 font-semibold">
             Lokasi: database/gemiprint.db.auto-backup
+          </span>
+        </div>
+      </div>
+
+      {/* Cloud Sync Settings */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
+        <div className="flex items-center justify-between gap-6">
+          {/* Left: Title & Status */}
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-500 rounded-xl">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                Cloud Sync (Supabase)
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    syncStatus?.cloudBackup === "connected"
+                      ? "bg-green-500 animate-pulse"
+                      : syncStatus?.cloudBackup === "syncing"
+                      ? "bg-yellow-500 animate-pulse"
+                      : "bg-gray-400"
+                  }`}
+                ></div>
+              </h3>
+              <p className="text-sm text-gray-600">
+                {syncLoading ? (
+                  "Loading..."
+                ) : syncStatus?.cloudBackup === "connected" ? (
+                  <>
+                    ✅ Terhubung •{" "}
+                    {syncStatus?.lastSyncAt ? (
+                      <>
+                        Terakhir sync:{" "}
+                        {new Date(syncStatus.lastSyncAt).toLocaleString(
+                          "id-ID",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </>
+                    ) : (
+                      "Belum pernah sync"
+                    )}
+                  </>
+                ) : syncStatus?.cloudBackup === "syncing" ? (
+                  "⏳ Sedang sync..."
+                ) : (
+                  "⚠️ Tidak terhubung"
+                )}
+              </p>
+              {syncStatus?.pendingChanges > 0 && (
+                <p className="text-xs text-orange-600 font-semibold mt-1">
+                  📝 {syncStatus.pendingChanges} perubahan pending
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Middle: Interval Control */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="5"
+              max="1440"
+              value={syncIntervalValue}
+              onChange={(e) =>
+                setSyncIntervalValue(parseInt(e.target.value) || 5)
+              }
+              className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={updatingSyncInterval}
+            />
+            <select
+              value={syncIntervalUnit}
+              onChange={(e) => setSyncIntervalUnit(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={updatingSyncInterval}
+            >
+              <option value="Menit">Menit</option>
+              <option value="Jam">Jam</option>
+            </select>
+            <button
+              onClick={handleUpdateSyncInterval}
+              disabled={updatingSyncInterval}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all"
+            >
+              {updatingSyncInterval ? "..." : "Terapkan"}
+            </button>
+          </div>
+
+          {/* Right: Manual Sync Button */}
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            {syncing ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Syncing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Sync Sekarang</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Info Bar */}
+        <div className="mt-4 pt-4 border-t border-green-200 text-xs text-gray-600 flex items-center justify-between">
+          <span>
+            💡 Minimal: 5 menit • Rekomendasi: 15-20 menit • Auto-sync berjalan
+            di background
+          </span>
+          <span className="text-green-600 font-semibold">
+            Data local akan otomatis sync ke cloud ☁️
           </span>
         </div>
       </div>

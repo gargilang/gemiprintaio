@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
       INSERT INTO pelanggan (
         id, tipe_pelanggan, nama, nama_perusahaan, npwp,
         email, telepon, alamat, member_status,
-        dibuat_pada, diperbarui_pada
+        dibuat_pada, diperbarui_pada, sync_status, sync_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), 'pending', NULL)
     `);
 
     stmt.run(
@@ -219,7 +219,9 @@ export async function PUT(req: NextRequest) {
           telepon = ?,
           alamat = ?,
           member_status = ?,
-          diperbarui_pada = datetime('now')
+          diperbarui_pada = datetime('now'),
+          sync_status = 'pending',
+          sync_at = NULL
       WHERE id = ?
     `);
 

@@ -15,6 +15,7 @@ import dynamic from "next/dynamic";
 import { LogoutIcon } from "./icons/PageIcons";
 import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
+import NotificationToast, { NotificationToastProps } from "./NotificationToast";
 
 interface User {
   id: string;
@@ -63,6 +64,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     pendingChanges: 0,
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
   // Clear user session when window/app is closed (Tauri + browser)
   useTauriWindowClose();
@@ -116,6 +118,30 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       el.removeEventListener("scroll", onScroll);
     };
   }, []); // Empty deps - only runs once
+
+  // Initialize auto-sync on mount
+  useEffect(() => {
+    const initAutoSync = async () => {
+      try {
+        // Start auto-sync with 20 minute interval
+        const response = await fetch("/api/sync/auto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "start", intervalMinutes: 20 }),
+        });
+
+        if (response.ok) {
+          console.log("✅ Auto-sync initialized (20 min interval)");
+        } else {
+          console.warn("⚠️ Failed to initialize auto-sync");
+        }
+      } catch (error) {
+        console.error("❌ Error initializing auto-sync:", error);
+      }
+    };
+
+    initAutoSync();
+  }, []);
 
   // Check sync status on mount and periodically
   useEffect(() => {
@@ -193,13 +219,19 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
 
           // Show success notification with details
           if (synced > 0) {
-            alert(
-              `Sinkronisasi berhasil!\n${synced} record berhasil di-sync${
-                errors > 0 ? `\n${errors} error` : ""
-              }`
-            );
+            setNotice({
+              type: "success",
+              message: `✅ Sinkronisasi berhasil! ${synced} record di-sync${
+                errors > 0 ? ` (${errors} error)` : ""
+              }`,
+            });
+            setTimeout(() => setNotice(null), 4000);
           } else {
-            alert("Tidak ada perubahan untuk di-sync.");
+            setNotice({
+              type: "error",
+              message: "⚠️ Tidak ada perubahan untuk di-sync",
+            });
+            setTimeout(() => setNotice(null), 3000);
           }
         }
       } else {
@@ -209,12 +241,15 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Sync error:", error);
       setSyncStatus((prev) => ({ ...prev, cloudBackup: "disconnected" }));
-      alert(
-        "Gagal sinkronisasi. " +
+      setNotice({
+        type: "error",
+        message:
+          "❌ Gagal sinkronisasi. " +
           (error instanceof Error
             ? error.message
-            : "Periksa koneksi internet Anda.")
-      );
+            : "Periksa koneksi internet Anda."),
+      });
+      setTimeout(() => setNotice(null), 4000);
     } finally {
       setIsSyncing(false);
     }
@@ -404,13 +439,32 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
 
               {/* Cloud Backup Indicator */}
               <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors cursor-help ${
                   syncStatus.cloudBackup === "connected"
                     ? "bg-blue-50 border-blue-200"
                     : syncStatus.cloudBackup === "syncing"
                     ? "bg-amber-50 border-amber-200"
                     : "bg-gray-50 border-gray-200"
                 }`}
+                title={
+                  syncStatus.lastSyncAt
+                    ? `Terakhir sync: ${new Date(
+                        syncStatus.lastSyncAt
+                      ).toLocaleString("id-ID", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}`
+                    : syncStatus.cloudBackup === "connected"
+                    ? "Terhubung ke Supabase Cloud"
+                    : syncStatus.cloudBackup === "syncing"
+                    ? "Sedang sinkronisasi data ke cloud..."
+                    : "Cloud backup tidak aktif"
+                }
               >
                 {syncStatus.cloudBackup === "syncing" ? (
                   <svg
@@ -476,12 +530,12 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                         syncStatus.cloudBackup === "connected"
                           ? "bg-blue-500"
                           : syncStatus.cloudBackup === "syncing"
-                          ? "bg-amber-500"
+                          ? "bg-amber-500 animate-pulse"
                           : "bg-gray-400"
                       }`}
                     ></div>
                     <span
-                      className={`text-[10px] ${
+                      className={`text-[10px] font-medium ${
                         syncStatus.cloudBackup === "connected"
                           ? "text-blue-600"
                           : syncStatus.cloudBackup === "syncing"
@@ -491,7 +545,23 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                     >
                       {syncStatus.cloudBackup === "connected"
                         ? syncStatus.lastSyncAt
-                          ? `Sync ${formatRelativeTime(syncStatus.lastSyncAt)}`
+                          ? (() => {
+                              const syncDate = new Date(syncStatus.lastSyncAt);
+                              const now = new Date();
+                              const diffMins = Math.floor(
+                                (now.getTime() - syncDate.getTime()) / 60000
+                              );
+
+                              if (diffMins < 1) return "Baru sync";
+                              if (diffMins < 60) return `${diffMins} mnt lalu`;
+
+                              return syncDate.toLocaleString("id-ID", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                            })()
                           : "Tersambung"
                         : syncStatus.cloudBackup === "syncing"
                         ? "Sinkronisasi..."
@@ -541,6 +611,11 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Notification Toast */}
+      {notice && (
+        <NotificationToast type={notice.type} message={notice.message} />
+      )}
     </div>
   );
 }

@@ -53,6 +53,7 @@
         "height": 800,
         "resizable": true,
         "fullscreen": false,
+        "maximized": true,
         "center": true,
         "decorations": true,
         "transparent": false,
