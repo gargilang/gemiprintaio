@@ -165,11 +165,11 @@ export default function DashboardPage() {
         <p className="text-[#6b7280] text-sm">
           <span className="font-bauhaus italic">
             <span className="text-[#00afef]">gemi</span>
-          <span className="text-[#0a1b3d]">print</span>
-        </span>{" "}
-        - All-in-One Management System © 2025
-      </p>
-    </div>
+            <span className="text-[#0a1b3d]">print</span>
+          </span>{" "}
+          - All-in-One Management System © 2025
+        </p>
+      </div>
     </>
   );
 }

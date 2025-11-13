@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,11 +24,7 @@ interface User {
   aktif_status: number;
 }
 
-export default function MainShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +35,7 @@ export default function MainShell({
     try {
       const userSession = localStorage.getItem("user");
       if (!userSession) {
+        // Redirect to login if not authenticated
         router.push("/auth/login");
         return;
       }
@@ -54,7 +58,7 @@ export default function MainShell({
   useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
-    const saved = sessionStorage.getItem('sidebarScroll');
+    const saved = sessionStorage.getItem("sidebarScroll");
     if (saved) el.scrollTop = parseInt(saved, 10) || 0;
   }, [pathname]);
 

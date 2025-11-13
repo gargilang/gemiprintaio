@@ -2022,7 +2022,6 @@ export default function FinancePage() {
         onClose={() => setShowSelectMonthModal(false)}
         onSelectArchive={handleSelectArchive}
       />
-
       {/* Notification Toast */}
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
