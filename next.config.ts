@@ -1,37 +1,47 @@
 import type { NextConfig } from "next";
 
-// Enable static export only for Tauri packaging/builds.
-// In development, keep server runtime so API routes work (SQLite, etc.).
+// Enable static export ONLY for production builds (not dev mode)
+// In dev mode, we need API routes to work for database operations
 const isExportOutput =
-  process.env.TAURI === "true" ||
-  process.env.NEXT_OUTPUT_EXPORT === "true" ||
-  (process.env.NODE_ENV === "production" && process.env.TAURI_BUILD === "true");
+  process.env.NODE_ENV === "production" &&
+  (process.env.TAURI === "true" || process.env.NEXT_OUTPUT_EXPORT === "true");
 
 const nextConfig: NextConfig = {
   ...(isExportOutput ? { output: "export" as const } : {}),
-  
+
+  // Base path for assets in Tauri
+  ...(isExportOutput ? { assetPrefix: "./" } : {}),
+
   images: {
     // Required when output: "export"; harmless in dev but we can keep it always true
     unoptimized: true,
   },
-  
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "2mb",
-    },
-    // Enable optimizations for better tree-shaking
-    optimizePackageImports: [
-      "@/components/icons/PageIcons",
-      "@/components/icons/ContentIcons",
-    ],
-  },
+
+  // Disable server actions in static export
+  ...(isExportOutput
+    ? {}
+    : {
+        experimental: {
+          serverActions: {
+            bodySizeLimit: "2mb",
+          },
+          // Enable optimizations for better tree-shaking
+          optimizePackageImports: [
+            "@/components/icons/PageIcons",
+            "@/components/icons/ContentIcons",
+          ],
+        },
+      }),
 
   // Performance optimizations
   compiler: {
     // Remove console.log in production
-    removeConsole: process.env.NODE_ENV === "production" ? {
-      exclude: ["error", "warn"],
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? {
+            exclude: ["error", "warn"],
+          }
+        : false,
   },
 
   // Production optimizations
@@ -46,4 +56,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

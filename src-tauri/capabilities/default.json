@@ -1,0 +1,15 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for GemiPrint app",
+  "context": "local",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "fs:default",
+    "dialog:default",
+    "shell:default",
+    "notification:default",
+    "os:default"
+  ]
+}

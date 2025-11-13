@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0",
+  "productName": "gemiprint",
+  "version": "0.1.0",
+  "identifier": "com.gemiprint.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../out"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "longDescription": "Aplikasi manajemen percetakan dan keuangan untuk usaha printing",
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    },
+    "resources": ["../database/gemiprint.db"],
+    "externalBin": [],
+    "copyright": "",
+    "category": "Business",
+    "fileAssociations": [],
+    "shortDescription": "Aplikasi manajemen percetakan",
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "gemiprint",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": null,
+      "devCsp": null,
+      "freezePrototype": false,
+      "dangerousDisableAssetCspModification": false,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$RESOURCE/**"]
+      },
+      "capabilities": ["default"]
+    },
+    "trayIcon": null,
+    "macOSPrivateApi": false,
+    "withGlobalTauri": false,
+    "enableGTKAppId": true
+  },
+  "plugins": {}
+}

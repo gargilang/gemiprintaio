@@ -42,3 +42,12 @@ next-env.d.ts
 node_modules/
 .next/
 .env.local
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+*.exe
+*.dmg
+*.deb
+*.AppImage
+*.app

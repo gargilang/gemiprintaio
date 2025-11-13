@@ -14,6 +14,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { LogoutIcon } from "./icons/PageIcons";
 import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
+import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 
 interface User {
   id: string;
@@ -63,26 +64,31 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   });
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Clear user session when window/app is closed (Tauri + browser)
+  useTauriWindowClose();
+
   useEffect(() => {
     try {
       const userSession = localStorage.getItem("user");
       if (!userSession) {
         // Redirect to login if not authenticated
+        setLoading(false);
         router.push("/auth/login");
         return;
       }
       const userData = JSON.parse(userSession);
       if (!userData.aktif_status) {
         localStorage.removeItem("user");
+        setLoading(false);
         router.push("/auth/login");
         return;
       }
       setUser(userData);
+      setLoading(false);
     } catch (e) {
       localStorage.removeItem("user");
-      router.push("/auth/login");
-    } finally {
       setLoading(false);
+      router.push("/auth/login");
     }
   }, [router]);
 
@@ -229,19 +235,27 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     router.push("/auth/login");
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
-        </div>
-      </div>
-    );
+  // Development helper: Clear session with Ctrl+Shift+L
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "L") {
+        console.log("🔓 [DEV] Clearing session and redirecting to login...");
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [router]);
+
+  // Don't render anything while checking auth to prevent flicker
+  if (loading || !user) {
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-100 to-cyan-100 flex">
+    <div className="min-h-screen bg-white flex">
       {/* Sidebar - permanent */}
       <aside className="w-80 bg-white shadow-2xl flex-shrink-0 h-screen sticky top-0">
         <div className="p-6 h-full flex flex-col">
