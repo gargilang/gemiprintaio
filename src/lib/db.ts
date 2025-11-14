@@ -1,6 +1,13 @@
 /**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * File ini akan dihapus setelah migrasi selesai.
+ * Gunakan src/lib/db-unified.ts sebagai gantinya.
+ *
  * Database Abstraction Layer
  * Supports both SQLite (offline) and Supabase (online) modes
+ *
+ * @deprecated Use db-unified.ts instead
  */
 
 import { supabase } from "./supabase";

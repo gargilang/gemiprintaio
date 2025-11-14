@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod sync;
+
 use rusqlite::{params, Connection, Result as SqlResult};
 use std::sync::Mutex;
 use tauri::{Manager, State};
@@ -342,6 +344,133 @@ mod base64 {
     }
 }
 
+// Sync operations - Queue for background sync to Supabase
+#[tauri::command]
+async fn queue_sync_operation(
+    state: State<'_, AppState>,
+    table: String,
+    operation: String,
+    data: Option<String>,
+    record_id: Option<String>,
+) -> Result<(), String> {
+    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+    let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+    
+    // Create sync_queue table if not exists
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_queue (
+            id TEXT PRIMARY KEY,
+            table_name TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            record_id TEXT,
+            data TEXT,
+            created_at TEXT NOT NULL,
+            synced_at TEXT,
+            status TEXT DEFAULT 'pending'
+        )",
+        [],
+    ).map_err(|e| e.to_string())?;
+    
+    // Insert sync operation
+    let id = Uuid::new_v4().to_string();
+    let created_at = chrono::Utc::now().to_rfc3339();
+    
+    conn.execute(
+        "INSERT INTO sync_queue (id, table_name, operation, record_id, data, created_at) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, table, operation, record_id, data, created_at],
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+// Count pending sync operations
+#[tauri::command]
+async fn count_pending_sync(
+    state: State<'_, AppState>,
+) -> Result<i64, String> {
+    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+    let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+    
+    // Check if sync_queue table exists
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )
+        .unwrap_or(false);
+    
+    if !table_exists {
+        return Ok(0);
+    }
+    
+    // Count pending operations
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sync_queue WHERE synced_at IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    
+    Ok(count)
+}
+
+// Sync to cloud - Process pending sync operations
+#[tauri::command]
+async fn sync_to_cloud(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+    let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+    
+    // Check if sync_queue table exists
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )
+        .unwrap_or(false);
+    
+    if !table_exists {
+        return Ok(serde_json::json!({
+            "synced": 0,
+            "failed": 0,
+            "message": "No sync queue table found"
+        }));
+    }
+    
+    // Try to get Supabase config
+    let config = sync::SupabaseConfig::from_env();
+    
+    if config.is_none() {
+        return Ok(serde_json::json!({
+            "synced": 0,
+            "failed": 0,
+            "message": "Supabase not configured (missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+        }));
+    }
+    
+    // Perform sync
+    let result = sync::sync_to_supabase(conn, &config.unwrap())
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    Ok(serde_json::json!({
+        "synced": result.synced,
+        "failed": result.failed,
+        "message": format!("Synced {} operations, {} failed", result.synced, result.failed)
+    }))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -378,6 +507,9 @@ fn main() {
             db_update,
             db_delete,
             db_execute,
+            queue_sync_operation,
+            count_pending_sync,
+            sync_to_cloud,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

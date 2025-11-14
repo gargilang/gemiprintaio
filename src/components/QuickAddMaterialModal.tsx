@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { createMaterial as createMaterialService } from "@/lib/services/materials-service";
 
 interface Category {
   id: string;
@@ -121,16 +122,10 @@ export default function QuickAddMaterialModal({
         ],
       };
 
-      const res = await fetch("/api/materials", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const result = await createMaterialService(payload);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal menambahkan barang");
+      if (!result) {
+        throw new Error("Gagal menambahkan barang");
       }
 
       showNotification("success", "Barang berhasil ditambahkan!");

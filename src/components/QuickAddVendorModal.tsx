@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { createVendor } from "@/lib/services/vendors-service";
 
 interface QuickAddVendorModalProps {
   show: boolean;
@@ -66,24 +67,12 @@ export default function QuickAddVendorModal({
     try {
       setSaving(true);
 
-      const payload = {
+      await createVendor({
         ...formData,
         aktif_status: 1, // Default aktif
         ketentuan_bayar: "",
         catatan: "",
-      };
-
-      const res = await fetch("/api/vendors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal menambahkan vendor");
-      }
 
       showNotification("success", "Vendor berhasil ditambahkan!");
       onSuccess();

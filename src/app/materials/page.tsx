@@ -7,6 +7,11 @@ import { BoxIcon } from "@/components/icons/ContentIcons";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import {
+  getMaterials,
+  getMaterialById,
+  deleteMaterial,
+} from "@/lib/services/materials-service";
 
 // Memoized Material Row Component - mencegah re-render yang tidak perlu
 const MaterialRow = memo(
@@ -311,13 +316,11 @@ export default function MaterialsPage() {
   const loadMaterials = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/materials");
-      const data = await res.json();
-      if (res.ok) {
-        setMaterials(data.barang || []);
-      }
+      const materials = await getMaterials();
+      setMaterials(materials || []);
     } catch (error) {
       console.error("Error loading materials:", error);
+      showNotification("error", "Gagal memuat data barang");
     } finally {
       setLoading(false);
     }
@@ -336,25 +339,24 @@ export default function MaterialsPage() {
     if (updatedMaterial) {
       // Fetch full material data with category names if not present
       try {
-        const res = await fetch(`/api/materials/${updatedMaterial.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          updateMaterialInState(data.material);
+        const material = await getMaterialById(updatedMaterial.id);
+        if (material) {
+          updateMaterialInState(material);
           showNotification("success", message);
         } else {
           // Fallback to full reload if fetch fails
-          loadMaterials();
+          await loadMaterials();
           showNotification("success", message);
         }
       } catch (error) {
         console.error("Error fetching updated material:", error);
         // Fallback to full reload if error occurs
-        loadMaterials();
+        await loadMaterials();
         showNotification("success", message);
       }
     } else {
       // For new materials, do a full reload
-      loadMaterials();
+      await loadMaterials();
       showNotification("success", message);
     }
   };
@@ -379,21 +381,13 @@ export default function MaterialsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/materials/${material.id}`, {
-            method: "DELETE",
-          });
-
-          if (res.ok) {
-            // Remove from local state instead of reloading
-            setMaterials((prev) => prev.filter((m) => m.id !== material.id));
-            showNotification(
-              "success",
-              `Barang "${material.nama}" berhasil dihapus`
-            );
-          } else {
-            const data = await res.json();
-            showNotification("error", data.error || "Gagal menghapus barang");
-          }
+          await deleteMaterial(material.id);
+          // Remove from local state instead of reloading
+          setMaterials((prev) => prev.filter((m) => m.id !== material.id));
+          showNotification(
+            "success",
+            `Barang "${material.nama}" berhasil dihapus`
+          );
         } catch (error) {
           console.error("Error deleting material:", error);
           showNotification("error", "Terjadi kesalahan saat menghapus barang");

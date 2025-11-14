@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { createCustomer } from "@/lib/services/customers-service";
 
 interface QuickAddCustomerModalProps {
   show: boolean;
@@ -74,31 +75,20 @@ export default function QuickAddCustomerModal({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/customers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: generateId("cust"),
-          tipe_pelanggan: tipePelanggan,
-          nama: nama.trim(),
-          nama_perusahaan: namaPerusahaan.trim() || null,
-          telepon: telepon.trim() || null,
-          email: email.trim() || null,
-          alamat: alamat.trim() || null,
-          member_status: memberStatus ? 1 : 0,
-        }),
+      await createCustomer({
+        tipe_pelanggan: tipePelanggan,
+        nama: nama.trim(),
+        nama_perusahaan: namaPerusahaan.trim() || null,
+        telepon: telepon.trim() || "",
+        email: email.trim() || "",
+        alamat: alamat.trim() || "",
+        member_status: memberStatus ? 1 : 0,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        showNotification("success", "Pelanggan berhasil ditambahkan!");
-        resetForm();
-        onSuccess();
-        onClose();
-      } else {
-        showNotification("error", data.error || "Gagal menambahkan pelanggan");
-      }
+      showNotification("success", "Pelanggan berhasil ditambahkan!");
+      resetForm();
+      onSuccess();
+      onClose();
     } catch (error) {
       console.error("Error adding customer:", error);
       showNotification("error", "Terjadi kesalahan saat menambahkan pelanggan");

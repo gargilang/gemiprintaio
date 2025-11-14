@@ -3,6 +3,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
+import {
+  createMaterial,
+  updateMaterial,
+} from "@/lib/services/materials-service";
+import {
+  getCategories,
+  getSubcategories,
+  getUnits,
+  getQuickSpecs,
+} from "@/lib/services/master-service";
 
 interface UnitPrice {
   id?: string;
@@ -93,24 +103,25 @@ export default function AddMaterialModal({
     try {
       setLoadingMaster(true);
 
-      const [catRes, subRes, unitRes, specRes] = await Promise.all([
-        fetch("/api/master/categories"),
-        fetch("/api/master/subcategories"),
-        fetch("/api/master/units"),
-        fetch("/api/master/quick-specs"),
+      const [categories, subcategories, units, specs] = await Promise.all([
+        getCategories(),
+        getSubcategories(),
+        getUnits(),
+        getQuickSpecs(),
       ]);
 
-      const [catData, subData, unitData, specData] = await Promise.all([
-        catRes.json(),
-        subRes.json(),
-        unitRes.json(),
-        specRes.json(),
-      ]);
+      setCategoriesData(categories || []);
 
-      if (catRes.ok) setCategoriesData(catData.categories || []);
-      if (subRes.ok) setSubcategoriesData(subData.subcategories || []);
-      if (unitRes.ok) setUnitsData(unitData.units || []);
-      if (specRes.ok) setSpecsData(specData.specs || []);
+      // Add category_name to subcategories for compatibility
+      const subcategoriesWithCategory = (subcategories || []).map((sub) => ({
+        ...sub,
+        category_name:
+          categories?.find((c) => c.id === sub.kategori_id)?.nama || "",
+      }));
+      setSubcategoriesData(subcategoriesWithCategory);
+
+      setUnitsData(units || []);
+      setSpecsData(specs || []);
     } catch (error) {
       console.error("Error loading master data:", error);
     } finally {
@@ -345,31 +356,28 @@ export default function AddMaterialModal({
           unit_prices: unitPrices,
         };
 
-        const url = editData
-          ? `/api/materials/${editData.id}`
-          : "/api/materials";
-        const method = editData ? "PUT" : "POST";
+        let result;
+        if (editData) {
+          // Update existing material
+          result = await updateMaterial(editData.id, payload);
+        } else {
+          // Create new material
+          result = await createMaterial(payload);
+        }
 
-        const res = await fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          // Use showNotification from parent instead of alert
+        if (!result) {
           onClose();
-          showNotification("error", data.error || "Gagal menyimpan data");
+          showNotification("error", "Gagal menyimpan data");
           return;
         }
 
         // Close modal first, then show notification in parent
         onClose();
 
-        // For edits, pass the updated material back; for new items, still reload the list
-        const updatedMaterial =
-          editData && data.material ? data.material : null;
+        // For edits, pass the updated material back with ID; for new items pass null
+        const updatedMaterial = editData
+          ? { id: editData.id }
+          : (result as any);
         onSuccess(
           `Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`,
           updatedMaterial

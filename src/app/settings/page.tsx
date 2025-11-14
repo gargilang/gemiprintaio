@@ -9,6 +9,28 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getSubcategories,
+  createSubcategory,
+  updateSubcategory,
+  deleteSubcategory,
+  getUnits,
+  createUnit,
+  updateUnit,
+  deleteUnit,
+  getQuickSpecs,
+  createQuickSpec,
+  updateQuickSpec,
+  deleteQuickSpec,
+  getFinishingOptions,
+  createFinishingOption,
+  updateFinishingOption,
+  deleteFinishingOption,
+} from "@/lib/services/master-service";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -45,7 +67,7 @@ interface Subcategory {
 interface Unit {
   id: string;
   nama: string;
-  urutan_tampilan: number;
+  urutan_tampilan?: number;
 }
 
 interface QuickSpec {
@@ -587,13 +609,8 @@ function CategoriesView({
   const loadCategories = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/master/categories");
-      const data = await res.json();
-      if (res.ok) {
-        setCategories(data.categories || []);
-      } else {
-        showMsg("error", data.error || "Gagal memuat kategori");
-      }
+      const data = await getCategories();
+      setCategories(data || []);
     } catch (error) {
       console.error("Error loading categories:", error);
       showMsg("error", "Gagal memuat data kategori");
@@ -625,25 +642,29 @@ function CategoriesView({
 
     try {
       setSaving(true);
-      const url = editingCategory
-        ? `/api/master/categories/${editingCategory.id}`
-        : "/api/master/categories";
-      const method = editingCategory ? "PUT" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const payload = {
+        nama: formData.nama,
+        butuh_spesifikasi_status: formData.butuh_spesifikasi_status ? 1 : 0,
+        urutan_tampilan: editingCategory?.urutan_tampilan || categories.length,
+      };
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyimpan");
+      if (editingCategory) {
+        await updateCategory(editingCategory.id, payload);
+      } else {
+        await createCategory(payload);
+      }
 
-      showMsg("success", data.message);
+      showMsg(
+        "success",
+        editingCategory
+          ? "Kategori berhasil diupdate"
+          : "Kategori berhasil ditambahkan"
+      );
       setShowModal(false);
       loadCategories();
     } catch (error: any) {
-      showMsg("error", error.message);
+      showMsg("error", error.message || "Gagal menyimpan");
     } finally {
       setSaving(false);
     }
@@ -659,17 +680,11 @@ function CategoriesView({
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/master/categories/${category.id}`, {
-            method: "DELETE",
-          });
-          const data = await res.json();
-
-          if (!res.ok) throw new Error(data.error || "Gagal menghapus");
-
-          showMsg("success", data.message);
+          await deleteCategory(category.id);
+          showMsg("success", "Kategori berhasil dihapus");
           loadCategories();
         } catch (error: any) {
-          showMsg("error", error.message);
+          showMsg("error", error.message || "Gagal menghapus");
         }
       },
     });
@@ -2050,13 +2065,8 @@ function UnitsSection() {
   const loadUnits = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/master/units");
-      const data = await res.json();
-      if (res.ok) {
-        setUnits(data.units || []);
-      } else {
-        showMsg("error", data.error || "Gagal memuat satuan");
-      }
+      const data = await getUnits();
+      setUnits(data || []);
     } catch (error) {
       console.error("Error loading units:", error);
       showMsg("error", "Gagal memuat data satuan");

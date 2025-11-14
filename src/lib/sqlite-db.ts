@@ -1,3 +1,15 @@
+/**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * File ini akan dihapus setelah migrasi selesai.
+ * Gunakan src/lib/db-unified.ts sebagai gantinya.
+ *
+ * SQLite operations untuk server-side (API routes).
+ * Untuk Tauri, gunakan Rust commands via db-unified.ts
+ *
+ * @deprecated Use db-unified.ts instead
+ */
+
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";

@@ -8,6 +8,13 @@ import NotificationToast, {
 } from "@/components/NotificationToast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { UsersIcon, CheckIcon } from "@/components/icons/ContentIcons";
+import {
+  getCustomers,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  Customer as CustomerType,
+} from "@/lib/services/customers-service";
 
 // Memoized Customer Row Component - mencegah re-render yang tidak perlu
 const CustomerRow = memo(
@@ -110,19 +117,8 @@ interface User {
   role: string;
 }
 
-interface Customer {
-  id: string;
-  nama: string;
-  email: string;
-  telepon: string;
-  alamat: string;
-  nama_perusahaan?: string;
-  tipe_pelanggan: string;
-  npwp?: string;
-  member_status: number;
-  dibuat_pada: string;
-  diperbarui_pada: string;
-}
+// Use Customer type from service
+type Customer = CustomerType;
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -279,9 +275,8 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      const res = await fetch("/api/customers");
-      const data = await res.json();
-      setCustomers(data.pelanggan || []);
+      const customers = await getCustomers();
+      setCustomers(customers || []);
     } catch (error) {
       console.error("Error loading customers:", error);
       showMsg("error", "Gagal memuat data pelanggan");
@@ -327,33 +322,20 @@ export default function CustomersPage() {
 
     try {
       setSaving(true);
-      const url = "/api/customers";
-      const method = editingCustomer ? "PUT" : "POST";
-      const payload = editingCustomer
-        ? { ...formData, id: editingCustomer.id }
-        : formData;
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      const successMessage = editingCustomer
-        ? "Pelanggan berhasil diupdate"
-        : "Pelanggan berhasil ditambahkan";
-
-      setShowModal(false);
-
-      // If editing, update local state; if new, reload list
-      if (editingCustomer && data.customer) {
-        updateCustomerInState(data.customer);
+      if (editingCustomer) {
+        // Update existing customer
+        await updateCustomer(editingCustomer.id, formData);
+        const successMessage = "Pelanggan berhasil diupdate";
+        setShowModal(false);
+        await loadCustomers();
         showMsg("success", successMessage);
       } else {
-        loadCustomers();
+        // Create new customer
+        await createCustomer(formData);
+        const successMessage = "Pelanggan berhasil ditambahkan";
+        setShowModal(false);
+        await loadCustomers();
         showMsg("success", successMessage);
       }
     } catch (error: any) {
@@ -378,12 +360,7 @@ export default function CustomersPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/customers?id=${customer.id}`, {
-            method: "DELETE",
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-
+          await deleteCustomer(customer.id);
           // Remove from local state instead of reloading
           setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
           showMsg("success", "Pelanggan berhasil dihapus");

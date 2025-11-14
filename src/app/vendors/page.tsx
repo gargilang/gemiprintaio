@@ -7,7 +7,14 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { BuildingIcon } from "@/components/icons/PageIcons";
+import { UsersIcon } from "@/components/icons/ContentIcons";
+import {
+  getVendors,
+  createVendor,
+  updateVendor,
+  deleteVendor,
+  Vendor as VendorType,
+} from "@/lib/services/vendors-service";
 import { CheckIcon } from "@/components/icons/ContentIcons";
 
 // Memoized Vendor Row Component - mencegah re-render yang tidak perlu
@@ -109,18 +116,8 @@ interface User {
   role: string;
 }
 
-interface Vendor {
-  id: string;
-  nama_perusahaan: string;
-  email: string;
-  telepon: string;
-  alamat: string;
-  kontak_person?: string;
-  ketentuan_bayar?: string;
-  aktif_status: number;
-  catatan?: string;
-  dibuat_pada: string;
-}
+// Use Vendor type from service
+type Vendor = VendorType;
 
 export default function VendorsPage() {
   const router = useRouter();
@@ -277,9 +274,8 @@ export default function VendorsPage() {
 
   const loadVendors = async () => {
     try {
-      const res = await fetch("/api/vendors");
-      const data = await res.json();
-      setVendors(data.vendor || []);
+      const vendors = await getVendors();
+      setVendors(vendors || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
       showMsg("error", "Gagal memuat data vendor");
@@ -325,33 +321,20 @@ export default function VendorsPage() {
 
     try {
       setSaving(true);
-      const url = "/api/vendors";
-      const method = editingVendor ? "PUT" : "POST";
-      const payload = editingVendor
-        ? { ...formData, id: editingVendor.id }
-        : formData;
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      const successMessage = editingVendor
-        ? "Vendor berhasil diupdate"
-        : "Vendor berhasil ditambahkan";
-
-      setShowModal(false);
-
-      // If editing, update local state; if new, reload list
-      if (editingVendor && data.vendor) {
-        updateVendorInState(data.vendor);
+      if (editingVendor) {
+        // Update existing vendor
+        await updateVendor(editingVendor.id, formData);
+        const successMessage = "Vendor berhasil diupdate";
+        setShowModal(false);
+        await loadVendors();
         showMsg("success", successMessage);
       } else {
-        loadVendors();
+        // Create new vendor
+        await createVendor(formData);
+        const successMessage = "Vendor berhasil ditambahkan";
+        setShowModal(false);
+        await loadVendors();
         showMsg("success", successMessage);
       }
     } catch (error: any) {
@@ -376,12 +359,7 @@ export default function VendorsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/vendors?id=${vendor.id}`, {
-            method: "DELETE",
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-
+          await deleteVendor(vendor.id);
           // Remove from local state instead of reloading
           setVendors((prev) => prev.filter((v) => v.id !== vendor.id));
           showMsg("success", "Vendor berhasil dihapus");
@@ -411,7 +389,7 @@ export default function VendorsPage() {
         <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-white/20 rounded-xl">
-              <BuildingIcon size={32} className="text-white" />
+              <UsersIcon size={32} className="text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
@@ -431,7 +409,7 @@ export default function VendorsPage() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <BuildingIcon size={20} className="text-white" />
+                  <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
                   Total Vendor
@@ -586,7 +564,7 @@ export default function VendorsPage() {
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400">
-                        <BuildingIcon size={48} className="mb-3 opacity-50" />
+                        <UsersIcon size={48} className="mb-3 opacity-50" />
                         <p className="text-lg font-semibold text-gray-600">
                           {searchQuery || filterActive !== "all"
                             ? "Tidak ada data yang sesuai"

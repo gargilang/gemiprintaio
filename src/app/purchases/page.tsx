@@ -78,20 +78,15 @@ export default function PurchasesPage() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // Use aggregate endpoint - 1 request instead of 8!
-      const res = await fetch("/api/purchases/init-data");
-      const data = await res.json();
+      const { getInitData } = await import("@/lib/services/purchases-service");
+      const data = await getInitData();
 
-      if (res.ok) {
-        setPurchases(data.purchases || []);
-        setMaterials(data.materials || []);
-        setVendors(data.vendors || []);
-        setCategories(data.categories || []);
-        setSubcategories(data.subcategories || []);
-        setUnits(data.units || []);
-      } else {
-        console.error("Error loading data:", data.error);
-      }
+      setPurchases(data.purchases || []);
+      setMaterials(data.materials || []);
+      setVendors(data.vendors || []);
+      setCategories(data.categories || []);
+      setSubcategories(data.subcategories || []);
+      setUnits(data.units || []);
     } catch (error) {
       console.error("Error loading all data:", error);
     }
@@ -101,11 +96,9 @@ export default function PurchasesPage() {
   // Keep individual loaders for refresh after operations
   const loadPurchases = async () => {
     try {
-      const res = await fetch("/api/purchases");
-      const data = await res.json();
-      if (res.ok) {
-        setPurchases(data.purchases || []);
-      }
+      const { getPurchases } = await import("@/lib/services/purchases-service");
+      const purchases = await getPurchases();
+      setPurchases(purchases || []);
     } catch (error) {
       console.error("Error loading purchases:", error);
     }
@@ -113,11 +106,9 @@ export default function PurchasesPage() {
 
   const loadMaterials = async () => {
     try {
-      const res = await fetch("/api/materials");
-      const data = await res.json();
-      if (res.ok) {
-        setMaterials(data.barang || []);
-      }
+      const { getMaterials } = await import("@/lib/services/materials-service");
+      const materials = await getMaterials();
+      setMaterials(materials || []);
     } catch (error) {
       console.error("Error loading materials:", error);
     }
@@ -125,11 +116,9 @@ export default function PurchasesPage() {
 
   const loadVendors = async () => {
     try {
-      const res = await fetch("/api/vendors");
-      const data = await res.json();
-      if (res.ok) {
-        setVendors(data.vendor || []);
-      }
+      const { getVendors } = await import("@/lib/services/vendors-service");
+      const vendors = await getVendors();
+      setVendors(vendors || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
     }
@@ -137,11 +126,9 @@ export default function PurchasesPage() {
 
   const loadCategories = async () => {
     try {
-      const res = await fetch("/api/master/categories");
-      const data = await res.json();
-      if (res.ok) {
-        setCategories(data.categories || []);
-      }
+      const { getCategories } = await import("@/lib/services/master-service");
+      const categories = await getCategories();
+      setCategories(categories || []);
     } catch (error) {
       console.error("Error loading categories:", error);
     }
@@ -149,11 +136,11 @@ export default function PurchasesPage() {
 
   const loadSubcategories = async () => {
     try {
-      const res = await fetch("/api/master/subcategories");
-      const data = await res.json();
-      if (res.ok) {
-        setSubcategories(data.subcategories || []);
-      }
+      const { getSubcategories } = await import(
+        "@/lib/services/master-service"
+      );
+      const subcategories = await getSubcategories();
+      setSubcategories(subcategories || []);
     } catch (error) {
       console.error("Error loading subcategories:", error);
     }
@@ -161,11 +148,9 @@ export default function PurchasesPage() {
 
   const loadUnits = async () => {
     try {
-      const res = await fetch("/api/master/units");
-      const data = await res.json();
-      if (res.ok) {
-        setUnits(data.units || []);
-      }
+      const { getUnits } = await import("@/lib/services/master-service");
+      const units = await getUnits();
+      setUnits(units || []);
     } catch (error) {
       console.error("Error loading units:", error);
     }
