@@ -65,25 +65,11 @@ export default function AddFinishingModal({
 
   const loadFinishingOptions = async () => {
     try {
-      const res = await fetch("/api/finishing-options");
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setFinishingOptions(
-          data.options.map((opt: FinishingOption) => opt.nama)
-        );
-      } else {
-        // Fallback to default options
-        setFinishingOptions([
-          "Laminating Glossy",
-          "Laminating Doff",
-          "Cutting",
-          "Mounting",
-          "Finishing Standar",
-          "Jahit Obras",
-          "Pasang Ring",
-          "Lainnya",
-        ]);
-      }
+      const { getFinishingOptions } = await import(
+        "@/lib/services/finishing-options-service"
+      );
+      const options = await getFinishingOptions();
+      setFinishingOptions(options.map((opt) => opt.nama));
     } catch (error) {
       console.error("Error loading finishing options:", error);
       // Fallback to default options

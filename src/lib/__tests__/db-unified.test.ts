@@ -13,6 +13,7 @@ describe("normalizeRecord", () => {
     it("should convert SQLite to Supabase format", () => {
       const input = {
         aktif: 1,
+        privat_status: 0,
         dibuat_pada: "2025-11-14T10:00:00Z",
         diperbarui_pada: "2025-11-14T11:00:00Z",
       };
@@ -20,10 +21,10 @@ describe("normalizeRecord", () => {
       const output = normalizeRecord(input, "toSupabase");
 
       expect(output.aktif).toBe(true);
-      expect(output.created_at).toBe("2025-11-14T10:00:00Z");
-      expect(output.updated_at).toBe("2025-11-14T11:00:00Z");
-      expect(output.dibuat_pada).toBeUndefined();
-      expect(output.diperbarui_pada).toBeUndefined();
+      expect(output.privat_status).toBe(false);
+      // Timestamps tetap sama (tidak ada konversi)
+      expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
+      expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
 
     it("should convert 0 to false for boolean fields", () => {
@@ -57,15 +58,18 @@ describe("normalizeRecord", () => {
     it("should convert Supabase to SQLite format", () => {
       const input = {
         aktif: true,
-        created_at: "2025-11-14T10:00:00Z",
-        updated_at: "2025-11-14T11:00:00Z",
+        privat_status: false,
+        dibuat_pada: "2025-11-14T10:00:00Z",
+        diperbarui_pada: "2025-11-14T11:00:00Z",
       };
 
       const output = normalizeRecord(input, "toSQLite");
 
       expect(output.aktif).toBe(1);
-      expect(output.created_at).toBe("2025-11-14T10:00:00Z");
-      expect(output.updated_at).toBe("2025-11-14T11:00:00Z");
+      expect(output.privat_status).toBe(0);
+      // Timestamps tetap sama (tidak ada konversi)
+      expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
+      expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
 
     it("should convert false to 0", () => {
@@ -115,6 +119,7 @@ describe("normalizeRecord", () => {
       nama: "Kertas A4",
       harga: 50000,
       aktif: 1,
+      dibuat_pada: "2025-11-14T10:00:00Z",
     };
 
     const output = normalizeRecord(input, "toSupabase");
@@ -122,6 +127,7 @@ describe("normalizeRecord", () => {
     expect(output.id).toBe("mat-123");
     expect(output.nama).toBe("Kertas A4");
     expect(output.harga).toBe(50000);
+    expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
   });
 });
 
@@ -221,7 +227,7 @@ describe("Edge Cases", () => {
       nama: "Test",
       harga: 50000,
       aktif: 1,
-      created_at: "2025-11-14T10:00:00Z",
+      dibuat_pada: "2025-11-14T10:00:00Z",
       metadata: { key: "value" },
     };
 
@@ -231,7 +237,7 @@ describe("Edge Cases", () => {
     expect(output.nama).toBe("Test");
     expect(output.harga).toBe(50000);
     expect(output.aktif).toBe(true);
-    expect(output.created_at).toBe("2025-11-14T10:00:00Z");
+    expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
     expect(output.metadata).toEqual({ key: "value" });
   });
 });

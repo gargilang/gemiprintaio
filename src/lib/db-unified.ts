@@ -19,9 +19,8 @@ import { invoke } from "@tauri-apps/api/core";
 
 /**
  * Normalize record untuk konsistensi antara SQLite dan Supabase
- * - Standarisasi field timestamp
- * - Konversi boolean (SQLite 0/1 → true/false)
- * - Pastikan ID konsisten
+ * - Konversi boolean (SQLite 0/1 ↔ Supabase true/false)
+ * - Timestamp fields sudah konsisten (dibuat_pada, diperbarui_pada)
  */
 export function normalizeRecord(
   record: Record<string, any>,
@@ -29,20 +28,7 @@ export function normalizeRecord(
 ): Record<string, any> {
   const normalized: Record<string, any> = { ...record };
 
-  // Standarisasi timestamp fields
-  if (direction === "toSupabase" || direction === "toSQLite") {
-    // Gunakan created_at & updated_at (standar Inggris)
-    if (normalized.dibuat_pada && !normalized.created_at) {
-      normalized.created_at = normalized.dibuat_pada;
-      delete normalized.dibuat_pada;
-    }
-    if (normalized.diperbarui_pada && !normalized.updated_at) {
-      normalized.updated_at = normalized.diperbarui_pada;
-      delete normalized.diperbarui_pada;
-    }
-  }
-
-  // Boolean normalization
+  // Boolean normalization only (timestamps sudah konsisten)
   if (direction === "toSupabase" || direction === "fromSQLite") {
     // SQLite → Supabase: 0/1 → false/true
     Object.keys(normalized).forEach((key) => {
@@ -54,7 +40,9 @@ export function normalizeRecord(
         if (
           key.includes("aktif") ||
           key.includes("is_") ||
-          key.includes("has_")
+          key.includes("has_") ||
+          key.includes("status") ||
+          key.includes("privat")
         ) {
           normalized[key] = normalized[key] === 1;
         }
@@ -308,10 +296,10 @@ class UnifiedDatabase {
         data.id = generateId();
       }
 
-      // Add timestamps (standar: created_at, updated_at)
+      // Add timestamps (standar Indonesia: dibuat_pada, diperbarui_pada)
       const now = getCurrentTimestamp();
-      data.created_at = data.created_at || now;
-      data.updated_at = data.updated_at || now;
+      data.dibuat_pada = data.dibuat_pada || now;
+      data.diperbarui_pada = data.diperbarui_pada || now;
 
       // Tauri: Insert to SQLite
       if (isTauriApp()) {
@@ -345,8 +333,8 @@ class UnifiedDatabase {
     data: Record<string, any>
   ): Promise<MutationResult> {
     try {
-      // Update timestamp (standar: updated_at)
-      data.updated_at = getCurrentTimestamp();
+      // Update timestamp (standar Indonesia: diperbarui_pada)
+      data.diperbarui_pada = getCurrentTimestamp();
 
       // Remove id from update data
       const { id: _, ...updateData } = data;

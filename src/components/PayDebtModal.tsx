@@ -86,14 +86,9 @@ export default function PayDebtModal({
   const loadDebts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/purchases/debts");
-      if (res.ok) {
-        const data = await res.json();
-        setDebts(data.debts || []);
-      } else {
-        const data = await res.json();
-        setError(data.error || "Gagal memuat data tagihan");
-      }
+      const { getDebts } = await import("@/lib/services/purchases-service");
+      const data = await getDebts();
+      setDebts(data || []);
     } catch (err) {
       console.error("Error loading debts:", err);
       setError("Terjadi kesalahan saat memuat data tagihan");
@@ -129,30 +124,22 @@ export default function PayDebtModal({
     setError("");
 
     try {
-      const res = await fetch("/api/purchases/pay-debt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          purchase_id: selectedDebt.id,
-          jumlah_bayar: amount,
-          tanggal_bayar: tanggalBayar,
-          metode_pembayaran: metodePembayaran,
-          referensi: referensi.trim() || null,
-          catatan: catatan.trim() || null,
-          dibuat_oleh: currentUserId,
-        }),
+      const { payDebt } = await import("@/lib/services/purchases-service");
+      await payDebt({
+        purchase_id: selectedDebt.id,
+        jumlah_bayar: amount,
+        tanggal_bayar: tanggalBayar,
+        metode_pembayaran: metodePembayaran,
+        referensi: referensi.trim() || undefined,
+        catatan: catatan.trim() || undefined,
+        dibuat_oleh: currentUserId || undefined,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        onSuccess();
-        onClose();
-        resetForm();
-      } else {
-        setError(data.error || "Gagal memproses pembayaran");
-      }
-    } catch (err) {
+      onSuccess();
+      onClose();
+      resetForm();
+    } catch (err: any) {
+      setError(err.message || "Gagal memproses pembayaran");
       console.error("Error paying debt:", err);
       setError("Terjadi kesalahan saat memproses pembayaran");
     }

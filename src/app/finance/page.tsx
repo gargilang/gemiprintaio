@@ -24,7 +24,10 @@ import {
 } from "@/components/icons/ContentIcons";
 import { getDebts } from "@/lib/services/purchases-service";
 import { getReceivables } from "@/lib/services/pos-service";
-import { deleteAllCashbook } from "@/lib/services/finance-service";
+import {
+  deleteAllCashbook,
+  deleteCashBookEntry,
+} from "@/lib/services/finance-service";
 import { restoreArchivedTransactions } from "@/lib/services/reports-service";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
@@ -902,13 +905,7 @@ export default function FinancePage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/finance/cash-book/${cashBook.id}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-          });
-          const data = await res.json();
-          if (!res.ok)
-            throw new Error(data?.error || "Gagal menghapus transaksi");
+          await deleteCashBookEntry(cashBook.id);
 
           showMsg(
             "success",

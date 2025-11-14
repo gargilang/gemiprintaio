@@ -281,25 +281,16 @@ export default function PurchaseForm({
         })),
       };
 
-      let res;
       if (editData) {
-        res = await fetch(`/api/purchases/${editData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const { updatePurchase } = await import(
+          "@/lib/services/purchases-service"
+        );
+        await updatePurchase(editData.id, payload);
       } else {
-        res = await fetch("/api/purchases", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal menyimpan pembelian");
+        const { createPurchase } = await import(
+          "@/lib/services/purchases-service"
+        );
+        await createPurchase(payload);
       }
 
       onSuccess(

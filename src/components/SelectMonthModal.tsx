@@ -60,14 +60,11 @@ export default function SelectMonthModal({
     setError("");
 
     try {
-      const res = await fetch("/api/cashbook/archive");
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal memuat arsip");
-      }
-
-      setArchives(data.archives || []);
+      const { getArchivedPeriods } = await import(
+        "@/lib/services/reports-service"
+      );
+      const data = await getArchivedPeriods();
+      setArchives(data || []);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan");
     } finally {

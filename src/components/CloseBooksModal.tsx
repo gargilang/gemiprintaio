@@ -60,17 +60,10 @@ export default function CloseBooksModal({
     setError("");
 
     try {
-      const res = await fetch("/api/cashbook/archive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate, label }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal tutup buku");
-      }
+      const { archiveCashbook } = await import(
+        "@/lib/services/reports-service"
+      );
+      await archiveCashbook({ startDate, endDate, label });
 
       onSuccess();
       handleClose();

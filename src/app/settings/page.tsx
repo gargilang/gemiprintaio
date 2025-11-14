@@ -1290,14 +1290,16 @@ function SubcategoriesView({
   const loadSubcategories = async () => {
     try {
       setLoading(true);
-      const url = `/api/master/subcategories?category_id=${category.id}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok) {
-        setSubcategories(data.subcategories || []);
-      } else {
-        showMsg("error", data.error || "Gagal memuat subkategori");
-      }
+      const { getSubcategories: getSubcats } = await import(
+        "@/lib/services/master-service"
+      );
+      const data = await getSubcats(category.id);
+      setSubcategories(
+        (data || []).map((sub: any) => ({
+          ...sub,
+          category_name: category.nama,
+        }))
+      );
     } catch (error) {
       console.error("Error loading subcategories:", error);
       showMsg("error", "Gagal memuat data subkategori");
@@ -1334,14 +1336,16 @@ function SubcategoriesView({
   const loadSpecs = async () => {
     try {
       setSpecsLoading(true);
-      const url = `/api/master/quick-specs?category_id=${category.id}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok) {
-        setSpecs(data.specs || []);
-      } else {
-        showMsg("error", data.error || "Gagal memuat spesifikasi");
-      }
+      const { getQuickSpecs } = await import("@/lib/services/master-service");
+      const data = await getQuickSpecs(category.id);
+      setSpecs(
+        (data || []).map((spec: any) => ({
+          ...spec,
+          tipe_spesifikasi: spec.tipe_spesifikasi || "",
+          nilai_spesifikasi: spec.nilai_spesifikasi || "",
+          category_name: category.nama,
+        }))
+      );
     } catch (error) {
       console.error("Error loading specs:", error);
       showMsg("error", "Gagal memuat data spesifikasi");

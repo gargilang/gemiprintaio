@@ -25,6 +25,8 @@ Migrasi aplikasi GemiPrint dari arsitektur **Next.js API Routes** ke **Unified D
 - **Gunakan `getCurrentTimestamp()`** untuk timestamps (ISO 8601)
 - **Gunakan `generateId()`** untuk IDs baru
 - **Gunakan `db.transaction()`** untuk operasi multi-table (Tauri only)
+- **GUNAKAN `dibuat_pada`, `diperbarui_pada`** (SQLite & Supabase konsisten pakai bahasa Indonesia)
+- ❌ Jangan mix boolean (0/1 vs true/false) - gunakan normalization
 - **Test di Tauri dan Web mode** - pastikan kedua environment kerja
 - **Gunakan `db.queryRaw()`** untuk query kompleks dengan JOIN
 - **Always throw errors** dari service layer, jangan return error objects
@@ -33,8 +35,6 @@ Migrasi aplikasi GemiPrint dari arsitektur **Next.js API Routes** ke **Unified D
 
 - ❌ Jangan gunakan `db-adapter.ts`, `db.ts`, `sqlite-db.ts` (DEPRECATED)
 - ❌ Jangan gunakan `fetch("/api/...")` di code baru
-- ❌ Jangan gunakan `dibuat_pada`, `diperbarui_pada` (gunakan `created_at`, `updated_at`)
-- ❌ Jangan mix boolean (0/1 vs true/false) - gunakan normalization
 - ❌ Jangan buat API route baru
 - ❌ Jangan langsung delete DEPRECATED routes sebelum verifikasi 100%
 

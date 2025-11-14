@@ -86,14 +86,9 @@ export default function PayReceivableModal({
   const loadReceivables = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pos/receivables");
-      if (res.ok) {
-        const data = await res.json();
-        setReceivables(data.receivables || []);
-      } else {
-        const data = await res.json();
-        setError(data.error || "Gagal memuat data piutang");
-      }
+      const { getReceivables } = await import("@/lib/services/pos-service");
+      const data = await getReceivables();
+      setReceivables((data as any) || []);
     } catch (err) {
       console.error("Error loading receivables:", err);
       setError("Terjadi kesalahan saat memuat data piutang");
@@ -129,30 +124,22 @@ export default function PayReceivableModal({
     setError("");
 
     try {
-      const res = await fetch("/api/pos/pay-receivable", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          piutang_id: selectedReceivable.id,
-          jumlah_bayar: amount,
-          tanggal_bayar: tanggalBayar,
-          metode_pembayaran: metodePembayaran,
-          referensi: referensi.trim() || null,
-          catatan: catatan.trim() || null,
-          dibuat_oleh: currentUserId,
-        }),
+      const { payReceivable } = await import("@/lib/services/pos-service");
+      await payReceivable({
+        piutang_id: selectedReceivable.id,
+        jumlah_bayar: amount,
+        tanggal_bayar: tanggalBayar,
+        metode_pembayaran: metodePembayaran,
+        referensi: referensi.trim() || undefined,
+        catatan: catatan.trim() || undefined,
+        dibuat_oleh: currentUserId || undefined,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        onSuccess();
-        onClose();
-        resetForm();
-      } else {
-        setError(data.error || "Gagal memproses pembayaran");
-      }
-    } catch (err) {
+      onSuccess();
+      onClose();
+      resetForm();
+    } catch (err: any) {
+      setError(err.message || "Gagal memproses pembayaran");
       console.error("Error paying receivable:", err);
       setError("Terjadi kesalahan saat memproses pembayaran");
     }

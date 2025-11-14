@@ -13,6 +13,13 @@ import {
   CrownIcon,
   KeyIcon,
 } from "@/components/icons/ContentIcons";
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  changePassword,
+} from "@/lib/services/users-service";
 
 interface User {
   id: string;
@@ -158,6 +165,7 @@ export default function UsersPage() {
     const v = viewer || currentUser;
     if (!v) return;
     try {
+      // TODO: Replace with passwords-service once created
       const res = await fetch(`/api/passwords`, {
         cache: "no-store",
         headers: { "x-user-id": v.id },
@@ -215,33 +223,32 @@ export default function UsersPage() {
 
     try {
       if (editingUser) {
-        // Update existing user via API
-        const payload: any = {
-          nama_pengguna: editingUser.nama_pengguna,
-          email: formData.email,
+        // Update existing user via service
+        const updateData: any = {
+          email: formData.email || null,
           nama_lengkap: formData.nama_lengkap,
           role: formData.role,
           aktif_status: formData.aktif_status,
         };
-        if (formData.password) payload.password = formData.password;
 
-        const res = await fetch(`/api/users/${editingUser.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Gagal update user");
+        await updateUser(editingUser.id, updateData);
+
+        // Change password separately if provided
+        if (formData.password) {
+          await changePassword(editingUser.id, formData.password);
+        }
+
         showMsg("success", "User berhasil diupdate!");
       } else {
-        // Create new user via API
-        const res = await fetch(`/api/users`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+        // Create new user via service
+        await createUser({
+          nama_pengguna: formData.nama_pengguna,
+          email: formData.email || undefined,
+          nama_lengkap: formData.nama_lengkap,
+          password: formData.password,
+          role: formData.role,
+          aktif_status: formData.aktif_status,
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Gagal menambah user");
         showMsg("success", "User berhasil ditambahkan!");
       }
 
@@ -278,14 +285,7 @@ export default function UsersPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch(`/api/users/${userId}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nama_pengguna: userToDelete.nama_pengguna }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data?.error || "Gagal menghapus user");
-
+          await deleteUser(userId);
           showMsg("success", "User berhasil dihapus!");
           await loadUsers(currentUser!);
         } catch (err) {
@@ -311,13 +311,9 @@ export default function UsersPage() {
     if (!target) return;
 
     try {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aktif_status: target.aktif_status ? 0 : 1 }),
+      await updateUser(userId, {
+        aktif_status: target.aktif_status ? 0 : 1,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Gagal update status");
       await loadUsers(currentUser!);
     } catch (err) {
       console.error(err);

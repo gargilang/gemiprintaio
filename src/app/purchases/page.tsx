@@ -219,14 +219,10 @@ export default function PurchasesPage() {
       type: "danger",
       onConfirm: async () => {
         try {
-          const res = await fetch(`/api/purchases/${purchase.id}`, {
-            method: "DELETE",
-          });
-
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Gagal menghapus pembelian");
-          }
+          const { deletePurchase } = await import(
+            "@/lib/services/purchases-service"
+          );
+          await deletePurchase(purchase.id);
 
           // Remove from local state instead of reloading
           setPurchases((prev) => prev.filter((p) => p.id !== purchase.id));
@@ -257,33 +253,13 @@ export default function PurchasesPage() {
       type: "purchases",
       onConfirm: async () => {
         try {
-          const res = await fetch(`/api/purchases/revert-payment`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              purchase_id: purchase.id,
-              dibuat_oleh: currentUser?.id || null,
-            }),
-          });
+          const { revertPayment } = await import(
+            "@/lib/services/purchases-service"
+          );
+          await revertPayment(purchase.id);
 
-          const data = await res.json();
-
-          if (!res.ok) {
-            throw new Error(
-              data.error || "Gagal mengembalikan status pembelian"
-            );
-          }
-
-          // Update local state with reverted purchase
-          if (data.purchase) {
-            setPurchases((prev) =>
-              prev.map((p) =>
-                p.id === purchase.id ? { ...p, ...data.purchase } : p
-              )
-            );
-          } else {
-            await loadPurchases();
-          }
+          // Reload purchases to get updated status
+          await loadPurchases();
 
           showMsg(
             "success",
