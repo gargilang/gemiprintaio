@@ -34,29 +34,18 @@ export default function LoginPage() {
     try {
       console.log("🔐 Attempting login with username:", username);
 
-      // Call API to validate against SQLite database
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      // Call auth service
+      const { login } = await import("@/lib/services/auth-service");
+      const result = await login(username, password);
 
-      console.log("📥 Response status:", res.status, res.statusText);
+      console.log("📥 Login result:", result);
 
-      const data = await res.json();
-      console.log("📥 Response data:", data);
-
-      if (!res.ok || !data?.success) {
-        console.log(
-          "❌ Login failed - res.ok:",
-          res.ok,
-          "data.success:",
-          data?.success
-        );
-        throw new Error(data?.error || "Username atau password salah");
+      if (!result.success || !result.user) {
+        console.log("❌ Login failed:", result.error);
+        throw new Error(result.error || "Username atau password salah");
       }
 
-      const user = data.user;
+      const user = result.user;
       console.log("✅ Login successful, user:", user);
       localStorage.setItem("user", JSON.stringify(user));
       router.push("/dashboard");
@@ -77,24 +66,16 @@ export default function LoginPage() {
     try {
       console.log("📝 Attempting registration with username:", username);
 
-      // Call API to create new user with role "user"
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          email: email.trim() === "" ? null : email.trim(),
-          full_name: fullName,
-          password,
-          role: "user", // Always "user" for self-registration
-          is_active: 1,
-        }),
+      // Call users service to create new user
+      const { createUser } = await import("@/lib/services/users-service");
+      await createUser({
+        nama_pengguna: username,
+        email: email.trim() === "" ? undefined : email.trim(),
+        nama_lengkap: fullName,
+        password,
+        role: "user", // Always "user" for self-registration
+        aktif_status: 1,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Gagal mendaftar");
-      }
 
       console.log("✅ Registration successful");
       setSuccess(

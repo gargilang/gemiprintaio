@@ -17,11 +17,13 @@ import {
 interface User {
   id: string;
   nama_pengguna: string;
-  email: string;
-  nama_lengkap: string;
+  email?: string | null;
+  nama_lengkap?: string;
   role: "admin" | "manager" | "chief" | "user";
   aktif_status: number;
   dibuat_pada?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function UsersPage() {
@@ -143,10 +145,9 @@ export default function UsersPage() {
       return;
     }
     try {
-      const res = await fetch("/api/users", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Gagal memuat users");
-      setUsers(data.users || []);
+      const { getUsers } = await import("@/lib/services/users-service");
+      const users = await getUsers();
+      setUsers((users as any) || []);
     } catch (err) {
       console.error("Gagal memuat users:", err);
       showMsg("error", "Tidak bisa memuat data users dari database.");
@@ -175,8 +176,8 @@ export default function UsersPage() {
       setEditingUser(user);
       setFormData({
         nama_pengguna: user.nama_pengguna,
-        email: user.email,
-        nama_lengkap: user.nama_lengkap,
+        email: user.email || "",
+        nama_lengkap: user.nama_lengkap || "",
         password: "",
         role: user.role,
         aktif_status: user.aktif_status,
@@ -414,11 +415,12 @@ export default function UsersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a1b3d] to-[#00afef] flex items-center justify-center text-white font-bold">
-                            {user.nama_lengkap.charAt(0)}
+                            {user.nama_lengkap?.charAt(0) ||
+                              user.nama_pengguna.charAt(0)}
                           </div>
                           <div>
                             <div className="font-semibold text-[#0a1b3d]">
-                              {user.nama_lengkap}
+                              {user.nama_lengkap || user.nama_pengguna}
                             </div>
                             <div className="text-sm text-[#6b7280]">
                               @{user.nama_pengguna}

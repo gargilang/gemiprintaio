@@ -704,23 +704,18 @@ export default function FinancePage() {
         showMsg("success", " Transaksi berhasil diupdate!");
       } else {
         // Create new transaction
-        const res = await fetch("/api/finance/cash-book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tanggal: formData.tanggal,
-            kategori_transaksi: formData.kategori_transaksi,
-            debit: debitVal,
-            kredit: kreditVal,
-            keperluan: formData.keperluan,
-            catatan: formData.catatan,
-            dibuat_oleh: currentUser?.id,
-          }),
+        const { createCashBookEntry } = await import(
+          "@/lib/services/finance-service"
+        );
+        await createCashBookEntry({
+          tanggal: formData.tanggal,
+          kategori_transaksi: formData.kategori_transaksi,
+          debit: debitVal,
+          kredit: kreditVal,
+          keperluan: formData.keperluan,
+          catatan: formData.catatan,
+          dibuat_oleh: currentUser?.id,
         });
-
-        const data = await res.json();
-        if (!res.ok)
-          throw new Error(data?.error || "Gagal menambahkan transaksi");
 
         showMsg("success", " Transaksi berhasil ditambahkan!");
       }
