@@ -22,6 +22,10 @@ import {
   BoxIcon,
   CheckIcon,
 } from "@/components/icons/ContentIcons";
+import { getDebts } from "@/lib/services/purchases-service";
+import { getReceivables } from "@/lib/services/pos-service";
+import { deleteAllCashbook } from "@/lib/services/finance-service";
+import { restoreArchivedTransactions } from "@/lib/services/reports-service";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
 const stripReferenceId = (text: string | null | undefined): string => {
@@ -500,17 +504,13 @@ export default function FinancePage() {
 
   const loadHutangData = async () => {
     try {
-      const res = await fetch("/api/purchases/debts", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok) {
-        const debts = data.debts || [];
-        const total = debts.reduce(
-          (sum: number, debt: any) => sum + debt.sisa_hutang,
-          0
-        );
-        setTotalHutang(total);
-        setHutangCount(debts.length);
-      }
+      const debts = await getDebts();
+      const total = debts.reduce(
+        (sum: number, debt: any) => sum + debt.sisa_hutang,
+        0
+      );
+      setTotalHutang(total);
+      setHutangCount(debts.length);
     } catch (err) {
       console.error("Gagal memuat data hutang:", err);
     }
@@ -518,17 +518,13 @@ export default function FinancePage() {
 
   const loadPiutangData = async () => {
     try {
-      const res = await fetch("/api/pos/receivables", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok) {
-        const receivables = data.receivables || [];
-        const total = receivables.reduce(
-          (sum: number, rec: any) => sum + rec.sisa_piutang,
-          0
-        );
-        setTotalPiutang(total);
-        setPiutangCount(receivables.length);
-      }
+      const receivables = await getReceivables();
+      const total = receivables.reduce(
+        (sum: number, rec: any) => sum + rec.sisa_piutang,
+        0
+      );
+      setTotalPiutang(total);
+      setPiutangCount(receivables.length);
     } catch (err) {
       console.error("Gagal memuat data piutang:", err);
     }
@@ -937,13 +933,11 @@ export default function FinancePage() {
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
-      const res = await fetch("/api/cashbook/delete-all", {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Gagal menghapus data");
-
-      showMsg("success", data.message);
+      await deleteAllCashbook();
+      showMsg(
+        "success",
+        "Transaksi aktif berhasil dihapus. Data arsip tetap tersimpan."
+      );
       setShowDeleteAllModal(false);
 
       // Clear local state instead of reloading
@@ -1090,24 +1084,14 @@ export default function FinancePage() {
         setConfirmDialog(null);
 
         try {
-          const res = await fetch("/api/cashbook/archive/restore", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              label: currentArchiveInfo.label,
-              archived_at: currentArchiveInfo.archived_at,
-            }),
-          });
-
-          const data = await res.json();
-
-          if (!res.ok) {
-            throw new Error(data?.error || "Gagal restore arsip");
-          }
+          await restoreArchivedTransactions(
+            currentArchiveInfo.label,
+            currentArchiveInfo.archived_at
+          );
 
           showMsg(
             "success",
-            `${data.restored} transaksi berhasil dikembalikan dari "${currentArchiveInfo.label}"`
+            `Transaksi berhasil dikembalikan dari "${currentArchiveInfo.label}"`
           );
 
           // Kembali ke tabel aktif dan reload

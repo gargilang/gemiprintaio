@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED: Use finishing-options-service.ts functions
+ * @see /src/lib/services/finishing-options-service.ts
+ */
 import { NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";

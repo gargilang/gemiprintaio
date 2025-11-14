@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED: Use archiveCashbook(), getArchivedPeriods() from reports-service.ts
+ * @see /src/lib/services/reports-service.ts
+ */
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { join } from "path";

@@ -10,6 +10,12 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import {
+  getPOSInitData,
+  createSale,
+  deleteSale,
+  revertSalePayment,
+} from "@/lib/services/pos-service";
 
 interface User {
   id: string;
@@ -202,18 +208,13 @@ export default function POSPage() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pos/init-data");
-      const data = await res.json();
-
-      if (res.ok) {
-        setCustomers(data.customers || []);
-        setMaterials(data.materials || []);
-        setSales(data.sales || []);
-      } else {
-        console.error("Error loading data:", data.error);
-      }
+      const data = await getPOSInitData();
+      setCustomers(data.customers || []);
+      setMaterials(data.materials || []);
+      setSales(data.sales || []);
     } catch (error) {
       console.error("Error loading all data:", error);
+      showMsg("error", "Gagal memuat data POS");
     }
     setLoading(false);
   };
@@ -366,27 +367,15 @@ export default function POSPage() {
 
   const handleDeleteSale = async (saleId: string) => {
     try {
-      const res = await fetch(`/api/pos/sales/${saleId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res
-          .json()
-          .catch(() => ({ error: "Gagal menghapus transaksi" }));
-        showMsg("error", data.error || "Gagal menghapus transaksi");
-        return;
-      }
-
-      const data = await res.json().catch(() => ({ success: true }));
-
-      if (data.success || res.ok) {
-        showMsg("success", "Transaksi berhasil dihapus");
-        await loadAllData();
-      }
-    } catch (error) {
+      await deleteSale(saleId);
+      showMsg("success", "Transaksi berhasil dihapus");
+      await loadAllData();
+    } catch (error: any) {
       console.error("Error deleting sale:", error);
-      showMsg("error", "Terjadi kesalahan saat menghapus transaksi");
+      showMsg(
+        "error",
+        error.message || "Terjadi kesalahan saat menghapus transaksi"
+      );
     }
   };
 
@@ -415,26 +404,14 @@ export default function POSPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const res = await fetch("/api/pos/sales/revert-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sale_id: sale.id,
-              dibuat_oleh: currentUser?.id || null,
-            }),
+          const paymentsDeleted = await revertSalePayment({
+            sale_id: sale.id,
+            dibuat_oleh: currentUser?.id || undefined,
           });
-
-          const data = await res.json();
-
-          if (!res.ok) {
-            throw new Error(
-              data.error || "Gagal mengembalikan status penjualan"
-            );
-          }
 
           showMsg(
             "success",
-            data.message || "Status berhasil dikembalikan ke PIUTANG"
+            `Status berhasil dikembalikan ke PIUTANG (${paymentsDeleted} pembayaran dihapus)`
           );
           await loadAllData();
         } catch (error: any) {
@@ -502,76 +479,72 @@ export default function POSPage() {
   ) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pos/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pelanggan_id: selectedCustomer?.id || null,
-          items: cart,
-          total_jumlah: total,
-          jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
-          jumlah_kembalian: kembalian,
-          metode_pembayaran: paymentMethod,
-          catatan: catatan.trim() || null,
-          kasir_id: currentUser?.id,
-          prioritas: prioritas,
-        }),
+      const result = await createSale({
+        pelanggan_id: selectedCustomer?.id,
+        items: cart,
+        total_jumlah: total,
+        jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
+        jumlah_kembalian: kembalian,
+        metode_pembayaran: paymentMethod as
+          | "CASH"
+          | "TRANSFER"
+          | "QRIS"
+          | "DEBIT"
+          | "DOWN_PAYMENT"
+          | "NET30",
+        catatan: catatan.trim() || undefined,
+        kasir_id: currentUser?.id,
+        prioritas: prioritas,
       });
 
-      const data = await res.json();
+      showMsg(
+        "success",
+        `Transaksi berhasil! Invoice: ${result.nomor_invoice} | SPK: ${result.spk_number}`
+      );
 
-      if (res.ok) {
-        showMsg(
-          "success",
-          `Transaksi berhasil! Invoice: ${data.sale.nomor_invoice} | SPK: ${data.spk_number}`
-        );
+      // Print thermal invoice
+      try {
+        const { printThermalInvoice } = await import("@/lib/thermal-print");
 
-        // Print thermal invoice
-        try {
-          const { printThermalInvoice } = await import("@/lib/thermal-print");
-
-          printThermalInvoice({
-            nomor_invoice: data.sale.nomor_invoice,
-            tanggal: data.sale.dibuat_pada,
-            pelanggan_nama: data.sale.pelanggan_nama,
-            pelanggan_telepon: selectedCustomer?.telepon,
-            kasir_nama: currentUser?.nama_pengguna || "Kasir",
-            items: cart.map((item) => ({
-              nama: item.barang_nama,
-              jumlah: item.jumlah,
-              satuan: item.nama_satuan,
-              harga: item.harga_satuan,
-              subtotal: item.subtotal,
-              dimensi:
-                item.panjang && item.lebar
-                  ? `${item.panjang} x ${item.lebar} cm`
-                  : undefined,
-            })),
-            total: total,
-            jumlah_bayar: bayar,
-            kembalian: kembalian,
-            metode_pembayaran: paymentMethod,
-            catatan: catatan.trim() || undefined,
-          });
-        } catch (printError) {
-          console.error("Error printing invoice:", printError);
-        }
-
-        // Reset form
-        setCart([]);
-        setSelectedCustomer(null);
-        setCustomerSearch("");
-        setCatatan("");
-        setPaymentMethod("CASH");
-        setJumlahBayar("");
-        setPrioritas("NORMAL");
-        setUseRounding(false);
-
-        // Reload data
-        await loadAllData();
-      } else {
-        showMsg("error", data.error || "Gagal memproses transaksi");
+        printThermalInvoice({
+          nomor_invoice: result.nomor_invoice,
+          tanggal: new Date().toISOString(),
+          pelanggan_nama: selectedCustomer?.nama,
+          pelanggan_telepon: selectedCustomer?.telepon,
+          kasir_nama: currentUser?.nama_pengguna || "Kasir",
+          items: cart.map((item) => ({
+            nama: item.barang_nama,
+            jumlah: item.jumlah,
+            satuan: item.nama_satuan,
+            harga: item.harga_satuan,
+            subtotal: item.subtotal,
+            dimensi:
+              item.panjang && item.lebar
+                ? `${item.panjang} x ${item.lebar} cm`
+                : undefined,
+          })),
+          total: total,
+          jumlah_bayar: bayar,
+          kembalian: kembalian,
+          metode_pembayaran: paymentMethod,
+          catatan: catatan.trim() || undefined,
+        });
+      } catch (printError) {
+        console.error("Error printing invoice:", printError);
       }
+
+      // Reset form
+      setCart([]);
+      setSelectedCustomer(null);
+      setCustomerSearch("");
+      setCatatan("");
+      setPaymentMethod("CASH");
+      setJumlahBayar("");
+      setPrioritas("NORMAL");
+      setUseRounding(false);
+
+      // Reload data
+      await loadAllData();
     } catch (error: any) {
       console.error("Error processing checkout:", error);
       showMsg("error", "Terjadi kesalahan saat memproses transaksi");

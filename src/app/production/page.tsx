@@ -6,53 +6,19 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import { PrinterIcon } from "@/components/icons/PageIcons";
+import {
+  getProductionOrders,
+  updateProductionOrderStatus,
+  updateProductionItemStatus,
+  type ProductionOrder,
+  type ProductionItem,
+  type FinishingItem,
+} from "@/lib/services/production-service";
 
 interface User {
   id: string;
   nama_pengguna: string;
   role: string;
-}
-
-interface ProductionOrder {
-  id: string;
-  nomor_spk: string;
-  penjualan_id: string;
-  nomor_invoice: string;
-  pelanggan_nama: string;
-  total_item: number;
-  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN";
-  prioritas: "NORMAL" | "KILAT";
-  tanggal_deadline?: string;
-  catatan?: string;
-  dibuat_pada: string;
-  diselesaikan_pada?: string;
-  items: ProductionItem[];
-}
-
-interface ProductionItem {
-  id: string;
-  barang_nama: string;
-  jumlah: number;
-  nama_satuan: string;
-  panjang?: number;
-  lebar?: number;
-  keterangan_dimensi?: string;
-  mesin_printing?: string;
-  jenis_bahan?: string;
-  status: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI";
-  catatan_produksi?: string;
-  operator_nama?: string;
-  mulai_proses?: string;
-  selesai_proses?: string;
-  finishing: FinishingItem[];
-}
-
-interface FinishingItem {
-  id: string;
-  jenis_finishing: string;
-  keterangan?: string;
-  status: "MENUNGGU" | "PROSES" | "SELESAI";
-  operator_nama?: string;
 }
 
 export default function ProductionPage() {
@@ -92,13 +58,8 @@ export default function ProductionPage() {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/production");
-      const data = await res.json();
-      if (res.ok) {
-        setOrders(data.orders || []);
-      } else {
-        showMsg("error", data.error || "Gagal memuat data produksi");
-      }
+      const orders = await getProductionOrders();
+      setOrders(orders);
     } catch (error) {
       console.error("Error loading production orders:", error);
       showMsg("error", "Gagal memuat data produksi");
@@ -125,7 +86,7 @@ export default function ProductionPage() {
       filtered = filtered.filter(
         (order) =>
           order.nomor_spk.toLowerCase().includes(query) ||
-          order.nomor_invoice.toLowerCase().includes(query) ||
+          order.nomor_invoice?.toLowerCase().includes(query) ||
           order.pelanggan_nama?.toLowerCase().includes(query)
       );
     }
@@ -138,42 +99,28 @@ export default function ProductionPage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  const handleUpdateStatus = async (
+    orderId: string,
+    newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
+  ) => {
     try {
-      const res = await fetch(`/api/production/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showMsg("success", "Status berhasil diperbarui");
-        loadOrders();
-      } else {
-        showMsg("error", data.error || "Gagal memperbarui status");
-      }
+      await updateProductionOrderStatus(orderId, newStatus);
+      showMsg("success", "Status berhasil diperbarui");
+      loadOrders();
     } catch (error) {
       console.error("Error updating status:", error);
       showMsg("error", "Gagal memperbarui status");
     }
   };
 
-  const handleUpdateItemStatus = async (itemId: string, newStatus: string) => {
+  const handleUpdateItemStatus = async (
+    itemId: string,
+    newStatus: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI"
+  ) => {
     try {
-      const res = await fetch(`/api/production/items/${itemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showMsg("success", "Status item berhasil diperbarui");
-        loadOrders();
-      } else {
-        showMsg("error", data.error || "Gagal memperbarui status item");
-      }
+      await updateProductionItemStatus(itemId, { status: newStatus });
+      showMsg("success", "Status item berhasil diperbarui");
+      loadOrders();
     } catch (error) {
       console.error("Error updating item status:", error);
       showMsg("error", "Gagal memperbarui status item");
@@ -354,7 +301,7 @@ export default function ProductionPage() {
 
   <div class="info-row">
     <span class="info-label">Invoice:</span>
-    <span>${order.nomor_invoice}</span>
+    <span>${order.nomor_invoice || "-"}</span>
   </div>
   <div class="info-row">
     <span class="info-label">Pelanggan:</span>
@@ -362,13 +309,17 @@ export default function ProductionPage() {
   </div>
   <div class="info-row">
     <span class="info-label">Tanggal:</span>
-    <span>${new Date(order.dibuat_pada).toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })}</span>
+    <span>${
+      order.dibuat_pada
+        ? new Date(order.dibuat_pada).toLocaleString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-"
+    }</span>
   </div>
   ${
     order.tanggal_deadline
@@ -388,7 +339,7 @@ export default function ProductionPage() {
   <div class="divider"></div>
 
   <div class="items">
-    ${order.items
+    ${(order.items || [])
       .map(
         (item, idx) => `
     <div class="item">
@@ -778,7 +729,14 @@ export default function ProductionPage() {
                       <select
                         value={order.status}
                         onChange={(e) =>
-                          handleUpdateStatus(order.id, e.target.value)
+                          handleUpdateStatus(
+                            order.id,
+                            e.target.value as
+                              | "MENUNGGU"
+                              | "PROSES"
+                              | "SELESAI"
+                              | "DIBATALKAN"
+                          )
                         }
                         className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                           order.status
@@ -791,7 +749,11 @@ export default function ProductionPage() {
                       </select>
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-gray-600">
-                      {new Date(order.dibuat_pada).toLocaleDateString("id-ID")}
+                      {order.dibuat_pada
+                        ? new Date(order.dibuat_pada).toLocaleDateString(
+                            "id-ID"
+                          )
+                        : "-"}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
@@ -911,9 +873,9 @@ export default function ProductionPage() {
               {/* Items */}
               <div className="space-y-4">
                 <h4 className="font-bold text-lg text-gray-900 mb-4">
-                  Item Produksi ({selectedOrder.items.length})
+                  Item Produksi ({selectedOrder.items?.length || 0})
                 </h4>
-                {selectedOrder.items.map((item, idx) => (
+                {(selectedOrder.items || []).map((item, idx) => (
                   <div
                     key={item.id}
                     className="border-2 border-gray-200 rounded-lg p-4 hover:border-amber-400 transition-colors"
@@ -945,7 +907,14 @@ export default function ProductionPage() {
                       <select
                         value={item.status}
                         onChange={(e) =>
-                          handleUpdateItemStatus(item.id, e.target.value)
+                          handleUpdateItemStatus(
+                            item.id,
+                            e.target.value as
+                              | "MENUNGGU"
+                              | "PRINTING"
+                              | "FINISHING"
+                              | "SELESAI"
+                          )
                         }
                         className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                           item.status

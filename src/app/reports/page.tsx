@@ -12,6 +12,7 @@ import {
   ShoppingCartIcon,
   ClipboardIcon,
 } from "@/components/icons/ContentIcons";
+import { getArchivedPeriods } from "@/lib/services/reports-service";
 
 interface User {
   id: string;
@@ -76,14 +77,8 @@ export default function ReportsPage() {
   const loadArchives = async () => {
     setLoadingArchives(true);
     try {
-      const res = await fetch("/api/cashbook/archive");
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal memuat arsip");
-      }
-
-      setArchives(data.archives || []);
+      const data = await getArchivedPeriods();
+      setArchives(data || []);
     } catch (err: any) {
       showMsg("error", err.message || "Terjadi kesalahan");
     } finally {

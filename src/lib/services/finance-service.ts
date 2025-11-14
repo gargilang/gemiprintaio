@@ -334,3 +334,20 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Delete all active cash book entries (preserves archived)
+ */
+export async function deleteAllCashbook(): Promise<{ deleted: number }> {
+  try {
+    // Only delete active transactions (diarsipkan_pada IS NULL)
+    // This preserves archived transactions from "Tutup Buku"
+    await db.executeRaw("DELETE FROM keuangan WHERE diarsipkan_pada IS NULL");
+
+    // Can't get exact count easily, return 0
+    return { deleted: 0 };
+  } catch (error) {
+    console.error("Error deleting all cashbook:", error);
+    throw error;
+  }
+}

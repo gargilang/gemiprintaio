@@ -474,3 +474,83 @@ export async function deletePaymentMethod(id: string): Promise<boolean> {
     throw error;
   }
 }
+
+// ============================================================================
+// REORDER FUNCTIONS
+// ============================================================================
+
+/**
+ * Reorder categories
+ */
+export async function reorderCategories(
+  items: Array<{ id: string; urutan_tampilan: number }>
+): Promise<void> {
+  try {
+    for (const item of items) {
+      await db.update("kategori_barang", item.id, {
+        urutan_tampilan: item.urutan_tampilan,
+        diperbarui_pada: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error reordering categories:", error);
+    throw error;
+  }
+}
+
+/**
+ * Reorder subcategories
+ */
+export async function reorderSubcategories(
+  items: Array<{ id: string; urutan_tampilan: number }>
+): Promise<void> {
+  try {
+    for (const item of items) {
+      await db.update("subkategori_barang", item.id, {
+        urutan_tampilan: item.urutan_tampilan,
+        diperbarui_pada: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error reordering subcategories:", error);
+    throw error;
+  }
+}
+
+/**
+ * Reorder units
+ */
+export async function reorderUnits(
+  items: Array<{ id: string; urutan_tampilan: number }>
+): Promise<void> {
+  try {
+    for (const item of items) {
+      await db.update("satuan", item.id, {
+        urutan_tampilan: item.urutan_tampilan,
+        diperbarui_pada: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error reordering units:", error);
+    throw error;
+  }
+}
+
+/**
+ * Reorder quick specs
+ */
+export async function reorderQuickSpecs(
+  items: Array<{ id: string; urutan_tampilan: number }>
+): Promise<void> {
+  try {
+    for (const item of items) {
+      await db.update("spesifikasi_cepat", item.id, {
+        urutan_tampilan: item.urutan_tampilan,
+        diperbarui_pada: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error reordering quick specs:", error);
+    throw error;
+  }
+}

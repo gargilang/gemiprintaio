@@ -16,7 +16,43 @@ Migrasi aplikasi GemiPrint dari arsitektur **Next.js API Routes** ke **Unified D
 
 ---
 
-## ✅ Yang Sudah Dikerjakan (50% Complete)
+## 🚨 Aturan Penting (BACA DULU!)
+
+### DO ✅
+
+- **Gunakan `db-unified.ts`** untuk semua operasi database
+- **Gunakan `normalizeRecord()`** untuk konversi data dari DB
+- **Gunakan `getCurrentTimestamp()`** untuk timestamps (ISO 8601)
+- **Gunakan `generateId()`** untuk IDs baru
+- **Gunakan `db.transaction()`** untuk operasi multi-table (Tauri only)
+- **Test di Tauri dan Web mode** - pastikan kedua environment kerja
+- **Gunakan `db.queryRaw()`** untuk query kompleks dengan JOIN
+- **Always throw errors** dari service layer, jangan return error objects
+
+### DON'T ❌
+
+- ❌ Jangan gunakan `db-adapter.ts`, `db.ts`, `sqlite-db.ts` (DEPRECATED)
+- ❌ Jangan gunakan `fetch("/api/...")` di code baru
+- ❌ Jangan gunakan `dibuat_pada`, `diperbarui_pada` (gunakan `created_at`, `updated_at`)
+- ❌ Jangan mix boolean (0/1 vs true/false) - gunakan normalization
+- ❌ Jangan buat API route baru
+- ❌ Jangan langsung delete DEPRECATED routes sebelum verifikasi 100%
+
+### Pattern Migrasi
+
+```typescript
+// 1. Baca API route untuk pahami logic
+// 2. Buat/update service dengan function baru
+// 3. Import service di component
+// 4. Replace fetch() dengan service call
+// 5. Mark API route sebagai DEPRECATED dengan comment
+// 6. Type-check: npm run type-check
+// 7. Update dokumentasi progress
+```
+
+---
+
+## ✅ Yang Sudah Dikerjakan (~85% Complete)
 
 ### Phase 1: Infrastructure ✅ 100%
 
@@ -44,27 +80,40 @@ Migrasi aplikasi GemiPrint dari arsitektur **Next.js API Routes** ke **Unified D
 
 ---
 
-### Phase 2: Migration ✅ 50%
+### Phase 2: Migration ✅ 75%
 
-**Services Created** (8 services):
+**Services Created** (12 services):
 
 1. ✅ `materials-service.ts` - Materials CRUD
 2. ✅ `customers-service.ts` - Customers CRUD
 3. ✅ `vendors-service.ts` - Vendors CRUD
-4. ✅ `master-service.ts` - Master data (categories, units, etc)
-5. ✅ `purchases-service.ts` - Purchases + items + stock update
-6. ✅ `finance-service.ts` - Cash book + running totals
+4. ✅ `master-service.ts` - Master data (categories, units, etc) + **reorder functions**
+5. ✅ `purchases-service.ts` - Purchases + items + stock + **getDebts()**
+6. ✅ `finance-service.ts` - Cash book + running totals + **deleteAllCashbook()**
 7. ✅ `users-service.ts` - Users + password management
 8. ✅ `auth-service.ts` - Login + session verification
+9. ✅ `production-service.ts` - Production orders + items + finishing
+10. ✅ `pos-service.ts` - POS/Sales + receivables + stock management
+11. ✅ `reports-service.ts` - Financial reports + archive management
+12. ✅ `finishing-options-service.ts` - Finishing options CRUD + reorder
 
-**Pages Migrated** (4 pages):
+**Pages Migrated** (8 pages):
 
 1. ✅ `purchases/page.tsx` - 7 API calls → services
-2. ✅ `finance/page.tsx` - 1 API call → service
+2. ✅ `finance/page.tsx` - 5 API calls → services (FULLY MIGRATED)
 3. ✅ `users/page.tsx` - 1 API call → service
 4. ✅ `auth/login/page.tsx` - 2 API calls → services
+5. ✅ `production/page.tsx` - 3 API calls → services
+6. ✅ `pos/page.tsx` - 6 API calls → services
+7. ✅ `reports/page.tsx` - 1 API call → service
+8. ✅ `settings/page.tsx` - 7 API calls → services (master reorder + finishing options)
+   - ⚠️ **Tersisa 7 calls**: backup/sync operations (perlu handling khusus)
 
-**API Routes Eliminated**: 11 routes ✅
+**API Routes Marked DEPRECATED**: 31 routes ✅
+**⚠️ Belum bisa dihapus**: Masih ada 20 fetch('/api/...') tersisa:
+
+- settings/page.tsx: 7 calls (backup/sync operations)
+- Components: 13 calls di 8 components (detail di bawah)
 
 **Tests**: 19/19 unit tests passing ✅
 
@@ -74,94 +123,135 @@ Migrasi aplikasi GemiPrint dari arsitektur **Next.js API Routes** ke **Unified D
 
 ## ⏳ Yang Harus Dikerjakan Selanjutnya
 
-### Priority 1: Migrate Remaining Routes (~40 routes)
+### Priority 1: Migrate Remaining Routes (~18 routes)
 
-#### Production Routes (5 routes)
+⚠️ **PENTING**: Masih ada **20 fetch('/api/...')** calls tersisa:
+
+**Settings Page (7 calls)**:
+
+- `/api/backup/status` (GET)
+- `/api/backup/create` (POST)
+- `/api/backup/settings` (PUT)
+- `/api/sync/manual` (GET, POST) - 2 calls
+- `/api/sync/auto` (GET, PUT) - 2 calls
+
+**Components (13 calls)**:
+
+- `PurchaseForm.tsx`: `/api/purchases` (POST)
+- `AddFinishingModal.tsx`: `/api/finishing-options` (GET)
+- `SelectMonthModal.tsx`: `/api/cashbook/archive` (GET)
+- `PayReceivableModal.tsx`: `/api/pos/receivables`, `/api/pos/pay-receivable`
+- `PayDebtModal.tsx`: `/api/purchases/debts`, `/api/purchases/pay-debt`
+- `CloseBooksModal.tsx`: `/api/cashbook/archive` (POST)
+- `ImportCsvModal.tsx`: `/api/cashbook/import` (POST)
+- `MainShell.tsx`: `/api/sync/auto`, `/api/sync/manual` (4 calls)
+
+**Tidak bisa delete DEPRECATED routes sampai semua fetch() dimigrate!**
+
+#### ~~Production Routes~~ ✅ SELESAI (3 routes)
 
 ```
-/api/production → production-service.ts
-/api/production/[id]
-/api/production/items/[itemId]
+✅ /api/production → production-service.ts
+✅ /api/production/[id]
+✅ /api/production/items/[itemId]
 ```
 
-**Functions needed**:
+**Functions implemented**:
 
-- `getProductions()`
-- `getProduction(id)`
-- `createProduction(data)`
-- `updateProduction(id, data)`
-- `deleteProduction(id)`
+- ✅ `getProductionOrders()`
+- ✅ `getProductionOrderById(id)`
+- ✅ `createProductionOrder(data)`
+- ✅ `updateProductionOrderStatus(id, status)`
+- ✅ `updateProductionItemStatus(itemId, data)`
+- ✅ `deleteProductionOrder(id)`
 
 ---
 
-#### POS/Sales Routes (7 routes)
+#### ~~POS/Sales Routes~~ ✅ SELESAI (6 routes)
 
 ```
-/api/pos/init-data → pos-service.ts
-/api/pos/sales
-/api/pos/sales/[id]
-/api/pos/receivables
-/api/pos/pay-receivable
-/api/pos/sales/revert-payment
+✅ /api/pos/init-data → pos-service.ts
+✅ /api/pos/sales
+✅ /api/pos/sales/[id]
+✅ /api/pos/receivables
+✅ /api/pos/pay-receivable
+✅ /api/pos/sales/revert-payment
 ```
 
-**Functions needed**:
+**Functions implemented**:
 
-- `getInitData()`
-- `getSales()`
-- `createSale(data)`
-- `getReceivables()`
-- `payReceivable(id, amount)`
+- ✅ `getPOSInitData()`
+- ✅ `getSales(limit)`
+- ✅ `createSale(data)`
+- ✅ `deleteSale(id)`
+- ✅ `getReceivables()`
+- ✅ `payReceivable(data)`
+- ✅ `revertSalePayment(data)`
 
 ---
 
-#### Reports Routes (2 routes)
+#### ~~Reports Routes~~ ✅ SELESAI (2 routes)
 
 ```
-/api/reports/financial → reports-service.ts
-/api/cashbook/archive
+✅ /api/reports/financial → reports-service.ts
+✅ /api/cashbook/archive
 ```
 
-**Functions needed**:
+**Functions implemented**:
 
-- `getFinancialReport(startDate, endDate)`
-- `getArchivedCashbook()`
+- ✅ `getFinancialReport(label, archivedAt)` - Generate report from archived data
+- ✅ `getArchivedPeriods()` - List all archived periods
+- ✅ `archiveCashbook(startDate, endDate, label)` - Archive transactions
+- ✅ `restoreArchivedTransactions(label, archivedAt)` - Unarchive
+
+**Page migrated**: ✅ reports/page.tsx (1 API call → service)
 
 ---
 
-#### Master Data Operations (12 routes)
+#### ~~Master Data Operations~~ ✅ SELESAI (7 routes)
 
 ```
-/api/master/categories/reorder
-/api/master/subcategories/reorder
-/api/master/units/reorder
-/api/master/quick-specs/reorder
-/api/finishing-options/manage
-... dll
+✅ /api/master/categories/reorder → master-service.ts
+✅ /api/master/subcategories/reorder → master-service.ts
+✅ /api/master/units/reorder → master-service.ts
+✅ /api/master/quick-specs/reorder → master-service.ts
+✅ /api/finishing-options/manage (GET/POST/PUT/DELETE/PATCH) → finishing-options-service.ts
 ```
 
-**Strategy**: Tambahkan ke `master-service.ts`:
+**Functions implemented**:
 
-- `reorderCategories(items)`
-- `reorderSubcategories(items)`
-- `reorderUnits(items)`
-- `manageFinishingOptions(data)`
+- ✅ `reorderCategories(items)` - Update category display order
+- ✅ `reorderSubcategories(items)` - Update subcategory display order
+- ✅ `reorderUnits(items)` - Update unit display order
+- ✅ `reorderQuickSpecs(items)` - Update quick spec display order
+- ✅ `getFinishingOptions()` - Get all finishing options
+- ✅ `createFinishingOption(data)` - Add new finishing option
+- ✅ `updateFinishingOption(id, data)` - Update finishing option name
+- ✅ `deleteFinishingOption(id)` - Soft delete finishing option
+- ✅ `reorderFinishingOptions(updates)` - Update finishing options order
+
+**Page migrated**: ✅ settings/page.tsx (7 API calls → services)
 
 ---
 
-#### Backup/Sync Routes (4 routes)
+#### Backup/Sync Routes (7 routes) ← NEXT PRIORITY
 
 ```
-/api/sync/manual → db.syncToCloud()
-/api/sync/auto → db.syncToCloud()
-/api/backup/create → Tauri command
-/api/backup/status → Tauri command
+⏳ /api/backup/status (GET) - Check backup status
+⏳ /api/backup/create (POST) - Create manual backup
+⏳ /api/backup/settings (PUT) - Update backup settings
+⏳ /api/sync/manual (GET) - Get sync status
+⏳ /api/sync/manual (POST) - Trigger manual sync
+⏳ /api/sync/auto (GET) - Get auto-sync settings
+⏳ /api/sync/auto (PUT) - Update auto-sync settings
 ```
 
 **Strategy**:
 
-- Sync: Gunakan `db.syncToCloud()` langsung
-- Backup: Buat Tauri commands baru
+- **Sync operations**: Sudah ada `db.syncToCloud()` di db-unified.ts, tinggal expose
+- **Backup operations**: Perlu Tauri commands baru atau file system operations
+- **Used by**: settings/page.tsx (7 calls), MainShell.tsx (4 calls)
+- **Priority**: Medium - Optional features, tidak critical untuk core functionality
 
 ---
 
@@ -284,65 +374,55 @@ npm run build       # Verify build
 
 ---
 
-## 🚨 Aturan Penting
-
-### DO ✅
-
-- Gunakan `db-unified.ts` untuk semua operasi database
-- Gunakan `normalizeRecord()` untuk konversi data
-- Gunakan `getCurrentTimestamp()` untuk timestamps
-- Gunakan `generateId()` untuk IDs
-- Gunakan `db.transaction()` untuk operasi multi-table
-- Test di Tauri dan Web mode
-
-### DON'T ❌
-
-- Jangan gunakan `db-adapter.ts`, `db.ts`, `sqlite-db.ts`
-- Jangan gunakan `fetch("/api/...")` di code baru
-- Jangan gunakan `dibuat_pada`, `diperbarui_pada` (gunakan `created_at`, `updated_at`)
-- Jangan mix boolean (gunakan normalization)
-- Jangan buat API route baru
-
----
-
 ## 📊 Current Status
 
-**Progress**: 50% Complete
+**Progress**: 85% Complete
 
 **Completed**:
 
 - ✅ Infrastructure (100%)
-- ✅ Core services (100%)
-- ✅ Core pages (100%)
+- ✅ Core services (12 services created)
+- ✅ Core pages (8 pages migrated)
+- ✅ Production routes (3 routes, 100%)
+- ✅ POS/Sales routes (6 routes, 100%)
+- ✅ Reports routes (2 routes, 100%)
+- ✅ Master operations (7 routes, 100%)
 - ✅ Unit tests (19 passing)
 - ✅ Transaction support
 - ✅ Build verification
+- ✅ Type checking (0 errors)
 
 **Remaining**:
 
-- ⏳ Production routes
-- ⏳ POS/Sales routes
-- ⏳ Reports routes
-- ⏳ Master operations
-- ⏳ Backup/Sync routes
+- ⏳ Backup/Sync operations (7 routes) - settings + MainShell
+- ⏳ Component migrations (13 API calls in 8 components)
 - ⏳ Integration tests
-- ⏳ API routes removal
+- ⏳ API routes removal (after 100% verification)
 
-**Estimated Time to Complete**: 2-3 weeks
+**Estimated Time to Complete**: 2-3 days
 
 ---
 
 ## 🎯 Next Immediate Actions
 
-1. **Migrate Production Routes** (5 routes, ~3 hours)
-2. **Migrate POS/Sales Routes** (7 routes, ~4 hours)
-3. **Migrate Reports Routes** (2 routes, ~2 hours)
-4. **Add Master Operations** (12 routes, ~6 hours)
-5. **Remove API Routes** (after verification, ~2 hours)
-6. **Integration Tests** (~8 hours)
-7. **Production Deployment** (~1 week)
+1. ~~**Migrate Production Routes**~~ ✅ SELESAI (3 routes)
+2. ~~**Migrate POS/Sales Routes**~~ ✅ SELESAI (6 routes)
+3. ~~**Migrate Reports Routes**~~ ✅ SELESAI (2 routes)
+4. ~~**Migrate Master Operations**~~ ✅ SELESAI (7 routes)
+5. **Migrate Components** (13 API calls) ← NEXT PRIORITY
+   - PurchaseForm, PayDebtModal, PayReceivableModal
+   - CloseBooksModal, ImportCsvModal, SelectMonthModal
+   - AddFinishingModal, MainShell
+6. **Handle Backup/Sync Operations** (7 calls) ← OPTIONAL
+   - Bisa skip dulu karena tidak critical
+   - Atau migrate ke Tauri commands/direct db calls
+7. **Final Verification** (~1 hour)
+   - Grep untuk pastikan 0 fetch('/api/')
+   - Delete semua DEPRECATED API routes
+8. **Integration Tests** (~4 hours)
+9. **Production Deployment** (~2 days)
 
-**Total Remaining**: ~2-3 weeks
+**Total Remaining**: 2-3 days
 
 ---
 
@@ -386,5 +466,5 @@ npm run build       # Verify build
 ---
 
 **Last Updated**: 2025-11-14  
-**Status**: Phase 2 Core Complete (50%)  
-**Next**: Migrate remaining routes
+**Status**: Phase 2 Master Operations Complete (85%)  
+**Next**: Migrate Components (13 API calls) + Optional Backup/Sync (7 calls)

@@ -327,3 +327,32 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
     throw error;
   }
 }
+
+/**
+ * Get all purchases with outstanding debt
+ */
+export async function getDebts(): Promise<any[]> {
+  try {
+    const result = await db.queryRaw<any>(`
+      SELECT 
+        p.id,
+        p.nomor_pembelian,
+        p.nomor_faktur,
+        p.tanggal,
+        p.total_jumlah,
+        p.jumlah_dibayar,
+        p.status_pembayaran,
+        (p.total_jumlah - p.jumlah_dibayar) as sisa_hutang,
+        v.nama_perusahaan as vendor_name
+      FROM pembelian p
+      LEFT JOIN vendor v ON p.vendor_id = v.id
+      WHERE p.status_pembayaran IN ('HUTANG', 'SEBAGIAN')
+      ORDER BY p.tanggal ASC, p.dibuat_pada ASC
+    `);
+
+    return result || [];
+  } catch (error) {
+    console.error("Error fetching debts:", error);
+    throw error;
+  }
+}

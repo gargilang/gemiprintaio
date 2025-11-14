@@ -1,3 +1,9 @@
+/**
+ * DEPRECATED: This API route is deprecated.
+ * Use pos-service.ts instead.
+ * @see src/lib/services/pos-service.ts - revertSalePayment()
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

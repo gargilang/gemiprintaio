@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED: Use reorderCategories() from master-service.ts
+ * @see /src/lib/services/master-service.ts
+ */
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";

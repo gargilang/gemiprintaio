@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED: Use deleteAllCashbook() from finance-service.ts
+ * @see /src/lib/services/finance-service.ts
+ */
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { join } from "path";

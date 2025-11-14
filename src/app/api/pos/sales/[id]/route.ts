@@ -1,3 +1,9 @@
+/**
+ * DEPRECATED: This API route is deprecated.
+ * Use pos-service.ts instead.
+ * @see src/lib/services/pos-service.ts - deleteSale()
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";

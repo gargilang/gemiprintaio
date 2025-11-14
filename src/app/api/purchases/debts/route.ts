@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED: Use getDebts() from purchases-service.ts
+ * @see /src/lib/services/purchases-service.ts
+ */
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

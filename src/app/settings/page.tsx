@@ -29,7 +29,18 @@ import {
   createFinishingOption,
   updateFinishingOption,
   deleteFinishingOption,
+  reorderCategories,
+  reorderSubcategories,
+  reorderUnits,
+  reorderQuickSpecs,
 } from "@/lib/services/master-service";
+import {
+  getFinishingOptions as getFinishingOptionsList,
+  createFinishingOption as createFinishingOpt,
+  updateFinishingOption as updateFinishingOpt,
+  deleteFinishingOption as deleteFinishingOpt,
+  reorderFinishingOptions,
+} from "@/lib/services/finishing-options-service";
 import {
   DndContext,
   closestCenter,
@@ -588,16 +599,7 @@ function CategoriesView({
       }));
 
       try {
-        const res = await fetch("/api/master/categories/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: updates }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Gagal mengupdate urutan");
-        }
+        await reorderCategories(updates);
       } catch (error: any) {
         showMsg("error", error.message);
         // Reload categories to revert optimistic update
@@ -1321,16 +1323,7 @@ function SubcategoriesView({
       }));
 
       try {
-        const res = await fetch("/api/master/subcategories/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: updates }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Gagal mengupdate urutan");
-        }
+        await reorderSubcategories(updates);
       } catch (error: any) {
         showMsg("error", error.message);
         loadSubcategories();
@@ -1374,16 +1367,7 @@ function SubcategoriesView({
       }));
 
       try {
-        const res = await fetch("/api/master/quick-specs/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: updates }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Gagal mengupdate urutan");
-        }
+        await reorderQuickSpecs(updates);
       } catch (error: any) {
         showMsg("error", error.message);
         loadSpecs();
@@ -2092,16 +2076,7 @@ function UnitsSection() {
       }));
 
       try {
-        const res = await fetch("/api/master/units/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: updates }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Gagal mengupdate urutan");
-        }
+        await reorderUnits(updates);
       } catch (error: any) {
         showMsg("error", error.message);
         loadUnits();
@@ -2773,11 +2748,8 @@ function FinishingOptionsTab() {
 
   const loadOptions = async () => {
     try {
-      const res = await fetch("/api/finishing-options/manage");
-      const data = await res.json();
-      if (data.success) {
-        setOptions(data.options);
-      }
+      const data = await getFinishingOptionsList();
+      setOptions(data as any);
     } catch (error) {
       console.error("Error loading finishing options:", error);
     } finally {
@@ -2794,23 +2766,13 @@ function FinishingOptionsTab() {
     if (!newOptionName.trim()) return;
 
     try {
-      const res = await fetch("/api/finishing-options/manage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nama: newOptionName.trim() }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showMsg("success", "Opsi finishing berhasil ditambahkan");
-        setNewOptionName("");
-        setIsAdding(false);
-        loadOptions();
-      } else {
-        showMsg("error", data.error || "Gagal menambahkan opsi");
-      }
-    } catch (error) {
-      showMsg("error", "Terjadi kesalahan saat menambahkan");
+      await createFinishingOpt({ nama: newOptionName.trim() });
+      showMsg("success", "Opsi finishing berhasil ditambahkan");
+      setNewOptionName("");
+      setIsAdding(false);
+      loadOptions();
+    } catch (error: any) {
+      showMsg("error", error.message || "Gagal menambahkan opsi");
     }
   };
 
@@ -2818,23 +2780,13 @@ function FinishingOptionsTab() {
     if (!editingNama.trim()) return;
 
     try {
-      const res = await fetch(`/api/finishing-options/manage`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, nama: editingNama.trim() }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showMsg("success", "Opsi finishing berhasil diperbarui");
-        setEditingId(null);
-        setEditingNama("");
-        loadOptions();
-      } else {
-        showMsg("error", data.error || "Gagal memperbarui opsi");
-      }
-    } catch (error) {
-      showMsg("error", "Terjadi kesalahan saat memperbarui");
+      await updateFinishingOpt(id, { nama: editingNama.trim() });
+      showMsg("success", "Opsi finishing berhasil diperbarui");
+      setEditingId(null);
+      setEditingNama("");
+      loadOptions();
+    } catch (error: any) {
+      showMsg("error", error.message || "Gagal memperbarui opsi");
     }
   };
 
@@ -2842,21 +2794,11 @@ function FinishingOptionsTab() {
     if (!confirm(`Hapus opsi finishing "${nama}"?`)) return;
 
     try {
-      const res = await fetch(`/api/finishing-options/manage`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showMsg("success", "Opsi finishing berhasil dihapus");
-        loadOptions();
-      } else {
-        showMsg("error", data.error || "Gagal menghapus opsi");
-      }
-    } catch (error) {
-      showMsg("error", "Terjadi kesalahan saat menghapus");
+      await deleteFinishingOpt(id);
+      showMsg("success", "Opsi finishing berhasil dihapus");
+      loadOptions();
+    } catch (error: any) {
+      showMsg("error", error.message || "Gagal menghapus opsi");
     }
   };
 
@@ -2887,17 +2829,9 @@ function FinishingOptionsTab() {
         urutan_tampilan: index,
       }));
 
-      const res = await fetch("/api/finishing-options/manage", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setOptions(newOptions);
-        showMsg("success", "Urutan berhasil diperbarui");
-      }
+      await reorderFinishingOptions(updates);
+      setOptions(newOptions);
+      showMsg("success", "Urutan berhasil diperbarui");
     } catch (error) {
       showMsg("error", "Gagal memperbarui urutan");
     }
