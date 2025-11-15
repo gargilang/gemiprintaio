@@ -113,6 +113,34 @@ export async function triggerManualSync(): Promise<SyncResult> {
   }
 }
 
+/**
+ * Process sync queue (server-side only)
+ * Process pending operations from sync_queue table when connection is restored
+ */
+export async function processSyncQueue(): Promise<SyncResult> {
+  try {
+    console.log("🔄 Processing sync queue via service...");
+    await db.processSyncQueue();
+
+    return {
+      success: true,
+      synced: 0, // db.processSyncQueue doesn't return count yet
+      failed: 0,
+      message: "Sync queue processed successfully",
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Sync queue processing error:", error);
+    return {
+      success: false,
+      synced: 0,
+      failed: 0,
+      message: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
 // ============================================================================
 // AUTO-SYNC OPERATIONS
 // ============================================================================

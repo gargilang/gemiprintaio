@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
 
     const cashBooks = db
       .prepare(
-        `SELECT * FROM cash_book 
-         WHERE archived_label = ? AND archived_at = ?
-         ORDER BY tanggal ASC, created_at ASC`
+        `SELECT * FROM keuangan 
+         WHERE label_arsip = ? AND diarsipkan_pada = ?
+         ORDER BY tanggal ASC, dibuat_pada ASC`
       )
       .all(label, at) as CashBookRow[];
 

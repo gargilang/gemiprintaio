@@ -5,7 +5,7 @@
   "identifier": "com.gemiprint.app",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "",
+    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:3000"
   },
   "bundle": {

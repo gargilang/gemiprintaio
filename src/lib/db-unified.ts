@@ -86,7 +86,35 @@ export function isTauriApp(): boolean {
   return "__TAURI__" in window;
 }
 
-// Supabase client initialization
+export function isServerSide(): boolean {
+  return !isBrowser();
+}
+
+// Server-side SQLite connection (for Next.js API routes/server actions)
+let serverSqliteDb: any = null;
+
+async function getServerSQLite(): Promise<any> {
+  if (!isServerSide()) return null;
+
+  if (!serverSqliteDb) {
+    try {
+      const Database = (await import("better-sqlite3")).default;
+      const path = await import("path");
+      const dbPath = path.join(process.cwd(), "database", "gemiprint.db");
+      serverSqliteDb = new Database(dbPath);
+      serverSqliteDb.pragma("journal_mode = WAL");
+      serverSqliteDb.pragma("foreign_keys = ON");
+      console.log("✅ Server-side SQLite connected:", dbPath);
+    } catch (error) {
+      console.error("❌ Failed to initialize server SQLite:", error);
+      return null;
+    }
+  }
+
+  return serverSqliteDb;
+}
+
+// Supabase client initialization (Browser)
 let supabaseClient: SupabaseClient | null = null;
 
 function getSupabaseClient(): SupabaseClient | null {
@@ -107,7 +135,31 @@ function getSupabaseClient(): SupabaseClient | null {
   return supabaseClient;
 }
 
-// Check if online and Supabase is available
+// Supabase client for Server-side
+let serverSupabaseClient: SupabaseClient | null = null;
+
+function getServerSupabaseClient(): SupabaseClient | null {
+  if (!isServerSide()) return null;
+
+  if (!serverSupabaseClient) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !serviceKey) {
+      console.warn("⚠️ Server Supabase not configured");
+      return null;
+    }
+
+    serverSupabaseClient = createClient(url, serviceKey);
+    console.log("✅ Server-side Supabase connected");
+  }
+
+  return serverSupabaseClient;
+}
+
+// Check if online and Supabase is available (Browser)
 let onlineStatus: boolean | null = null;
 let lastOnlineCheck = 0;
 const ONLINE_CHECK_INTERVAL = 5000; // 5 seconds
@@ -136,6 +188,45 @@ async function isOnline(): Promise<boolean> {
   } catch {
     onlineStatus = false;
     lastOnlineCheck = now;
+    return false;
+  }
+}
+
+// Check if Supabase is available (Server-side)
+let serverOnlineStatus: boolean | null = null;
+let lastServerOnlineCheck = 0;
+
+async function isServerSupabaseAvailable(): Promise<boolean> {
+  if (!isServerSide()) return false;
+
+  const now = Date.now();
+  if (
+    serverOnlineStatus !== null &&
+    now - lastServerOnlineCheck < ONLINE_CHECK_INTERVAL
+  ) {
+    return serverOnlineStatus;
+  }
+
+  try {
+    const supabase = getServerSupabaseClient();
+    if (!supabase) return false;
+
+    const { error } = await supabase.from("profil").select("id").limit(1);
+
+    serverOnlineStatus = !error;
+    lastServerOnlineCheck = now;
+
+    if (serverOnlineStatus) {
+      console.log("🌐 Supabase online - using cloud database");
+    } else {
+      console.log("📴 Supabase offline - using local SQLite");
+    }
+
+    return serverOnlineStatus;
+  } catch (err) {
+    console.log("📴 Supabase connection failed - using local SQLite");
+    serverOnlineStatus = false;
+    lastServerOnlineCheck = now;
     return false;
   }
 }
@@ -243,12 +334,25 @@ class UnifiedDatabase {
     options: QueryOptions = {}
   ): Promise<QueryResult<T>> {
     try {
-      // Tauri: Always use SQLite
+      // Tauri: Always use SQLite via Rust
       if (isTauriApp()) {
         return await this.queryTauri<T>(table, options);
       }
 
-      // Web: Try Supabase first, fallback to cached data
+      // Server-side: Try Supabase first, fallback to SQLite
+      if (isServerSide()) {
+        const supabaseAvailable = await isServerSupabaseAvailable();
+        if (supabaseAvailable) {
+          const result = await this.queryServerSupabase<T>(table, options);
+          if (!result.error) {
+            return result;
+          }
+          console.warn(`⚠️ Supabase query failed, falling back to SQLite`);
+        }
+        return await this.queryServerSQLite<T>(table, options);
+      }
+
+      // Web/Browser: Try Supabase first, fallback to cached data
       const online = await isOnline();
       if (online) {
         return await this.querySupabase<T>(table, options);
@@ -311,6 +415,25 @@ class UnifiedDatabase {
         return result;
       }
 
+      // Server-side: Try Supabase first, fallback to SQLite
+      if (isServerSide()) {
+        const supabaseAvailable = await isServerSupabaseAvailable();
+        if (supabaseAvailable) {
+          const result = await this.insertServerSupabase(table, data);
+          if (!result.error) {
+            // Also save to local SQLite for backup
+            await this.insertServerSQLite(table, data);
+            return result;
+          }
+          console.warn(`⚠️ Supabase insert failed, falling back to SQLite`);
+        }
+        // If offline, queue for later sync
+        if (!supabaseAvailable) {
+          await this.queueToLocalSync(table, "insert", data);
+        }
+        return await this.insertServerSQLite(table, data);
+      }
+
       // Web: Try Supabase first
       const online = await isOnline();
       if (online) {
@@ -349,6 +472,25 @@ class UnifiedDatabase {
         return result;
       }
 
+      // Server-side: Try Supabase first, fallback to SQLite
+      if (isServerSide()) {
+        const supabaseAvailable = await isServerSupabaseAvailable();
+        if (supabaseAvailable) {
+          const result = await this.updateServerSupabase(table, id, updateData);
+          if (!result.error) {
+            // Also update local SQLite for backup
+            await this.updateServerSQLite(table, id, updateData);
+            return result;
+          }
+          console.warn(`⚠️ Supabase update failed, falling back to SQLite`);
+        }
+        // If offline, queue for later sync
+        if (!supabaseAvailable) {
+          await this.queueToLocalSync(table, "update", updateData, id);
+        }
+        return await this.updateServerSQLite(table, id, updateData);
+      }
+
       // Web: Try Supabase first
       const online = await isOnline();
       if (online) {
@@ -382,6 +524,25 @@ class UnifiedDatabase {
         return result;
       }
 
+      // Server-side: Try Supabase first, fallback to SQLite
+      if (isServerSide()) {
+        const supabaseAvailable = await isServerSupabaseAvailable();
+        if (supabaseAvailable) {
+          const result = await this.deleteServerSupabase(table, id);
+          if (!result.error) {
+            // Also delete from local SQLite for backup
+            await this.deleteServerSQLite(table, id);
+            return result;
+          }
+          console.warn(`⚠️ Supabase delete failed, falling back to SQLite`);
+        }
+        // If offline, queue for later sync
+        if (!supabaseAvailable) {
+          await this.queueToLocalSync(table, "delete", null, id);
+        }
+        return await this.deleteServerSQLite(table, id);
+      }
+
       // Web: Try Supabase first
       const online = await isOnline();
       if (online) {
@@ -399,6 +560,244 @@ class UnifiedDatabase {
       console.error(`Delete error on ${table}:`, error);
       return { data: null, error };
     }
+  }
+
+  // === Server-side SQLite Operations ===
+
+  private async queryServerSQLite<T>(
+    table: string,
+    options: QueryOptions
+  ): Promise<QueryResult<T>> {
+    const db = await getServerSQLite();
+    if (!db) {
+      return { data: null, error: new Error("Server SQLite not available") };
+    }
+
+    let sql = `SELECT ${options.select || "*"} FROM ${table}`;
+    const params: any[] = [];
+
+    // Build WHERE clause
+    if (options.where && Object.keys(options.where).length > 0) {
+      const conditions = Object.entries(options.where).map(([key, value]) => {
+        if (value === null) {
+          return `${key} IS NULL`;
+        }
+        params.push(value);
+        return `${key} = ?`;
+      });
+      sql += ` WHERE ${conditions.join(" AND ")}`;
+    }
+
+    // Add ORDER BY
+    if (options.orderBy) {
+      sql += ` ORDER BY ${options.orderBy.column} ${
+        options.orderBy.ascending !== false ? "ASC" : "DESC"
+      }`;
+    }
+
+    // Add LIMIT and OFFSET
+    if (options.limit) {
+      sql += ` LIMIT ${options.limit}`;
+    }
+    if (options.offset) {
+      sql += ` OFFSET ${options.offset}`;
+    }
+
+    try {
+      const stmt = db.prepare(sql);
+      const data = stmt.all(...params) as T[];
+      return { data, error: null };
+    } catch (error: any) {
+      console.error("Server SQLite query error:", error);
+      return { data: null, error };
+    }
+  }
+
+  private async insertServerSQLite(
+    table: string,
+    data: Record<string, any>
+  ): Promise<MutationResult> {
+    const db = await getServerSQLite();
+    if (!db) {
+      return { data: null, error: new Error("Server SQLite not available") };
+    }
+
+    const columns = Object.keys(data);
+    const values = Object.values(data);
+    const placeholders = columns.map(() => "?").join(", ");
+
+    const sql = `INSERT INTO ${table} (${columns.join(
+      ", "
+    )}) VALUES (${placeholders})`;
+
+    try {
+      const stmt = db.prepare(sql);
+      stmt.run(...values);
+      return { data: { id: data.id }, error: null };
+    } catch (error: any) {
+      console.error("Server SQLite insert error:", error);
+      return { data: null, error };
+    }
+  }
+
+  private async updateServerSQLite(
+    table: string,
+    id: string,
+    data: Record<string, any>
+  ): Promise<MutationResult> {
+    const db = await getServerSQLite();
+    if (!db) {
+      return { data: null, error: new Error("Server SQLite not available") };
+    }
+
+    const sets = Object.keys(data).map((key) => `${key} = ?`);
+    const values = [...Object.values(data), id];
+
+    const sql = `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`;
+
+    try {
+      const stmt = db.prepare(sql);
+      stmt.run(...values);
+      return { data: { id }, error: null };
+    } catch (error: any) {
+      console.error("Server SQLite update error:", error);
+      return { data: null, error };
+    }
+  }
+
+  private async deleteServerSQLite(
+    table: string,
+    id: string
+  ): Promise<MutationResult> {
+    const db = await getServerSQLite();
+    if (!db) {
+      return { data: null, error: new Error("Server SQLite not available") };
+    }
+
+    const sql = `DELETE FROM ${table} WHERE id = ?`;
+
+    try {
+      const stmt = db.prepare(sql);
+      stmt.run(id);
+      return { data: { id }, error: null };
+    } catch (error: any) {
+      console.error("Server SQLite delete error:", error);
+      return { data: null, error };
+    }
+  }
+
+  // === Server-side Supabase Operations ===
+
+  private async queryServerSupabase<T>(
+    table: string,
+    options: QueryOptions
+  ): Promise<QueryResult<T>> {
+    const supabase = getServerSupabaseClient();
+    if (!supabase) {
+      return { data: null, error: new Error("Server Supabase not configured") };
+    }
+
+    let query = supabase.from(table).select(options.select || "*");
+
+    // Apply filters
+    if (options.where) {
+      Object.entries(options.where).forEach(([key, value]) => {
+        if (value === null) {
+          query = query.is(key, null);
+        } else {
+          query = query.eq(key, value);
+        }
+      });
+    }
+
+    // Apply ordering
+    if (options.orderBy) {
+      query = query.order(options.orderBy.column, {
+        ascending: options.orderBy.ascending ?? true,
+      });
+    }
+
+    // Apply pagination
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+    if (options.offset) {
+      query = query.range(
+        options.offset,
+        options.offset + (options.limit || 10) - 1
+      );
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error(`Server Supabase query error on ${table}:`, error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: data as T[], error: null };
+  }
+
+  private async insertServerSupabase(
+    table: string,
+    data: Record<string, any>
+  ): Promise<MutationResult> {
+    const supabase = getServerSupabaseClient();
+    if (!supabase) {
+      return { data: null, error: new Error("Server Supabase not configured") };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from(table)
+      .insert(data)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error(`Server Supabase insert error on ${table}:`, error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: { id: inserted.id }, error: null };
+  }
+
+  private async updateServerSupabase(
+    table: string,
+    id: string,
+    data: Record<string, any>
+  ): Promise<MutationResult> {
+    const supabase = getServerSupabaseClient();
+    if (!supabase) {
+      return { data: null, error: new Error("Server Supabase not configured") };
+    }
+
+    const { error } = await supabase.from(table).update(data).eq("id", id);
+
+    if (error) {
+      console.error(`Server Supabase update error on ${table}:`, error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: { id }, error: null };
+  }
+
+  private async deleteServerSupabase(
+    table: string,
+    id: string
+  ): Promise<MutationResult> {
+    const supabase = getServerSupabaseClient();
+    if (!supabase) {
+      return { data: null, error: new Error("Server Supabase not configured") };
+    }
+
+    const { error } = await supabase.from(table).delete().eq("id", id);
+
+    if (error) {
+      console.error(`Server Supabase delete error on ${table}:`, error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    return { data: { id }, error: null };
   }
 
   // === Tauri SQLite Operations ===
@@ -656,62 +1055,248 @@ class UnifiedDatabase {
     }).catch((e) => console.warn("Failed to queue sync:", e));
   }
 
+  // === Server-side sync queue ===
+
+  private async queueToLocalSync(
+    table: string,
+    operation: "insert" | "update" | "delete",
+    data: any,
+    recordId?: string
+  ) {
+    // Queue operation for later sync to Supabase when connection is restored
+    if (!isServerSide()) return;
+
+    const db = await getServerSQLite();
+    if (!db) return;
+
+    try {
+      // Create sync_queue table if not exists
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sync_queue (
+          id TEXT PRIMARY KEY,
+          table_name TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          data TEXT,
+          record_id TEXT,
+          dibuat_pada TEXT NOT NULL,
+          status TEXT DEFAULT 'pending'
+        )
+      `);
+
+      // Insert sync operation
+      const queueId = generateId();
+      const now = getCurrentTimestamp();
+      const stmt = db.prepare(`
+        INSERT INTO sync_queue (id, table_name, operation, data, record_id, dibuat_pada, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `);
+      stmt.run(
+        queueId,
+        table,
+        operation,
+        data ? JSON.stringify(data) : null,
+        recordId || null,
+        now
+      );
+      console.log(`📝 Queued ${operation} on ${table} for later sync`);
+    } catch (error: any) {
+      console.error("Failed to queue sync operation:", error);
+    }
+  }
+
   /**
-   * Execute raw SQL (Tauri only - use with caution)
+   * Process pending sync queue (call this when connection is restored)
+   */
+  async processSyncQueue() {
+    if (!isServerSide()) {
+      console.warn("processSyncQueue only available on server-side");
+      return;
+    }
+
+    const supabaseAvailable = await isServerSupabaseAvailable();
+    if (!supabaseAvailable) {
+      console.log("🔴 Supabase not available, skipping sync queue processing");
+      return;
+    }
+
+    const db = await getServerSQLite();
+    if (!db) return;
+
+    try {
+      // Ensure sync_queue table exists
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sync_queue (
+          id TEXT PRIMARY KEY,
+          table_name TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          data TEXT,
+          record_id TEXT,
+          dibuat_pada TEXT NOT NULL,
+          status TEXT DEFAULT 'pending'
+        )
+      `);
+
+      // Get pending operations
+      const stmt = db.prepare(`
+        SELECT * FROM sync_queue 
+        WHERE status = 'pending' 
+        ORDER BY dibuat_pada ASC
+      `);
+      const pendingOps = stmt.all() as any[];
+
+      console.log(
+        `🔄 Processing ${pendingOps.length} pending sync operations...`
+      );
+
+      for (const op of pendingOps) {
+        try {
+          const data = op.data ? JSON.parse(op.data) : null;
+
+          // Execute operation on Supabase
+          let result;
+          if (op.operation === "insert") {
+            result = await this.insertServerSupabase(op.table_name, data);
+          } else if (op.operation === "update") {
+            result = await this.updateServerSupabase(
+              op.table_name,
+              op.record_id,
+              data
+            );
+          } else if (op.operation === "delete") {
+            result = await this.deleteServerSupabase(
+              op.table_name,
+              op.record_id
+            );
+          }
+
+          if (result && !result.error) {
+            // Mark as completed
+            const updateStmt = db.prepare(`
+              UPDATE sync_queue SET status = 'completed' WHERE id = ?
+            `);
+            updateStmt.run(op.id);
+            console.log(`✅ Synced ${op.operation} on ${op.table_name}`);
+          } else {
+            console.error(
+              `❌ Failed to sync ${op.operation} on ${op.table_name}:`,
+              result?.error
+            );
+          }
+        } catch (error: any) {
+          console.error(`❌ Error processing sync operation ${op.id}:`, error);
+        }
+      }
+
+      // Clean up completed operations older than 7 days
+      const cleanupStmt = db.prepare(`
+        DELETE FROM sync_queue 
+        WHERE status = 'completed' 
+        AND datetime(dibuat_pada) < datetime('now', '-7 days')
+      `);
+      const cleaned = cleanupStmt.run();
+      if (cleaned.changes > 0) {
+        console.log(`🧹 Cleaned up ${cleaned.changes} old sync queue entries`);
+      }
+    } catch (error: any) {
+      console.error("Error processing sync queue:", error);
+    }
+  }
+
+  /**
+   * Execute raw SQL (use with caution)
    * Untuk operasi kompleks yang tidak bisa dilakukan dengan query builder
    */
   async executeRaw(sql: string, params: any[] = []): Promise<any> {
-    if (!isTauriApp()) {
-      throw new Error("Raw SQL execution only available in Tauri mode");
+    // Tauri: Use Rust backend
+    if (isTauriApp()) {
+      try {
+        return await invoke("db_execute", { sql, params });
+      } catch (error) {
+        console.error("Raw SQL execution failed:", error);
+        throw error;
+      }
     }
 
-    try {
-      return await invoke("db_execute", { sql, params });
-    } catch (error) {
-      console.error("Raw SQL execution failed:", error);
-      throw error;
+    // Server-side: Use SQLite directly
+    if (isServerSide()) {
+      const db = await getServerSQLite();
+      if (!db) {
+        throw new Error("Server SQLite not available");
+      }
+
+      try {
+        const stmt = db.prepare(sql);
+        const result = stmt.run(...params);
+        return result;
+      } catch (error: any) {
+        console.error("Server SQLite raw execution error:", error);
+        throw error;
+      }
     }
+
+    // Browser: Not supported
+    throw new Error("Raw SQL execution not available in browser mode");
   }
 
   /**
-   * Execute operations in transaction (Tauri only)
-   * Web mode: No transaction support, operations execute sequentially
+   * Execute operations in transaction
+   * Browser mode: No transaction support, operations execute sequentially
    */
   async transaction<T>(operations: () => Promise<T>): Promise<T> {
-    if (!isTauriApp()) {
-      // Web: No transaction support, just execute
-      console.warn(
-        "Transactions not supported in Web mode - executing sequentially"
-      );
-      return await operations();
+    // Tauri or Server-side: Use transactions
+    if (isTauriApp() || isServerSide()) {
+      try {
+        await this.executeRaw("BEGIN TRANSACTION");
+        const result = await operations();
+        await this.executeRaw("COMMIT");
+        return result;
+      } catch (error) {
+        await this.executeRaw("ROLLBACK");
+        console.error("Transaction rolled back:", error);
+        throw error;
+      }
     }
 
-    try {
-      await this.executeRaw("BEGIN TRANSACTION");
-      const result = await operations();
-      await this.executeRaw("COMMIT");
-      return result;
-    } catch (error) {
-      await this.executeRaw("ROLLBACK");
-      console.error("Transaction rolled back:", error);
-      throw error;
-    }
+    // Browser: No transaction support, just execute
+    console.warn(
+      "Transactions not supported in browser mode - executing sequentially"
+    );
+    return await operations();
   }
 
   /**
-   * Query raw SQL (Tauri only - use with caution)
+   * Query raw SQL (use with caution)
    */
   async queryRaw<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-    if (!isTauriApp()) {
-      throw new Error("Raw SQL query only available in Tauri mode");
+    // Tauri: Use Rust backend
+    if (isTauriApp()) {
+      try {
+        return await invoke<T[]>("db_query", { sql, params });
+      } catch (error) {
+        console.error("Raw SQL query failed:", error);
+        throw error;
+      }
     }
 
-    try {
-      return await invoke<T[]>("db_query", { sql, params });
-    } catch (error) {
-      console.error("Raw SQL query failed:", error);
-      throw error;
+    // Server-side: Use SQLite directly
+    if (isServerSide()) {
+      const db = await getServerSQLite();
+      if (!db) {
+        throw new Error("Server SQLite not available");
+      }
+
+      try {
+        const stmt = db.prepare(sql);
+        const data = stmt.all(...params) as T[];
+        return data;
+      } catch (error: any) {
+        console.error("Server SQLite raw query error:", error);
+        throw error;
+      }
     }
+
+    // Browser: Not supported
+    throw new Error("Raw SQL query not available in browser mode");
   }
 
   /**

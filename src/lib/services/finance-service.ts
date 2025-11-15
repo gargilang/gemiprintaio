@@ -30,8 +30,8 @@ export interface CashBookEntry {
   urutan_tampilan: number;
   dibuat_oleh?: string;
   diarsipkan_pada?: string;
-  created_at?: string;
-  updated_at?: string;
+  dibuat_pada?: string;
+  diperbarui_pada?: string;
 }
 
 /**

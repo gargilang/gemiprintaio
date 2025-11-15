@@ -14,8 +14,8 @@ export interface User {
   nama_lengkap?: string;
   role: string;
   aktif_status: number;
-  created_at?: string;
-  updated_at?: string;
+  dibuat_pada?: string;
+  diperbarui_pada?: string;
 }
 
 async function simpleHash(text: string): Promise<string> {
@@ -29,8 +29,8 @@ export async function getUsers(): Promise<User[]> {
   try {
     const result = await db.query<User>("profil", {
       select:
-        "id, nama_pengguna, email, nama_lengkap, role, aktif_status, created_at, updated_at",
-      orderBy: { column: "created_at", ascending: false },
+        "id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada",
+      orderBy: { column: "dibuat_pada", ascending: false },
     });
 
     if (result.error) throw result.error;
@@ -48,7 +48,7 @@ export async function getUser(id: string): Promise<User | null> {
   try {
     const result = await db.queryOne<User>("profil", {
       select:
-        "id, nama_pengguna, email, nama_lengkap, role, aktif_status, created_at, updated_at",
+        "id, nama_pengguna, email, nama_lengkap, role, aktif_status, dibuat_pada, diperbarui_pada",
       where: { id },
     });
 

@@ -123,7 +123,7 @@ export async function getFinancialReport(
     const cashBooks = await db.queryRaw<any>(
       `SELECT * FROM keuangan 
        WHERE label_arsip = ? AND diarsipkan_pada = ?
-       ORDER BY tanggal ASC, created_at ASC`,
+       ORDER BY tanggal ASC, dibuat_pada ASC`,
       [label, archivedAt]
     );
 

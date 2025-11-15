@@ -36,39 +36,52 @@ pub struct SyncResult {
 }
 
 /// Sync pending operations to Supabase
-pub async fn sync_to_supabase(
-    conn: &Connection,
+/// Returns operations data for async processing
+pub fn get_operations_for_sync(conn: &Connection) -> Result<Vec<SyncOperation>, String> {
+    get_pending_operations(conn)
+}
+
+/// Process sync operations (async, no DB connection needed)
+pub async fn process_sync_operations(
+    operations: Vec<SyncOperation>,
     config: &SupabaseConfig,
-) -> Result<SyncResult, String> {
-    // Get pending operations
-    let operations = get_pending_operations(conn)?;
-    
+) -> Vec<(String, Result<(), String>)> {
     if operations.is_empty() {
-        return Ok(SyncResult { synced: 0, failed: 0 });
+        return Vec::new();
     }
     
-    let mut synced = 0;
-    let mut failed = 0;
-    
-    // Create HTTP client
+    let mut results = Vec::new();
     let client = reqwest::Client::new();
     
     for op in operations {
-        match sync_single_operation(&client, config, &op).await {
+        let op_id = op.id.clone();
+        let result = sync_single_operation(&client, config, &op).await;
+        results.push((op_id, result));
+    }
+    
+    results
+}
+
+/// Update sync status in database
+pub fn update_sync_status(
+    conn: &Connection,
+    results: Vec<(String, Result<(), String>)>,
+) -> Result<SyncResult, String> {
+    let mut synced = 0;
+    let mut failed = 0;
+    
+    for (op_id, result) in results {
+        match result {
             Ok(_) => {
-                // Mark as synced
-                if mark_as_synced(conn, &op.id).is_ok() {
+                if mark_as_synced(conn, &op_id).is_ok() {
                     synced += 1;
-                    println!("✓ Synced {} on {}", op.operation, op.table_name);
                 } else {
                     failed += 1;
                 }
             }
             Err(e) => {
-                // Mark as failed
-                mark_as_failed(conn, &op.id, &e).ok();
+                mark_as_failed(conn, &op_id, &e).ok();
                 failed += 1;
-                println!("✗ Failed to sync {}: {}", op.id, e);
             }
         }
     }

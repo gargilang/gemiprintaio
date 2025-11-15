@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const isTauri = process.env.TAURI === "true";
 
 const nextConfig: NextConfig = {
-  // For Tauri, we need static export
-  output: isTauri ? "export" : undefined,
+  // For Tauri, use standalone to bundle Next.js server
+  output: isTauri ? "standalone" : undefined,
 
   images: {
     unoptimized: true,

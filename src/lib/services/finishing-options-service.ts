@@ -14,8 +14,6 @@ export interface FinishingOption {
   aktif_status: number | boolean;
   dibuat_pada?: string;
   diperbarui_pada?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 // ============================================================================

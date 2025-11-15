@@ -42,7 +42,14 @@ export default function LoginPage() {
 
       if (!result.success || !result.user) {
         console.log("❌ Login failed:", result.error);
-        throw new Error(result.error || "Username atau password salah");
+
+        // Provide more helpful error messages
+        let errorMessage = result.error || "Username atau password salah";
+        if (result.error === "Username tidak ditemukan") {
+          errorMessage = "Username tidak ditemukan. Silakan daftar akun baru.";
+        }
+
+        throw new Error(errorMessage);
       }
 
       const user = result.user;

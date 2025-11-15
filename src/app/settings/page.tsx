@@ -3528,7 +3528,7 @@ function SystemTab() {
                   "Loading..."
                 ) : syncStatus?.cloudBackup === "connected" ? (
                   <>
-                    ✅ Terhubung •{" "}
+                    Terhubung •{" "}
                     {syncStatus?.lastSyncAt ? (
                       <>
                         Terakhir sync:{" "}
@@ -3648,7 +3648,7 @@ function SystemTab() {
             di background
           </span>
           <span className="text-green-600 font-semibold">
-            Data local akan otomatis sync ke cloud ☁️
+            Data local akan otomatis sync ke cloud
           </span>
         </div>
       </div>
@@ -3698,7 +3698,7 @@ function SystemTab() {
             </svg>
             <div>
               <h4 className="font-bold text-gray-800 mb-2">
-                🚧 Fitur Dalam Pengembangan
+                Fitur Dalam Pengembangan
               </h4>
               <p className="text-sm text-gray-700 mb-3">
                 <strong>Catatan Teknis:</strong> Browser tidak dapat mendeteksi

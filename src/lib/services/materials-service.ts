@@ -292,7 +292,7 @@ export async function getMaterialSubcategories(kategori_id?: string) {
  * Get units
  */
 export async function getUnits() {
-  const result = await db.query("satuan", {
+  const result = await db.query("satuan_barang", {
     orderBy: { column: "nama", ascending: true },
   });
   return result.data || [];

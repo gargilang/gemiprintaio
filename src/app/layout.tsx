@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import MainShell from "@/components/MainShell";
 import { usePathname } from "next/navigation";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 
 // export const metadata: Metadata = {
 //   title: "app gemiprint",
@@ -20,6 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+
+  // Enable auto-sync globally
+  useAutoSync();
 
   // Don't wrap login/auth pages with MainShell
   const isAuthPage = pathname?.startsWith("/auth/");

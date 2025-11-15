@@ -21,8 +21,8 @@ export interface Purchase {
   catatan?: string;
   dibuat_oleh?: string;
   created_by_name?: string;
-  created_at?: string;
-  updated_at?: string;
+  dibuat_pada?: string;
+  diperbarui_pada?: string;
   items?: PurchaseItem[];
 }
 
@@ -55,7 +55,7 @@ export async function getPurchases(): Promise<Purchase[]> {
   try {
     // Get all purchases with vendor info
     const purchasesResult = await db.query<Purchase>("pembelian", {
-      orderBy: { column: "created_at", ascending: false },
+      orderBy: { column: "dibuat_pada", ascending: false },
     });
 
     if (purchasesResult.error) {

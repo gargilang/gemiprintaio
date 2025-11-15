@@ -216,7 +216,7 @@ export async function deleteSubcategory(id: string): Promise<boolean> {
 
 export async function getUnits(): Promise<Unit[]> {
   try {
-    const result = await db.query<Unit>("satuan", {
+    const result = await db.query<Unit>("satuan_barang", {
       orderBy: { column: "nama", ascending: true },
     });
     return result.data || [];
@@ -231,7 +231,7 @@ export async function createUnit(
 ): Promise<{ id: string } | null> {
   try {
     const unitId = crypto.randomUUID();
-    const result = await db.insert("satuan", {
+    const result = await db.insert("satuan_barang", {
       id: unitId,
       ...unit,
       dibuat_pada: new Date().toISOString(),
@@ -252,7 +252,7 @@ export async function updateUnit(
 ): Promise<boolean> {
   try {
     const { dibuat_pada, ...updateData } = unit as any;
-    const result = await db.update("satuan", id, {
+    const result = await db.update("satuan_barang", id, {
       ...updateData,
       diperbarui_pada: new Date().toISOString(),
     });
@@ -267,7 +267,7 @@ export async function updateUnit(
 
 export async function deleteUnit(id: string): Promise<boolean> {
   try {
-    const result = await db.delete("satuan", id);
+    const result = await db.delete("satuan_barang", id);
     if (result.error) throw result.error;
     return true;
   } catch (error) {
@@ -527,7 +527,7 @@ export async function reorderUnits(
 ): Promise<void> {
   try {
     for (const item of items) {
-      await db.update("satuan", item.id, {
+      await db.update("satuan_barang", item.id, {
         urutan_tampilan: item.urutan_tampilan,
         diperbarui_pada: new Date().toISOString(),
       });

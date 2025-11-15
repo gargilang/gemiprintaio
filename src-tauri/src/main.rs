@@ -425,50 +425,146 @@ async fn count_pending_sync(
 async fn sync_to_cloud(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+    // Step 1: Get operations from DB (synchronous, with lock)
+    let operations = {
+        let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+        let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+        
+        // Check if sync_queue table exists
+        let table_exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
+                [],
+                |row| {
+                    let count: i64 = row.get(0)?;
+                    Ok(count > 0)
+                },
+            )
+            .unwrap_or(false);
+        
+        if !table_exists {
+            return Ok(serde_json::json!({
+                "synced": 0,
+                "failed": 0,
+                "message": "No sync queue table found"
+            }));
+        }
+        
+        // Get operations
+        sync::get_operations_for_sync(conn)?
+    }; // Lock released here
     
-    // Check if sync_queue table exists
-    let table_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
-            [],
-            |row| {
-                let count: i64 = row.get(0)?;
-                Ok(count > 0)
-            },
-        )
-        .unwrap_or(false);
-    
-    if !table_exists {
+    if operations.is_empty() {
         return Ok(serde_json::json!({
             "synced": 0,
             "failed": 0,
-            "message": "No sync queue table found"
+            "message": "No pending operations"
         }));
     }
     
     // Try to get Supabase config
-    let config = sync::SupabaseConfig::from_env();
+    let config = match sync::SupabaseConfig::from_env() {
+        Some(c) => c,
+        None => {
+            return Ok(serde_json::json!({
+                "synced": 0,
+                "failed": 0,
+                "message": "Supabase not configured (missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+            }));
+        }
+    };
     
-    if config.is_none() {
-        return Ok(serde_json::json!({
-            "synced": 0,
-            "failed": 0,
-            "message": "Supabase not configured (missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY)"
-        }));
-    }
+    // Step 2: Process operations (async, no lock)
+    let results = sync::process_sync_operations(operations, &config).await;
     
-    // Perform sync
-    let result = sync::sync_to_supabase(conn, &config.unwrap())
-        .await
-        .map_err(|e| e.to_string())?;
+    // Step 3: Update status in DB (synchronous, with lock)
+    let sync_result = {
+        let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+        let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+        sync::update_sync_status(conn, results)?
+    }; // Lock released here
     
     Ok(serde_json::json!({
-        "synced": result.synced,
-        "failed": result.failed,
-        "message": format!("Synced {} operations, {} failed", result.synced, result.failed)
+        "synced": sync_result.synced,
+        "failed": sync_result.failed,
+        "message": format!("Synced {} operations, {} failed", sync_result.synced, sync_result.failed)
     }))
+}
+
+// Start Next.js server in background
+fn start_nextjs_server(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use std::process::Command;
+    use std::env;
+    
+    // Try to find Node.js in multiple locations:
+    // 1. Next to the executable (distribution package)
+    // 2. In resources directory (if bundled)
+    // 3. System PATH (development)
+    
+    let exe_dir = env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|p| p.to_path_buf()));
+    
+    let mut node_exe = None;
+    let mut server_dir = None;
+    
+    // Check next to executable (distribution package)
+    if let Some(ref exe_path) = exe_dir {
+        let bundle_node = exe_path.join("tauri-bundle").join("node").join("node-v20.18.1-win-x64").join("node.exe");
+        let bundle_server = exe_path.join("tauri-bundle").join("server").join("standalone");
+        
+        if bundle_node.exists() && bundle_server.join("server.js").exists() {
+            node_exe = Some(bundle_node);
+            server_dir = Some(bundle_server);
+            println!("✓ Found portable bundle next to executable");
+        }
+    }
+    
+    // Check in resources directory
+    if node_exe.is_none() {
+        let resource_dir = app_handle
+            .path()
+            .resource_dir()
+            .expect("Failed to get resource directory");
+        
+        let res_node = resource_dir.join("tauri-bundle").join("node").join("node-v20.18.1-win-x64").join("node.exe");
+        let res_server = resource_dir.join("tauri-bundle").join("server").join("standalone");
+        
+        if res_node.exists() && res_server.join("server.js").exists() {
+            node_exe = Some(res_node);
+            server_dir = Some(res_server);
+            println!("✓ Found portable bundle in resources");
+        }
+    }
+    
+    // If not found, assume server is already running
+    if node_exe.is_none() || server_dir.is_none() {
+        println!("⚠️  Portable Node.js bundle not found");
+        println!("   Assuming Next.js server is already running on port 3000");
+        return Ok(());
+    }
+    
+    let node_exe = node_exe.unwrap();
+    let server_dir = server_dir.unwrap();
+    let server_js = server_dir.join("server.js");
+    
+    println!("🚀 Starting Next.js server...");
+    println!("   Node: {:?}", node_exe);
+    println!("   Server: {:?}", server_js);
+    
+    // Start Node.js server as detached process
+    Command::new(node_exe)
+        .arg(server_js)
+        .current_dir(&server_dir)
+        .spawn()
+        .expect("Failed to start Next.js server");
+    
+    println!("✅ Next.js server started!");
+    
+    // Wait a bit for server to initialize
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    
+    Ok(())
 }
 
 fn main() {
@@ -481,6 +577,12 @@ fn main() {
         // Note: updater plugin requires configuration, disabled for now
         // .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // Start Next.js server first
+            if let Err(e) = start_nextjs_server(app.handle()) {
+                println!("⚠️  Failed to start Next.js server: {}", e);
+                println!("   Assuming server is already running...");
+            }
+            
             // Initialize database
             let conn = init_database(app.handle())?;
             
