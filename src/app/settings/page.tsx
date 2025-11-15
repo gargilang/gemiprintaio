@@ -42,6 +42,18 @@ import {
   reorderFinishingOptions,
 } from "@/lib/services/finishing-options-service";
 import {
+  getSyncStatus,
+  triggerManualSync,
+  updateAutoSyncInterval,
+  stopAutoSync,
+  startAutoSync,
+} from "@/lib/services/sync-operations-service";
+import {
+  getBackupStatus as getBackupStatusService,
+  createBackup,
+  updateBackupInterval,
+} from "@/lib/services/backup-service";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -3121,23 +3133,20 @@ function SystemTab() {
 
   const loadBackupStatus = async () => {
     try {
-      const res = await fetch("/api/backup/status");
-      const data = await res.json();
-      if (data.success) {
-        setBackupStatus(data.status);
+      const status = await getBackupStatusService();
+      setBackupStatus(status);
 
-        // Set current interval to input
-        const currentMs = data.status?.currentInterval || 600000;
-        if (currentMs >= 3600000) {
-          setIntervalValue(Math.floor(currentMs / 3600000));
-          setIntervalUnit("Jam");
-        } else if (currentMs >= 60000) {
-          setIntervalValue(Math.floor(currentMs / 60000));
-          setIntervalUnit("Menit");
-        } else {
-          setIntervalValue(Math.floor(currentMs / 1000));
-          setIntervalUnit("Detik");
-        }
+      // Set current interval to input
+      const currentMs = status.currentInterval || 600000;
+      if (currentMs >= 3600000) {
+        setIntervalValue(Math.floor(currentMs / 3600000));
+        setIntervalUnit("Jam");
+      } else if (currentMs >= 60000) {
+        setIntervalValue(Math.floor(currentMs / 60000));
+        setIntervalUnit("Menit");
+      } else {
+        setIntervalValue(Math.floor(currentMs / 1000));
+        setIntervalUnit("Detik");
       }
     } catch (error) {
       console.error("Failed to load backup status:", error);
@@ -3148,11 +3157,8 @@ function SystemTab() {
 
   const loadSyncStatus = async () => {
     try {
-      const res = await fetch("/api/sync/manual");
-      const data = await res.json();
-      if (data.success) {
-        setSyncStatus(data.status);
-      }
+      const status = await getSyncStatus();
+      setSyncStatus(status);
     } catch (error) {
       console.error("Failed to load sync status:", error);
     } finally {
@@ -3163,19 +3169,18 @@ function SystemTab() {
   const handleManualSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch("/api/sync/manual", { method: "POST" });
-      const data = await res.json();
+      const result = await triggerManualSync();
 
-      if (data.success) {
+      if (result.success) {
         setNotice({
           type: "success",
-          message: `✅ Sync berhasil! ${data.result.synced} record`,
+          message: `✅ Sync berhasil! ${result.synced} record`,
         });
         await loadSyncStatus();
       } else {
         setNotice({
           type: "error",
-          message: data.error || "Gagal sync",
+          message: result.message || "Gagal sync",
         });
       }
     } catch (error) {
@@ -3213,23 +3218,10 @@ function SystemTab() {
 
     setUpdatingSyncInterval(true);
     try {
-      // Stop current auto-sync
-      await fetch("/api/sync/auto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "stop" }),
-      });
+      // Update auto-sync interval (stops and restarts with new interval)
+      const result = updateAutoSyncInterval(intervalMs);
 
-      // Start with new interval
-      const res = await fetch("/api/sync/auto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", intervalMinutes: intervalMs }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
+      if (result.success) {
         setNotice({
           type: "success",
           message: `Interval sync diubah menjadi ${syncIntervalValue} ${syncIntervalUnit.toLowerCase()}`,
@@ -3265,10 +3257,9 @@ function SystemTab() {
   const handleManualBackup = async () => {
     setCreating(true);
     try {
-      const res = await fetch("/api/backup/create", { method: "POST" });
-      const data = await res.json();
+      const result = await createBackup();
 
-      if (data.success) {
+      if (result.success) {
         setNotice({
           type: "success",
           message: "✅ Backup berhasil dibuat!",
@@ -3277,7 +3268,7 @@ function SystemTab() {
       } else {
         setNotice({
           type: "error",
-          message: "Gagal membuat backup",
+          message: result.message || "Gagal membuat backup",
         });
       }
     } catch (error) {
@@ -3317,14 +3308,9 @@ function SystemTab() {
 
     setUpdatingInterval(true);
     try {
-      const res = await fetch("/api/backup/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval: intervalMs }),
-      });
-      const data = await res.json();
+      const result = await updateBackupInterval(intervalMs);
 
-      if (data.success) {
+      if (result.success) {
         setNotice({
           type: "success",
           message: `Interval diubah menjadi ${intervalValue} ${intervalUnit.toLowerCase()}`,
@@ -3333,7 +3319,7 @@ function SystemTab() {
       } else {
         setNotice({
           type: "error",
-          message: "Gagal mengubah interval",
+          message: result.message || "Gagal mengubah interval",
         });
       }
     } catch (error) {

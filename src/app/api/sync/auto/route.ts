@@ -1,3 +1,17 @@
+/**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to sync-operations-service.ts
+ * Use the following functions instead:
+ * - startAutoSync(intervalMinutes) - to start auto-sync
+ * - stopAutoSync() - to stop auto-sync
+ * - getAutoSyncSettings() - to get current settings
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/sync-operations-service.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { startAutoSync, stopAutoSync, getSyncStats } from "@/lib/sync-service";
 

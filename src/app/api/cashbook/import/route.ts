@@ -1,3 +1,14 @@
+/**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to finance-service.ts
+ * Use importCashbookFromCSV() function instead.
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/finance-service.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { parse } from "csv-parse/sync";

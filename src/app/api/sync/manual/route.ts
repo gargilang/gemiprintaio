@@ -1,3 +1,16 @@
+/**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to sync-operations-service.ts
+ * Use the following functions instead:
+ * - getSyncStatus() - for GET requests
+ * - triggerManualSync() - for POST requests
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/sync-operations-service.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, SYNC_TABLES, type SyncResult } from "@/lib/supabase";
 import { getDatabase } from "@/lib/sqlite-db";

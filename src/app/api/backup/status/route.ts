@@ -1,4 +1,15 @@
 /**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to backup-service.ts
+ * Use getBackupStatus() function instead.
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/backup-service.ts
+ */
+
+/**
  * API Route: /api/backup/status
  * Get auto-backup status and info
  */

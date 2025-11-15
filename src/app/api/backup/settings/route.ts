@@ -1,3 +1,14 @@
+/**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to backup-service.ts
+ * Use getBackupSettings() and updateBackupInterval() functions instead.
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/backup-service.ts
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import {
   getBackupStatus,

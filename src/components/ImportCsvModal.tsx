@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { importCashbookFromCSV } from "@/lib/services/finance-service";
 
 interface ImportCsvModalProps {
   show: boolean;
@@ -61,26 +62,29 @@ export default function ImportCsvModal({
     }
 
     setUploading(true);
-    setProgress("Mengupload file...");
+    setProgress("Membaca file...");
     setError("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("append", append.toString());
+      // Read file content
+      const csvText = await file.text();
 
-      const res = await fetch("/api/cashbook/import", {
-        method: "POST",
-        body: formData,
-      });
+      setProgress("Mengimpor data...");
 
-      const data = await res.json();
+      // Import using service
+      const result = await importCashbookFromCSV(csvText, append);
 
-      if (!res.ok) {
-        throw new Error(data.error || "Gagal mengimpor CSV");
+      if (!result.success) {
+        throw new Error(result.message);
       }
 
-      setProgress(data.message || "Import berhasil!");
+      setProgress(result.message);
+
+      // Show errors if any
+      if (result.errors && result.errors.length > 0) {
+        console.warn("Import warnings:", result.errors);
+      }
+
       setTimeout(() => {
         onSuccess();
         handleClose();

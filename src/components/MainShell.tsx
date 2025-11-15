@@ -17,6 +17,11 @@ import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import NotificationToast, { NotificationToastProps } from "./NotificationToast";
 import SyncStatus from "./SyncStatus";
+import {
+  startAutoSync,
+  getSyncStatus,
+  triggerManualSync,
+} from "@/lib/services/sync-operations-service";
 
 interface User {
   id: string;
@@ -125,16 +130,12 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     const initAutoSync = async () => {
       try {
         // Start auto-sync with 20 minute interval
-        const response = await fetch("/api/sync/auto", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "start", intervalMinutes: 20 }),
-        });
+        const result = startAutoSync(20);
 
-        if (response.ok) {
+        if (result.success) {
           console.log("✅ Auto-sync initialized (20 min interval)");
         } else {
-          console.warn("⚠️ Failed to initialize auto-sync");
+          console.warn("⚠️ Failed to initialize auto-sync:", result.message);
         }
       } catch (error) {
         console.error("❌ Error initializing auto-sync:", error);
@@ -148,27 +149,8 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkSyncStatus = async () => {
       try {
-        // Call API to get sync status
-        const response = await fetch("/api/sync/manual");
-
-        if (response.ok) {
-          const data = await response.json();
-
-          if (data.success && data.status) {
-            setSyncStatus({
-              localDb: data.status.localDb,
-              cloudBackup: data.status.cloudBackup,
-              lastSyncAt: data.status.lastSyncAt,
-              pendingChanges: data.status.pendingChanges,
-            });
-          }
-        } else {
-          // If API fails, mark as disconnected
-          setSyncStatus((prev) => ({
-            ...prev,
-            cloudBackup: "disconnected",
-          }));
-        }
+        const status = await getSyncStatus();
+        setSyncStatus(status);
       } catch (error) {
         console.error("Error checking sync status:", error);
         setSyncStatus((prev) => ({
@@ -194,50 +176,36 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     setSyncStatus((prev) => ({ ...prev, cloudBackup: "syncing" }));
 
     try {
-      const response = await fetch("/api/sync/manual", {
-        method: "POST",
-      });
+      const result = await triggerManualSync();
 
-      if (response.ok) {
-        const data = await response.json();
+      if (result.success) {
+        // Refresh status to get updated counts
+        const status = await getSyncStatus();
+        setSyncStatus({
+          ...status,
+          cloudBackup: "connected",
+        });
 
-        if (data.success && data.result) {
-          const { synced, errors } = data.result;
-
-          // Refresh status to get updated counts
-          const statusResponse = await fetch("/api/sync/manual");
-          if (statusResponse.ok) {
-            const statusData = await statusResponse.json();
-            if (statusData.success && statusData.status) {
-              setSyncStatus({
-                localDb: statusData.status.localDb,
-                cloudBackup: "connected",
-                lastSyncAt: statusData.status.lastSyncAt,
-                pendingChanges: statusData.status.pendingChanges,
-              });
-            }
-          }
-
-          // Show success notification with details
-          if (synced > 0) {
-            setNotice({
-              type: "success",
-              message: `✅ Sinkronisasi berhasil! ${synced} record di-sync${
-                errors > 0 ? ` (${errors} error)` : ""
-              }`,
-            });
-            setTimeout(() => setNotice(null), 4000);
-          } else {
-            setNotice({
-              type: "error",
-              message: "⚠️ Tidak ada perubahan untuk di-sync",
-            });
-            setTimeout(() => setNotice(null), 3000);
-          }
+        // Show success notification with details
+        if (result.synced > 0) {
+          setNotice({
+            type: "success",
+            message: `✅ Sinkronisasi berhasil! ${
+              result.synced
+            } record di-sync${
+              result.failed > 0 ? ` (${result.failed} error)` : ""
+            }`,
+          });
+          setTimeout(() => setNotice(null), 4000);
+        } else {
+          setNotice({
+            type: "error",
+            message: "⚠️ Tidak ada perubahan untuk di-sync",
+          });
+          setTimeout(() => setNotice(null), 3000);
         }
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Sync failed");
+        throw new Error(result.message || "Sync failed");
       }
     } catch (error) {
       console.error("Sync error:", error);

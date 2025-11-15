@@ -1,4 +1,15 @@
 /**
+ * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
+ *
+ * This API route has been migrated to backup-service.ts
+ * Use createBackup() function instead.
+ *
+ * This route will be removed after full migration verification.
+ *
+ * @deprecated Use src/lib/services/backup-service.ts
+ */
+
+/**
  * API Route: /api/backup/create
  * Manually trigger a backup
  */
