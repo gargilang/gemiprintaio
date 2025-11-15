@@ -20,6 +20,7 @@ interface AddFinishingModalProps {
   onAdd: (finishing: FinishingItem[]) => void;
   existingFinishing?: FinishingItem[];
   itemName: string;
+  onGetFinishingOptions: () => Promise<FinishingOption[]>;
 }
 
 export default function AddFinishingModal({
@@ -27,6 +28,7 @@ export default function AddFinishingModal({
   onAdd,
   existingFinishing = [],
   itemName,
+  onGetFinishingOptions,
 }: AddFinishingModalProps) {
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -65,10 +67,7 @@ export default function AddFinishingModal({
 
   const loadFinishingOptions = async () => {
     try {
-      const { getFinishingOptions } = await import(
-        "@/lib/services/finishing-options-service"
-      );
-      const options = await getFinishingOptions();
+      const options = await onGetFinishingOptions();
       setFinishingOptions(options.map((opt) => opt.nama));
     } catch (error) {
       console.error("Error loading finishing options:", error);

@@ -11,11 +11,15 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import {
-  getPOSInitData,
-  createSale,
-  deleteSale,
-  revertSalePayment,
-} from "@/lib/services/pos-service";
+  getPOSInitDataAction,
+  createSaleAction,
+  deleteSaleAction,
+  revertSalePaymentAction,
+  createCustomerAction,
+  getReceivablesAction,
+  payReceivableAction,
+  getFinishingOptionsAction,
+} from "./actions";
 
 interface User {
   id: string;
@@ -208,7 +212,7 @@ export default function POSPage() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const data = await getPOSInitData();
+      const data = await getPOSInitDataAction();
       setCustomers(data.customers || []);
       setMaterials(data.materials || []);
       setSales(data.sales || []);
@@ -367,7 +371,7 @@ export default function POSPage() {
 
   const handleDeleteSale = async (saleId: string) => {
     try {
-      await deleteSale(saleId);
+      await deleteSaleAction(saleId);
       showMsg("success", "Transaksi berhasil dihapus");
       await loadAllData();
     } catch (error: any) {
@@ -404,9 +408,8 @@ export default function POSPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          const paymentsDeleted = await revertSalePayment({
+          const paymentsDeleted = await revertSalePaymentAction({
             sale_id: sale.id,
-            dibuat_oleh: currentUser?.id || undefined,
           });
 
           showMsg(
@@ -479,7 +482,7 @@ export default function POSPage() {
   ) => {
     setLoading(true);
     try {
-      const result = await createSale({
+      const result = await createSaleAction({
         pelanggan_id: selectedCustomer?.id,
         items: cart,
         total_jumlah: total,
@@ -987,6 +990,7 @@ export default function POSPage() {
               onPrioritasChange={setPrioritas}
               onCheckout={handleCheckout}
               onEditFinishing={handleEditFinishing}
+              onGetFinishingOptions={getFinishingOptionsAction}
             />
           </div>
         </div>
@@ -1040,6 +1044,7 @@ export default function POSPage() {
           loadAllData();
         }}
         showNotification={showMsg}
+        onCreateCustomer={createCustomerAction}
       />
 
       <PayReceivableModal
@@ -1050,6 +1055,8 @@ export default function POSPage() {
           loadAllData();
         }}
         currentUserId={currentUser?.id || null}
+        onGetReceivables={getReceivablesAction}
+        onPayReceivable={payReceivableAction}
       />
 
       {confirmDialog && (

@@ -2,6 +2,8 @@
  * Users Service
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 import crypto from "crypto";
 

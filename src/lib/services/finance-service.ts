@@ -3,6 +3,8 @@
  * Cash book operations dengan running balance calculations
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 
 export interface CashBookEntry {

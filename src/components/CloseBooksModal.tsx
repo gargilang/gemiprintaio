@@ -8,12 +8,18 @@ interface CloseBooksModalProps {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onArchiveCashbook: (data: {
+    startDate: string;
+    endDate: string;
+    label: string;
+  }) => Promise<any>;
 }
 
 export default function CloseBooksModal({
   show,
   onClose,
   onSuccess,
+  onArchiveCashbook,
 }: CloseBooksModalProps) {
   const [startDate, setStartDate] = useState(
     getTodayJakarta().substring(0, 8) + "01"
@@ -60,10 +66,7 @@ export default function CloseBooksModal({
     setError("");
 
     try {
-      const { archiveCashbook } = await import(
-        "@/lib/services/reports-service"
-      );
-      await archiveCashbook({ startDate, endDate, label });
+      await onArchiveCashbook({ startDate, endDate, label });
 
       onSuccess();
       handleClose();

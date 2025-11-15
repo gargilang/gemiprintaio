@@ -9,50 +9,44 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  getSubcategories,
-  createSubcategory,
-  updateSubcategory,
-  deleteSubcategory,
-  getUnits,
-  createUnit,
-  updateUnit,
-  deleteUnit,
-  getQuickSpecs,
-  createQuickSpec,
-  updateQuickSpec,
-  deleteQuickSpec,
-  getFinishingOptions,
-  createFinishingOption,
-  updateFinishingOption,
-  deleteFinishingOption,
-  reorderCategories,
-  reorderSubcategories,
-  reorderUnits,
-  reorderQuickSpecs,
-} from "@/lib/services/master-service";
-import {
-  getFinishingOptions as getFinishingOptionsList,
-  createFinishingOption as createFinishingOpt,
-  updateFinishingOption as updateFinishingOpt,
-  deleteFinishingOption as deleteFinishingOpt,
-  reorderFinishingOptions,
-} from "@/lib/services/finishing-options-service";
-import {
-  getSyncStatus,
-  triggerManualSync,
-  updateAutoSyncInterval,
-  stopAutoSync,
-  startAutoSync,
-} from "@/lib/services/sync-operations-service";
-import {
-  getBackupStatus as getBackupStatusService,
-  createBackup,
-  updateBackupInterval,
-} from "@/lib/services/backup-service";
+  getCategoriesAction as getCategories,
+  createCategoryAction as createCategory,
+  updateCategoryAction as updateCategory,
+  deleteCategoryAction as deleteCategory,
+  getSubcategoriesAction as getSubcategories,
+  createSubcategoryAction as createSubcategory,
+  updateSubcategoryAction as updateSubcategory,
+  deleteSubcategoryAction as deleteSubcategory,
+  getUnitsAction as getUnits,
+  createUnitAction as createUnit,
+  updateUnitAction as updateUnit,
+  deleteUnitAction as deleteUnit,
+  getQuickSpecsAction as getQuickSpecs,
+  createQuickSpecAction as createQuickSpec,
+  updateQuickSpecAction as updateQuickSpec,
+  deleteQuickSpecAction as deleteQuickSpec,
+  getFinishingOptionsAction as getFinishingOptions,
+  createFinishingOptionAction as createFinishingOption,
+  updateFinishingOptionAction as updateFinishingOption,
+  deleteFinishingOptionAction as deleteFinishingOption,
+  reorderCategoriesAction as reorderCategories,
+  reorderSubcategoriesAction as reorderSubcategories,
+  reorderUnitsAction as reorderUnits,
+  reorderQuickSpecsAction as reorderQuickSpecs,
+  getFinishingOptionsAction as getFinishingOptionsList,
+  createFinishingOptionAction as createFinishingOpt,
+  updateFinishingOptionAction as updateFinishingOpt,
+  deleteFinishingOptionAction as deleteFinishingOpt,
+  reorderFinishingOptionsAction as reorderFinishingOptions,
+  getSyncStatusAction as getSyncStatus,
+  triggerManualSyncAction as triggerManualSync,
+  updateAutoSyncIntervalAction as updateAutoSyncInterval,
+  stopAutoSyncAction as stopAutoSync,
+  startAutoSyncAction as startAutoSync,
+  getBackupStatusAction as getBackupStatusService,
+  triggerManualBackupAction as createBackup,
+  updateAutoBackupIntervalAction as updateBackupInterval,
+} from "./actions";
 import {
   DndContext,
   closestCenter,
@@ -1302,10 +1296,7 @@ function SubcategoriesView({
   const loadSubcategories = async () => {
     try {
       setLoading(true);
-      const { getSubcategories: getSubcats } = await import(
-        "@/lib/services/master-service"
-      );
-      const data = await getSubcats(category.id);
+      const data = await getSubcategories(category.id);
       setSubcategories(
         (data || []).map((sub: any) => ({
           ...sub,
@@ -1348,7 +1339,6 @@ function SubcategoriesView({
   const loadSpecs = async () => {
     try {
       setSpecsLoading(true);
-      const { getQuickSpecs } = await import("@/lib/services/master-service");
       const data = await getQuickSpecs(category.id);
       setSpecs(
         (data || []).map((spec: any) => ({
@@ -3219,7 +3209,7 @@ function SystemTab() {
     setUpdatingSyncInterval(true);
     try {
       // Update auto-sync interval (stops and restarts with new interval)
-      const result = updateAutoSyncInterval(intervalMs);
+      const result = await updateAutoSyncInterval(intervalMs);
 
       if (result.success) {
         setNotice({

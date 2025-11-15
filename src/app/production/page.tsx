@@ -6,14 +6,16 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import { PrinterIcon } from "@/components/icons/PageIcons";
-import {
-  getProductionOrders,
-  updateProductionOrderStatus,
-  updateProductionItemStatus,
-  type ProductionOrder,
-  type ProductionItem,
-  type FinishingItem,
+import type {
+  ProductionOrder,
+  ProductionItem,
+  FinishingItem,
 } from "@/lib/services/production-service";
+import {
+  getProductionOrdersAction,
+  updateProductionStatusAction,
+  updateProductionItemStatusAction,
+} from "./actions";
 
 interface User {
   id: string;
@@ -58,7 +60,7 @@ export default function ProductionPage() {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const orders = await getProductionOrders();
+      const orders = await getProductionOrdersAction();
       setOrders(orders);
     } catch (error) {
       console.error("Error loading production orders:", error);
@@ -104,7 +106,7 @@ export default function ProductionPage() {
     newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
   ) => {
     try {
-      await updateProductionOrderStatus(orderId, newStatus);
+      await updateProductionStatusAction(orderId, newStatus);
       showMsg("success", "Status berhasil diperbarui");
       loadOrders();
     } catch (error) {
@@ -118,7 +120,7 @@ export default function ProductionPage() {
     newStatus: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI"
   ) => {
     try {
-      await updateProductionItemStatus(itemId, { status: newStatus });
+      await updateProductionItemStatusAction(itemId, { status: newStatus });
       showMsg("success", "Status item berhasil diperbarui");
       loadOrders();
     } catch (error) {

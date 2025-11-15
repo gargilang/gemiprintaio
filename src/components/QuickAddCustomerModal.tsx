@@ -2,13 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { createCustomer } from "@/lib/services/customers-service";
+
+interface CustomerData {
+  tipe_pelanggan: "perorangan" | "perusahaan";
+  nama: string;
+  nama_perusahaan?: string;
+  telepon?: string;
+  email?: string;
+  alamat?: string;
+  member_status: number;
+}
 
 interface QuickAddCustomerModalProps {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
+  onCreateCustomer: (data: CustomerData) => Promise<any>;
 }
 
 function generateId(prefix: string = "id"): string {
@@ -20,6 +30,7 @@ export default function QuickAddCustomerModal({
   onClose,
   onSuccess,
   showNotification,
+  onCreateCustomer,
 }: QuickAddCustomerModalProps) {
   const [loading, setLoading] = useState(false);
   const [tipePelanggan, setTipePelanggan] = useState<
@@ -75,13 +86,13 @@ export default function QuickAddCustomerModal({
     setLoading(true);
 
     try {
-      await createCustomer({
+      await onCreateCustomer({
         tipe_pelanggan: tipePelanggan,
         nama: nama.trim(),
-        nama_perusahaan: namaPerusahaan.trim() || null,
-        telepon: telepon.trim() || "",
-        email: email.trim() || "",
-        alamat: alamat.trim() || "",
+        nama_perusahaan: namaPerusahaan.trim() || undefined,
+        telepon: telepon.trim() || undefined,
+        email: email.trim() || undefined,
+        alamat: alamat.trim() || undefined,
         member_status: memberStatus ? 1 : 0,
       });
 

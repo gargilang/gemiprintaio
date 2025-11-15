@@ -8,13 +8,13 @@ import NotificationToast, {
 } from "@/components/NotificationToast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { UsersIcon, CheckIcon } from "@/components/icons/ContentIcons";
+import type { Customer as CustomerType } from "@/lib/services/customers-service";
 import {
-  getCustomers,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-  Customer as CustomerType,
-} from "@/lib/services/customers-service";
+  getCustomersAction,
+  createCustomerAction,
+  updateCustomerAction,
+  deleteCustomerAction,
+} from "./actions";
 
 // Memoized Customer Row Component - mencegah re-render yang tidak perlu
 const CustomerRow = memo(
@@ -275,7 +275,7 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      const customers = await getCustomers();
+      const customers = await getCustomersAction();
       setCustomers(customers || []);
     } catch (error) {
       console.error("Error loading customers:", error);
@@ -325,14 +325,14 @@ export default function CustomersPage() {
 
       if (editingCustomer) {
         // Update existing customer
-        await updateCustomer(editingCustomer.id, formData);
+        await updateCustomerAction(editingCustomer.id, formData);
         const successMessage = "Pelanggan berhasil diupdate";
         setShowModal(false);
         await loadCustomers();
         showMsg("success", successMessage);
       } else {
         // Create new customer
-        await createCustomer(formData);
+        await createCustomerAction(formData);
         const successMessage = "Pelanggan berhasil ditambahkan";
         setShowModal(false);
         await loadCustomers();
@@ -360,7 +360,7 @@ export default function CustomersPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteCustomer(customer.id);
+          await deleteCustomerAction(customer.id);
           // Remove from local state instead of reloading
           setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
           showMsg("success", "Pelanggan berhasil dihapus");

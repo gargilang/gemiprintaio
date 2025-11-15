@@ -7,6 +7,8 @@
  * @module backup-service
  */
 
+import "server-only";
+
 import { isTauriApp, isBrowser } from "../db-unified";
 import { invoke } from "@tauri-apps/api/core";
 

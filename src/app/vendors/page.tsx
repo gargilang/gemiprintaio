@@ -8,13 +8,13 @@ import NotificationToast, {
 } from "@/components/NotificationToast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { UsersIcon } from "@/components/icons/ContentIcons";
+import type { Vendor as VendorType } from "@/lib/services/vendors-service";
 import {
-  getVendors,
-  createVendor,
-  updateVendor,
-  deleteVendor,
-  Vendor as VendorType,
-} from "@/lib/services/vendors-service";
+  getVendorsAction,
+  createVendorAction,
+  updateVendorAction,
+  deleteVendorAction,
+} from "./actions";
 import { CheckIcon } from "@/components/icons/ContentIcons";
 
 // Memoized Vendor Row Component - mencegah re-render yang tidak perlu
@@ -274,7 +274,7 @@ export default function VendorsPage() {
 
   const loadVendors = async () => {
     try {
-      const vendors = await getVendors();
+      const vendors = await getVendorsAction();
       setVendors(vendors || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
@@ -324,14 +324,14 @@ export default function VendorsPage() {
 
       if (editingVendor) {
         // Update existing vendor
-        await updateVendor(editingVendor.id, formData);
+        await updateVendorAction(editingVendor.id, formData);
         const successMessage = "Vendor berhasil diupdate";
         setShowModal(false);
         await loadVendors();
         showMsg("success", successMessage);
       } else {
         // Create new vendor
-        await createVendor(formData);
+        await createVendorAction(formData);
         const successMessage = "Vendor berhasil ditambahkan";
         setShowModal(false);
         await loadVendors();
@@ -359,7 +359,7 @@ export default function VendorsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteVendor(vendor.id);
+          await deleteVendorAction(vendor.id);
           // Remove from local state instead of reloading
           setVendors((prev) => prev.filter((v) => v.id !== vendor.id));
           showMsg("success", "Vendor berhasil dihapus");

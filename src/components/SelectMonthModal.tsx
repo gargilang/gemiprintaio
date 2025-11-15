@@ -20,12 +20,14 @@ interface SelectMonthModalProps {
     start_date: string;
     end_date: string;
   }) => void;
+  onGetArchivedPeriods: () => Promise<Archive[]>;
 }
 
 export default function SelectMonthModal({
   show,
   onClose,
   onSelectArchive,
+  onGetArchivedPeriods,
 }: SelectMonthModalProps) {
   const [archives, setArchives] = useState<Archive[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,10 +62,7 @@ export default function SelectMonthModal({
     setError("");
 
     try {
-      const { getArchivedPeriods } = await import(
-        "@/lib/services/reports-service"
-      );
-      const data = await getArchivedPeriods();
+      const data = await onGetArchivedPeriods();
       setArchives(data || []);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan");

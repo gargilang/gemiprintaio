@@ -2,13 +2,24 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { createVendor } from "@/lib/services/vendors-service";
+
+interface VendorData {
+  nama_perusahaan: string;
+  email: string;
+  telepon: string;
+  alamat: string;
+  kontak_person: string;
+  aktif_status: number;
+  ketentuan_bayar: string;
+  catatan: string;
+}
 
 interface QuickAddVendorModalProps {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
+  onCreateVendor: (data: VendorData) => Promise<any>;
 }
 
 export default function QuickAddVendorModal({
@@ -16,6 +27,7 @@ export default function QuickAddVendorModal({
   onClose,
   onSuccess,
   showNotification,
+  onCreateVendor,
 }: QuickAddVendorModalProps) {
   const [formData, setFormData] = useState({
     nama_perusahaan: "",
@@ -67,7 +79,7 @@ export default function QuickAddVendorModal({
     try {
       setSaving(true);
 
-      await createVendor({
+      await onCreateVendor({
         ...formData,
         aktif_status: 1, // Default aktif
         ketentuan_bayar: "",

@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { importCashbookFromCSV } from "@/lib/services/finance-service";
 
 interface ImportCsvModalProps {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onImportCsv: (csvContent: string, append: boolean) => Promise<any>;
 }
 
 export default function ImportCsvModal({
   show,
   onClose,
   onSuccess,
+  onImportCsv,
 }: ImportCsvModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [append, setAppend] = useState(false);
@@ -71,8 +72,8 @@ export default function ImportCsvModal({
 
       setProgress("Mengimpor data...");
 
-      // Import using service
-      const result = await importCashbookFromCSV(csvText, append);
+      // Import using callback
+      const result = await onImportCsv(csvText, append);
 
       if (!result.success) {
         throw new Error(result.message);

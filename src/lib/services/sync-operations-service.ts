@@ -7,6 +7,8 @@
  * @module sync-operations-service
  */
 
+import "server-only";
+
 import { db, isTauriApp } from "../db-unified";
 
 // ============================================================================

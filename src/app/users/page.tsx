@@ -14,12 +14,12 @@ import {
   KeyIcon,
 } from "@/components/icons/ContentIcons";
 import {
-  getUsers,
-  createUser,
-  updateUser,
-  deleteUser,
-  changePassword,
-} from "@/lib/services/users-service";
+  getUsersAction,
+  createUserAction,
+  updateUserAction,
+  deleteUserAction,
+  changePasswordAction,
+} from "./actions";
 
 interface User {
   id: string;
@@ -152,8 +152,7 @@ export default function UsersPage() {
       return;
     }
     try {
-      const { getUsers } = await import("@/lib/services/users-service");
-      const users = await getUsers();
+      const users = await getUsersAction();
       setUsers((users as any) || []);
     } catch (err) {
       console.error("Gagal memuat users:", err);
@@ -231,17 +230,17 @@ export default function UsersPage() {
           aktif_status: formData.aktif_status,
         };
 
-        await updateUser(editingUser.id, updateData);
+        await updateUserAction(editingUser.id, updateData);
 
         // Change password separately if provided
         if (formData.password) {
-          await changePassword(editingUser.id, formData.password);
+          await changePasswordAction(editingUser.id, "", formData.password);
         }
 
         showMsg("success", "User berhasil diupdate!");
       } else {
         // Create new user via service
-        await createUser({
+        await createUserAction({
           nama_pengguna: formData.nama_pengguna,
           email: formData.email || undefined,
           nama_lengkap: formData.nama_lengkap,
@@ -285,7 +284,7 @@ export default function UsersPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteUser(userId);
+          await deleteUserAction(userId);
           showMsg("success", "User berhasil dihapus!");
           await loadUsers(currentUser!);
         } catch (err) {
@@ -311,7 +310,7 @@ export default function UsersPage() {
     if (!target) return;
 
     try {
-      await updateUser(userId, {
+      await updateUserAction(userId, {
         aktif_status: target.aktif_status ? 0 : 1,
       });
       await loadUsers(currentUser!);

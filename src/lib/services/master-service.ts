@@ -3,6 +3,8 @@
  * Handles all master data tables (categories, units, finishing options, etc.)
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 
 // ============================================================================

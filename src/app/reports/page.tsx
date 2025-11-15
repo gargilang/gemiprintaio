@@ -12,7 +12,7 @@ import {
   ShoppingCartIcon,
   ClipboardIcon,
 } from "@/components/icons/ContentIcons";
-import { getArchivedPeriods } from "@/lib/services/reports-service";
+import { getArchivedPeriodsAction } from "./actions";
 
 interface User {
   id: string;
@@ -77,7 +77,7 @@ export default function ReportsPage() {
   const loadArchives = async () => {
     setLoadingArchives(true);
     try {
-      const data = await getArchivedPeriods();
+      const data = await getArchivedPeriodsAction();
       setArchives(data || []);
     } catch (err: any) {
       showMsg("error", err.message || "Terjadi kesalahan");

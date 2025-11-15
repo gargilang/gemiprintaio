@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { db, isTauriApp, isBrowser } from "@/lib/db-unified";
+import { isTauriApp } from "@/lib/client-utils";
+import {
+  getPendingSyncCountAction,
+  syncToCloudAction,
+  processOfflineQueueAction,
+} from "@/app/settings/actions";
 
 interface SyncStatusProps {
   className?: string;
@@ -12,9 +17,13 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pendingOps, setPendingOps] = useState(0);
+  const [isTauri, setIsTauri] = useState(false);
 
   useEffect(() => {
-    if (!isBrowser()) return;
+    if (typeof window === "undefined") return;
+
+    // Check if running in Tauri
+    setIsTauri(isTauriApp());
 
     // Check online status
     const checkOnline = () => {
@@ -24,7 +33,7 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
     // Check pending operations
     const checkPending = async () => {
       try {
-        const count = await db.getPendingSyncCount();
+        const count = await getPendingSyncCountAction();
         setPendingOps(count);
       } catch (error) {
         console.error("Failed to get pending sync count:", error);
@@ -55,11 +64,11 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
     try {
       if (isTauriApp()) {
         // Sync SQLite to Supabase
-        const result = await db.syncToCloud();
+        const result = await syncToCloudAction();
         console.log("Sync result:", result);
       } else {
         // Process offline queue
-        const result = await db.processOfflineQueue();
+        const result = await processOfflineQueueAction();
         console.log("Queue processed:", result);
       }
       setLastSync(new Date());
@@ -72,7 +81,7 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
   };
 
   // Don't show in SSR
-  if (!isBrowser()) return null;
+  if (typeof window === "undefined") return null;
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -111,7 +120,7 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
 
       {/* Tauri/Web Mode Indicator */}
       <span className="text-xs text-gray-400">
-        {isTauriApp() ? "Desktop" : "Web"}
+        {isTauri ? "Desktop" : "Web"}
       </span>
     </div>
   );

@@ -59,6 +59,8 @@ interface PurchaseFormProps {
   onQuickAddVendor: () => void;
   onQuickAddMaterial: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
+  onCreatePurchase: (data: any) => Promise<any>;
+  onUpdatePurchase: (id: string, data: any) => Promise<any>;
 }
 
 export default function PurchaseForm({
@@ -70,6 +72,8 @@ export default function PurchaseForm({
   onQuickAddVendor,
   onQuickAddMaterial,
   showNotification,
+  onCreatePurchase,
+  onUpdatePurchase,
 }: PurchaseFormProps) {
   const [formData, setFormData] = useState<PurchaseFormData>({
     tanggal: getTodayJakarta(),
@@ -282,15 +286,9 @@ export default function PurchaseForm({
       };
 
       if (editData) {
-        const { updatePurchase } = await import(
-          "@/lib/services/purchases-service"
-        );
-        await updatePurchase(editData.id, payload);
+        await onUpdatePurchase(editData.id, payload);
       } else {
-        const { createPurchase } = await import(
-          "@/lib/services/purchases-service"
-        );
-        await createPurchase(payload);
+        await onCreatePurchase(payload);
       }
 
       onSuccess(

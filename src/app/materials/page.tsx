@@ -8,10 +8,16 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import {
-  getMaterials,
-  getMaterialById,
-  deleteMaterial,
-} from "@/lib/services/materials-service";
+  getMaterialsAction,
+  getMaterialByIdAction as getMaterialById,
+  createMaterialWithUnitPricesAction,
+  updateMaterialWithUnitPricesAction,
+  deleteMaterialAction,
+  getCategoriesAction,
+  getSubcategoriesAction,
+  getUnitsAction,
+  getQuickSpecsAction,
+} from "./actions";
 
 // Memoized Material Row Component - mencegah re-render yang tidak perlu
 const MaterialRow = memo(
@@ -316,7 +322,7 @@ export default function MaterialsPage() {
   const loadMaterials = async () => {
     try {
       setLoading(true);
-      const materials = await getMaterials();
+      const materials = await getMaterialsAction();
       setMaterials(materials || []);
     } catch (error) {
       console.error("Error loading materials:", error);
@@ -381,7 +387,7 @@ export default function MaterialsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteMaterial(material.id);
+          await deleteMaterialAction(material.id);
           // Remove from local state instead of reloading
           setMaterials((prev) => prev.filter((m) => m.id !== material.id));
           showNotification(
@@ -706,6 +712,12 @@ export default function MaterialsPage() {
         onSuccess={handleSuccess}
         showNotification={showNotification}
         editData={selectedMaterial}
+        onCreateMaterial={createMaterialWithUnitPricesAction}
+        onUpdateMaterial={updateMaterialWithUnitPricesAction}
+        onGetCategories={getCategoriesAction}
+        onGetSubcategories={getSubcategoriesAction}
+        onGetUnits={getUnitsAction}
+        onGetQuickSpecs={getQuickSpecsAction}
       />
 
       {/* Confirm Dialog */}

@@ -5,7 +5,15 @@
  * Handles: Sales transactions, Receivables, Stock management, Finance entries
  */
 
-import { db, generateId, getCurrentTimestamp, isTauriApp } from "../db-unified";
+import "server-only";
+
+import {
+  db,
+  generateId,
+  getCurrentTimestamp,
+  isTauriApp,
+  withSQLiteDatabase,
+} from "../db-unified";
 import { recalculateCashbook } from "../calculate-cashbook";
 
 // ============================================================================
@@ -477,15 +485,9 @@ export async function createSale(data: CreateSaleData): Promise<{
 
       // Recalculate cashbook (Tauri only)
       if (isTauriApp()) {
-        const Database = (await import("better-sqlite3")).default;
-        const dbPath = require("path").join(
-          process.cwd(),
-          "database",
-          "gemiprint.db"
-        );
-        const dbInstance = new Database(dbPath);
-        await recalculateCashbook(dbInstance);
-        dbInstance.close();
+        await withSQLiteDatabase(async (dbInstance) => {
+          await recalculateCashbook(dbInstance);
+        });
       }
 
       // Create production order
@@ -666,15 +668,9 @@ export async function deleteSale(id: string): Promise<boolean> {
 
       // Recalculate cashbook (Tauri only)
       if (isTauriApp()) {
-        const Database = (await import("better-sqlite3")).default;
-        const dbPath = require("path").join(
-          process.cwd(),
-          "database",
-          "gemiprint.db"
-        );
-        const dbInstance = new Database(dbPath);
-        await recalculateCashbook(dbInstance);
-        dbInstance.close();
+        await withSQLiteDatabase(async (dbInstance) => {
+          await recalculateCashbook(dbInstance);
+        });
       }
 
       return true;
@@ -847,15 +843,9 @@ export async function payReceivable(data: {
 
       // Recalculate cashbook (Tauri only)
       if (isTauriApp()) {
-        const Database = (await import("better-sqlite3")).default;
-        const dbPath = require("path").join(
-          process.cwd(),
-          "database",
-          "gemiprint.db"
-        );
-        const dbInstance = new Database(dbPath);
-        await recalculateCashbook(dbInstance);
-        dbInstance.close();
+        await withSQLiteDatabase(async (dbInstance) => {
+          await recalculateCashbook(dbInstance);
+        });
       }
 
       return {
@@ -948,15 +938,9 @@ export async function revertSalePayment(data: {
 
       // Recalculate cashbook (Tauri only)
       if (isTauriApp()) {
-        const Database = (await import("better-sqlite3")).default;
-        const dbPath = require("path").join(
-          process.cwd(),
-          "database",
-          "gemiprint.db"
-        );
-        const dbInstance = new Database(dbPath);
-        await recalculateCashbook(dbInstance);
-        dbInstance.close();
+        await withSQLiteDatabase(async (dbInstance) => {
+          await recalculateCashbook(dbInstance);
+        });
       }
 
       return payments.length;

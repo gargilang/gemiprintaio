@@ -2,7 +2,28 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { createMaterial as createMaterialService } from "@/lib/services/materials-service";
+
+interface MaterialData {
+  nama: string;
+  kategori_id: string | null;
+  subkategori_id: string | null;
+  satuan_dasar: string;
+  spesifikasi: string | null;
+  deskripsi: string;
+  jumlah_stok: number;
+  level_stok_minimum: number;
+  lacak_inventori_status: number;
+  butuh_dimensi_status: number;
+  unit_prices: Array<{
+    id?: string;
+    nama_satuan: string;
+    faktor_konversi: number;
+    harga_jual: number;
+    harga_member: number;
+    default_status: number;
+    urutan_tampilan: number;
+  }>;
+}
 
 interface Category {
   id: string;
@@ -29,6 +50,7 @@ interface QuickAddMaterialModalProps {
   subcategories: Subcategory[];
   units: Unit[];
   showNotification: (type: "success" | "error", message: string) => void;
+  onCreateMaterial: (data: MaterialData) => Promise<any>;
 }
 
 export default function QuickAddMaterialModal({
@@ -39,6 +61,7 @@ export default function QuickAddMaterialModal({
   subcategories,
   units,
   showNotification,
+  onCreateMaterial,
 }: QuickAddMaterialModalProps) {
   const [formData, setFormData] = useState({
     nama: "",
@@ -122,7 +145,7 @@ export default function QuickAddMaterialModal({
         ],
       };
 
-      const result = await createMaterialService(payload);
+      const result = await onCreateMaterial(payload);
 
       if (!result) {
         throw new Error("Gagal menambahkan barang");

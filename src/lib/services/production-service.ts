@@ -3,6 +3,8 @@
  * Universal API untuk Production Orders yang bekerja di Tauri dan Web
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 
 export interface ProductionOrder {

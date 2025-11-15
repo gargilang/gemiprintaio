@@ -11,6 +11,23 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import PayDebtModal from "@/components/PayDebtModal";
+import {
+  createVendorAction,
+  createMaterialAction,
+  createPurchaseAction,
+  updatePurchaseAction,
+  getInitDataAction,
+  getPurchasesAction,
+  getMaterialsAction,
+  getVendorsAction,
+  getCategoriesAction,
+  getSubcategoriesAction,
+  getUnitsAction,
+  deletePurchaseAction,
+  revertPaymentAction,
+  getDebtsAction,
+  payDebtAction,
+} from "./actions";
 
 interface User {
   id: string;
@@ -78,8 +95,7 @@ export default function PurchasesPage() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const { getInitData } = await import("@/lib/services/purchases-service");
-      const data = await getInitData();
+      const data = await getInitDataAction();
 
       setPurchases(data.purchases || []);
       setMaterials(data.materials || []);
@@ -96,8 +112,7 @@ export default function PurchasesPage() {
   // Keep individual loaders for refresh after operations
   const loadPurchases = async () => {
     try {
-      const { getPurchases } = await import("@/lib/services/purchases-service");
-      const purchases = await getPurchases();
+      const purchases = await getPurchasesAction();
       setPurchases(purchases || []);
     } catch (error) {
       console.error("Error loading purchases:", error);
@@ -106,8 +121,7 @@ export default function PurchasesPage() {
 
   const loadMaterials = async () => {
     try {
-      const { getMaterials } = await import("@/lib/services/materials-service");
-      const materials = await getMaterials();
+      const materials = await getMaterialsAction();
       setMaterials(materials || []);
     } catch (error) {
       console.error("Error loading materials:", error);
@@ -116,8 +130,7 @@ export default function PurchasesPage() {
 
   const loadVendors = async () => {
     try {
-      const { getVendors } = await import("@/lib/services/vendors-service");
-      const vendors = await getVendors();
+      const vendors = await getVendorsAction();
       setVendors(vendors || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
@@ -126,8 +139,7 @@ export default function PurchasesPage() {
 
   const loadCategories = async () => {
     try {
-      const { getCategories } = await import("@/lib/services/master-service");
-      const categories = await getCategories();
+      const categories = await getCategoriesAction();
       setCategories(categories || []);
     } catch (error) {
       console.error("Error loading categories:", error);
@@ -136,10 +148,7 @@ export default function PurchasesPage() {
 
   const loadSubcategories = async () => {
     try {
-      const { getSubcategories } = await import(
-        "@/lib/services/master-service"
-      );
-      const subcategories = await getSubcategories();
+      const subcategories = await getSubcategoriesAction();
       setSubcategories(subcategories || []);
     } catch (error) {
       console.error("Error loading subcategories:", error);
@@ -148,8 +157,7 @@ export default function PurchasesPage() {
 
   const loadUnits = async () => {
     try {
-      const { getUnits } = await import("@/lib/services/master-service");
-      const units = await getUnits();
+      const units = await getUnitsAction();
       setUnits(units || []);
     } catch (error) {
       console.error("Error loading units:", error);
@@ -219,10 +227,7 @@ export default function PurchasesPage() {
       type: "danger",
       onConfirm: async () => {
         try {
-          const { deletePurchase } = await import(
-            "@/lib/services/purchases-service"
-          );
-          await deletePurchase(purchase.id);
+          await deletePurchaseAction(purchase.id);
 
           // Remove from local state instead of reloading
           setPurchases((prev) => prev.filter((p) => p.id !== purchase.id));
@@ -253,10 +258,7 @@ export default function PurchasesPage() {
       type: "purchases",
       onConfirm: async () => {
         try {
-          const { revertPayment } = await import(
-            "@/lib/services/purchases-service"
-          );
-          await revertPayment(purchase.id);
+          await revertPaymentAction(purchase.id);
 
           // Reload purchases to get updated status
           await loadPurchases();
@@ -322,6 +324,8 @@ export default function PurchasesPage() {
             onQuickAddVendor={() => setShowVendorModal(true)}
             onQuickAddMaterial={() => setShowMaterialModal(true)}
             showNotification={(type, message) => setNotice({ type, message })}
+            onCreatePurchase={createPurchaseAction}
+            onUpdatePurchase={updatePurchaseAction}
           />
         </div>
 
@@ -373,6 +377,7 @@ export default function PurchasesPage() {
         onClose={() => setShowVendorModal(false)}
         onSuccess={handleVendorAdded}
         showNotification={(type, message) => setNotice({ type, message })}
+        onCreateVendor={createVendorAction}
       />
 
       <QuickAddMaterialModal
@@ -383,6 +388,7 @@ export default function PurchasesPage() {
         subcategories={subcategories}
         units={units}
         showNotification={(type, message) => setNotice({ type, message })}
+        onCreateMaterial={createMaterialAction}
       />
 
       {/* Pay Debt Modal */}
@@ -394,6 +400,8 @@ export default function PurchasesPage() {
           loadPurchases();
         }}
         currentUserId={currentUser?.id || null}
+        onGetDebts={getDebtsAction}
+        onPayDebt={payDebtAction}
       />
 
       {/* Confirm Dialog */}

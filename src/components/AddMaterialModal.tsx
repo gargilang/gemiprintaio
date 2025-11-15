@@ -3,16 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
-import {
-  createMaterial,
-  updateMaterial,
-} from "@/lib/services/materials-service";
-import {
-  getCategories,
-  getSubcategories,
-  getUnits,
-  getQuickSpecs,
-} from "@/lib/services/master-service";
 
 interface UnitPrice {
   id?: string;
@@ -31,6 +21,12 @@ interface AddMaterialModalProps {
   onSuccess: (message: string, updatedMaterial?: any) => void;
   showNotification: (type: "success" | "error", message: string) => void;
   editData?: any | null;
+  onCreateMaterial: (data: any) => Promise<any>;
+  onUpdateMaterial: (id: string, data: any) => Promise<any>;
+  onGetCategories: () => Promise<any[]>;
+  onGetSubcategories: () => Promise<any[]>;
+  onGetUnits: () => Promise<any[]>;
+  onGetQuickSpecs: () => Promise<any[]>;
 }
 
 export default function AddMaterialModal({
@@ -39,6 +35,12 @@ export default function AddMaterialModal({
   onSuccess,
   showNotification,
   editData,
+  onCreateMaterial,
+  onUpdateMaterial,
+  onGetCategories,
+  onGetSubcategories,
+  onGetUnits,
+  onGetQuickSpecs,
 }: AddMaterialModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -104,10 +106,10 @@ export default function AddMaterialModal({
       setLoadingMaster(true);
 
       const [categories, subcategories, units, specs] = await Promise.all([
-        getCategories(),
-        getSubcategories(),
-        getUnits(),
-        getQuickSpecs(),
+        onGetCategories(),
+        onGetSubcategories(),
+        onGetUnits(),
+        onGetQuickSpecs(),
       ]);
 
       setCategoriesData(categories || []);
@@ -359,10 +361,10 @@ export default function AddMaterialModal({
         let result;
         if (editData) {
           // Update existing material
-          result = await updateMaterial(editData.id, payload);
+          result = await onUpdateMaterial(editData.id, payload);
         } else {
           // Create new material
-          result = await createMaterial(payload);
+          result = await onCreateMaterial(payload);
         }
 
         if (!result) {

@@ -22,12 +22,24 @@ interface PayDebtModalProps {
   onClose: () => void;
   onSuccess: () => void;
   currentUserId: string | null;
+  onGetDebts: () => Promise<DebtPurchase[]>;
+  onPayDebt: (data: {
+    purchase_id: string;
+    jumlah_bayar: number;
+    tanggal_bayar: string;
+    metode_pembayaran: string;
+    referensi?: string;
+    catatan?: string;
+    dibuat_oleh?: string;
+  }) => Promise<any>;
 }
 
 export default function PayDebtModal({
   isOpen,
   onClose,
   onSuccess,
+  onGetDebts,
+  onPayDebt,
   currentUserId,
 }: PayDebtModalProps) {
   const [loading, setLoading] = useState(false);
@@ -86,8 +98,7 @@ export default function PayDebtModal({
   const loadDebts = async () => {
     setLoading(true);
     try {
-      const { getDebts } = await import("@/lib/services/purchases-service");
-      const data = await getDebts();
+      const data = await onGetDebts();
       setDebts(data || []);
     } catch (err) {
       console.error("Error loading debts:", err);
@@ -124,8 +135,7 @@ export default function PayDebtModal({
     setError("");
 
     try {
-      const { payDebt } = await import("@/lib/services/purchases-service");
-      await payDebt({
+      await onPayDebt({
         purchase_id: selectedDebt.id,
         jumlah_bayar: amount,
         tanggal_bayar: tanggalBayar,

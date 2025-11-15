@@ -7,14 +7,24 @@ import { MoneyIcon } from "./icons/PageIcons";
 interface Receivable {
   id: string;
   id_penjualan: string;
-  nomor_invoice: string;
-  pelanggan_nama: string | null;
+  nomor_invoice?: string;
+  pelanggan_nama?: string | null;
   jumlah_piutang: number;
   jumlah_terbayar: number;
   sisa_piutang: number;
-  jatuh_tempo: string | null;
+  jatuh_tempo?: string | null;
   status: string;
-  dibuat_pada: string;
+  dibuat_pada?: string;
+}
+
+interface PaymentData {
+  piutang_id: string;
+  jumlah_bayar: number;
+  tanggal_bayar: string;
+  metode_pembayaran: string;
+  referensi?: string;
+  catatan?: string;
+  dibuat_oleh?: string;
 }
 
 interface PayReceivableModalProps {
@@ -22,6 +32,8 @@ interface PayReceivableModalProps {
   onClose: () => void;
   onSuccess: () => void;
   currentUserId: string | null;
+  onGetReceivables: () => Promise<Receivable[]>;
+  onPayReceivable: (data: PaymentData) => Promise<any>;
 }
 
 export default function PayReceivableModal({
@@ -29,6 +41,8 @@ export default function PayReceivableModal({
   onClose,
   onSuccess,
   currentUserId,
+  onGetReceivables,
+  onPayReceivable,
 }: PayReceivableModalProps) {
   const [loading, setLoading] = useState(false);
   const [receivables, setReceivables] = useState<Receivable[]>([]);
@@ -86,9 +100,8 @@ export default function PayReceivableModal({
   const loadReceivables = async () => {
     setLoading(true);
     try {
-      const { getReceivables } = await import("@/lib/services/pos-service");
-      const data = await getReceivables();
-      setReceivables((data as any) || []);
+      const data = await onGetReceivables();
+      setReceivables(data || []);
     } catch (err) {
       console.error("Error loading receivables:", err);
       setError("Terjadi kesalahan saat memuat data piutang");
@@ -124,8 +137,7 @@ export default function PayReceivableModal({
     setError("");
 
     try {
-      const { payReceivable } = await import("@/lib/services/pos-service");
-      await payReceivable({
+      await onPayReceivable({
         piutang_id: selectedReceivable.id,
         jumlah_bayar: amount,
         tanggal_bayar: tanggalBayar,
@@ -253,9 +265,11 @@ export default function PayReceivableModal({
                             <div className="text-sm text-gray-600 mt-1">
                               {receivable.pelanggan_nama || "Walk-in Customer"}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatDate(receivable.dibuat_pada)}
-                            </div>
+                            {receivable.dibuat_pada && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatDate(receivable.dibuat_pada)}
+                              </div>
+                            )}
                             <div className="mt-3 space-y-1">
                               <div className="text-sm">
                                 <span className="text-gray-600">Total:</span>{" "}

@@ -22,13 +22,17 @@ import {
   BoxIcon,
   CheckIcon,
 } from "@/components/icons/ContentIcons";
-import { getDebts } from "@/lib/services/purchases-service";
-import { getReceivables } from "@/lib/services/pos-service";
 import {
-  deleteAllCashbook,
-  deleteCashBookEntry,
-} from "@/lib/services/finance-service";
-import { restoreArchivedTransactions } from "@/lib/services/reports-service";
+  getDebtsAction,
+  getReceivablesAction,
+  deleteAllCashbookAction,
+  deleteCashBookEntryAction,
+  restoreArchivedTransactionsAction,
+  importCashbookFromCSVAction,
+  createCashBookEntryAction,
+  getArchivedPeriodsAction,
+  archiveCashbookAction,
+} from "./actions";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
 const stripReferenceId = (text: string | null | undefined): string => {
@@ -507,7 +511,7 @@ export default function FinancePage() {
 
   const loadHutangData = async () => {
     try {
-      const debts = await getDebts();
+      const debts = await getDebtsAction();
       const total = debts.reduce(
         (sum: number, debt: any) => sum + debt.sisa_hutang,
         0
@@ -521,7 +525,7 @@ export default function FinancePage() {
 
   const loadPiutangData = async () => {
     try {
-      const receivables = await getReceivables();
+      const receivables = await getReceivablesAction();
       const total = receivables.reduce(
         (sum: number, rec: any) => sum + rec.sisa_piutang,
         0
@@ -703,10 +707,7 @@ export default function FinancePage() {
         showMsg("success", " Transaksi berhasil diupdate!");
       } else {
         // Create new transaction
-        const { createCashBookEntry } = await import(
-          "@/lib/services/finance-service"
-        );
-        await createCashBookEntry({
+        await createCashBookEntryAction({
           tanggal: formData.tanggal,
           kategori_transaksi: formData.kategori_transaksi,
           debit: debitVal,
@@ -905,7 +906,7 @@ export default function FinancePage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteCashBookEntry(cashBook.id);
+          await deleteCashBookEntryAction(cashBook.id);
 
           showMsg(
             "success",
@@ -930,7 +931,7 @@ export default function FinancePage() {
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
-      await deleteAllCashbook();
+      await deleteAllCashbookAction();
       showMsg(
         "success",
         "Transaksi aktif berhasil dihapus. Data arsip tetap tersimpan."
@@ -1081,7 +1082,7 @@ export default function FinancePage() {
         setConfirmDialog(null);
 
         try {
-          await restoreArchivedTransactions(
+          await restoreArchivedTransactionsAction(
             currentArchiveInfo.label,
             currentArchiveInfo.archived_at
           );
@@ -1992,6 +1993,7 @@ export default function FinancePage() {
         show={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
+        onImportCsv={importCashbookFromCSVAction}
       />
       {/* Delete All Modal */}
       <DeleteAllCashbookModal
@@ -2015,12 +2017,14 @@ export default function FinancePage() {
         show={showCloseBooksModal}
         onClose={() => setShowCloseBooksModal(false)}
         onSuccess={handleCloseBooksSuccess}
+        onArchiveCashbook={archiveCashbookAction}
       />
       {/* Select Month Modal */}
       <SelectMonthModal
         show={showSelectMonthModal}
         onClose={() => setShowSelectMonthModal(false)}
         onSelectArchive={handleSelectArchive}
+        onGetArchivedPeriods={getArchivedPeriodsAction}
       />
       {/* Notification Toast */}
       {notice && (

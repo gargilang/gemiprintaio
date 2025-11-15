@@ -10,6 +10,8 @@
  * KONSOLIDASI: File ini menggantikan db-adapter.ts, db.ts, dan sqlite-db.ts
  */
 
+import "server-only";
+
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -1007,6 +1009,32 @@ export async function getAllMaterialsWithUnitPrices() {
     return { data: materialsWithUnits, error: null };
   } catch (error: any) {
     return { data: null, error };
+  }
+}
+
+/**
+ * Execute a function that requires direct SQLite database access (Tauri only)
+ * This helper creates and manages the Database instance lifecycle
+ *
+ * @param callback Function that receives the Database instance
+ * @returns Result from the callback
+ */
+export async function withSQLiteDatabase<T>(
+  callback: (db: any) => Promise<T> | T
+): Promise<T> {
+  if (!isTauriApp()) {
+    throw new Error("SQLite direct access is only available in Tauri app");
+  }
+
+  const Database = (await import("better-sqlite3")).default;
+  const path = await import("path");
+  const dbPath = path.join(process.cwd(), "database", "gemiprint.db");
+  const dbInstance = new Database(dbPath);
+
+  try {
+    return await callback(dbInstance);
+  } finally {
+    dbInstance.close();
   }
 }
 

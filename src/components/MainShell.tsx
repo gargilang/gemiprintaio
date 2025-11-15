@@ -18,10 +18,10 @@ import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import NotificationToast, { NotificationToastProps } from "./NotificationToast";
 import SyncStatus from "./SyncStatus";
 import {
-  startAutoSync,
-  getSyncStatus,
-  triggerManualSync,
-} from "@/lib/services/sync-operations-service";
+  startAutoSyncAction,
+  getSyncStatusAction,
+  triggerManualSyncAction,
+} from "@/app/settings/actions";
 
 interface User {
   id: string;
@@ -130,7 +130,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     const initAutoSync = async () => {
       try {
         // Start auto-sync with 20 minute interval
-        const result = startAutoSync(20);
+        const result = await startAutoSyncAction(20);
 
         if (result.success) {
           console.log("✅ Auto-sync initialized (20 min interval)");
@@ -149,7 +149,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkSyncStatus = async () => {
       try {
-        const status = await getSyncStatus();
+        const status = await getSyncStatusAction();
         setSyncStatus(status);
       } catch (error) {
         console.error("Error checking sync status:", error);
@@ -176,11 +176,11 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     setSyncStatus((prev) => ({ ...prev, cloudBackup: "syncing" }));
 
     try {
-      const result = await triggerManualSync();
+      const result = await triggerManualSyncAction();
 
       if (result.success) {
         // Refresh status to get updated counts
-        const status = await getSyncStatus();
+        const status = await getSyncStatusAction();
         setSyncStatus({
           ...status,
           cloudBackup: "connected",

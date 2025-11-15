@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { loginAction, createUserAction } from "./actions";
 
 // Simple hash function for password verification (development only)
 async function simpleHash(text: string): Promise<string> {
@@ -35,8 +36,7 @@ export default function LoginPage() {
       console.log("🔐 Attempting login with username:", username);
 
       // Call auth service
-      const { login } = await import("@/lib/services/auth-service");
-      const result = await login(username, password);
+      const result = await loginAction(username, password);
 
       console.log("📥 Login result:", result);
 
@@ -67,8 +67,7 @@ export default function LoginPage() {
       console.log("📝 Attempting registration with username:", username);
 
       // Call users service to create new user
-      const { createUser } = await import("@/lib/services/users-service");
-      await createUser({
+      await createUserAction({
         nama_pengguna: username,
         email: email.trim() === "" ? undefined : email.trim(),
         nama_lengkap: fullName,

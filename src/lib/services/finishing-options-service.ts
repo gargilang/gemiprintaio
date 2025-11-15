@@ -3,6 +3,8 @@
  * Universal API untuk Finishing Options yang bekerja di Tauri dan Web
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 
 export interface FinishingOption {

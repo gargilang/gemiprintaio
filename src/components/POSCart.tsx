@@ -29,6 +29,12 @@ interface CartItem {
   finishing?: FinishingItem[];
 }
 
+interface FinishingOption {
+  id: string;
+  nama: string;
+  urutan_tampilan: number;
+}
+
 interface POSCartProps {
   cart: CartItem[];
   paymentMethod: string;
@@ -42,6 +48,7 @@ interface POSCartProps {
   onPrioritasChange: (prioritas: "NORMAL" | "KILAT") => void;
   onCheckout: () => void;
   onEditFinishing?: (index: number, finishing: FinishingItem[]) => void;
+  onGetFinishingOptions: () => Promise<FinishingOption[]>;
 }
 
 // Pecahan uang Indonesia
@@ -90,6 +97,7 @@ export default function POSCart({
   onPrioritasChange,
   onCheckout,
   onEditFinishing,
+  onGetFinishingOptions,
 }: POSCartProps) {
   const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const bayar = parseFloat(jumlahBayar) || 0;
@@ -472,6 +480,7 @@ export default function POSCart({
           }}
           existingFinishing={cart[editingFinishingIndex]?.finishing}
           itemName={cart[editingFinishingIndex]?.barang_nama || ""}
+          onGetFinishingOptions={onGetFinishingOptions}
         />
       )}
     </div>

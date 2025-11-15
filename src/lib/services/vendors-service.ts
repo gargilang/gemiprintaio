@@ -3,6 +3,8 @@
  * Universal API untuk Vendors yang bekerja di Tauri dan Web
  */
 
+import "server-only";
+
 import { db } from "../db-unified";
 
 export interface Vendor {
