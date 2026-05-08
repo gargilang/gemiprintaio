@@ -257,7 +257,7 @@ CREATE TABLE order_produksi (
       pelanggan_nama TEXT,
       total_item INTEGER DEFAULT 0,
       status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI', 'DIBATALKAN')),
-      prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('RENDAH', 'NORMAL', 'TINGGI', 'MENDESAK')),
+      prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('RENDAH', 'NORMAL', 'TINGGI', 'MENDESAK', 'KILAT')),
       tanggal_deadline TEXT,
       catatan TEXT,
       dibuat_oleh TEXT,

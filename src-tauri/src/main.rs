@@ -4,9 +4,23 @@
 mod sync;
 
 use rusqlite::{params, Connection, Result as SqlResult};
+use std::net::TcpStream;
+#[cfg(not(debug_assertions))]
+use std::path::PathBuf;
+#[cfg(not(debug_assertions))]
+use std::process::Command;
 use std::sync::Mutex;
+use std::thread;
+use std::time::{Duration, Instant};
 use tauri::{Manager, State};
 use uuid::Uuid;
+
+/// Release / packaged app: Next standalone binds this port. Matches `build.frontendDist` in tauri.conf.json. Clients do not use the browser; only the embedded app talks to this URL.
+#[cfg(not(debug_assertions))]
+const BUNDLED_NEXT_PORT: u16 = 3000;
+/// `tauri dev` only: matches `dev:tauri-shell` and `devUrl` in tauri.conf.json. Run the web app in the browser on port 3000 with `npm run dev:web` in parallel.
+#[cfg(debug_assertions)]
+const DEV_TAURI_SHELL_PORT: u16 = 3001;
 
 // Database state
 struct AppState {
@@ -88,7 +102,111 @@ fn init_schema(conn: &Connection) -> SqlResult<()> {
     } else {
         println!("Database already initialized");
     }
+
+    ensure_sync_v2_schema(conn)?;
     
+    Ok(())
+}
+
+fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
+    let tables = [
+        "kategori_barang",
+        "subkategori_barang",
+        "satuan_barang",
+        "spesifikasi_cepat_barang",
+        "barang",
+        "harga_barang_satuan",
+        "opsi_finishing",
+        "pelanggan",
+        "vendor",
+        "profil",
+        "kredensial",
+        "penjualan",
+        "item_penjualan",
+        "pembelian",
+        "item_pembelian",
+        "piutang_penjualan",
+        "pelunasan_piutang",
+        "hutang_pembelian",
+        "pelunasan_hutang",
+        "order_produksi",
+        "item_produksi",
+        "item_finishing",
+        "keuangan",
+    ];
+
+    for table in tables {
+        let add_cols = [
+            format!("ALTER TABLE {} ADD COLUMN updated_at_server TEXT", table),
+            format!("ALTER TABLE {} ADD COLUMN updated_by_device TEXT DEFAULT 'tauri'", table),
+            format!("ALTER TABLE {} ADD COLUMN change_version INTEGER DEFAULT 1", table),
+            format!("ALTER TABLE {} ADD COLUMN is_deleted INTEGER DEFAULT 0", table),
+            format!("ALTER TABLE {} ADD COLUMN deleted_at TEXT", table),
+            format!("ALTER TABLE {} ADD COLUMN client_mutation_id TEXT", table),
+        ];
+        for sql in add_cols {
+            let _ = conn.execute(&sql, []);
+        }
+        let _ = conn.execute(
+            &format!(
+                "CREATE INDEX IF NOT EXISTS idx_{}_updated_at_server ON {}(updated_at_server)",
+                table, table
+            ),
+            [],
+        );
+        let _ = conn.execute(
+            &format!(
+                "CREATE INDEX IF NOT EXISTS idx_{}_change_version ON {}(change_version)",
+                table, table
+            ),
+            [],
+        );
+        let _ = conn.execute(
+            &format!(
+                "CREATE INDEX IF NOT EXISTS idx_{}_is_deleted ON {}(is_deleted)",
+                table, table
+            ),
+            [],
+        );
+    }
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_conflicts (
+          id TEXT PRIMARY KEY,
+          table_name TEXT NOT NULL,
+          record_id TEXT NOT NULL,
+          conflict_type TEXT NOT NULL DEFAULT 'lww',
+          winner_source TEXT NOT NULL,
+          loser_source TEXT NOT NULL,
+          winner_payload TEXT NOT NULL,
+          loser_payload TEXT NOT NULL,
+          winner_updated_at_server TEXT,
+          loser_updated_at_server TEXT,
+          resolved_at TEXT NOT NULL DEFAULT (datetime('now')),
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_mutation_registry (
+          id TEXT PRIMARY KEY,
+          client_mutation_id TEXT NOT NULL UNIQUE,
+          table_name TEXT NOT NULL,
+          record_id TEXT NOT NULL,
+          device_id TEXT NOT NULL,
+          processed_at TEXT NOT NULL DEFAULT (datetime('now')),
+          payload_hash TEXT
+        )",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_state (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+        [],
+    )?;
     Ok(())
 }
 
@@ -366,10 +484,15 @@ async fn queue_sync_operation(
             data TEXT,
             created_at TEXT NOT NULL,
             synced_at TEXT,
-            status TEXT DEFAULT 'pending'
+            status TEXT DEFAULT 'pending',
+            error_message TEXT
         )",
         [],
     ).map_err(|e| e.to_string())?;
+    conn.execute(
+        "ALTER TABLE sync_queue ADD COLUMN error_message TEXT",
+        [],
+    ).ok();
     
     // Insert sync operation
     let id = Uuid::new_v4().to_string();
@@ -491,80 +614,211 @@ async fn sync_to_cloud(
     }))
 }
 
-// Start Next.js server in background
+#[tauri::command]
+async fn sync_from_cloud(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let config = match sync::SupabaseConfig::from_env() {
+        Some(c) => c,
+        None => {
+            return Ok(serde_json::json!({
+                "pulled": 0,
+                "failed": 0,
+                "message": "Supabase not configured"
+            }));
+        }
+    };
+
+    let result = {
+        let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+        let conn = db_guard.as_ref().ok_or("Database not initialized")?;
+        sync::pull_cloud_changes(conn, &config)?
+    };
+
+    Ok(serde_json::json!({
+        "pulled": result.pulled,
+        "failed": result.failed,
+        "message": format!("Pulled {} rows, {} failed", result.pulled, result.failed)
+    }))
+}
+
+fn next_port_listening(port: u16) -> bool {
+    TcpStream::connect(("127.0.0.1", port)).is_ok()
+}
+
+fn wait_for_port_listening(port: u16, timeout: Duration) -> bool {
+    let start = Instant::now();
+    while start.elapsed() < timeout {
+        if next_port_listening(port) {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(150));
+    }
+    false
+}
+
+/// Walk from the .exe to find the repo’s `.next/standalone` (after `npm run build:tauri`).
+#[cfg(not(debug_assertions))]
+fn find_standalone_server_dir() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let mut dir = exe.parent()?.to_path_buf();
+    for _ in 0..14 {
+        let server_js = dir.join(".next").join("standalone").join("server.js");
+        if server_js.is_file() {
+            return server_js.parent().map(|p| p.to_path_buf());
+        }
+        dir = dir.parent()?.to_path_buf();
+    }
+    None
+}
+
+/// Bundled `tauri-bundle/`: `node` + `server/standalone` under `base`.
+#[cfg(not(debug_assertions))]
+fn bundled_node_and_server(base: &std::path::Path) -> Option<(PathBuf, PathBuf)> {
+    #[cfg(windows)]
+    {
+        let node = base
+            .join("tauri-bundle")
+            .join("node")
+            .join("node-v20.18.1-win-x64")
+            .join("node.exe");
+        let server = base
+            .join("tauri-bundle")
+            .join("server")
+            .join("standalone");
+        if node.is_file() && server.join("server.js").is_file() {
+            return Some((node, server));
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = base;
+    }
+    None
+}
+
+#[cfg(not(debug_assertions))]
+fn spawn_next_process(
+    node_exe: &std::path::Path,
+    server_dir: &std::path::Path,
+    server_port: u16,
+) -> Result<(), std::io::Error> {
+    let server_js = server_dir.join("server.js");
+    let mut cmd = Command::new(node_exe);
+    cmd.arg(&server_js)
+        .current_dir(server_dir)
+        .env("PORT", server_port.to_string())
+        .env("HOSTNAME", "127.0.0.1")
+        .env("NODE_ENV", "production");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // Hide the extra console window when spawning `node.exe` in a Windows GUI (subsystem) app.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let child = cmd.spawn()?;
+    // Dropping `Child` would kill the Node server on some platforms; keep the process running.
+    std::mem::forget(child);
+    Ok(())
+}
+
+// Start the Next.js server, or in dev wait for the CLI-started dev server (see tauri.conf.json `beforeDevCommand` + `devUrl`).
 fn start_nextjs_server(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    use std::process::Command;
-    use std::env;
-    
-    // Try to find Node.js in multiple locations:
-    // 1. Next to the executable (distribution package)
-    // 2. In resources directory (if bundled)
-    // 3. System PATH (development)
-    
-    let exe_dir = env::current_exe()
-        .ok()
-        .and_then(|path| path.parent().map(|p| p.to_path_buf()));
-    
-    let mut node_exe = None;
-    let mut server_dir = None;
-    
-    // Check next to executable (distribution package)
-    if let Some(ref exe_path) = exe_dir {
-        let bundle_node = exe_path.join("tauri-bundle").join("node").join("node-v20.18.1-win-x64").join("node.exe");
-        let bundle_server = exe_path.join("tauri-bundle").join("server").join("standalone");
-        
-        if bundle_node.exists() && bundle_server.join("server.js").exists() {
-            node_exe = Some(bundle_node);
-            server_dir = Some(bundle_server);
-            println!("✓ Found portable bundle next to executable");
+    #[cfg(debug_assertions)]
+    {
+        let _ = app_handle;
+        if next_port_listening(DEV_TAURI_SHELL_PORT) {
+            println!(
+                "Next dev server already on http://127.0.0.1:{} (tauri dev)",
+                DEV_TAURI_SHELL_PORT
+            );
+            return Ok(());
         }
-    }
-    
-    // Check in resources directory
-    if node_exe.is_none() {
-        let resource_dir = app_handle
-            .path()
-            .resource_dir()
-            .expect("Failed to get resource directory");
-        
-        let res_node = resource_dir.join("tauri-bundle").join("node").join("node-v20.18.1-win-x64").join("node.exe");
-        let res_server = resource_dir.join("tauri-bundle").join("server").join("standalone");
-        
-        if res_node.exists() && res_server.join("server.js").exists() {
-            node_exe = Some(res_node);
-            server_dir = Some(res_server);
-            println!("✓ Found portable bundle in resources");
+        println!(
+            "Waiting for tauri dev Next on http://127.0.0.1:{} …",
+            DEV_TAURI_SHELL_PORT
+        );
+        if !wait_for_port_listening(
+            DEV_TAURI_SHELL_PORT,
+            Duration::from_secs(90),
+        ) {
+            eprintln!(
+                "Timeout: port {} (tauri dev shell) not ready. Is `npm run dev:tauri-shell` running via beforeDevCommand?",
+                DEV_TAURI_SHELL_PORT
+            );
         }
-    }
-    
-    // If not found, assume server is already running
-    if node_exe.is_none() || server_dir.is_none() {
-        println!("⚠️  Portable Node.js bundle not found");
-        println!("   Assuming Next.js server is already running on port 3000");
         return Ok(());
     }
-    
-    let node_exe = node_exe.unwrap();
-    let server_dir = server_dir.unwrap();
-    let server_js = server_dir.join("server.js");
-    
-    println!("🚀 Starting Next.js server...");
-    println!("   Node: {:?}", node_exe);
-    println!("   Server: {:?}", server_js);
-    
-    // Start Node.js server as detached process
-    Command::new(node_exe)
-        .arg(server_js)
-        .current_dir(&server_dir)
-        .spawn()
-        .expect("Failed to start Next.js server");
-    
-    println!("✅ Next.js server started!");
-    
-    // Wait a bit for server to initialize
-    std::thread::sleep(std::time::Duration::from_secs(2));
-    
-    Ok(())
+
+    #[cfg(not(debug_assertions))]
+    {
+        if next_port_listening(BUNDLED_NEXT_PORT) {
+            println!(
+                "Next.js already listening on http://127.0.0.1:{} (release)",
+                BUNDLED_NEXT_PORT
+            );
+            return Ok(());
+        }
+
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(|p| p.to_path_buf()));
+
+        let mut node_exe: Option<PathBuf> = None;
+        let mut server_dir: Option<PathBuf> = None;
+
+        // 1) MSI/NSIS: bundled under resource_dir (see tauri.conf bundle.resources)
+        if let Ok(resource_dir) = app_handle.path().resource_dir() {
+            if let Some((n, s)) = bundled_node_and_server(&resource_dir) {
+                node_exe = Some(n);
+                server_dir = Some(s);
+                println!("Found bundled Next + Node (install resources)");
+            }
+        }
+
+        // 2) Zip-style: tauri-bundle/ next to the .exe
+        if node_exe.is_none() {
+            if let Some(ref exe_path) = exe_dir {
+                if let Some((n, s)) = bundled_node_and_server(exe_path) {
+                    node_exe = Some(n);
+                    server_dir = Some(s);
+                    println!("Found bundled Next + Node next to executable");
+                }
+            }
+        }
+
+        // 3) Local `cargo` run: system `node` + repo `.next/standalone` (see find_standalone_server_dir)
+        if node_exe.is_none() {
+            if let Some(dir) = find_standalone_server_dir() {
+                println!("Starting Next standalone via system node…  dir={dir:?}");
+                spawn_next_process(std::path::Path::new("node"), &dir, BUNDLED_NEXT_PORT)?;
+                if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(45)) {
+                    eprintln!(
+                        "Next.js did not open port {BUNDLED_NEXT_PORT} in time (is `node` on PATH?)"
+                    );
+                } else {
+                    println!("Next.js on http://127.0.0.1:{BUNDLED_NEXT_PORT} (local node)");
+                }
+                return Ok(());
+            }
+        }
+
+        if let (Some(node), Some(dir)) = (node_exe, server_dir) {
+            println!("Starting Next.js from bundled tauri-bundle…");
+            spawn_next_process(&node, &dir, BUNDLED_NEXT_PORT)?;
+            if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(45)) {
+                eprintln!("Next.js did not open port {BUNDLED_NEXT_PORT} in time (bundled node)");
+            } else {
+                println!("Next.js on http://127.0.0.1:{BUNDLED_NEXT_PORT} (bundled)");
+            }
+            return Ok(());
+        }
+
+        eprintln!("Could not start Next.js: no tauri-bundle and no .next/standalone found above the executable.");
+        eprintln!("Use `npm run build:tauri` + `npm run tauri:build`, or add the portable tauri-bundle layout.");
+        Ok(())
+    }
 }
 
 fn main() {
@@ -577,29 +831,33 @@ fn main() {
         // Note: updater plugin requires configuration, disabled for now
         // .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            // Start Next.js server first
+            let main_window = app
+                .get_webview_window("main")
+                .expect("define window label `main` in tauri.conf.json (see `app.windows`)");
+
+            // `visible: false` in tauri.conf.json keeps the webview hidden so users do not see
+            // "127.0.0.1 refused" while the Next server (or tauri dev server) is still starting.
             if let Err(e) = start_nextjs_server(app.handle()) {
-                println!("⚠️  Failed to start Next.js server: {}", e);
-                println!("   Assuming server is already running...");
+                eprintln!("start_nextjs_server: {e}");
             }
-            
-            // Initialize database
+
             let conn = init_database(app.handle())?;
-            
-            // Store database connection in state
+
             app.manage(AppState {
                 db: Mutex::new(Some(conn)),
             });
 
-            // Handle window close event to clear localStorage
-            let main_window = app.get_webview_window("main").unwrap();
             main_window.on_window_event(|event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    // Emit event to frontend to clear localStorage before closing
+                    // Hook for future: e.g. clear Tauri localStorage before exit
                     println!("Window close requested - clearing user session");
                 }
             });
-            
+
+            if let Err(e) = main_window.show() {
+                eprintln!("failed to show main window: {e}");
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -612,6 +870,7 @@ fn main() {
             queue_sync_operation,
             count_pending_sync,
             sync_to_cloud,
+            sync_from_cloud,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

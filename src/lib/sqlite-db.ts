@@ -30,6 +30,10 @@ const SCHEMA_FILE = isTauriApp()
   ? "" // Schema will be embedded in Tauri
   : path.join(DB_DIR, "sqlite-schema.sql");
 
+const DEFAULTS_FILE = isTauriApp()
+  ? ""
+  : path.join(DB_DIR, "sqlite-default-values.sql");
+
 let db: Database.Database | null = null;
 let isInitializing = false;
 let initPromise: Promise<Database.Database | null> | null = null;
@@ -72,12 +76,22 @@ export async function initializeDatabase(): Promise<Database.Database | null> {
       db.pragma("journal_mode = WAL");
       db.pragma("foreign_keys = ON");
 
-      // Run schema if database is new
+      // Run schema (and default seed) if the DB has no app tables yet
       if (!isDatabaseInitialized()) {
         console.log("Initializing database schema...");
         const schema = fs.readFileSync(SCHEMA_FILE, "utf-8");
         db.exec(schema);
+        applySqliteDefaultValues(db, "new database");
+        ensureSyncTables(db);
         console.log("Database schema initialized successfully");
+      } else if (db && shouldApplySqliteDefaultValues(db)) {
+        applySqliteDefaultValues(
+          db,
+          "legacy database missing seed (kategori_barang empty)"
+        );
+        ensureSyncTables(db);
+      } else if (db) {
+        ensureSyncTables(db);
       }
 
       isInitializing = false;
@@ -86,6 +100,16 @@ export async function initializeDatabase(): Promise<Database.Database | null> {
       isInitializing = false;
       initPromise = null;
       console.error("Failed to initialize database:", error);
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as NodeJS.ErrnoException).code === "ERR_DLOPEN_FAILED"
+      ) {
+        console.error(
+          "better-sqlite3 was built for a different Node version. From the repo root, using the same Node as `npm run dev`, run: npm run rebuild:native"
+        );
+      }
       throw error;
     }
   })();
@@ -109,6 +133,209 @@ function isDatabaseInitialized(): boolean {
   } catch {
     return false;
   }
+}
+
+function shouldApplySqliteDefaultValues(d: InstanceType<typeof Database>): boolean {
+  try {
+    const row = d
+      .prepare("SELECT 1 as n FROM kategori_barang LIMIT 1")
+      .get() as { n: number } | undefined;
+    if (row) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function applySqliteDefaultValues(d: InstanceType<typeof Database>, reason: string) {
+  if (!fs.existsSync(DEFAULTS_FILE)) {
+    console.warn("sqlite-default-values.sql not found, skipping seed:", reason);
+    return;
+  }
+  const sql = fs.readFileSync(DEFAULTS_FILE, "utf-8");
+  console.log("Applying default seed data (" + reason + ")...");
+  d.exec(sql);
+  console.log("Default seed data applied");
+}
+
+function ensureSyncTables(d: InstanceType<typeof Database>) {
+  d.exec(`
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id TEXT PRIMARY KEY,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      operation TEXT NOT NULL CHECK(operation IN ('INSERT', 'UPDATE', 'DELETE')),
+      data TEXT,
+      synced INTEGER DEFAULT 0,
+      sync_attempts INTEGER DEFAULT 0,
+      last_error TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      table_name TEXT PRIMARY KEY,
+      pending_changes INTEGER DEFAULT 0,
+      last_sync_at TEXT,
+      last_sync_status TEXT
+    );
+  `);
+
+  // Handle legacy sync_queue/sync_metadata schemas by adding missing columns.
+  const syncQueueCols = (d
+    .prepare("PRAGMA table_info(sync_queue)")
+    .all() as Array<{ name: string }>).map((c) => c.name);
+
+  if (!syncQueueCols.includes("synced")) {
+    d.exec("ALTER TABLE sync_queue ADD COLUMN synced INTEGER DEFAULT 0");
+  }
+  if (!syncQueueCols.includes("sync_attempts")) {
+    d.exec("ALTER TABLE sync_queue ADD COLUMN sync_attempts INTEGER DEFAULT 0");
+  }
+  if (!syncQueueCols.includes("last_error")) {
+    d.exec("ALTER TABLE sync_queue ADD COLUMN last_error TEXT");
+  }
+  if (!syncQueueCols.includes("created_at")) {
+    d.exec(
+      "ALTER TABLE sync_queue ADD COLUMN created_at TEXT DEFAULT (datetime('now'))"
+    );
+  }
+
+  const syncMetaCols = (d
+    .prepare("PRAGMA table_info(sync_metadata)")
+    .all() as Array<{ name: string }>).map((c) => c.name);
+  if (!syncMetaCols.includes("pending_changes")) {
+    d.exec("ALTER TABLE sync_metadata ADD COLUMN pending_changes INTEGER DEFAULT 0");
+  }
+  if (!syncMetaCols.includes("last_sync_at")) {
+    d.exec("ALTER TABLE sync_metadata ADD COLUMN last_sync_at TEXT");
+  }
+  if (!syncMetaCols.includes("last_sync_status")) {
+    d.exec("ALTER TABLE sync_metadata ADD COLUMN last_sync_status TEXT");
+  }
+
+  d.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_pending
+      ON sync_queue(synced, sync_attempts, created_at);
+  `);
+
+  ensureSyncColumnsV2(d);
+}
+
+function ensureSyncColumnsV2(d: InstanceType<typeof Database>) {
+  const syncTables = [
+    "kategori_barang",
+    "subkategori_barang",
+    "satuan_barang",
+    "spesifikasi_cepat_barang",
+    "barang",
+    "harga_barang_satuan",
+    "opsi_finishing",
+    "pelanggan",
+    "vendor",
+    "profil",
+    "kredensial",
+    "penjualan",
+    "item_penjualan",
+    "pembelian",
+    "item_pembelian",
+    "piutang_penjualan",
+    "pelunasan_piutang",
+    "hutang_pembelian",
+    "pelunasan_hutang",
+    "order_produksi",
+    "item_produksi",
+    "item_finishing",
+    "keuangan",
+  ];
+
+  for (const tableName of syncTables) {
+    const tableExists = d
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!tableExists) continue;
+
+    const cols = (d
+      .prepare(`PRAGMA table_info(${tableName})`)
+      .all() as Array<{ name: string }>).map((c) => c.name);
+
+    if (!cols.includes("updated_at_server")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN updated_at_server TEXT`);
+      const fallbackTimestampExpr = cols.includes("diperbarui_pada")
+        ? "diperbarui_pada"
+        : cols.includes("dibuat_pada")
+          ? "dibuat_pada"
+          : "datetime('now')";
+      d.exec(
+        `UPDATE ${tableName} SET updated_at_server = COALESCE(updated_at_server, ${fallbackTimestampExpr})`
+      );
+    }
+    if (!cols.includes("updated_by_device")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN updated_by_device TEXT DEFAULT 'server'`);
+    }
+    if (!cols.includes("change_version")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN change_version INTEGER DEFAULT 1`);
+    }
+    if (!cols.includes("is_deleted")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN is_deleted INTEGER DEFAULT 0`);
+    }
+    if (!cols.includes("deleted_at")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN deleted_at TEXT`);
+    }
+    if (!cols.includes("client_mutation_id")) {
+      d.exec(`ALTER TABLE ${tableName} ADD COLUMN client_mutation_id TEXT`);
+    }
+
+    d.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_updated_at_server ON ${tableName}(updated_at_server)`
+    );
+    d.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_change_version ON ${tableName}(change_version)`
+    );
+    d.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_is_deleted ON ${tableName}(is_deleted)`
+    );
+  }
+
+  d.exec(`
+    CREATE TABLE IF NOT EXISTS sync_conflicts (
+      id TEXT PRIMARY KEY,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      conflict_type TEXT NOT NULL DEFAULT 'lww',
+      winner_source TEXT NOT NULL,
+      loser_source TEXT NOT NULL,
+      winner_payload TEXT NOT NULL,
+      loser_payload TEXT NOT NULL,
+      winner_updated_at_server TEXT,
+      loser_updated_at_server TEXT,
+      resolved_at TEXT NOT NULL DEFAULT (datetime('now')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_conflicts_record
+      ON sync_conflicts(table_name, record_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS sync_mutation_registry (
+      id TEXT PRIMARY KEY,
+      client_mutation_id TEXT NOT NULL UNIQUE,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      processed_at TEXT NOT NULL DEFAULT (datetime('now')),
+      payload_hash TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_mutation_registry_table_record
+      ON sync_mutation_registry(table_name, record_id, processed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS device_registry (
+      device_id TEXT PRIMARY KEY,
+      device_type TEXT NOT NULL,
+      first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      metadata TEXT
+    );
+  `);
 }
 
 /**
@@ -305,6 +532,13 @@ export function addToSyncQueue(
   `;
 
   db.prepare(sql).run(queueId, tableName, recordId, operation, dataJson);
+
+  db.prepare(
+    `
+    INSERT OR IGNORE INTO sync_metadata (table_name, pending_changes)
+    VALUES (?, 0)
+  `
+  ).run(tableName);
 
   // Update pending changes count
   db.prepare(

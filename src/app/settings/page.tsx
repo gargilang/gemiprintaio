@@ -39,14 +39,14 @@ import {
   deleteFinishingOptionAction as deleteFinishingOpt,
   reorderFinishingOptionsAction as reorderFinishingOptions,
   getSyncStatusAction as getSyncStatus,
-  triggerManualSyncAction as triggerManualSync,
-  updateAutoSyncIntervalAction as updateAutoSyncInterval,
-  stopAutoSyncAction as stopAutoSync,
-  startAutoSyncAction as startAutoSync,
-  getBackupStatusAction as getBackupStatusService,
-  triggerManualBackupAction as createBackup,
-  updateAutoBackupIntervalAction as updateBackupInterval,
 } from "./actions";
+import {
+  getAutoSyncIntervalMinutes,
+  getClientSyncStatus,
+  runPullOnlyCycle,
+  runSyncCycle,
+  setAutoSyncIntervalMinutes,
+} from "@/lib/sync-client";
 import {
   DndContext,
   closestCenter,
@@ -100,7 +100,11 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<TabType>(
-    (tabParam as TabType) || "system"
+    tabParam === "setup" || tabParam === "company" || tabParam === "system"
+      ? (tabParam as TabType)
+      : tabParam === "materials"
+      ? "setup"
+      : "system"
   );
 
   const tabs = [
@@ -205,9 +209,17 @@ function CompanyTab() {
 function SetupTab() {
   type SetupSubTab = "materials" | "pricing" | "finishing" | "rollsizes";
   const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const subtabParam = searchParams.get("subtab");
   const [activeSetupTab, setActiveSetupTab] = useState<SetupSubTab>(
-    (subtabParam as SetupSubTab) || "pricing"
+    subtabParam === "materials" ||
+      subtabParam === "pricing" ||
+      subtabParam === "finishing" ||
+      subtabParam === "rollsizes"
+      ? (subtabParam as SetupSubTab)
+      : tabParam === "materials"
+      ? "materials"
+      : "pricing"
   );
 
   const setupTabs = [
@@ -278,6 +290,10 @@ function SetupTab() {
 }
 
 function MaterialsTab() {
+  const searchParams = useSearchParams();
+  const manageParam = searchParams.get("manage");
+  const openCategoryManager = manageParam === "category";
+  const openUnitManager = manageParam === "unit";
   const [view, setView] = useState<"categories" | "subcategories">(
     "categories"
   );
@@ -361,7 +377,10 @@ function MaterialsTab() {
       {/* Content Area */}
       <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 min-h-[500px] min-w-[800px]">
         {view === "categories" ? (
-          <CategoriesView onCategoryClick={handleCategoryClick} />
+          <CategoriesView
+            onCategoryClick={handleCategoryClick}
+            autoOpenModal={openCategoryManager}
+          />
         ) : (
           <SubcategoriesView
             category={selectedCategory!}
@@ -371,7 +390,7 @@ function MaterialsTab() {
       </div>
 
       {/* Units Section - Always Visible */}
-      <UnitsSection />
+      <UnitsSection autoOpenModal={openUnitManager} />
     </div>
   );
 }
@@ -531,8 +550,10 @@ function SortableCategory({
 
 function CategoriesView({
   onCategoryClick,
+  autoOpenModal = false,
 }: {
   onCategoryClick: (category: Category) => void;
+  autoOpenModal?: boolean;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -563,6 +584,14 @@ function CategoriesView({
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (autoOpenModal) {
+      setEditingCategory(null);
+      setFormData({ nama: "", butuh_spesifikasi_status: false });
+      setShowModal(true);
+    }
+  }, [autoOpenModal]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -2000,7 +2029,7 @@ function SubcategoriesView({
   );
 }
 
-function UnitsSection() {
+function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -2035,6 +2064,14 @@ function UnitsSection() {
   useEffect(() => {
     loadUnits();
   }, []);
+
+  useEffect(() => {
+    if (autoOpenModal) {
+      setEditingUnit(null);
+      setFormData({ nama: "" });
+      setShowModal(true);
+    }
+  }, [autoOpenModal]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -3099,56 +3136,39 @@ function FinishingOptionsTab() {
 }
 
 function SystemTab() {
-  const [backupStatus, setBackupStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [updatingInterval, setUpdatingInterval] = useState(false);
-  const [intervalValue, setIntervalValue] = useState<number>(10);
-  const [intervalUnit, setIntervalUnit] = useState<string>("Menit");
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
   // Sync state
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncLoading, setSyncLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [pullingOnly, setPullingOnly] = useState(false);
   const [updatingSyncInterval, setUpdatingSyncInterval] = useState(false);
   const [syncIntervalValue, setSyncIntervalValue] = useState<number>(20);
   const [syncIntervalUnit, setSyncIntervalUnit] = useState<string>("Menit");
 
-  const intervalUnits = [
-    { label: "Detik", multiplier: 1000 },
-    { label: "Menit", multiplier: 60000 },
-    { label: "Jam", multiplier: 3600000 },
-  ];
-
-  const loadBackupStatus = async () => {
-    try {
-      const status = await getBackupStatusService();
-      setBackupStatus(status);
-
-      // Set current interval to input
-      const currentMs = status.currentInterval || 600000;
-      if (currentMs >= 3600000) {
-        setIntervalValue(Math.floor(currentMs / 3600000));
-        setIntervalUnit("Jam");
-      } else if (currentMs >= 60000) {
-        setIntervalValue(Math.floor(currentMs / 60000));
-        setIntervalUnit("Menit");
-      } else {
-        setIntervalValue(Math.floor(currentMs / 1000));
-        setIntervalUnit("Detik");
-      }
-    } catch (error) {
-      console.error("Failed to load backup status:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadSyncStatus = async () => {
     try {
-      const status = await getSyncStatus();
-      setSyncStatus(status);
+      const serverStatus = await getSyncStatus();
+      const lastSyncAt =
+        typeof window !== "undefined"
+          ? localStorage.getItem("sync.last.success.at")
+          : null;
+      const clientStatus = getClientSyncStatus(lastSyncAt);
+      setSyncStatus({
+        ...serverStatus,
+        cloudBackup: clientStatus.cloudBackup,
+        pendingChanges: clientStatus.pendingChanges || serverStatus.pendingChanges,
+        lastSyncAt: lastSyncAt || serverStatus.lastSyncAt,
+      });
+      const minutes = getAutoSyncIntervalMinutes();
+      if (minutes >= 60) {
+        setSyncIntervalValue(Math.max(1, Math.floor(minutes / 60)));
+        setSyncIntervalUnit("Jam");
+      } else {
+        setSyncIntervalValue(minutes);
+        setSyncIntervalUnit("Menit");
+      }
     } catch (error) {
       console.error("Failed to load sync status:", error);
     } finally {
@@ -3159,24 +3179,24 @@ function SystemTab() {
   const handleManualSync = async () => {
     setSyncing(true);
     try {
-      const result = await triggerManualSync();
+      const result = await runSyncCycle();
 
       if (result.success) {
         setNotice({
           type: "success",
-          message: `✅ Sync berhasil! ${result.synced} record`,
+          message: `Sinkron berhasil! kirim ${result.synced}, tarik ${result.pulled}`,
         });
         await loadSyncStatus();
       } else {
         setNotice({
           type: "error",
-          message: result.message || "Gagal sync",
+          message: result.message || "Sinkron gagal",
         });
       }
     } catch (error) {
       setNotice({
         type: "error",
-        message: "Error saat sync",
+        message: "Terjadi kesalahan saat sinkron",
       });
     } finally {
       setSyncing(false);
@@ -3208,25 +3228,16 @@ function SystemTab() {
 
     setUpdatingSyncInterval(true);
     try {
-      // Update auto-sync interval (stops and restarts with new interval)
-      const result = await updateAutoSyncInterval(intervalMs);
-
-      if (result.success) {
-        setNotice({
-          type: "success",
-          message: `Interval sync diubah menjadi ${syncIntervalValue} ${syncIntervalUnit.toLowerCase()}`,
-        });
-        await loadSyncStatus();
-      } else {
-        setNotice({
-          type: "error",
-          message: "Gagal mengubah interval",
-        });
-      }
+      const normalized = setAutoSyncIntervalMinutes(intervalMs);
+      setNotice({
+        type: "success",
+        message: `Interval sinkron diubah menjadi ${normalized} menit`,
+      });
+      await loadSyncStatus();
     } catch (error) {
       setNotice({
         type: "error",
-        message: "Error saat mengubah interval",
+        message: "Terjadi kesalahan saat mengubah interval sinkron",
       });
     } finally {
       setUpdatingSyncInterval(false);
@@ -3234,94 +3245,43 @@ function SystemTab() {
     }
   };
 
+  const handlePullCloudOnly = async () => {
+    setPullingOnly(true);
+    try {
+      const result = await runPullOnlyCycle();
+      if (result.success) {
+        setNotice({
+          type: "success",
+          message:
+            result.pulled > 0
+              ? `Tarik data cloud berhasil (${result.pulled} data diperbarui)`
+              : "Tarik data cloud selesai (tidak ada perubahan baru)",
+        });
+      } else {
+        setNotice({
+          type: "error",
+          message: result.message || "Gagal menarik data cloud",
+        });
+      }
+      await loadSyncStatus();
+    } catch {
+      setNotice({
+        type: "error",
+        message: "Terjadi kesalahan saat menarik data cloud",
+      });
+    } finally {
+      setPullingOnly(false);
+      setTimeout(() => setNotice(null), 3000);
+    }
+  };
+
   useEffect(() => {
-    loadBackupStatus();
     loadSyncStatus();
     const interval = setInterval(() => {
-      loadBackupStatus();
       loadSyncStatus();
     }, 30000);
     return () => clearInterval(interval);
   }, []);
-
-  const handleManualBackup = async () => {
-    setCreating(true);
-    try {
-      const result = await createBackup();
-
-      if (result.success) {
-        setNotice({
-          type: "success",
-          message: "✅ Backup berhasil dibuat!",
-        });
-        await loadBackupStatus();
-      } else {
-        setNotice({
-          type: "error",
-          message: result.message || "Gagal membuat backup",
-        });
-      }
-    } catch (error) {
-      setNotice({
-        type: "error",
-        message: "Error saat membuat backup",
-      });
-    } finally {
-      setCreating(false);
-      setTimeout(() => setNotice(null), 3000);
-    }
-  };
-
-  const handleUpdateInterval = async () => {
-    const unit = intervalUnits.find((u) => u.label === intervalUnit);
-    if (!unit) return;
-
-    const intervalMs = intervalValue * unit.multiplier;
-
-    if (intervalMs < 30000) {
-      setNotice({
-        type: "error",
-        message: "Minimal 30 detik",
-      });
-      setTimeout(() => setNotice(null), 3000);
-      return;
-    }
-
-    if (intervalMs > 86400000) {
-      setNotice({
-        type: "error",
-        message: "Maksimal 24 jam",
-      });
-      setTimeout(() => setNotice(null), 3000);
-      return;
-    }
-
-    setUpdatingInterval(true);
-    try {
-      const result = await updateBackupInterval(intervalMs);
-
-      if (result.success) {
-        setNotice({
-          type: "success",
-          message: `Interval diubah menjadi ${intervalValue} ${intervalUnit.toLowerCase()}`,
-        });
-        await loadBackupStatus();
-      } else {
-        setNotice({
-          type: "error",
-          message: result.message || "Gagal mengubah interval",
-        });
-      }
-    } catch (error) {
-      setNotice({
-        type: "error",
-        message: "Error saat mengubah interval",
-      });
-    } finally {
-      setUpdatingInterval(false);
-      setTimeout(() => setNotice(null), 3000);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -3359,138 +3319,7 @@ function SystemTab() {
         </div>
       </div>
 
-      {/* Auto-Backup Settings - Compact */}
-      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border-2 border-blue-200">
-        <div className="flex items-center justify-between gap-6">
-          {/* Left: Title & Status */}
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500 rounded-xl">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                Auto-Backup Database
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    backupStatus?.isRunning
-                      ? "bg-green-500 animate-pulse"
-                      : "bg-gray-400"
-                  }`}
-                ></div>
-              </h3>
-              <p className="text-sm text-gray-600">
-                {loading
-                  ? "Loading..."
-                  : backupStatus?.isRunning
-                  ? `Aktif • Setiap ${backupStatus.currentIntervalMinutes} menit`
-                  : "Tidak aktif"}
-              </p>
-            </div>
-          </div>
-
-          {/* Middle: Interval Control */}
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              value={intervalValue}
-              onChange={(e) => setIntervalValue(parseInt(e.target.value) || 1)}
-              className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={updatingInterval}
-            />
-            <select
-              value={intervalUnit}
-              onChange={(e) => setIntervalUnit(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={updatingInterval}
-            >
-              {intervalUnits.map((unit) => (
-                <option key={unit.label} value={unit.label}>
-                  {unit.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleUpdateInterval}
-              disabled={updatingInterval}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all"
-            >
-              {updatingInterval ? "..." : "Terapkan"}
-            </button>
-          </div>
-
-          {/* Right: Manual Backup Button */}
-          <button
-            onClick={handleManualBackup}
-            disabled={creating}
-            className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-          >
-            {creating ? (
-              <>
-                <svg
-                  className="animate-spin h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>Backing up...</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                  />
-                </svg>
-                <span>Backup Sekarang</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Info Bar - Minimal */}
-        <div className="mt-4 pt-4 border-t border-blue-200 text-xs text-gray-600 flex items-center justify-between">
-          <span>💡 Minimal: 30 detik • Rekomendasi: 5-10 menit</span>
-          <span className="text-blue-600 font-semibold">
-            Lokasi: database/gemiprint.db.auto-backup
-          </span>
-        </div>
-      </div>
-
-      {/* Cloud Sync Settings */}
+      {/* Auto-Backup Database */}
       <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
         <div className="flex items-center justify-between gap-6">
           {/* Left: Title & Status */}
@@ -3512,7 +3341,7 @@ function SystemTab() {
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                Cloud Sync (Supabase)
+                Auto-Backup Database
                 <div
                   className={`w-2 h-2 rounded-full ${
                     syncStatus?.cloudBackup === "connected"
@@ -3547,14 +3376,14 @@ function SystemTab() {
                     )}
                   </>
                 ) : syncStatus?.cloudBackup === "syncing" ? (
-                  "⏳ Sedang sync..."
+                  "Sedang sinkron..."
                 ) : (
-                  "⚠️ Tidak terhubung"
+                  "Tidak terhubung"
                 )}
               </p>
               {syncStatus?.pendingChanges > 0 && (
                 <p className="text-xs text-orange-600 font-semibold mt-1">
-                  📝 {syncStatus.pendingChanges} perubahan pending
+                  {syncStatus.pendingChanges} perubahan pending
                 </p>
               )}
             </div>
@@ -3591,64 +3420,74 @@ function SystemTab() {
             </button>
           </div>
 
-          {/* Right: Manual Sync Button */}
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-          >
-            {syncing ? (
-              <>
-                <svg
-                  className="animate-spin h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
+          {/* Right: Manual Sync Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleManualSync}
+              disabled={syncing || pullingOnly}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              {syncing ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>Menyinkronkan...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
                     stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>Syncing...</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                <span>Sync Sekarang</span>
-              </>
-            )}
-          </button>
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span>Sinkronkan Sekarang</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handlePullCloudOnly}
+              disabled={pullingOnly || syncing}
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              {pullingOnly ? "Menarik..." : "Tarik Data Cloud"}
+            </button>
+          </div>
         </div>
 
         {/* Info Bar */}
         <div className="mt-4 pt-4 border-t border-green-200 text-xs text-gray-600 flex items-center justify-between">
           <span>
-            💡 Minimal: 5 menit • Rekomendasi: 15-20 menit • Auto-sync berjalan
-            di background
+            💡 Minimal: 5 menit • Rekomendasi: 15-20 menit • Sinkron otomatis berjalan
+            di latar belakang
           </span>
           <span className="text-green-600 font-semibold">
-            Data local akan otomatis sync ke cloud
+            Data lokal akan otomatis dicadangkan
           </span>
         </div>
       </div>

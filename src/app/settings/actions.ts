@@ -43,15 +43,6 @@ import {
   getSyncStatus,
 } from "@/lib/services/sync-operations-service";
 
-import {
-  startAutoBackup,
-  stopAutoBackup,
-  updateBackupInterval,
-  createBackup,
-  getBackupStatus,
-  getBackupSettings,
-} from "@/lib/services/backup-service";
-
 // Master Data Actions
 export async function getCategoriesAction() {
   try {
@@ -333,61 +324,6 @@ export async function getSyncStatusAction() {
     return await getSyncStatus();
   } catch (error) {
     console.error("Error in getSyncStatusAction:", error);
-    throw error;
-  }
-}
-
-// Backup Operations Actions
-export async function startAutoBackupAction() {
-  try {
-    return await startAutoBackup();
-  } catch (error) {
-    console.error("Error in startAutoBackupAction:", error);
-    throw error;
-  }
-}
-
-export async function stopAutoBackupAction() {
-  try {
-    return await stopAutoBackup();
-  } catch (error) {
-    console.error("Error in stopAutoBackupAction:", error);
-    throw error;
-  }
-}
-
-export async function updateAutoBackupIntervalAction(intervalMs: number) {
-  try {
-    return await updateBackupInterval(intervalMs);
-  } catch (error) {
-    console.error("Error in updateAutoBackupIntervalAction:", error);
-    throw error;
-  }
-}
-
-export async function triggerManualBackupAction() {
-  try {
-    return await createBackup();
-  } catch (error) {
-    console.error("Error in triggerManualBackupAction:", error);
-    throw error;
-  }
-}
-
-export async function getBackupStatusAction() {
-  try {
-    return await getBackupStatus();
-  } catch (error) {
-    console.error("Error in getBackupStatusAction:", error);
-    throw error;
-  }
-}
-
-export async function getBackupSettingsAction() {
-  try {
-    return await getBackupSettings();
-  } catch (error) {
-    console.error("Error in getBackupSettingsAction:", error);
     throw error;
   }
 }

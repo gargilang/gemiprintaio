@@ -15,7 +15,13 @@ export function isBrowser(): boolean {
  */
 export function isTauriApp(): boolean {
   if (!isBrowser()) return false;
-  return "__TAURI__" in window;
+  const w = window as any;
+  return (
+    "__TAURI__" in w ||
+    "__TAURI_INTERNALS__" in w ||
+    "__TAURI_METADATA__" in w ||
+    navigator.userAgent.includes("Tauri")
+  );
 }
 
 /**

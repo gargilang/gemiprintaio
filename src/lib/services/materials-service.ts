@@ -7,6 +7,16 @@ import "server-only";
 
 import { db } from "../db-unified";
 
+function toDbIntBoolean(value: unknown): 0 | 1 {
+  return value === true || value === 1 ? 1 : 0;
+}
+
+function compactObject<T extends Record<string, any>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 export interface Material {
   id: string;
   nama: string;
@@ -162,6 +172,8 @@ export async function createMaterial(
     const materialResult = await db.insert("barang", {
       id: materialId,
       ...materialData,
+      lacak_inventori_status: toDbIntBoolean(materialData.lacak_inventori_status),
+      butuh_dimensi_status: toDbIntBoolean(materialData.butuh_dimensi_status),
       dibuat_pada: new Date().toISOString(),
       diperbarui_pada: new Date().toISOString(),
     });
@@ -176,7 +188,8 @@ export async function createMaterial(
         await db.insert("harga_barang_satuan", {
           id: crypto.randomUUID(),
           barang_id: materialId,
-          ...unitPrice,
+          ...compactObject(unitPrice),
+          default_status: toDbIntBoolean(unitPrice.default_status),
         });
       }
     }
@@ -201,8 +214,24 @@ export async function updateMaterial(
       material as any;
 
     // Update material
-    const materialResult = await db.update("barang", id, {
+    const normalizedMaterialData = {
       ...materialData,
+      ...(materialData.lacak_inventori_status !== undefined
+        ? {
+            lacak_inventori_status:
+              toDbIntBoolean(materialData.lacak_inventori_status),
+          }
+        : {}),
+      ...(materialData.butuh_dimensi_status !== undefined
+        ? {
+            butuh_dimensi_status:
+              toDbIntBoolean(materialData.butuh_dimensi_status),
+          }
+        : {}),
+    };
+
+    const materialResult = await db.update("barang", id, {
+      ...normalizedMaterialData,
       diperbarui_pada: new Date().toISOString(),
     });
 
@@ -212,19 +241,28 @@ export async function updateMaterial(
 
     // Update unit prices if provided
     if (unit_prices && unit_prices.length > 0) {
-      // Delete existing unit prices
-      // Note: In production, you'd want to be more careful about this
-      // Perhaps keep existing prices and only update/add new ones
       for (const unitPrice of unit_prices) {
-        if (unitPrice.id && unitPrice.id.startsWith("hbs-")) {
+        const unitPricePayload = compactObject({
+          nama_satuan: unitPrice.nama_satuan,
+          faktor_konversi: unitPrice.faktor_konversi,
+          harga_beli: unitPrice.harga_beli ?? 0,
+          harga_jual: unitPrice.harga_jual ?? 0,
+          harga_member: unitPrice.harga_member ?? 0,
+          default_status: toDbIntBoolean(unitPrice.default_status),
+          urutan_tampilan: unitPrice.urutan_tampilan,
+          diperbarui_pada: new Date().toISOString(),
+        });
+
+        if (unitPrice.id) {
           // Update existing
-          await db.update("harga_barang_satuan", unitPrice.id, unitPrice);
+          await db.update("harga_barang_satuan", unitPrice.id, unitPricePayload);
         } else {
           // Insert new
           await db.insert("harga_barang_satuan", {
             id: crypto.randomUUID(),
             barang_id: id,
-            ...unitPrice,
+            ...unitPricePayload,
+            dibuat_pada: new Date().toISOString(),
           });
         }
       }

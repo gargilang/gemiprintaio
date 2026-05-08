@@ -14,6 +14,7 @@ import "server-only";
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { invoke } from "@tauri-apps/api/core";
+import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 
 // ============================================================================
 // NORMALIZATION UTILITIES
@@ -76,6 +77,41 @@ export function getCurrentTimestamp(): string {
   return new Date().toISOString();
 }
 
+function getDeviceId(): string {
+  if (isServerSide()) {
+    return process.env.SYNC_DEVICE_ID || "server-web";
+  }
+
+  try {
+    const key = "sync_device_id";
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const id = `device-${crypto.randomUUID()}`;
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return `device-${crypto.randomUUID()}`;
+  }
+}
+
+function withSyncMetadata(
+  data: Record<string, any>,
+  opts: { keepClientMutationId?: boolean } = {}
+): Record<string, any> {
+  const now = getCurrentTimestamp();
+  const next = { ...data };
+  next.updated_at_server = now;
+  next.updated_by_device = getDeviceId();
+  next.change_version =
+    typeof next.change_version === "number" ? next.change_version + 1 : 1;
+  if (!opts.keepClientMutationId) {
+    next.client_mutation_id =
+      next.client_mutation_id || `${next.updated_by_device}-${crypto.randomUUID()}`;
+  }
+  if (typeof next.is_deleted === "undefined") next.is_deleted = 0;
+  return next;
+}
+
 // Environment detection
 export function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -92,6 +128,32 @@ export function isServerSide(): boolean {
 
 // Server-side SQLite connection (for Next.js API routes/server actions)
 let serverSqliteDb: any = null;
+const serverSqliteColumnsCache = new Map<string, Set<string>>();
+const SYNC_V2_TABLES = [
+  "kategori_barang",
+  "subkategori_barang",
+  "satuan_barang",
+  "spesifikasi_cepat_barang",
+  "barang",
+  "harga_barang_satuan",
+  "opsi_finishing",
+  "pelanggan",
+  "vendor",
+  "profil",
+  "kredensial",
+  "penjualan",
+  "item_penjualan",
+  "pembelian",
+  "item_pembelian",
+  "piutang_penjualan",
+  "pelunasan_piutang",
+  "hutang_pembelian",
+  "pelunasan_hutang",
+  "order_produksi",
+  "item_produksi",
+  "item_finishing",
+  "keuangan",
+];
 
 async function getServerSQLite(): Promise<any> {
   if (!isServerSide()) return null;
@@ -104,6 +166,7 @@ async function getServerSQLite(): Promise<any> {
       serverSqliteDb = new Database(dbPath);
       serverSqliteDb.pragma("journal_mode = WAL");
       serverSqliteDb.pragma("foreign_keys = ON");
+      ensureServerSQLiteSyncV2Schema(serverSqliteDb);
       console.log("✅ Server-side SQLite connected:", dbPath);
     } catch (error) {
       console.error("❌ Failed to initialize server SQLite:", error);
@@ -114,11 +177,132 @@ async function getServerSQLite(): Promise<any> {
   return serverSqliteDb;
 }
 
+function ensureServerSQLiteSyncV2Schema(db: any) {
+  for (const tableName of SYNC_V2_TABLES) {
+    const tableExists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!tableExists) continue;
+
+    const columns = (
+      db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+
+    if (!columns.includes("updated_at_server")) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN updated_at_server TEXT`);
+      const fallbackTimestampExpr = columns.includes("diperbarui_pada")
+        ? "diperbarui_pada"
+        : columns.includes("dibuat_pada")
+          ? "dibuat_pada"
+          : "datetime('now')";
+      db.exec(
+        `UPDATE ${tableName} SET updated_at_server = COALESCE(updated_at_server, ${fallbackTimestampExpr})`
+      );
+    }
+    if (!columns.includes("updated_by_device")) {
+      db.exec(
+        `ALTER TABLE ${tableName} ADD COLUMN updated_by_device TEXT DEFAULT 'server'`
+      );
+    }
+    if (!columns.includes("change_version")) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN change_version INTEGER DEFAULT 1`);
+    }
+    if (!columns.includes("is_deleted")) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN is_deleted INTEGER DEFAULT 0`);
+    }
+    if (!columns.includes("deleted_at")) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN deleted_at TEXT`);
+    }
+    if (!columns.includes("client_mutation_id")) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN client_mutation_id TEXT`);
+    }
+
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_updated_at_server ON ${tableName}(updated_at_server)`
+    );
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_change_version ON ${tableName}(change_version)`
+    );
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_is_deleted ON ${tableName}(is_deleted)`
+    );
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_conflicts (
+      id TEXT PRIMARY KEY,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      conflict_type TEXT NOT NULL DEFAULT 'lww',
+      winner_source TEXT NOT NULL,
+      loser_source TEXT NOT NULL,
+      winner_payload TEXT NOT NULL,
+      loser_payload TEXT NOT NULL,
+      winner_updated_at_server TEXT,
+      loser_updated_at_server TEXT,
+      resolved_at TEXT NOT NULL DEFAULT (datetime('now')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_conflicts_table_record
+      ON sync_conflicts(table_name, record_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS sync_mutation_registry (
+      id TEXT PRIMARY KEY,
+      client_mutation_id TEXT NOT NULL UNIQUE,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      processed_at TEXT NOT NULL DEFAULT (datetime('now')),
+      payload_hash TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_mutation_registry_table_record
+      ON sync_mutation_registry(table_name, record_id, processed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS device_registry (
+      device_id TEXT PRIMARY KEY,
+      device_type TEXT NOT NULL,
+      first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      metadata TEXT
+    );
+  `);
+  serverSqliteColumnsCache.clear();
+}
+
+async function getServerSQLiteTableColumns(table: string): Promise<Set<string>> {
+  const cached = serverSqliteColumnsCache.get(table);
+  if (cached) {
+    return cached;
+  }
+
+  const db = await getServerSQLite();
+  if (!db) {
+    return new Set();
+  }
+
+  try {
+    // PRAGMA table_info returns the canonical list of columns for the table.
+    const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+      name: string;
+    }>;
+    const columns = new Set(rows.map((row) => row.name));
+    serverSqliteColumnsCache.set(table, columns);
+    return columns;
+  } catch (error) {
+    console.warn(`Failed to introspect columns for table ${table}:`, error);
+    return new Set();
+  }
+}
+
 // Supabase client initialization (Browser)
 let supabaseClient: SupabaseClient | null = null;
 
 function getSupabaseClient(): SupabaseClient | null {
-  if (!isBrowser()) return null;
+  if (!isBrowser() || WEB_SERVER_MEDIATED_ONLY) return null;
 
   if (!supabaseClient) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -219,6 +403,9 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
     if (serverOnlineStatus) {
       console.log("🌐 Supabase online - using cloud database");
     } else {
+      if (error) {
+        console.warn("📴 Supabase profil check failed:", error.message, error);
+      }
       console.log("📴 Supabase offline - using local SQLite");
     }
 
@@ -406,6 +593,7 @@ class UnifiedDatabase {
       const now = getCurrentTimestamp();
       data.dibuat_pada = data.dibuat_pada || now;
       data.diperbarui_pada = data.diperbarui_pada || now;
+      data = withSyncMetadata(data);
 
       // Tauri: Insert to SQLite
       if (isTauriApp()) {
@@ -434,6 +622,12 @@ class UnifiedDatabase {
         return await this.insertServerSQLite(table, data);
       }
 
+      // Web: server mediated mode avoids direct browser Supabase writes
+      if (WEB_SERVER_MEDIATED_ONLY) {
+        addToOfflineQueue({ table, operation: "insert", data });
+        return { data: { id: data.id }, error: null };
+      }
+
       // Web: Try Supabase first
       const online = await isOnline();
       if (online) {
@@ -460,6 +654,7 @@ class UnifiedDatabase {
     try {
       // Update timestamp (standar Indonesia: diperbarui_pada)
       data.diperbarui_pada = getCurrentTimestamp();
+      data = withSyncMetadata(data);
 
       // Remove id from update data
       const { id: _, ...updateData } = data;
@@ -489,6 +684,17 @@ class UnifiedDatabase {
           await this.queueToLocalSync(table, "update", updateData, id);
         }
         return await this.updateServerSQLite(table, id, updateData);
+      }
+
+      // Web: server mediated mode avoids direct browser Supabase writes
+      if (WEB_SERVER_MEDIATED_ONLY) {
+        addToOfflineQueue({
+          table,
+          operation: "update",
+          data: updateData,
+          recordId: id,
+        });
+        return { data: { id }, error: null };
       }
 
       // Web: Try Supabase first
@@ -541,6 +747,16 @@ class UnifiedDatabase {
           await this.queueToLocalSync(table, "delete", null, id);
         }
         return await this.deleteServerSQLite(table, id);
+      }
+
+      // Web: server mediated mode avoids direct browser Supabase writes
+      if (WEB_SERVER_MEDIATED_ONLY) {
+        addToOfflineQueue({
+          table,
+          operation: "delete",
+          recordId: id,
+        });
+        return { data: { id }, error: null };
       }
 
       // Web: Try Supabase first
@@ -622,8 +838,21 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
-    const columns = Object.keys(data);
-    const values = Object.values(data);
+    const tableColumns = await getServerSQLiteTableColumns(table);
+    const filteredEntries = Object.entries(data).filter(([key]) => {
+      // If introspection fails, keep previous behavior.
+      if (tableColumns.size === 0) return true;
+      return tableColumns.has(key);
+    });
+
+    const columns = filteredEntries.map(([key]) => key);
+    const values = filteredEntries.map(([, value]) => value);
+    if (columns.length === 0) {
+      return {
+        data: null,
+        error: new Error(`No valid columns to insert for table ${table}`),
+      };
+    }
     const placeholders = columns.map(() => "?").join(", ");
 
     const sql = `INSERT INTO ${table} (${columns.join(
@@ -650,8 +879,17 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
-    const sets = Object.keys(data).map((key) => `${key} = ?`);
-    const values = [...Object.values(data), id];
+    const tableColumns = await getServerSQLiteTableColumns(table);
+    const filteredEntries = Object.entries(data).filter(([key]) => {
+      if (tableColumns.size === 0) return true;
+      return tableColumns.has(key);
+    });
+
+    const sets = filteredEntries.map(([key]) => `${key} = ?`);
+    const values = [...filteredEntries.map(([, value]) => value), id];
+    if (sets.length === 0) {
+      return { data: { id }, error: null };
+    }
 
     const sql = `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`;
 
@@ -747,9 +985,13 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server Supabase not configured") };
     }
 
+    if (!(await this.registerMutationIfNeeded(table, data.id, data))) {
+      return { data: { id: data.id }, error: null };
+    }
+
     const { data: inserted, error } = await supabase
       .from(table)
-      .insert(data)
+      .upsert(data, { onConflict: "id" })
       .select("id")
       .single();
 
@@ -769,6 +1011,10 @@ class UnifiedDatabase {
     const supabase = getServerSupabaseClient();
     if (!supabase) {
       return { data: null, error: new Error("Server Supabase not configured") };
+    }
+
+    if (!(await this.registerMutationIfNeeded(table, id, data))) {
+      return { data: { id }, error: null };
     }
 
     const { error } = await supabase.from(table).update(data).eq("id", id);
@@ -798,6 +1044,33 @@ class UnifiedDatabase {
     }
 
     return { data: { id }, error: null };
+  }
+
+  private async registerMutationIfNeeded(
+    table: string,
+    recordId: string,
+    data: Record<string, any>
+  ): Promise<boolean> {
+    const supabase = getServerSupabaseClient();
+    if (!supabase || !data.client_mutation_id) return true;
+
+    const mutationId = data.client_mutation_id as string;
+    const { data: existing } = await supabase
+      .from("sync_mutation_registry")
+      .select("id")
+      .eq("client_mutation_id", mutationId)
+      .maybeSingle();
+
+    if (existing) return false;
+
+    await supabase.from("sync_mutation_registry").insert({
+      client_mutation_id: mutationId,
+      table_name: table,
+      record_id: recordId,
+      device_id: data.updated_by_device || getDeviceId(),
+      payload_hash: JSON.stringify(data).length.toString(),
+    });
+    return true;
   }
 
   // === Tauri SQLite Operations ===
@@ -1057,6 +1330,48 @@ class UnifiedDatabase {
 
   // === Server-side sync queue ===
 
+  private ensureServerSyncQueueSchema(db: any) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sync_queue (
+        id TEXT PRIMARY KEY,
+        table_name TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        data TEXT,
+        record_id TEXT,
+        dibuat_pada TEXT NOT NULL,
+        status TEXT DEFAULT 'pending'
+      )
+    `);
+
+    const columns = (
+      db.prepare("PRAGMA table_info(sync_queue)").all() as Array<{ name: string }>
+    ).map((c) => c.name);
+
+    if (!columns.includes("dibuat_pada")) {
+      db.exec("ALTER TABLE sync_queue ADD COLUMN dibuat_pada TEXT");
+      if (columns.includes("created_at")) {
+        db.exec(
+          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, created_at, datetime('now'))"
+        );
+      } else {
+        db.exec(
+          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, datetime('now'))"
+        );
+      }
+    }
+
+    if (!columns.includes("status")) {
+      db.exec("ALTER TABLE sync_queue ADD COLUMN status TEXT DEFAULT 'pending'");
+      if (columns.includes("synced_at")) {
+        db.exec(
+          "UPDATE sync_queue SET status = CASE WHEN synced_at IS NULL THEN 'pending' ELSE 'completed' END WHERE status IS NULL"
+        );
+      } else {
+        db.exec("UPDATE sync_queue SET status = COALESCE(status, 'pending')");
+      }
+    }
+  }
+
   private async queueToLocalSync(
     table: string,
     operation: "insert" | "update" | "delete",
@@ -1070,18 +1385,7 @@ class UnifiedDatabase {
     if (!db) return;
 
     try {
-      // Create sync_queue table if not exists
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS sync_queue (
-          id TEXT PRIMARY KEY,
-          table_name TEXT NOT NULL,
-          operation TEXT NOT NULL,
-          data TEXT,
-          record_id TEXT,
-          dibuat_pada TEXT NOT NULL,
-          status TEXT DEFAULT 'pending'
-        )
-      `);
+      this.ensureServerSyncQueueSchema(db);
 
       // Insert sync operation
       const queueId = generateId();
@@ -1123,18 +1427,7 @@ class UnifiedDatabase {
     if (!db) return;
 
     try {
-      // Ensure sync_queue table exists
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS sync_queue (
-          id TEXT PRIMARY KEY,
-          table_name TEXT NOT NULL,
-          operation TEXT NOT NULL,
-          data TEXT,
-          record_id TEXT,
-          dibuat_pada TEXT NOT NULL,
-          status TEXT DEFAULT 'pending'
-        )
-      `);
+      this.ensureServerSyncQueueSchema(db);
 
       // Get pending operations
       const stmt = db.prepare(`
@@ -1236,6 +1529,17 @@ class UnifiedDatabase {
 
     // Browser: Not supported
     throw new Error("Raw SQL execution not available in browser mode");
+  }
+
+  /**
+   * Transitional helper for legacy routes that still require native sqlite APIs.
+   * New code should prefer query/insert/update/delete methods on this adapter.
+   */
+  async getNativeSQLite(): Promise<any> {
+    if (!isServerSide()) {
+      throw new Error("Native SQLite access is server-side only");
+    }
+    return await getServerSQLite();
   }
 
   /**
@@ -1341,8 +1645,18 @@ class UnifiedDatabase {
     synced: number;
     failed: number;
   }> {
+    if (isServerSide()) {
+      try {
+        await this.processSyncQueue();
+        return { success: true, synced: 0, failed: 0 };
+      } catch (error) {
+        console.error("Server-mediated sync failed:", error);
+        return { success: false, synced: 0, failed: 1 };
+      }
+    }
+
     if (!isTauriApp()) {
-      return { success: false, synced: 0, failed: 0 };
+      return { success: false, synced: 0, failed: 1 };
     }
 
     try {
@@ -1357,6 +1671,101 @@ class UnifiedDatabase {
     } catch (error) {
       console.error("Sync failed:", error);
       return { success: false, synced: 0, failed: 0 };
+    }
+  }
+
+  /**
+   * Pull latest cloud changes into local SQLite (Tauri only)
+   */
+  async syncFromCloud(): Promise<{
+    success: boolean;
+    pulled: number;
+    failed: number;
+  }> {
+    if (isServerSide()) {
+      const supabase = getServerSupabaseClient();
+      const sqlite = await getServerSQLite();
+      if (!supabase || !sqlite) {
+        return { success: false, pulled: 0, failed: 1 };
+      }
+
+      let pulled = 0;
+      let failed = 0;
+
+      for (const table of SYNC_V2_TABLES) {
+        try {
+          const { data, error } = await supabase.from(table).select("*");
+          if (error) {
+            failed++;
+            continue;
+          }
+          if (!data || data.length === 0) continue;
+
+          const columns = await getServerSQLiteTableColumns(table);
+          for (const row of data) {
+            const normalized = normalizeRecord(
+              row as Record<string, any>,
+              "fromSupabase"
+            );
+            const recordId =
+              typeof normalized.id === "string" ? normalized.id : null;
+            let shouldCountAsChange = true;
+            if (recordId && columns.has("id")) {
+              const existing = sqlite
+                .prepare(`SELECT * FROM ${table} WHERE id = ? LIMIT 1`)
+                .get(recordId) as Record<string, any> | undefined;
+              if (existing) {
+                const remoteUpdatedAt =
+                  normalized.updated_at_server ?? normalized.diperbarui_pada ?? null;
+                const localUpdatedAt =
+                  existing.updated_at_server ?? existing.diperbarui_pada ?? null;
+                shouldCountAsChange = String(remoteUpdatedAt) !== String(localUpdatedAt);
+              }
+            }
+            const entries = Object.entries(normalized).filter(([key]) =>
+              columns.has(key)
+            );
+            if (entries.length === 0) continue;
+            const names = entries.map(([key]) => key);
+            const values = entries.map(([, value]) => value);
+            const placeholders = names.map(() => "?").join(", ");
+            sqlite
+              .prepare(
+                `INSERT OR REPLACE INTO ${table} (${names.join(", ")}) VALUES (${placeholders})`
+              )
+              .run(...values);
+            if (shouldCountAsChange) {
+              pulled++;
+            }
+          }
+        } catch (error) {
+          failed++;
+        }
+      }
+
+      return {
+        success: failed === 0,
+        pulled,
+        failed,
+      };
+    }
+
+    if (!isTauriApp()) {
+      return { success: false, pulled: 0, failed: 1 };
+    }
+
+    try {
+      const result = await invoke<{ pulled: number; failed: number }>(
+        "sync_from_cloud"
+      );
+      return {
+        success: result.failed === 0,
+        pulled: result.pulled,
+        failed: result.failed,
+      };
+    } catch (error) {
+      console.error("Pull from cloud failed:", error);
+      return { success: false, pulled: 0, failed: 0 };
     }
   }
 
@@ -1407,7 +1816,7 @@ class UnifiedDatabase {
     // Clear processed items from queue
     if (processed > 0) {
       const remainingQueue = queue.slice(processed);
-      localStorage.setItem("db_offline_queue", JSON.stringify(remainingQueue));
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
     }
 
     return {

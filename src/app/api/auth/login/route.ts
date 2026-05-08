@@ -12,10 +12,8 @@ async function simpleHash(text: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
-    console.log("🔐 Login attempt for username:", username);
 
     if (!username || !password) {
-      console.log("❌ Missing username or password");
       return NextResponse.json(
         { error: "Username dan password diperlukan" },
         { status: 400 }
@@ -23,8 +21,6 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDatabaseAsync();
-    console.log("✅ Database connected");
-    console.log("🔍 Looking up user:", username);
 
     // Get user by username
     const user = db
@@ -38,47 +34,34 @@ export async function POST(request: NextRequest) {
       .get(username) as any;
 
     if (!user) {
-      console.log("❌ User not found:", username);
       return NextResponse.json(
         { error: "Username tidak ditemukan" },
         { status: 401 }
       );
     }
 
-    console.log("✅ User found:", user.nama_pengguna, "- Role:", user.role);
-
     if (!user.aktif_status) {
-      console.log("❌ User is not active");
       return NextResponse.json(
         { error: "Akun tidak aktif. Hubungi administrator." },
         { status: 403 }
       );
     }
 
-    // Verify password
-    console.log("🔑 Verifying password...");
     const passwordHash = await simpleHash(password);
-    console.log("🔑 Generated hash:", passwordHash);
-    console.log("🔑 Stored hash:", user.password_hash);
-    console.log("🔑 Match:", user.password_hash === passwordHash);
 
     if (user.password_hash !== passwordHash) {
-      console.log("❌ Password mismatch");
       return NextResponse.json({ error: "Password salah" }, { status: 401 });
     }
-
-    console.log("✅ Password verified");
 
     // Remove password_hash from response
     const { password_hash, ...userWithoutPassword } = user;
 
-    console.log("✅ Login successful for:", userWithoutPassword.nama_pengguna);
     return NextResponse.json({
       success: true,
       user: userWithoutPassword,
     });
   } catch (error) {
-    console.error("💥 Login error:", error);
+    console.error("Login error:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(

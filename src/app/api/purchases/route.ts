@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { getDatabaseAsync } from "@/lib/sqlite-db";
+import { db } from "@/lib/db-unified";
 import { getTodayJakarta } from "@/lib/date-utils";
 
 function generateId(prefix: string = "purchase") {
@@ -11,10 +11,10 @@ function generateId(prefix: string = "purchase") {
 // GET all purchases with details
 export async function GET(req: NextRequest) {
   try {
-    const db = await getDatabaseAsync();
+    const sqliteDb = await db.getNativeSQLite();
 
     // Get all purchases with vendor info
-    const purchases = db
+    const purchases = sqliteDb
       .prepare(
         `
         SELECT 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     // Get items for each purchase
     const purchasesWithItems = purchases.map((purchase: any) => {
-      const items = db
+      const items = sqliteDb
         .prepare(
           `
           SELECT 
@@ -126,10 +126,10 @@ export async function POST(req: NextRequest) {
       total_jumlah += item.subtotal;
     }
 
-    const db = await getDatabaseAsync();
+    const sqliteDb = await db.getNativeSQLite();
 
     // Check if nomor_faktur already exists
-    const existing = db
+    const existing = sqliteDb
       .prepare("SELECT id FROM pembelian WHERE nomor_faktur = ?")
       .get(nomor_faktur.trim());
 
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     const jumlahDibayar = isLunas ? total_jumlah : 0;
 
     // Generate nomor_pembelian (auto-increment style)
-    const lastPurchase: any = db
+    const lastPurchase: any = sqliteDb
       .prepare(
         "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1"
       )
@@ -163,11 +163,11 @@ export async function POST(req: NextRequest) {
     const nomorPembelian = `PO-${nextNumber.toString().padStart(5, "0")}`;
 
     // Begin transaction
-    db.exec("BEGIN TRANSACTION");
+    sqliteDb.exec("BEGIN TRANSACTION");
 
     try {
       // Insert purchase
-      const purchaseStmt = db.prepare(`
+      const purchaseStmt = sqliteDb.prepare(`
         INSERT INTO pembelian (
           id, nomor_pembelian, nomor_faktur, tanggal, vendor_id, total_jumlah,
           jumlah_dibayar, metode_pembayaran, status_pembayaran, catatan,
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
       );
 
       // Insert items and update stock & prices
-      const itemStmt = db.prepare(`
+      const itemStmt = sqliteDb.prepare(`
         INSERT INTO item_pembelian (
           id, pembelian_id, barang_id, harga_satuan_id,
           jumlah, nama_satuan, faktor_konversi,
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
 
         // Update stock barang (add stock in base unit)
         const stockToAdd = item.jumlah * (item.faktor_konversi || 1);
-        db.prepare(
+        sqliteDb.prepare(
           `UPDATE barang 
            SET jumlah_stok = jumlah_stok + ?,
                diperbarui_pada = datetime('now')
@@ -230,14 +230,14 @@ export async function POST(req: NextRequest) {
           const pricePerBaseUnit = item.harga_satuan / item.faktor_konversi;
 
           // Get all unit prices for this material
-          const allUnitPrices = db
+          const allUnitPrices = sqliteDb
             .prepare(
               `SELECT id, faktor_konversi FROM harga_barang_satuan WHERE barang_id = ?`
             )
             .all(item.barang_id);
 
           // Update each unit price proportionally
-          const updatePriceStmt = db.prepare(
+          const updatePriceStmt = sqliteDb.prepare(
             `UPDATE harga_barang_satuan 
              SET harga_beli = ?,
                  diperbarui_pada = datetime('now')
@@ -254,14 +254,14 @@ export async function POST(req: NextRequest) {
       // Only create keuangan entry if CASH (LUNAS)
       if (isLunas) {
         // Get the highest urutan_tampilan to assign next value
-        const maxDisplayOrder = db
+        const maxDisplayOrder = sqliteDb
           .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
           .get() as any;
 
         const nextDisplayOrder = (maxDisplayOrder?.max_order || 0) + 1;
 
         const keuanganId = generateId("keu");
-        const keuanganStmt = db.prepare(`
+        const keuanganStmt = sqliteDb.prepare(`
           INSERT INTO keuangan (
             id, tanggal, kategori_transaksi,
             debit, kredit, keperluan,
@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
 
         // Get vendor name if vendor_id exists
         const vendorInfo: any = vendor_id
-          ? db
+          ? sqliteDb
               .prepare("SELECT nama_perusahaan FROM vendor WHERE id = ?")
               .get(vendor_id)
           : null;
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
                 .split("T")[0]
             : null;
 
-        const hutangStmt = db.prepare(`
+        const hutangStmt = sqliteDb.prepare(`
           INSERT INTO hutang_pembelian (
             id, id_pembelian, jumlah_hutang, jumlah_terbayar,
             sisa_hutang, jatuh_tempo, status, catatan,
@@ -341,13 +341,13 @@ export async function POST(req: NextRequest) {
         const { recalculateCashbook } = await import(
           "@/lib/calculate-cashbook"
         );
-        await recalculateCashbook(db);
+        await recalculateCashbook(sqliteDb);
       }
 
-      db.exec("COMMIT");
+      sqliteDb.exec("COMMIT");
 
       // Get created purchase with items
-      const newPurchase: any = db
+      const newPurchase: any = sqliteDb
         .prepare(
           `SELECT p.*, v.nama_perusahaan as vendor_name 
            FROM pembelian p
@@ -356,7 +356,7 @@ export async function POST(req: NextRequest) {
         )
         .get(purchaseId);
 
-      const newItems = db
+      const newItems = sqliteDb
         .prepare(
           `SELECT ip.*, b.nama as barang_name 
            FROM item_pembelian ip
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest) {
         { status: 201 }
       );
     } catch (error) {
-      db.exec("ROLLBACK");
+      sqliteDb.exec("ROLLBACK");
       throw error;
     }
   } catch (error: any) {

@@ -1,26 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncToCloud, pullFromCloud, getSyncStats } from "@/lib/sync-service";
-import { processSyncQueue } from "@/lib/services/sync-operations-service";
+import {
+  getSyncStatus,
+  getRolloutMetrics,
+  processSyncQueue,
+  triggerManualSync,
+  triggerPullFromCloud,
+  triggerSyncCycle,
+} from "@/lib/services/sync-operations-service";
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, tables } = await request.json();
+    const { action } = await request.json();
 
     switch (action) {
       case "push":
-        // Push local changes to cloud
-        const pushResult = await syncToCloud();
+        const pushResult = await triggerManualSync();
         return NextResponse.json(pushResult);
 
       case "pull":
-        // Pull data from cloud to local
-        const pullResult = await pullFromCloud(tables);
+        const pullResult = await triggerPullFromCloud();
         return NextResponse.json(pullResult);
 
+      case "sync-cycle":
+        return NextResponse.json(await triggerSyncCycle());
+
       case "stats":
-        // Get sync statistics
-        const stats = getSyncStats();
-        return NextResponse.json(stats);
+        return NextResponse.json(await getSyncStatus());
+
+      case "metrics":
+        return NextResponse.json(await getRolloutMetrics());
 
       case "process-queue":
         // Process pending sync queue (auto-sync when online)
@@ -29,7 +37,10 @@ export async function POST(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: "Invalid action. Use: push, pull, stats, or process-queue" },
+          {
+            error:
+              "Invalid action. Use: push, pull, sync-cycle, stats, metrics, or process-queue",
+          },
           { status: 400 }
         );
     }
@@ -41,8 +52,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const stats = getSyncStats();
-    return NextResponse.json(stats);
+    const status = await getSyncStatus();
+    return NextResponse.json(status);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

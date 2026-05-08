@@ -38,15 +38,9 @@ if not exist "node_modules" (
     echo.
 )
 
-REM Build Next.js static export
-echo Building Next.js static export...
-set TAURI=true
-call npm run build
-echo.
-
-REM Build Tauri app
-echo Building Tauri application...
-call npm run tauri build
+REM Next.js (TAURI=true) is built by Tauri beforeBuildCommand
+echo Running full Tauri release build (this may take several minutes)...
+call npm run tauri:build
 echo.
 
 echo Build complete!

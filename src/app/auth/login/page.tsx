@@ -41,7 +41,7 @@ export default function LoginPage() {
       console.log("📥 Login result:", result);
 
       if (!result.success || !result.user) {
-        console.log("❌ Login failed:", result.error);
+        console.log("Login failed:", result.error);
 
         // Provide more helpful error messages
         let errorMessage = result.error || "Username atau password salah";
@@ -53,11 +53,11 @@ export default function LoginPage() {
       }
 
       const user = result.user;
-      console.log("✅ Login successful, user:", user);
+      console.log("Login successful, user:", user);
       localStorage.setItem("user", JSON.stringify(user));
       router.push("/dashboard");
     } catch (err) {
-      console.error("❌ Login error:", err);
+      console.error("Login error:", err);
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export default function LoginPage() {
         aktif_status: 1,
       });
 
-      console.log("✅ Registration successful");
+      console.log("Registration successful");
       setSuccess(
         "Pendaftaran berhasil! Silakan login dengan akun yang baru dibuat."
       );
@@ -92,7 +92,7 @@ export default function LoginPage() {
       setFullName("");
       setEmail("");
     } catch (err) {
-      console.error("❌ Registration error:", err);
+      console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "Pendaftaran gagal");
     } finally {
       // Always release loading state so buttons are re-enabled

@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getBrowserSupabaseForTauri } from "@/lib/supabase";
+import { REALTIME_PULL_ENABLED } from "@/lib/sync-config";
+import {
+  getAutoSyncIntervalMinutes,
+  runSyncCycle as runSyncCycleClient,
+} from "@/lib/sync-client";
 
 /**
  * Auto-sync hook to process pending operations when connection is restored
@@ -11,7 +17,17 @@ export function useAutoSync() {
   const lastSyncRef = useRef<number>(0);
 
   useEffect(() => {
-    const handleOnline = async () => {
+    let timer: number | null = null;
+    const startIntervalSync = () => {
+      if (timer) window.clearInterval(timer);
+      timer = window.setInterval(() => {
+        if (navigator.onLine) {
+          runSyncTrigger("interval");
+        }
+      }, getAutoSyncIntervalMinutes() * 60 * 1000);
+    };
+
+    const runSyncTrigger = async (reason: string) => {
       // Prevent multiple simultaneous syncs
       if (syncingRef.current) {
         console.log("🔄 Sync already in progress, skipping...");
@@ -25,25 +41,16 @@ export function useAutoSync() {
         return;
       }
 
-      console.log("🌐 Connection restored, triggering auto-sync...");
+      console.log(`🔄 Triggering sync cycle (${reason})...`);
       syncingRef.current = true;
       lastSyncRef.current = now;
 
       try {
-        const response = await fetch("/api/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "process-queue" }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log("✅ Auto-sync completed:", result);
-        } else {
-          console.error("❌ Auto-sync failed:", await response.text());
-        }
+        const result = await runSyncCycleClient();
+        if (result.success) console.log("✅ Sync cycle completed:", result);
+        else console.error("❌ Sync cycle failed:", result.message);
       } catch (error) {
-        console.error("❌ Auto-sync error:", error);
+        console.error("❌ Sync cycle error:", error);
       } finally {
         syncingRef.current = false;
       }
@@ -52,20 +59,70 @@ export function useAutoSync() {
     const handleOffline = () => {
       console.log("📴 Connection lost, operations will be queued");
     };
+    const handleFocus = () => {
+      if (navigator.onLine) {
+        runSyncTrigger("focus");
+      }
+    };
+    const handleVisible = () => {
+      if (!document.hidden && navigator.onLine) {
+        runSyncTrigger("resume");
+      }
+    };
+
+    const handleOnline = () => runSyncTrigger("online");
 
     // Listen to online/offline events
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisible);
+
+    startIntervalSync();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "sync.auto.interval.minutes") {
+        startIntervalSync();
+      }
+    };
+    const handleIntervalUpdated = () => startIntervalSync();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("sync:interval-updated", handleIntervalUpdated);
+
+    let unsubscribeRealtime: (() => void) | null = null;
+    if (REALTIME_PULL_ENABLED) {
+      const tauriSupabase = getBrowserSupabaseForTauri();
+      if (tauriSupabase) {
+        const channel = tauriSupabase
+          .channel("tauri-sync-realtime")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public" },
+            () => runSyncTrigger("realtime")
+          )
+          .subscribe();
+        unsubscribeRealtime = () => {
+          void tauriSupabase.removeChannel(channel);
+        };
+      }
+    }
 
     // Trigger initial sync if online
     if (navigator.onLine) {
       console.log("🌐 App started while online, checking for pending syncs...");
-      handleOnline();
+      runSyncTrigger("startup");
     }
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisible);
+      if (timer) window.clearInterval(timer);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("sync:interval-updated", handleIntervalUpdated);
+      if (unsubscribeRealtime) {
+        unsubscribeRealtime();
+      }
     };
   }, []);
 }

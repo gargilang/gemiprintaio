@@ -4,9 +4,11 @@
   "version": "0.1.0",
   "identifier": "com.gemiprint.app",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:3000"
+    "beforeDevCommand": "npm run dev:tauri-shell",
+    "beforeBuildCommand": "npm run build:tauri",
+    "beforeBundleCommand": "npm run bundle:tauri-resources",
+    "devUrl": "http://localhost:3001",
+    "frontendDist": "http://127.0.0.1:3000"
   },
   "bundle": {
     "active": true,
@@ -31,7 +33,10 @@
       "providerShortName": null,
       "signingIdentity": null
     },
-    "resources": ["../database/gemiprint.db"],
+    "resources": [
+      "../database/gemiprint.db",
+      "../tauri-bundle"
+    ],
     "externalBin": [],
     "copyright": "",
     "category": "Business",
@@ -54,6 +59,7 @@
         "fullscreen": false,
         "maximized": true,
         "center": true,
+        "visible": false,
         "decorations": true,
         "transparent": false,
         "skipTaskbar": false

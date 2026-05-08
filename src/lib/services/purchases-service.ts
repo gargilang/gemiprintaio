@@ -7,6 +7,19 @@ import "server-only";
 
 import { db } from "../db-unified";
 
+function normalizePaymentMethod(method?: string): string {
+  const value = (method || "").trim().toUpperCase();
+  return value || "CASH";
+}
+
+function isCashPayment(method?: string): boolean {
+  return normalizePaymentMethod(method) === "CASH";
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
 export interface Purchase {
   id: string;
   nomor_pembelian: string;
@@ -192,9 +205,7 @@ export async function createPurchase(data: {
     }
 
     // Generate ID
-    const purchaseId = `purchase-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    const purchaseId = generateId("purchase");
 
     // Calculate total
     const total_harga = data.items.reduce(
@@ -202,66 +213,130 @@ export async function createPurchase(data: {
       0
     );
 
-    // Create purchase
-    const purchase = {
-      id: purchaseId,
-      nomor_pembelian: data.nomor_pembelian,
-      nomor_faktur: data.nomor_faktur.trim(),
-      vendor_id: data.vendor_id,
-      tanggal: data.tanggal,
-      metode_pembayaran: data.metode_pembayaran,
-      total_harga,
-      status_pembayaran:
-        data.metode_pembayaran === "tunai" ? "lunas" : "belum_lunas",
-      catatan: data.catatan?.trim() || null,
-      dibuat_oleh: data.dibuat_oleh || null,
-    };
+    const metodePembayaran = normalizePaymentMethod(data.metode_pembayaran);
+    const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
+    const statusPembayaran = isCashPayment(metodePembayaran) ? "LUNAS" : "HUTANG";
 
-    const purchaseResult = await db.insert("pembelian", purchase);
-    if (purchaseResult.error) {
-      throw purchaseResult.error;
-    }
-
-    // Create items
-    for (const item of data.items) {
-      const itemId = `pi-${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      const subtotal = item.jumlah * item.harga_satuan;
-
-      const purchaseItem = {
-        id: itemId,
-        pembelian_id: purchaseId,
-        barang_id: item.barang_id,
-        harga_satuan_id: item.harga_satuan_id,
-        nama_satuan: item.nama_satuan,
-        faktor_konversi: item.faktor_konversi,
-        jumlah: item.jumlah,
-        harga_satuan: item.harga_satuan,
-        subtotal,
+    await db.transaction(async () => {
+      // Create purchase header
+      const purchase = {
+        id: purchaseId,
+        nomor_pembelian: data.nomor_pembelian,
+        nomor_faktur: data.nomor_faktur.trim(),
+        vendor_id: data.vendor_id,
+        tanggal: data.tanggal,
+        metode_pembayaran: metodePembayaran,
+        total_jumlah: total_harga,
+        jumlah_dibayar: jumlahDibayar,
+        status_pembayaran: statusPembayaran,
+        catatan: data.catatan?.trim() || null,
+        dibuat_oleh: data.dibuat_oleh || null,
       };
 
-      const itemResult = await db.insert("item_pembelian", purchaseItem);
-      if (itemResult.error) {
-        console.error("Failed to insert purchase item:", itemResult.error);
-        // TODO: Implement rollback with transaction
+      const purchaseResult = await db.insert("pembelian", purchase);
+      if (purchaseResult.error) {
+        throw purchaseResult.error;
       }
 
-      // Update material stock if tracking inventory
-      const materialResult = await db.query("barang", {
-        where: { id: item.barang_id },
-      });
-      const material = materialResult.data?.[0];
+      // Create items + stock adjustment
+      for (const item of data.items) {
+        const itemId = generateId("pi");
+        const subtotal = item.jumlah * item.harga_satuan;
 
-      if (material && material.lacak_inventori_status) {
-        const jumlahDalamSatuanDasar = item.jumlah * item.faktor_konversi;
-        const newStock = (material.jumlah_stok || 0) + jumlahDalamSatuanDasar;
+        const purchaseItem = {
+          id: itemId,
+          pembelian_id: purchaseId,
+          barang_id: item.barang_id,
+          harga_satuan_id: item.harga_satuan_id || null,
+          nama_satuan: item.nama_satuan || "",
+          faktor_konversi: item.faktor_konversi || 1,
+          jumlah: item.jumlah,
+          harga_satuan: item.harga_satuan,
+          subtotal,
+        };
 
-        await db.update("barang", item.barang_id, {
-          jumlah_stok: newStock,
+        const itemResult = await db.insert("item_pembelian", purchaseItem);
+        if (itemResult.error) {
+          throw itemResult.error;
+        }
+
+        const materialResult = await db.query("barang", {
+          where: { id: item.barang_id },
         });
+        const material = materialResult.data?.[0];
+
+        if (material && material.lacak_inventori_status) {
+          const jumlahDalamSatuanDasar =
+            item.jumlah * (item.faktor_konversi || 1);
+          const newStock = (material.jumlah_stok || 0) + jumlahDalamSatuanDasar;
+
+          const stockResult = await db.update("barang", item.barang_id, {
+            jumlah_stok: newStock,
+            diperbarui_pada: new Date().toISOString(),
+          });
+          if (stockResult.error) {
+            throw stockResult.error;
+          }
+        }
       }
-    }
+
+      if (isCashPayment(metodePembayaran)) {
+        const maxOrderResult = await db.queryRaw<{ max_order: number }>(
+          "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
+          []
+        );
+        const nextOrder = (maxOrderResult[0]?.max_order || 0) + 1;
+
+        const vendorName = data.vendor_id
+          ? (await db.queryOne("vendor", { where: { id: data.vendor_id } })).data
+              ?.nama_perusahaan
+          : null;
+
+        const keperluan = `Pembelian ${data.nomor_pembelian} (${data.nomor_faktur.trim()})${
+          vendorName ? ` - ${vendorName}` : ""
+        } [REF:${purchaseId}]`;
+
+        const financeResult = await db.insert("keuangan", {
+          id: generateId("keu"),
+          tanggal: data.tanggal,
+          kategori_transaksi: "SUPPLY",
+          debit: 0,
+          kredit: total_harga,
+          keperluan,
+          biaya_bahan: total_harga,
+          catatan: data.catatan?.trim() || null,
+          dibuat_oleh: data.dibuat_oleh || null,
+          urutan_tampilan: nextOrder,
+        });
+        if (financeResult.error) {
+          throw financeResult.error;
+        }
+      } else {
+        const jatuhTempo =
+          metodePembayaran === "NET30"
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0]
+            : null;
+
+        const debtResult = await db.insert("hutang_pembelian", {
+          id: generateId("hutang"),
+          id_pembelian: purchaseId,
+          jumlah_hutang: total_harga,
+          jumlah_terbayar: 0,
+          sisa_hutang: total_harga,
+          jatuh_tempo: jatuhTempo,
+          status: "AKTIF",
+          catatan:
+            metodePembayaran === "NET30"
+              ? "Tagihan jatuh tempo 30 hari"
+              : "Tagihan COD",
+        });
+        if (debtResult.error) {
+          throw debtResult.error;
+        }
+      }
+    });
 
     return { id: purchaseId };
   } catch (error: any) {
@@ -404,16 +479,19 @@ export async function updatePurchase(
     }
 
     // Update purchase header
+    const metodePembayaran = normalizePaymentMethod(data.metode_pembayaran);
+    const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
+    const statusPembayaran = isCashPayment(metodePembayaran) ? "LUNAS" : "HUTANG";
+
     const purchaseUpdate = {
       nomor_pembelian: data.nomor_pembelian,
       nomor_faktur: data.nomor_faktur.trim(),
       vendor_id: data.vendor_id,
       tanggal: data.tanggal,
       total_jumlah: total_harga,
-      jumlah_dibayar: data.metode_pembayaran === "tunai" ? total_harga : 0,
-      metode_pembayaran: data.metode_pembayaran,
-      status_pembayaran:
-        data.metode_pembayaran === "tunai" ? "lunas" : "belum_lunas",
+      jumlah_dibayar: jumlahDibayar,
+      metode_pembayaran: metodePembayaran,
+      status_pembayaran: statusPembayaran,
       catatan: data.catatan?.trim() || null,
     };
 
@@ -591,13 +669,13 @@ export async function revertPayment(purchaseId: string): Promise<void> {
     }
 
     // Validate status
-    if (purchase.status_pembayaran !== "lunas") {
+    if ((purchase.status_pembayaran || "").toUpperCase() !== "LUNAS") {
       throw new Error(
         "Hanya pembelian dengan status LUNAS yang dapat direvert ke HUTANG"
       );
     }
 
-    if (purchase.metode_pembayaran === "tunai") {
+    if (isCashPayment(purchase.metode_pembayaran)) {
       throw new Error(
         "Pembelian dengan metode TUNAI tidak dapat direvert. Hapus saja pembelian jika salah."
       );
@@ -638,7 +716,7 @@ export async function revertPayment(purchaseId: string): Promise<void> {
     // Reset pembelian to HUTANG status
     await db.update("pembelian", purchaseId, {
       jumlah_dibayar: 0,
-      status_pembayaran: "belum_lunas",
+      status_pembayaran: "HUTANG",
     });
 
     // TODO: Recalculate cashbook
@@ -686,7 +764,7 @@ export async function payDebt(data: {
     // Calculate new values
     const newJumlahDibayar = (purchase.jumlah_dibayar || 0) + data.jumlah_bayar;
     const newSisaHutang = purchase.total_harga - newJumlahDibayar;
-    const newStatus = newSisaHutang <= 0 ? "lunas" : "sebagian";
+    const newStatus = newSisaHutang <= 0 ? "LUNAS" : "SEBAGIAN";
 
     // Get or create hutang_pembelian record
     const hutangResult = await db.queryRaw<any>(
@@ -723,7 +801,7 @@ export async function payDebt(data: {
       tanggal_bayar:
         data.tanggal_bayar || new Date().toISOString().split("T")[0],
       jumlah_bayar: data.jumlah_bayar,
-      metode_pembayaran: data.metode_pembayaran || "CASH",
+      metode_pembayaran: normalizePaymentMethod(data.metode_pembayaran),
       referensi: data.referensi?.trim() || null,
       catatan: data.catatan?.trim() || null,
       dibuat_oleh: data.dibuat_oleh || null,
@@ -778,10 +856,7 @@ export async function payDebt(data: {
       keperluan,
       biaya_bahan: data.jumlah_bayar,
       catatan:
-        data.catatan ||
-        `Pelunasan ${newStatus === "lunas" ? "LUNAS" : "SEBAGIAN"} - ${
-          purchase.nomor_faktur
-        }`,
+        data.catatan || `Pelunasan ${newStatus} - ${purchase.nomor_faktur}`,
       dibuat_oleh: data.dibuat_oleh || null,
       urutan_tampilan: nextOrder,
     });
@@ -790,7 +865,7 @@ export async function payDebt(data: {
     console.log("Debt payment recorded, cashbook recalculation may be needed");
 
     return {
-      status: newStatus,
+      status: newStatus.toLowerCase(),
       sisa_hutang: newSisaHutang,
     };
   } catch (error) {

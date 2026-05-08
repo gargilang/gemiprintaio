@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
 const isTauri = process.env.TAURI === "true";
+// Separate dev output when running `next dev` in parallel (e.g. `npm run dev:all`):
+// default `.next` for browser dev, `.next-tauri` for the Tauri shell on :3001.
+const isTauriDevShell = process.env.TAURI_DEV_SHELL === "1";
 
 const nextConfig: NextConfig = {
+  distDir: isTauriDevShell ? ".next-tauri" : undefined,
+
   // For Tauri, use standalone to bundle Next.js server
   output: isTauri ? "standalone" : undefined,
 

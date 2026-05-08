@@ -13,7 +13,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { startAutoSync, stopAutoSync, getSyncStats } from "@/lib/sync-service";
+import {
+  startAutoSync,
+  stopAutoSync,
+  getSyncStatus,
+} from "@/lib/services/sync-operations-service";
 
 /**
  * Auto-Sync Control API
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const stats = getSyncStats();
+    const stats = await getSyncStatus();
     return NextResponse.json({
       success: true,
       stats,

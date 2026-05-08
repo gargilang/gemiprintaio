@@ -11,17 +11,10 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { LogoutIcon } from "./icons/PageIcons";
 import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
-import NotificationToast, { NotificationToastProps } from "./NotificationToast";
 import SyncStatus from "./SyncStatus";
-import {
-  startAutoSyncAction,
-  getSyncStatusAction,
-  triggerManualSyncAction,
-} from "@/app/settings/actions";
 
 interface User {
   id: string;
@@ -32,45 +25,12 @@ interface User {
   aktif_status: number;
 }
 
-interface SyncStatus {
-  localDb: "active" | "error";
-  cloudBackup: "connected" | "disconnected" | "syncing";
-  lastSyncAt: string | null;
-  pendingChanges: number;
-}
-
-// Helper function to format relative time
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "baru saja";
-  if (diffMins < 60) return `${diffMins} menit lalu`;
-  if (diffHours < 24) return `${diffHours} jam lalu`;
-  if (diffDays < 7) return `${diffDays} hari lalu`;
-  return date.toLocaleDateString("id-ID");
-}
-
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navRef = useRef<HTMLDivElement | null>(null);
-
-  // Sync status state
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    localDb: "active",
-    cloudBackup: "disconnected",
-    lastSyncAt: null,
-    pendingChanges: 0,
-  });
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
   // Clear user session when window/app is closed (Tauri + browser)
   useTauriWindowClose();
@@ -125,104 +85,6 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     };
   }, []); // Empty deps - only runs once
 
-  // Initialize auto-sync on mount
-  useEffect(() => {
-    const initAutoSync = async () => {
-      try {
-        // Start auto-sync with 20 minute interval
-        const result = await startAutoSyncAction(20);
-
-        if (result.success) {
-          console.log("✅ Auto-sync initialized (20 min interval)");
-        } else {
-          console.warn("⚠️ Failed to initialize auto-sync:", result.message);
-        }
-      } catch (error) {
-        console.error("❌ Error initializing auto-sync:", error);
-      }
-    };
-
-    initAutoSync();
-  }, []);
-
-  // Check sync status on mount and periodically
-  useEffect(() => {
-    const checkSyncStatus = async () => {
-      try {
-        const status = await getSyncStatusAction();
-        setSyncStatus(status);
-      } catch (error) {
-        console.error("Error checking sync status:", error);
-        setSyncStatus((prev) => ({
-          ...prev,
-          cloudBackup: "disconnected",
-        }));
-      }
-    };
-
-    checkSyncStatus();
-
-    // Check every 30 seconds
-    const interval = setInterval(checkSyncStatus, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Manual sync handler
-  const handleManualSync = async () => {
-    if (isSyncing) return;
-
-    setIsSyncing(true);
-    setSyncStatus((prev) => ({ ...prev, cloudBackup: "syncing" }));
-
-    try {
-      const result = await triggerManualSyncAction();
-
-      if (result.success) {
-        // Refresh status to get updated counts
-        const status = await getSyncStatusAction();
-        setSyncStatus({
-          ...status,
-          cloudBackup: "connected",
-        });
-
-        // Show success notification with details
-        if (result.synced > 0) {
-          setNotice({
-            type: "success",
-            message: `✅ Sinkronisasi berhasil! ${
-              result.synced
-            } record di-sync${
-              result.failed > 0 ? ` (${result.failed} error)` : ""
-            }`,
-          });
-          setTimeout(() => setNotice(null), 4000);
-        } else {
-          setNotice({
-            type: "error",
-            message: "⚠️ Tidak ada perubahan untuk di-sync",
-          });
-          setTimeout(() => setNotice(null), 3000);
-        }
-      } else {
-        throw new Error(result.message || "Sync failed");
-      }
-    } catch (error) {
-      console.error("Sync error:", error);
-      setSyncStatus((prev) => ({ ...prev, cloudBackup: "disconnected" }));
-      setNotice({
-        type: "error",
-        message:
-          "❌ Gagal sinkronisasi. " +
-          (error instanceof Error
-            ? error.message
-            : "Periksa koneksi internet Anda."),
-      });
-      setTimeout(() => setNotice(null), 4000);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const computedTitle = useMemo(() => {
     if (!pathname) return "Dashboard";
@@ -390,11 +252,6 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-
-      {/* Notification Toast */}
-      {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
-      )}
     </div>
   );
 }

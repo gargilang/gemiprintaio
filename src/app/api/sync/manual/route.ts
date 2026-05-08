@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
             if (error) {
               console.error(
-                `   ❌ Error syncing record ${recordData.id}:`,
+                `   Error syncing record ${recordData.id}:`,
                 error
               );
               tableErrors++;
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
               syncResult.synced++;
             }
           } catch (recordError) {
-            console.error(`   ❌ Exception syncing record:`, recordError);
+            console.error(`   Exception syncing record:`, recordError);
             tableErrors++;
             syncResult.errors++;
           }
@@ -139,10 +139,10 @@ export async function POST(request: NextRequest) {
         });
 
         console.log(
-          `   ✅ ${tableName}: ${tableSynced} synced, ${tableErrors} errors`
+          `   ${tableName}: ${tableSynced} synced, ${tableErrors} errors`
         );
       } catch (tableError) {
-        console.error(`❌ Error syncing table ${tableName}:`, tableError);
+        console.error(`Error syncing table ${tableName}:`, tableError);
         syncResult.details?.push({
           table: tableName,
           synced: 0,
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("✅ Manual sync completed:", syncResult);
+    console.log("Manual sync completed:", syncResult);
 
     return NextResponse.json({
       success: true,
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       result: syncResult,
     });
   } catch (error) {
-    console.error("❌ Manual sync error:", error);
+    console.error("Manual sync error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Get sync status error:", error);
+    console.error("Get sync status error:", error);
     return NextResponse.json(
       {
         success: false,

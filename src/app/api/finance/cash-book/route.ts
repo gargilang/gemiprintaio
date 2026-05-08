@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { getDatabaseAsync } from "@/lib/sqlite-db";
+import { db } from "@/lib/db-unified";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   try {
-    const db = await getDatabaseAsync();
+    const sqliteDb = await db.getNativeSQLite();
 
     // Get only active transactions (not archived)
     // Sort by urutan_tampilan DESC (newest first = highest urutan_tampilan)
-    const cashBooks = db
+    const cashBooks = sqliteDb
       .prepare(
         `SELECT * FROM keuangan 
          WHERE diarsipkan_pada IS NULL 
@@ -64,10 +64,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = await getDatabaseAsync();
+    const sqliteDb = await db.getNativeSQLite();
 
     // Get the highest urutan_tampilan to assign next value
-    const maxDisplayOrder = db
+    const maxDisplayOrder = sqliteDb
       .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
       .get() as any;
 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Hitung saldo terkini dan running totals dari transaksi terakhir
     // Based on urutan_tampilan DESC (latest entry = highest urutan_tampilan)
-    const lastEntry = db
+    const lastEntry = sqliteDb
       .prepare(
         `SELECT 
           saldo, omzet, biaya_operasional, biaya_bahan, laba_bersih,
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    const stmt = db.prepare(`
+    const stmt = sqliteDb.prepare(`
       INSERT INTO keuangan (
         id, tanggal, kategori_transaksi, debit, kredit, keperluan,
         omzet, biaya_operasional, biaya_bahan, saldo, laba_bersih,
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
 
     // RECALCULATION: Hitung ulang semua transaksi berdasarkan urutan_tampilan ASC
     // Ini memastikan perhitungan kumulatif dimulai dari transaksi terlama ke terbaru
-    const allEntries = db
+    const allEntries = sqliteDb
       .prepare(
         `SELECT * FROM keuangan WHERE diarsipkan_pada IS NULL ORDER BY urutan_tampilan ASC`
       )
@@ -330,7 +330,7 @@ export async function POST(request: NextRequest) {
     let calcKasbonCahaya = 0;
     let calcKasbonDinil = 0;
 
-    const updateStmt = db.prepare(`
+    const updateStmt = sqliteDb.prepare(`
       UPDATE keuangan 
       SET omzet = ?, 
           biaya_operasional = ?,
@@ -497,7 +497,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newEntry = db.prepare(`SELECT * FROM keuangan WHERE id = ?`).get(id);
+    const newEntry = sqliteDb
+      .prepare(`SELECT * FROM keuangan WHERE id = ?`)
+      .get(id);
 
     return NextResponse.json(
       { message: "Transaksi berhasil ditambahkan", cashBook: newEntry },

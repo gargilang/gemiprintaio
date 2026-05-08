@@ -532,7 +532,9 @@ export default function AddMaterialModal({
                           "materialFormDraft",
                           JSON.stringify({ formData, unitPrices })
                         );
-                        router.push("/settings?tab=materials");
+                        router.push(
+                          "/settings?tab=setup&subtab=materials&manage=category"
+                        );
                       }}
                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-semibold"
                     >
@@ -869,7 +871,9 @@ export default function AddMaterialModal({
                                 "materialFormDraft",
                                 JSON.stringify({ formData, unitPrices })
                               );
-                              router.push("/settings?tab=materials");
+                              router.push(
+                                "/settings?tab=setup&subtab=materials&manage=unit"
+                              );
                             }}
                             className="text-blue-600 hover:underline font-semibold"
                           >

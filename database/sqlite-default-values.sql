@@ -1,18 +1,21 @@
--- Default admin user (username: gemi, password: 5555)
--- Password hash for "5555" using SHA-256
+-- Seed data: admin user, material categories, units, quick specs.
+-- Table names must match database/sqlite-schema.sql (e.g. *_barang, not *_bahan).
+-- SQLite: loaded after sqlite-schema.sql (see src/lib/sqlite-db.ts, scripts).
+
+-- Default admin (username: gemi, password: admin) — app uses SHA-256 of plaintext (see /api/auth/login)
 INSERT OR IGNORE INTO profil (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
 VALUES (
   'admin-gemi-001',
   'gemi',
-  'admin@gemiprint.com',
-  'Gemi Administrator',
-  'c1f330d0aff31c1c87403f1e4347bcc21aff7c179908723535f2b31723702525',
+  'gemi@gemiprint.com',
+  'Gemilang Romadhoni',
+  '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
   'admin',
   1
 );
 
 -- Default Material Categories
-INSERT OR IGNORE INTO kategori_bahan (id, nama, butuh_spesifikasi_status, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO kategori_barang (id, nama, butuh_spesifikasi_status, urutan_tampilan) VALUES
   ('cat-media-cetak', 'Media Cetak', 0, 1),
   ('cat-kertas', 'Kertas', 1, 2),
   ('cat-kertas-foto', 'Kertas Foto', 1, 3),
@@ -23,7 +26,7 @@ INSERT OR IGNORE INTO kategori_bahan (id, nama, butuh_spesifikasi_status, urutan
   ('cat-lain-lain', 'Lain-lain', 0, 8);
 
 -- Default Subcategories for Media Cetak
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-mc-flexi', 'cat-media-cetak', 'Flexi/Banner', 1),
   ('sub-mc-vinyl', 'cat-media-cetak', 'Vinyl', 2),
   ('sub-mc-sticker', 'cat-media-cetak', 'Sticker', 3),
@@ -34,7 +37,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-mc-lainlain', 'cat-media-cetak', 'Lain-lain', 99);
 
 -- Default Subcategories for Kertas
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-kr-hvs', 'cat-kertas', 'HVS', 1),
   ('sub-kr-art-paper', 'cat-kertas', 'Art Paper', 2),
   ('sub-kr-art-carton', 'cat-kertas', 'Art Carton', 3),
@@ -49,7 +52,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-kr-lainlain', 'cat-kertas', 'Lain-lain', 99);
 
 -- Default Subcategories for Kertas Foto
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-kf-glossy', 'cat-kertas-foto', 'Photo Paper Glossy', 1),
   ('sub-kf-matte', 'cat-kertas-foto', 'Photo Paper Matte', 2),
   ('sub-kf-luster', 'cat-kertas-foto', 'Photo Paper Luster', 3),
@@ -57,7 +60,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-kf-inkjet', 'cat-kertas-foto', 'Inkjet Paper', 5);
 
 -- Default Subcategories for Merchandise
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-md-totebag', 'cat-merchandise', 'Tote Bag', 1),
   ('sub-md-gelas', 'cat-merchandise', 'Gelas/Mug', 2),
   ('sub-md-kaos', 'cat-merchandise', 'Kaos', 3),
@@ -72,7 +75,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-md-lainlain', 'cat-merchandise', 'Lain-lain', 99);
 
 -- Default Subcategories for Substrat UV
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-uv-akrilik', 'cat-substrat-uv', 'Akrilik', 1),
   ('sub-uv-kayu', 'cat-substrat-uv', 'Kayu', 2),
   ('sub-uv-mdf', 'cat-substrat-uv', 'MDF', 3),
@@ -85,7 +88,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-uv-lainlain', 'cat-substrat-uv', 'Lain-lain', 99);
 
 -- Default Subcategories for Tinta & Consumables
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-tc-eco', 'cat-tinta-consumables', 'Tinta Eco Solvent', 1),
   ('sub-tc-uv', 'cat-tinta-consumables', 'Tinta UV', 2),
   ('sub-tc-sublim', 'cat-tinta-consumables', 'Tinta Sublim', 3),
@@ -95,7 +98,7 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-tc-lainlain', 'cat-tinta-consumables', 'Lain-lain', 99);
 
 -- Default Subcategories for Finishing
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-fn-lam-glossy', 'cat-finishing', 'Laminating Glossy', 1),
   ('sub-fn-lam-doff', 'cat-finishing', 'Laminating Doff', 2),
   ('sub-fn-lam-sandblast', 'cat-finishing', 'Laminating Sandblast', 3),
@@ -107,11 +110,11 @@ INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan)
   ('sub-fn-lainlain', 'cat-finishing', 'Lain-lain', 99);
 
 -- Default Subcategories for Lain-lain
-INSERT OR IGNORE INTO subkategori_bahan (id, kategori_id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-ll-umum', 'cat-lain-lain', 'Umum', 1);
 
 -- Default Material Units
-INSERT OR IGNORE INTO satuan_bahan (id, nama, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO satuan_barang (id, nama, urutan_tampilan) VALUES
   ('unit-meter', 'meter', 1),
   ('unit-roll', 'roll', 2),
   ('unit-sheet', 'sheet', 3),
@@ -128,7 +131,7 @@ INSERT OR IGNORE INTO satuan_bahan (id, nama, urutan_tampilan) VALUES
   ('unit-unit', 'unit', 14);
 
 -- Default Quick Specs for Kertas (sizes)
-INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO spesifikasi_cepat_barang (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
   ('spec-kr-size-a0', 'cat-kertas', 'size', 'A0', 1),
   ('spec-kr-size-a1', 'cat-kertas', 'size', 'A1', 2),
   ('spec-kr-size-a2', 'cat-kertas', 'size', 'A2', 3),
@@ -151,7 +154,7 @@ INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi
   ('spec-kr-size-custom', 'cat-kertas', 'size', 'Custom', 99);
 
 -- Default Quick Specs for Kertas (weights/gramasi)
-INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
+INSERT OR IGNORE INTO spesifikasi_cepat_barang (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan) VALUES
   ('spec-kr-weight-60', 'cat-kertas', 'weight', '60 gsm', 1),
   ('spec-kr-weight-70', 'cat-kertas', 'weight', '70 gsm', 2),
   ('spec-kr-weight-80', 'cat-kertas', 'weight', '80 gsm', 3),
@@ -165,12 +168,13 @@ INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi
   ('spec-kr-weight-310', 'cat-kertas', 'weight', '310 gsm', 11),
   ('spec-kr-weight-400', 'cat-kertas', 'weight', '400 gsm', 12);
 
--- Default Quick Specs for Kertas Foto (same as Kertas)
-INSERT OR IGNORE INTO spesifikasi_cepat_bahan (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan)
-SELECT 
+-- Default Quick Specs for Kertas Foto (copy from Kertas rows, same spec columns)
+INSERT OR IGNORE INTO spesifikasi_cepat_barang (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan)
+SELECT
   REPLACE(id, 'cat-kertas', 'cat-kertas-foto'),
   'cat-kertas-foto',
-  spec_type,
-  spec_value,
-  display_order
-FROM spesifikasi_cepat_bahan WHERE kategori_id = 'cat-kertas';
+  tipe_spesifikasi,
+  nilai_spesifikasi,
+  urutan_tampilan
+FROM spesifikasi_cepat_barang
+WHERE kategori_id = 'cat-kertas';

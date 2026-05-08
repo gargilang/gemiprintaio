@@ -8,8 +8,18 @@
  */
 
 import "server-only";
+import { createClient } from "@supabase/supabase-js";
 
 import { db, isTauriApp } from "../db-unified";
+import {
+  CORE_SYNC_TABLES,
+  BALANCE_SYNC_TABLES,
+  MASTER_SYNC_TABLES,
+  REALTIME_PULL_ENABLED,
+  SYNC_ENGINE_V2,
+  SYNC_WAVE,
+  WEB_SERVER_MEDIATED_ONLY,
+} from "../sync-config";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -26,6 +36,7 @@ export interface SyncResult {
   success: boolean;
   synced: number;
   failed: number;
+  pulled?: number;
   message?: string;
   timestamp: string;
 }
@@ -55,21 +66,29 @@ let autoSyncSettings: AutoSyncSettings = {
  */
 export async function getSyncStatus(): Promise<SyncStatus> {
   try {
-    // Check if Supabase is configured
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const isConfigured = !!(supabaseUrl && supabaseKey);
+    let cloudBackup: SyncStatus["cloudBackup"] = "disconnected";
 
-    // Get pending changes count
+    if (isConfigured && supabaseUrl && supabaseKey) {
+      try {
+        const client = createClient(supabaseUrl, supabaseKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { error } = await client.from("profil").select("id").limit(1);
+        cloudBackup = error ? "disconnected" : "connected";
+      } catch {
+        cloudBackup = "disconnected";
+      }
+    }
+
     const pendingChanges = await db.getPendingSyncCount();
-
-    // For now, we don't have lastSyncAt tracking in db-unified
-    // This could be added later by storing sync metadata
     const lastSyncAt: string | null = null;
 
     return {
       localDb: "active",
-      cloudBackup: isConfigured ? "connected" : "disconnected",
+      cloudBackup,
       pendingChanges,
       lastSyncAt,
     };
@@ -111,6 +130,50 @@ export async function triggerManualSync(): Promise<SyncResult> {
       timestamp: new Date().toISOString(),
     };
   }
+}
+
+/**
+ * Pull changes from cloud to local store (Tauri only, no-op for web)
+ */
+export async function triggerPullFromCloud(): Promise<SyncResult> {
+  try {
+    const result = await db.syncFromCloud();
+    return {
+      success: result.success,
+      synced: 0,
+      pulled: result.pulled,
+      failed: result.failed,
+      message: result.success
+        ? `Successfully pulled ${result.pulled} records`
+        : `Pulled ${result.pulled} records with ${result.failed} failures`,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      synced: 0,
+      pulled: 0,
+      failed: 1,
+      message: error instanceof Error ? error.message : "Unknown pull error",
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
+/**
+ * Full two-way sync cycle: push local queue then pull remote changes.
+ */
+export async function triggerSyncCycle(): Promise<SyncResult> {
+  const push = await triggerManualSync();
+  const pull = await triggerPullFromCloud();
+  return {
+    success: push.success && pull.success,
+    synced: push.synced,
+    pulled: pull.pulled ?? 0,
+    failed: push.failed + pull.failed,
+    message: `push=${push.synced}/${push.failed}, pull=${pull.pulled ?? 0}/${pull.failed}`,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 /**
@@ -292,5 +355,24 @@ export function getSyncEnvironmentInfo(): {
     syncAvailable: isSyncAvailable(),
     autoSyncEnabled: autoSyncSettings.enabled,
     intervalMinutes: autoSyncSettings.intervalMinutes,
+  };
+}
+
+export async function getRolloutMetrics() {
+  const pending = await db.getPendingSyncCount();
+  return {
+    flags: {
+      SYNC_ENGINE_V2,
+      REALTIME_PULL_ENABLED,
+      WEB_SERVER_MEDIATED_ONLY,
+      SYNC_WAVE,
+    },
+    waves: {
+      wave1: CORE_SYNC_TABLES,
+      wave2: BALANCE_SYNC_TABLES,
+      wave3: MASTER_SYNC_TABLES,
+    },
+    pendingChanges: pending,
+    generatedAt: new Date().toISOString(),
   };
 }

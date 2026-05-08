@@ -9,9 +9,9 @@
 -- - sync_version: integer version for conflict resolution
 --
 -- Usage:
--- 1. Create a new Supabase project
--- 2. Run this schema in the SQL Editor
--- 3. Configure RLS policies as needed
+-- • Dev with CLI (preferred): `npm run supabase:link` then `npm run supabase:db:push` (migrations under supabase/migrations/).
+-- • Without CLI: DATABASE_URL in .env.local → `npm run supabase:apply`, or paste this + seed-default-values.sql in SQL Editor.
+-- • Keep migrations in sync: edit supabase/migrations/*.sql for new changes; copy or regenerate this file if you still need a single paste.
 --
 
 -- Enable UUID extension
@@ -427,7 +427,7 @@ CREATE TABLE IF NOT EXISTS order_produksi (
   pelanggan_nama TEXT,
   total_item INTEGER DEFAULT 0,
   status TEXT DEFAULT 'MENUNGGU' CHECK(status IN ('MENUNGGU', 'PROSES', 'SELESAI', 'DIBATALKAN')),
-  prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('NORMAL', 'KILAT')),
+  prioritas TEXT DEFAULT 'NORMAL' CHECK(prioritas IN ('NORMAL', 'KILAT', 'RENDAH', 'TINGGI', 'MENDESAK')),
   tanggal_deadline TEXT,
   catatan TEXT,
   dibuat_oleh TEXT,
@@ -606,3 +606,40 @@ CREATE TRIGGER update_opsi_finishing_diperbarui_pada BEFORE UPDATE ON opsi_finis
 -- - Consider adding RLS policies based on your security requirements
 -- - Example: Only allow users to see their own data, admins see all
 --
+
+-- ============================================================================
+-- SYNC ENGINE V2 METADATA TABLES
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS sync_conflicts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name TEXT NOT NULL,
+  record_id TEXT NOT NULL,
+  conflict_type TEXT NOT NULL DEFAULT 'lww',
+  winner_source TEXT NOT NULL,
+  loser_source TEXT NOT NULL,
+  winner_payload JSONB NOT NULL,
+  loser_payload JSONB NOT NULL,
+  winner_updated_at_server TIMESTAMPTZ,
+  loser_updated_at_server TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sync_mutation_registry (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_mutation_id TEXT NOT NULL UNIQUE,
+  table_name TEXT NOT NULL,
+  record_id TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  payload_hash TEXT
+);
+
+CREATE TABLE IF NOT EXISTS device_registry (
+  device_id TEXT PRIMARY KEY,
+  device_type TEXT NOT NULL CHECK(device_type IN ('web', 'tauri', 'server')),
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata JSONB
+);

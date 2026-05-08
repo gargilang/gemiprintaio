@@ -40,7 +40,8 @@ export interface Unit {
 export interface QuickSpec {
   id: string;
   kategori_id: string;
-  nama: string;
+  tipe_spesifikasi: string;
+  nilai_spesifikasi: string;
   urutan_tampilan: number;
   dibuat_pada?: string;
   diperbarui_pada?: string;
@@ -284,7 +285,7 @@ export async function getQuickSpecs(
   kategori_id?: string
 ): Promise<QuickSpec[]> {
   try {
-    const result = await db.query<QuickSpec>("spesifikasi_cepat", {
+    const result = await db.query<QuickSpec>("spesifikasi_cepat_barang", {
       where: kategori_id ? { kategori_id } : undefined,
       orderBy: { column: "urutan_tampilan", ascending: true },
     });
@@ -300,7 +301,7 @@ export async function createQuickSpec(
 ): Promise<{ id: string } | null> {
   try {
     const specId = crypto.randomUUID();
-    const result = await db.insert("spesifikasi_cepat", {
+    const result = await db.insert("spesifikasi_cepat_barang", {
       id: specId,
       ...spec,
       dibuat_pada: new Date().toISOString(),
@@ -321,7 +322,7 @@ export async function updateQuickSpec(
 ): Promise<boolean> {
   try {
     const { dibuat_pada, ...updateData } = spec as any;
-    const result = await db.update("spesifikasi_cepat", id, {
+    const result = await db.update("spesifikasi_cepat_barang", id, {
       ...updateData,
       diperbarui_pada: new Date().toISOString(),
     });
@@ -336,7 +337,7 @@ export async function updateQuickSpec(
 
 export async function deleteQuickSpec(id: string): Promise<boolean> {
   try {
-    const result = await db.delete("spesifikasi_cepat", id);
+    const result = await db.delete("spesifikasi_cepat_barang", id);
     if (result.error) throw result.error;
     return true;
   } catch (error) {
@@ -546,7 +547,7 @@ export async function reorderQuickSpecs(
 ): Promise<void> {
   try {
     for (const item of items) {
-      await db.update("spesifikasi_cepat", item.id, {
+      await db.update("spesifikasi_cepat_barang", item.id, {
         urutan_tampilan: item.urutan_tampilan,
         diperbarui_pada: new Date().toISOString(),
       });

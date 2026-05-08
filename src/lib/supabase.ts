@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 
 // Environment detection
 function isBrowser() {
@@ -42,6 +43,17 @@ export const supabase: SupabaseClient = createClient(
   config.anonKey || "placeholder-key"
 );
 
+/**
+ * Browser-side Supabase client is only allowed for Tauri desktop.
+ * Web runtime should stay server-mediated.
+ */
+export function getBrowserSupabaseForTauri(): SupabaseClient | null {
+  if (!isBrowser()) return null;
+  if (!isTauriApp() && WEB_SERVER_MEDIATED_ONLY) return null;
+  if (!config.url || !config.anonKey) return null;
+  return supabase;
+}
+
 // Server-side Supabase client (using service role key for sync operations)
 // Only for API routes (not Tauri)
 export function getSupabaseAdmin() {
@@ -72,31 +84,31 @@ export async function isSupabaseAvailable(): Promise<boolean> {
   }
 }
 
-// List of tables to sync
+// Tables aligned with database/sqlite-schema.sql / supabase/schema.sql (sync layer may use a subset)
 export const SYNC_TABLES = [
-  "customers",
-  "products",
-  "materials",
-  "material_categories",
-  "finish_options",
-  "product_attributes",
-  "product_materials",
-  "product_finish_options",
-  "orders",
-  "order_items",
-  "order_item_options",
-  "order_notes",
-  "order_status_history",
-  "invoices",
-  "invoice_items",
-  "payments",
-  "shipping_addresses",
-  "material_inventory",
-  "inventory_transactions",
-  "production_queue",
-  "production_notes",
-  "users",
-  "activity_logs",
+  "kategori_barang",
+  "subkategori_barang",
+  "satuan_barang",
+  "spesifikasi_cepat_barang",
+  "barang",
+  "harga_barang_satuan",
+  "opsi_finishing",
+  "pelanggan",
+  "vendor",
+  "profil",
+  "kredensial",
+  "penjualan",
+  "item_penjualan",
+  "pembelian",
+  "item_pembelian",
+  "piutang_penjualan",
+  "pelunasan_piutang",
+  "hutang_pembelian",
+  "pelunasan_hutang",
+  "order_produksi",
+  "item_produksi",
+  "item_finishing",
+  "keuangan",
 ];
 
 export interface SyncResult {
