@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useClickOutside } from "@/hooks/useClickOutside";
 import { BoxIcon } from "@/components/icons/ContentIcons";
 import { PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
+import ModalFormShell from "@/components/ModalFormShell";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   getCategoriesAction as getCategories,
   createCategoryAction as createCategory,
@@ -572,10 +573,6 @@ function CategoriesView({
     onConfirm: () => void;
   } | null>(null);
 
-  // Click outside to close modal
-  const categoryModalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(categoryModalRef, () => setShowModal(false), showModal);
-
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 2500);
@@ -600,22 +597,6 @@ function CategoriesView({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  // Handle ESC key to close modals
-  useEffect(() => {
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (showModal) {
-          setShowModal(false);
-        } else if (confirmDialog?.show) {
-          setConfirmDialog(null);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleEscKey);
-    return () => window.removeEventListener("keydown", handleEscKey);
-  }, [showModal, confirmDialog]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -786,19 +767,65 @@ function CategoriesView({
         </DndContext>
       )}
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={categoryModalRef}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}
-              </h3>
-            </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+      <ModalFormShell
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        allowDismiss={!saving}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 shrink-0 flex items-center justify-between gap-3 bg-white rounded-t-xl">
+            <h3 className="text-xl font-bold text-gray-800 min-w-0">
+              {editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="settings-category-form"
+              disabled={saving}
+              className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold disabled:opacity-50"
+            >
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="settings-category-form"
+              onSubmit={handleSave}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nama Kategori
@@ -841,81 +868,25 @@ function CategoriesView({
                   </span>
                 </label>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold disabled:opacity-50"
-                >
-                  {saving ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
       {/* Notification Toast */}
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
 
-      {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText="Ya, Hapus"
+          cancelText="Batal"
+          type="danger"
+          onConfirm={() => confirmDialog.onConfirm()}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );
@@ -1278,12 +1249,6 @@ function SubcategoriesView({
     onConfirm: () => void;
   } | null>(null);
 
-  // Click outside to close modals
-  const subcategoryModalRef = useRef<HTMLDivElement>(null);
-  const specModalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(subcategoryModalRef, () => setShowModal(false), showModal);
-  useClickOutside(specModalRef, () => setShowSpecModal(false), showSpecModal);
-
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1303,24 +1268,6 @@ function SubcategoriesView({
       loadSpecs();
     }
   }, [category.id]);
-
-  // Handle ESC key to close modals
-  useEffect(() => {
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (showModal) {
-          setShowModal(false);
-        } else if (showSpecModal) {
-          setShowSpecModal(false);
-        } else if (confirmDialog?.show) {
-          setConfirmDialog(null);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleEscKey);
-    return () => window.removeEventListener("keydown", handleEscKey);
-  }, [showModal, showSpecModal, confirmDialog]);
 
   const loadSubcategories = async () => {
     try {
@@ -1832,14 +1779,14 @@ function SubcategoriesView({
         </div>
       )}
 
-      {/* Modal Subkategori */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={subcategoryModalRef}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200">
+      <ModalFormShell
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        allowDismiss={!saving}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 shrink-0 flex items-start justify-between gap-3 bg-white rounded-t-xl">
+            <div className="min-w-0">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingSubcategory
                   ? "Edit Subkategori"
@@ -1849,7 +1796,55 @@ function SubcategoriesView({
                 Kategori: {category.nama}
               </p>
             </div>
-            <form onSubmit={handleSave} className="p-6">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="settings-subcategory-form"
+              disabled={saving}
+              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-semibold disabled:opacity-50"
+            >
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="settings-subcategory-form"
+              onSubmit={handleSave}
+              className="p-6"
+            >
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nama Subkategori
@@ -1864,35 +1859,17 @@ function SubcategoriesView({
                   required
                 />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-semibold disabled:opacity-50"
-                >
-                  {saving ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
-      {/* Modal Spesifikasi */}
-      {showSpecModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={specModalRef}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200">
+      <ModalFormShell
+        open={showSpecModal}
+        onClose={() => setShowSpecModal(false)}
+        allowDismiss={!saving}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 shrink-0 flex items-start justify-between gap-3 bg-white rounded-t-xl">
+            <div className="min-w-0">
               <h3 className="text-xl font-bold text-gray-800">
                 {editingSpec ? "Edit Spesifikasi" : "Tambah Spesifikasi Baru"}
               </h3>
@@ -1900,7 +1877,55 @@ function SubcategoriesView({
                 Kategori: {category.nama}
               </p>
             </div>
-            <form onSubmit={handleSaveSpec} className="p-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setShowSpecModal(false)}
+              disabled={saving}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowSpecModal(false)}
+              disabled={saving}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="settings-spec-form"
+              disabled={saving}
+              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all font-semibold disabled:opacity-50"
+            >
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="settings-spec-form"
+              onSubmit={handleSaveSpec}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Tipe Spesifikasi
@@ -1949,81 +1974,25 @@ function SubcategoriesView({
                   Contoh untuk Gramasi: 80 gsm, 100 gsm, 120 gsm
                 </p>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowSpecModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all font-semibold disabled:opacity-50"
-                >
-                  {saving ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
       {/* Notification Toast */}
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
 
-      {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText="Ya, Hapus"
+          cancelText="Batal"
+          type="danger"
+          onConfirm={() => confirmDialog.onConfirm()}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );
@@ -2043,10 +2012,6 @@ function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
     message: string;
     onConfirm: () => void;
   } | null>(null);
-
-  // Click outside to close modal
-  const unitModalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(unitModalRef, () => setShowModal(false), showModal);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -2072,22 +2037,6 @@ function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
       setShowModal(true);
     }
   }, [autoOpenModal]);
-
-  // Handle ESC key to close modals
-  useEffect(() => {
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (showModal) {
-          setShowModal(false);
-        } else if (confirmDialog?.show) {
-          setConfirmDialog(null);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleEscKey);
-    return () => window.removeEventListener("keydown", handleEscKey);
-  }, [showModal, confirmDialog]);
 
   const loadUnits = async () => {
     try {
@@ -2247,19 +2196,61 @@ function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
         </DndContext>
       )}
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={unitModalRef}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingUnit ? "Edit Satuan" : "Tambah Satuan Baru"}
-              </h3>
-            </div>
-            <form onSubmit={handleSave} className="p-6">
+      <ModalFormShell
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        allowDismiss={!saving}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 shrink-0 flex items-center justify-between gap-3 bg-white rounded-t-xl">
+            <h3 className="text-xl font-bold text-gray-800 min-w-0">
+              {editingUnit ? "Edit Satuan" : "Tambah Satuan Baru"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="settings-unit-form"
+              disabled={saving}
+              className="px-6 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
+            >
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        }
+      >
+            <form id="settings-unit-form" onSubmit={handleSave} className="p-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nama Satuan
@@ -2274,81 +2265,25 @@ function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
                   required
                 />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-semibold disabled:opacity-50"
-                >
-                  {saving ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
       {/* Notification Toast */}
       {notice && (
         <NotificationToast type={notice.type} message={notice.message} />
       )}
 
-      {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {confirmDialog.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setConfirmDialog(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          show={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText="Ya, Hapus"
+          cancelText="Batal"
+          type="danger"
+          onConfirm={() => confirmDialog.onConfirm()}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import MainShell from "@/components/MainShell";
+import IndonesianNativeValidity from "@/components/IndonesianNativeValidity";
 import { usePathname } from "next/navigation";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 
@@ -29,7 +30,7 @@ export default function RootLayout({
   const isAuthPage = pathname?.startsWith("/auth/");
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <head>
         <title>app gemiprint</title>
         <meta
@@ -39,6 +40,7 @@ export default function RootLayout({
         <link rel="icon" href="/assets/images/logo-gemiprint-default.svg" />
       </head>
       <body suppressHydrationWarning>
+        <IndonesianNativeValidity />
         {isAuthPage ? children : <MainShell>{children}</MainShell>}
       </body>
     </html>

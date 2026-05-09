@@ -270,14 +270,22 @@ export default function POSPage() {
     }
   };
 
-  const handleSelectMaterial = (material: Material) => {
+  const handleMaterialGridClick = (material: Material) => {
+    if (selectedMaterial?.id === material.id) {
+      setSelectedMaterial(null);
+      setSelectedUnit(null);
+      setPanjang("");
+      setLebar("");
+      setQuantity("1");
+      setUseRounding(false);
+      return;
+    }
+
     setSelectedMaterial(material);
-    setMaterialSearch(material.nama);
     setPanjang("");
     setLebar("");
     setQuantity("1");
 
-    // Auto-select default unit if available
     const defaultUnit = material.unit_prices.find(
       (u) => u.default_status === 1
     );
@@ -770,11 +778,13 @@ export default function POSPage() {
                     {filteredMaterials.map((material) => (
                       <button
                         key={material.id}
-                        onClick={() => handleSelectMaterial(material)}
-                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                        type="button"
+                        title="Klik untuk memilih barang; klik lagi pada barang yang sama untuk membatalkan pilihan"
+                        onClick={() => handleMaterialGridClick(material)}
+                        className={`cursor-pointer p-3 rounded-lg border-2 transition-all text-left select-none ${
                           selectedMaterial?.id === material.id
-                            ? "border-[#00afef] bg-cyan-50 shadow-md scale-105"
-                            : "border-gray-200 hover:border-[#00afef]/50 hover:bg-cyan-50/50"
+                            ? "border-[#00afef] bg-cyan-50 shadow-md scale-[1.02] ring-2 ring-[#00afef]/30"
+                            : "border-gray-200 hover:border-[#00afef]/50 hover:bg-cyan-50/50 hover:shadow-sm active:scale-[0.98]"
                         }`}
                       >
                         <div className="flex-1 min-w-0">

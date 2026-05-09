@@ -12,7 +12,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { LogoutIcon } from "./icons/PageIcons";
-import { MENU_ITEMS, PAGE_TITLE_MAP } from "./menuConfig";
+import { MENU_ITEMS, PAGE_TITLE_MAP, canAccessPath } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
 
@@ -59,6 +59,17 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       router.push("/auth/login");
     }
   }, [router]);
+
+  // Route-level role guard. Whenever the active page or current user
+  // changes, kick the user back to /dashboard if they're not allowed
+  // on this route. /dashboard is reachable by every role.
+  useEffect(() => {
+    if (!user || !pathname) return;
+    if (pathname.startsWith("/auth/")) return;
+    if (!canAccessPath(user.role, pathname)) {
+      router.replace("/dashboard");
+    }
+  }, [user, pathname, router]);
 
   // Restore sidebar scroll position before paint to prevent flicker
   useLayoutEffect(() => {
@@ -140,42 +151,10 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          {/* User Info - Moved to top */}
-          <div className="mb-6">
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border-2 border-blue-100">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-xl text-white shadow-md">
-                  {user?.nama_lengkap?.charAt(0) ||
-                    user?.nama_pengguna?.charAt(0) ||
-                    "U"}
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-base text-[#0a1b3d]">
-                    {user?.nama_lengkap || user?.nama_pengguna}
-                  </div>
-                  <div className="text-xs text-[#6b7280]">
-                    @{user?.nama_pengguna}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
-                <span className="text-xs text-[#6b7280]">Role:</span>
-                <span className="text-xs font-bold text-[#00afef] uppercase px-2 py-1 bg-white rounded-md">
-                  {user?.role}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Navigation Menu - card-style buttons */}
           <nav ref={navRef} className="space-y-3 flex-1 overflow-y-auto">
             {MENU_ITEMS.map((item) => {
-              if (
-                item.managerOnly &&
-                user?.role !== "admin" &&
-                user?.role !== "manager" &&
-                user?.role !== "chief"
-              ) {
+              if (!canAccessPath(user?.role, item.href)) {
                 return null;
               }
               const active =
@@ -217,15 +196,39 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* User Info & Logout */}
-          <div className="mt-auto pt-6 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-semibold shadow-lg flex items-center justify-center gap-2"
-            >
-              <LogoutIcon size={20} />
-              Logout
-            </button>
+          {/* User Info + Logout - merged card */}
+          <div className="mt-auto pt-4">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-100 overflow-hidden shadow-sm">
+              <div className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-lg text-white shadow-md shrink-0">
+                    {user?.nama_lengkap?.charAt(0) ||
+                      user?.nama_pengguna?.charAt(0) ||
+                      "U"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-[#0a1b3d] truncate leading-tight">
+                      {user?.nama_lengkap || user?.nama_pengguna}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] text-[#6b7280] truncate">
+                        @{user?.nama_pengguna}
+                      </span>
+                      <span className="text-[9px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white rounded-md shrink-0 tracking-wide">
+                        {user?.role}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2.5 hover:from-red-600 hover:to-red-700 transition-all font-semibold flex items-center justify-center gap-2 border-t-2 border-red-700/20"
+              >
+                <LogoutIcon size={18} />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </aside>

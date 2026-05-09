@@ -153,6 +153,9 @@ const SYNC_V2_TABLES = [
   "item_produksi",
   "item_finishing",
   "keuangan",
+  "finance_category_definitions",
+  "finance_participants",
+  "finance_metric_mappings",
 ];
 
 async function getServerSQLite(): Promise<any> {
@@ -178,6 +181,56 @@ async function getServerSQLite(): Promise<any> {
 }
 
 function ensureServerSQLiteSyncV2Schema(db: any) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS finance_category_definitions (
+      id TEXT PRIMARY KEY,
+      category_code TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      color_bg TEXT NOT NULL DEFAULT 'bg-gray-100',
+      color_text TEXT NOT NULL DEFAULT 'text-gray-800',
+      color_border TEXT NOT NULL DEFAULT 'border-gray-300',
+      direction TEXT NOT NULL DEFAULT 'both' CHECK(direction IN ('debit', 'kredit', 'both')),
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending',
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS finance_participants (
+      id TEXT PRIMARY KEY,
+      participant_code TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      role_type TEXT NOT NULL DEFAULT 'other',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending',
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS finance_metric_mappings (
+      id TEXT PRIMARY KEY,
+      metric_key TEXT NOT NULL UNIQUE,
+      metric_label TEXT NOT NULL,
+      metric_group TEXT NOT NULL,
+      source_column TEXT NOT NULL,
+      participant_id TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending',
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL
+    );
+  `);
+
   for (const tableName of SYNC_V2_TABLES) {
     const tableExists = db
       .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")

@@ -56,9 +56,13 @@ export default function PayDebtModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(modalRef, () => {
-    if (!loading) onClose();
-  });
+  useClickOutside(
+    modalRef,
+    () => {
+      if (!loading) onClose();
+    },
+    isOpen
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -181,7 +185,7 @@ export default function PayDebtModal({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
               <MoneyIcon size={24} className="text-white" />
@@ -210,7 +214,7 @@ export default function PayDebtModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {loading && !selectedDebt ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
@@ -318,7 +322,11 @@ export default function PayDebtModal({
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form
+                    id="pay-debt-form"
+                    onSubmit={handleSubmit}
+                    className="space-y-4"
+                  >
                     {error && (
                       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                         {error}
@@ -434,28 +442,38 @@ export default function PayDebtModal({
                       />
                     </div>
 
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDebt(null)}
-                        className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                        disabled={loading}
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={loading}
-                      >
-                        {loading ? "Memproses..." : "Bayar"}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDebt(null)}
+                      className="text-sm text-indigo-600 hover:underline font-medium"
+                      disabled={loading}
+                    >
+                      Ubah pilihan pembelian
+                    </button>
                   </form>
                 )}
               </div>
             </div>
           )}
+        </div>
+
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="pay-debt-form"
+            disabled={loading || !selectedDebt}
+            className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? "Memproses..." : "Simpan"}
+          </button>
         </div>
       </div>
     </div>

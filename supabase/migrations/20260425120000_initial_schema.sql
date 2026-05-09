@@ -17,7 +17,6 @@
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ============================================================================
 -- MASTER DATA TABLES
 -- ============================================================================
@@ -34,10 +33,8 @@ CREATE TABLE IF NOT EXISTS kategori_barang (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_kategori_barang_nama ON kategori_barang(nama);
 CREATE INDEX IF NOT EXISTS idx_kategori_barang_sync_status ON kategori_barang(sync_status);
-
 -- Table: subkategori_barang (Material Subcategories)
 CREATE TABLE IF NOT EXISTS subkategori_barang (
   id TEXT PRIMARY KEY,
@@ -51,11 +48,9 @@ CREATE TABLE IF NOT EXISTS subkategori_barang (
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_subkategori_barang_kategori ON subkategori_barang(kategori_id);
 CREATE INDEX IF NOT EXISTS idx_subkategori_barang_nama ON subkategori_barang(nama);
 CREATE INDEX IF NOT EXISTS idx_subkategori_barang_sync_status ON subkategori_barang(sync_status);
-
 -- Table: satuan_barang (Material Units)
 CREATE TABLE IF NOT EXISTS satuan_barang (
   id TEXT PRIMARY KEY,
@@ -67,10 +62,8 @@ CREATE TABLE IF NOT EXISTS satuan_barang (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_satuan_barang_nama ON satuan_barang(nama);
 CREATE INDEX IF NOT EXISTS idx_satuan_barang_sync_status ON satuan_barang(sync_status);
-
 -- Table: spesifikasi_cepat_barang (Quick Specifications)
 CREATE TABLE IF NOT EXISTS spesifikasi_cepat_barang (
   id TEXT PRIMARY KEY,
@@ -85,10 +78,8 @@ CREATE TABLE IF NOT EXISTS spesifikasi_cepat_barang (
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_spesifikasi_cepat_kategori ON spesifikasi_cepat_barang(kategori_id);
 CREATE INDEX IF NOT EXISTS idx_spesifikasi_cepat_barang_sync_status ON spesifikasi_cepat_barang(sync_status);
-
 -- Table: barang (Materials/Products)
 CREATE TABLE IF NOT EXISTS barang (
   id TEXT PRIMARY KEY,
@@ -111,9 +102,7 @@ CREATE TABLE IF NOT EXISTS barang (
   FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
   FOREIGN KEY (subkategori_id) REFERENCES subkategori_barang(id) ON DELETE SET NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_barang_sync_status ON barang(sync_status);
-
 -- Table: harga_barang_satuan (Material Unit Prices)
 CREATE TABLE IF NOT EXISTS harga_barang_satuan (
   id TEXT PRIMARY KEY,
@@ -133,9 +122,7 @@ CREATE TABLE IF NOT EXISTS harga_barang_satuan (
   FOREIGN KEY (barang_id) REFERENCES barang(id) ON DELETE CASCADE,
   UNIQUE(barang_id, nama_satuan)
 );
-
 CREATE INDEX IF NOT EXISTS idx_harga_barang_satuan_sync_status ON harga_barang_satuan(sync_status);
-
 -- Table: opsi_finishing (Finishing Options)
 CREATE TABLE IF NOT EXISTS opsi_finishing (
   id TEXT PRIMARY KEY,
@@ -148,10 +135,8 @@ CREATE TABLE IF NOT EXISTS opsi_finishing (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_opsi_finishing_aktif ON opsi_finishing(aktif_status, urutan_tampilan);
 CREATE INDEX IF NOT EXISTS idx_opsi_finishing_sync_status ON opsi_finishing(sync_status);
-
 -- ============================================================================
 -- PARTY TABLES (Customers, Vendors, Users)
 -- ============================================================================
@@ -173,9 +158,7 @@ CREATE TABLE IF NOT EXISTS pelanggan (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_pelanggan_sync_status ON pelanggan(sync_status);
-
 -- Table: vendor (Vendors)
 CREATE TABLE IF NOT EXISTS vendor (
   id TEXT PRIMARY KEY,
@@ -193,9 +176,7 @@ CREATE TABLE IF NOT EXISTS vendor (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_vendor_sync_status ON vendor(sync_status);
-
 -- Table: profil (User Profiles)
 CREATE TABLE IF NOT EXISTS profil (
   id TEXT PRIMARY KEY,
@@ -211,9 +192,7 @@ CREATE TABLE IF NOT EXISTS profil (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_profil_sync_status ON profil(sync_status);
-
 -- Table: kredensial (Credentials)
 CREATE TABLE IF NOT EXISTS kredensial (
   id TEXT PRIMARY KEY,
@@ -230,11 +209,9 @@ CREATE TABLE IF NOT EXISTS kredensial (
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (pemilik_id) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_kredensial_owner ON kredensial(pemilik_id);
 CREATE INDEX IF NOT EXISTS idx_kredensial_service ON kredensial(nama_layanan);
 CREATE INDEX IF NOT EXISTS idx_kredensial_sync_status ON kredensial(sync_status);
-
 -- ============================================================================
 -- TRANSACTION TABLES (Sales & Purchases)
 -- ============================================================================
@@ -258,9 +235,7 @@ CREATE TABLE IF NOT EXISTS penjualan (
   FOREIGN KEY (pelanggan_id) REFERENCES pelanggan(id),
   FOREIGN KEY (kasir_id) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_penjualan_sync_status ON penjualan(sync_status);
-
 -- Table: item_penjualan (Sales Items)
 CREATE TABLE IF NOT EXISTS item_penjualan (
   id TEXT PRIMARY KEY,
@@ -280,9 +255,7 @@ CREATE TABLE IF NOT EXISTS item_penjualan (
   FOREIGN KEY (barang_id) REFERENCES barang(id),
   FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_item_penjualan_sync_status ON item_penjualan(sync_status);
-
 -- Table: pembelian (Purchases)
 CREATE TABLE IF NOT EXISTS pembelian (
   id TEXT PRIMARY KEY,
@@ -304,9 +277,7 @@ CREATE TABLE IF NOT EXISTS pembelian (
   FOREIGN KEY (vendor_id) REFERENCES vendor(id),
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_pembelian_sync_status ON pembelian(sync_status);
-
 -- Table: item_pembelian (Purchase Items)
 CREATE TABLE IF NOT EXISTS item_pembelian (
   id TEXT PRIMARY KEY,
@@ -326,9 +297,7 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   FOREIGN KEY (barang_id) REFERENCES barang(id),
   FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_item_pembelian_sync_status ON item_pembelian(sync_status);
-
 -- ============================================================================
 -- RECEIVABLES & PAYABLES
 -- ============================================================================
@@ -350,11 +319,9 @@ CREATE TABLE IF NOT EXISTS piutang_penjualan (
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (id_penjualan) REFERENCES penjualan(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_status ON piutang_penjualan(status);
 CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_date ON piutang_penjualan(dibuat_pada);
 CREATE INDEX IF NOT EXISTS idx_piutang_penjualan_sync_status ON piutang_penjualan(sync_status);
-
 -- Table: pelunasan_piutang (Receivable Payments)
 CREATE TABLE IF NOT EXISTS pelunasan_piutang (
   id TEXT PRIMARY KEY,
@@ -372,10 +339,8 @@ CREATE TABLE IF NOT EXISTS pelunasan_piutang (
   FOREIGN KEY (id_piutang) REFERENCES piutang_penjualan(id) ON DELETE CASCADE,
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_pelunasan_piutang_date ON pelunasan_piutang(tanggal_bayar);
 CREATE INDEX IF NOT EXISTS idx_pelunasan_piutang_sync_status ON pelunasan_piutang(sync_status);
-
 -- Table: hutang_pembelian (Accounts Payable)
 CREATE TABLE IF NOT EXISTS hutang_pembelian (
   id TEXT PRIMARY KEY,
@@ -393,9 +358,7 @@ CREATE TABLE IF NOT EXISTS hutang_pembelian (
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (id_pembelian) REFERENCES pembelian(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_hutang_pembelian_sync_status ON hutang_pembelian(sync_status);
-
 -- Table: pelunasan_hutang (Payable Payments)
 CREATE TABLE IF NOT EXISTS pelunasan_hutang (
   id TEXT PRIMARY KEY,
@@ -413,9 +376,7 @@ CREATE TABLE IF NOT EXISTS pelunasan_hutang (
   FOREIGN KEY (id_hutang) REFERENCES hutang_pembelian(id) ON DELETE CASCADE,
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_pelunasan_hutang_sync_status ON pelunasan_hutang(sync_status);
-
 -- ============================================================================
 -- PRODUCTION TABLES
 -- ============================================================================
@@ -441,11 +402,9 @@ CREATE TABLE IF NOT EXISTS order_produksi (
   FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
   FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_order_produksi_status ON order_produksi(status);
 CREATE INDEX IF NOT EXISTS idx_order_produksi_penjualan ON order_produksi(penjualan_id);
 CREATE INDEX IF NOT EXISTS idx_order_produksi_sync_status ON order_produksi(sync_status);
-
 -- Table: item_produksi (Production Items)
 CREATE TABLE IF NOT EXISTS item_produksi (
   id TEXT PRIMARY KEY,
@@ -473,11 +432,9 @@ CREATE TABLE IF NOT EXISTS item_produksi (
   FOREIGN KEY (item_penjualan_id) REFERENCES item_penjualan(id) ON DELETE CASCADE,
   FOREIGN KEY (operator_id) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_item_produksi_order ON item_produksi(order_produksi_id);
 CREATE INDEX IF NOT EXISTS idx_item_produksi_status ON item_produksi(status);
 CREATE INDEX IF NOT EXISTS idx_item_produksi_sync_status ON item_produksi(sync_status);
-
 -- Table: item_finishing (Finishing Items)
 CREATE TABLE IF NOT EXISTS item_finishing (
   id TEXT PRIMARY KEY,
@@ -496,10 +453,8 @@ CREATE TABLE IF NOT EXISTS item_finishing (
   FOREIGN KEY (item_produksi_id) REFERENCES item_produksi(id) ON DELETE CASCADE,
   FOREIGN KEY (operator_id) REFERENCES profil(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_item_finishing_item ON item_finishing(item_produksi_id);
 CREATE INDEX IF NOT EXISTS idx_item_finishing_sync_status ON item_finishing(sync_status);
-
 -- ============================================================================
 -- FINANCE TABLE
 -- ============================================================================
@@ -547,9 +502,7 @@ CREATE TABLE IF NOT EXISTS keuangan (
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
-
 CREATE INDEX IF NOT EXISTS idx_keuangan_sync_status ON keuangan(sync_status);
-
 -- ============================================================================
 -- TRIGGERS FOR UPDATED_AT
 -- ============================================================================
@@ -564,7 +517,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 -- Apply trigger to all tables with diperbarui_pada
 CREATE TRIGGER update_barang_diperbarui_pada BEFORE UPDATE ON barang FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
 CREATE TRIGGER update_harga_barang_satuan_diperbarui_pada BEFORE UPDATE ON harga_barang_satuan FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
@@ -584,7 +536,6 @@ CREATE TRIGGER update_order_produksi_diperbarui_pada BEFORE UPDATE ON order_prod
 CREATE TRIGGER update_item_produksi_diperbarui_pada BEFORE UPDATE ON item_produksi FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
 CREATE TRIGGER update_item_finishing_diperbarui_pada BEFORE UPDATE ON item_finishing FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
 CREATE TRIGGER update_opsi_finishing_diperbarui_pada BEFORE UPDATE ON opsi_finishing FOR EACH ROW EXECUTE FUNCTION update_diperbarui_pada();
-
 -- ============================================================================
 -- NOTES
 -- ============================================================================
@@ -606,4 +557,4 @@ CREATE TRIGGER update_opsi_finishing_diperbarui_pada BEFORE UPDATE ON opsi_finis
 -- For Row Level Security (RLS):
 -- - Consider adding RLS policies based on your security requirements
 -- - Example: Only allow users to see their own data, admins see all
---
+--;

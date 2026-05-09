@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import { useState, useEffect } from "react";
+import ModalFormShell from "@/components/ModalFormShell";
 import { CashBook } from "@/types/database";
 import { formatRupiah } from "@/lib/indonesian-helpers";
 
@@ -38,10 +38,6 @@ export default function EditManualModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
 
-  // Click outside to close modal (only when not saving)
-  const modalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(modalRef, onClose, show && !saving);
-
   useEffect(() => {
     if (cashBook) {
       const initialData: { [key: string]: string } = {};
@@ -52,20 +48,6 @@ export default function EditManualModal({
       setTouchedFields(new Set()); // Reset touched fields when modal opens
     }
   }, [cashBook]);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    if (!show) return;
-
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscKey);
-    return () => window.removeEventListener("keydown", handleEscKey);
-  }, [show, onClose]);
 
   if (!show || !cashBook) return null;
 
@@ -146,22 +128,76 @@ export default function EditManualModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200"
-      >
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
-          <h3 className="text-xl font-bold text-white">
-            🔧 Edit Manual (Override)
-          </h3>
-          <p className="text-white/90 text-sm mt-1">
-            Transaksi tgl: {cashBook.tanggal} | Kategori:{" "}
-            {cashBook.kategori_transaksi}
-          </p>
+    <ModalFormShell
+      open={show}
+      onClose={handleClose}
+      allowDismiss={!saving}
+      maxWidthClass="max-w-2xl"
+      zIndexClass="z-[60]"
+      backdropClassName="bg-black/60"
+      header={
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <span className="text-2xl" aria-hidden>
+                🔧
+              </span>
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold text-white truncate">
+                Edit Manual (Override)
+              </h3>
+              <p className="text-white/90 text-sm mt-1 truncate">
+                Transaksi tgl: {cashBook.tanggal} | Kategori:{" "}
+                {cashBook.kategori_transaksi}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={saving}
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+            aria-label="Tutup"
+          >
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+      }
+      footer={
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={saving}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="edit-manual-form"
+            disabled={saving}
+            className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+          >
+            {saving ? "Menyimpan..." : "Simpan"}
+          </button>
+        </div>
+      }
+    >
+        <form id="edit-manual-form" onSubmit={handleSubmit}>
           <div className="p-6 space-y-5">
             {/* Info Box */}
             <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
@@ -245,27 +281,7 @@ export default function EditManualModal({
               </div>
             )}
           </div>
-
-          {/* Actions */}
-          <div className="p-6 border-t border-gray-200 flex gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={saving}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-semibold disabled:opacity-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
-            >
-              {saving ? "Menyimpan..." : "Simpan & Kalkulasi Ulang"}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </ModalFormShell>
   );
 }

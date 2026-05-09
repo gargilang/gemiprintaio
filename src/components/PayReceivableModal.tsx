@@ -59,9 +59,13 @@ export default function PayReceivableModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(modalRef, () => {
-    if (!loading) onClose();
-  });
+  useClickOutside(
+    modalRef,
+    () => {
+      if (!loading) onClose();
+    },
+    isOpen
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -183,7 +187,7 @@ export default function PayReceivableModal({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
               <MoneyIcon size={24} className="text-white" />
@@ -214,7 +218,7 @@ export default function PayReceivableModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {loading && !selectedReceivable ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
@@ -331,7 +335,11 @@ export default function PayReceivableModal({
                     <p>Pilih piutang untuk memproses pembayaran</p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form
+                    id="pay-receivable-form"
+                    onSubmit={handleSubmit}
+                    className="space-y-4"
+                  >
                     {error && (
                       <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
                         <p className="text-sm text-red-700 font-semibold">
@@ -447,40 +455,37 @@ export default function PayReceivableModal({
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-bold hover:from-[#0099dd] hover:to-[#1955ee] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          Memproses...
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          Proses Pembayaran
-                        </>
-                      )}
-                    </button>
                   </form>
                 )}
               </div>
             </div>
           )}
+        </div>
+
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="pay-receivable-form"
+            disabled={loading || !selectedReceivable}
+            className="px-6 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Memproses...
+              </>
+            ) : (
+              "Simpan"
+            )}
+          </button>
         </div>
       </div>
     </div>

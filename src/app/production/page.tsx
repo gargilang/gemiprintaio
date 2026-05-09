@@ -807,9 +807,9 @@ export default function ProductionPage() {
       {/* Detail Modal */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-700 to-amber-900">
-              <div className="flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-700 to-amber-900 shrink-0">
+              <div className="flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <PrinterIcon size={24} />
                   Detail SPK - {selectedOrder.nomor_spk}
@@ -835,7 +835,7 @@ export default function ProductionPage() {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <div className="p-6 flex-1 min-h-0 overflow-y-auto">
               {/* Order Info */}
               <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                 <div>
@@ -985,14 +985,16 @@ export default function ProductionPage() {
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
               <button
+                type="button"
                 onClick={() => setShowDetailModal(false)}
-                className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+                className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
               >
-                Tutup
+                Batal
               </button>
               <button
+                type="button"
                 onClick={() => {
                   handlePrintSPK(selectedOrder);
                   setShowDetailModal(false);

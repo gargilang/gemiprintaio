@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import { useState } from "react";
+import ModalFormShell from "@/components/ModalFormShell";
 
 interface CustomerData {
   tipe_pelanggan: "perorangan" | "perusahaan";
@@ -21,10 +21,6 @@ interface QuickAddCustomerModalProps {
   onCreateCustomer: (data: CustomerData) => Promise<any>;
 }
 
-function generateId(prefix: string = "id"): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
 export default function QuickAddCustomerModal({
   show,
   onClose,
@@ -42,28 +38,6 @@ export default function QuickAddCustomerModal({
   const [email, setEmail] = useState("");
   const [alamat, setAlamat] = useState("");
   const [memberStatus, setMemberStatus] = useState(false);
-
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  useClickOutside(modalRef, () => {
-    if (!loading) onClose();
-  });
-
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (!show) return;
-
-      if (e.key === "Escape") {
-        if (!loading) onClose();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        handleSubmit(e as any);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [show, loading]);
 
   const resetForm = () => {
     setNama("");
@@ -108,18 +82,19 @@ export default function QuickAddCustomerModal({
     setLoading(false);
   };
 
-  if (!show) return null;
+  const dismissDisabled = loading;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+    <ModalFormShell
+      open={show}
+      onClose={onClose}
+      allowDismiss={!dismissDisabled}
+      maxWidthClass="max-w-md"
+      backdropClassName="bg-black/50 backdrop-blur-sm"
+      header={
+        <div className="bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-white/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -134,17 +109,19 @@ export default function QuickAddCustomerModal({
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-white truncate">
               Tambah Pelanggan Baru
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-lg p-2 transition-all"
-            disabled={loading}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all shrink-0 disabled:opacity-50"
+            disabled={dismissDisabled}
+            aria-label="Tutup"
           >
             <svg
-              className="w-6 h-6"
+              className="w-6 h-6 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -158,156 +135,150 @@ export default function QuickAddCustomerModal({
             </svg>
           </button>
         </div>
-
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            {/* Tipe Pelanggan */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tipe Pelanggan
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    value="perorangan"
-                    checked={tipePelanggan === "perorangan"}
-                    onChange={(e) =>
-                      setTipePelanggan(e.target.value as "perorangan")
-                    }
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-gray-700">Perorangan</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    value="perusahaan"
-                    checked={tipePelanggan === "perusahaan"}
-                    onChange={(e) =>
-                      setTipePelanggan(e.target.value as "perusahaan")
-                    }
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-gray-700">Perusahaan</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Nama */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Nama{" "}
-                {tipePelanggan === "perorangan" ? "Lengkap" : "Contact Person"}{" "}
-                *
-              </label>
+      }
+      footer={
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={dismissDisabled}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="quick-add-customer-form"
+            disabled={dismissDisabled}
+            className="px-6 py-2 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-lg hover:from-[#0d9488] hover:to-[#0891b2] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? "Menyimpan..." : "Simpan"}
+          </button>
+        </div>
+      }
+    >
+      <form
+        id="quick-add-customer-form"
+        onSubmit={handleSubmit}
+        className="p-6 space-y-4"
+      >
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Tipe Pelanggan
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type="text"
-                value={nama}
-                onChange={(e) => setNama(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="Masukkan nama..."
-                required
+                type="radio"
+                value="perorangan"
+                checked={tipePelanggan === "perorangan"}
+                onChange={(e) =>
+                  setTipePelanggan(e.target.value as "perorangan")
+                }
+                className="w-4 h-4 text-blue-600"
               />
-            </div>
-
-            {/* Nama Perusahaan (if perusahaan) */}
-            {tipePelanggan === "perusahaan" && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nama Perusahaan
-                </label>
-                <input
-                  type="text"
-                  value={namaPerusahaan}
-                  onChange={(e) => setNamaPerusahaan(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="PT. Contoh..."
-                />
-              </div>
-            )}
-
-            {/* Telepon */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Nomor Telepon
-              </label>
+              <span className="text-gray-700">Perorangan</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type="tel"
-                value={telepon}
-                onChange={(e) => setTelepon(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="08xxxxxxxxxx"
+                type="radio"
+                value="perusahaan"
+                checked={tipePelanggan === "perusahaan"}
+                onChange={(e) =>
+                  setTipePelanggan(e.target.value as "perusahaan")
+                }
+                className="w-4 h-4 text-blue-600"
               />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="email@example.com"
-              />
-            </div>
-
-            {/* Alamat */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Alamat
-              </label>
-              <textarea
-                value={alamat}
-                onChange={(e) => setAlamat(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="Alamat lengkap..."
-              />
-            </div>
-
-            {/* Member Status */}
-            <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
-              <input
-                type="checkbox"
-                id="memberStatus"
-                checked={memberStatus}
-                onChange={(e) => setMemberStatus(e.target.checked)}
-                className="w-5 h-5 text-amber-600"
-              />
-              <label htmlFor="memberStatus" className="flex-1 cursor-pointer">
-                <span className="font-semibold text-gray-800">Member</span>
-                <p className="text-sm text-gray-600">
-                  Member mendapatkan harga khusus
-                </p>
-              </label>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white font-semibold rounded-lg hover:from-[#0d9488] hover:to-[#0891b2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Menyimpan..." : "Simpan Pelanggan"}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Batal
-              </button>
-            </div>
+              <span className="text-gray-700">Perusahaan</span>
+            </label>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Nama{" "}
+            {tipePelanggan === "perorangan" ? "Lengkap" : "Contact Person"} *
+          </label>
+          <input
+            type="text"
+            value={nama}
+            onChange={(e) => setNama(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            placeholder="Masukkan nama..."
+            required
+          />
+        </div>
+
+        {tipePelanggan === "perusahaan" && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Nama Perusahaan
+            </label>
+            <input
+              type="text"
+              value={namaPerusahaan}
+              onChange={(e) => setNamaPerusahaan(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="PT. Contoh..."
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Nomor Telepon
+          </label>
+          <input
+            type="tel"
+            value={telepon}
+            onChange={(e) => setTelepon(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            placeholder="08xxxxxxxxxx"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            placeholder="email@example.com"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Alamat
+          </label>
+          <textarea
+            value={alamat}
+            onChange={(e) => setAlamat(e.target.value)}
+            rows={3}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            placeholder="Alamat lengkap..."
+          />
+        </div>
+
+        <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+          <input
+            type="checkbox"
+            id="memberStatus"
+            checked={memberStatus}
+            onChange={(e) => setMemberStatus(e.target.checked)}
+            className="w-5 h-5 text-amber-600"
+          />
+          <label htmlFor="memberStatus" className="flex-1 cursor-pointer">
+            <span className="font-semibold text-gray-800">Member</span>
+            <p className="text-sm text-gray-600">
+              Member mendapatkan harga khusus
+            </p>
+          </label>
+        </div>
+      </form>
+    </ModalFormShell>
   );
 }

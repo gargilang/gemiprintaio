@@ -447,7 +447,7 @@ export default function AddMaterialModal({
         className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
               <svg
@@ -1068,7 +1068,7 @@ export default function AddMaterialModal({
         </form>
 
         {/* Footer Actions */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200">
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -1107,22 +1107,7 @@ export default function AddMaterialModal({
                 Menyimpan...
               </>
             ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                {editData ? "Update Barang" : "Simpan Barang"}
-              </>
+              "Simpan"
             )}
           </button>
         </div>

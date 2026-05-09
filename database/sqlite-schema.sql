@@ -216,6 +216,54 @@ CREATE TABLE keuangan (
 -- Indexes for keuangan
 CREATE INDEX idx_keuangan_sync_status ON keuangan(sync_status);
 
+-- Table: finance_category_definitions
+CREATE TABLE finance_category_definitions (
+      id TEXT PRIMARY KEY,
+      category_code TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      color_bg TEXT NOT NULL DEFAULT 'bg-gray-100',
+      color_text TEXT NOT NULL DEFAULT 'text-gray-800',
+      color_border TEXT NOT NULL DEFAULT 'border-gray-300',
+      direction TEXT NOT NULL DEFAULT 'both' CHECK(direction IN ('debit', 'kredit', 'both')),
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
+
+CREATE INDEX idx_finance_category_definitions_active ON finance_category_definitions(is_active, display_order);
+
+-- Table: finance_participants
+CREATE TABLE finance_participants (
+      id TEXT PRIMARY KEY,
+      participant_code TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      role_type TEXT NOT NULL DEFAULT 'other' CHECK(role_type IN ('profit_share', 'cash_advance', 'other')),
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
+
+CREATE INDEX idx_finance_participants_active ON finance_participants(is_active, display_order);
+
+-- Table: finance_metric_mappings
+CREATE TABLE finance_metric_mappings (
+      id TEXT PRIMARY KEY,
+      metric_key TEXT NOT NULL UNIQUE,
+      metric_label TEXT NOT NULL,
+      metric_group TEXT NOT NULL CHECK(metric_group IN ('summary', 'profit_share', 'cash_advance')),
+      source_column TEXT NOT NULL,
+      participant_id TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL);
+
+CREATE INDEX idx_finance_metric_mappings_active ON finance_metric_mappings(is_active, metric_group, display_order);
+
 -- Table: kredensial
 CREATE TABLE "kredensial" (
         id TEXT PRIMARY KEY,
@@ -395,7 +443,7 @@ CREATE TABLE "profil" (
       email TEXT UNIQUE,
       nama_lengkap TEXT,
       password_hash TEXT NOT NULL,
-      role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'chief', 'user')),
+      role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'staff', 'kasir', 'operator', 'user')),
       aktif_status INTEGER DEFAULT 1,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now'))

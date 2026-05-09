@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
   NotificationToastProps,
@@ -21,12 +21,20 @@ import {
   changePasswordAction,
 } from "./actions";
 
+type AppRole =
+  | "admin"
+  | "manager"
+  | "staff"
+  | "kasir"
+  | "operator"
+  | "user";
+
 interface User {
   id: string;
   nama_pengguna: string;
   email?: string | null;
   nama_lengkap?: string;
-  role: "admin" | "manager" | "chief" | "user";
+  role: AppRole;
   aktif_status: number;
   dibuat_pada?: string;
   created_at?: string;
@@ -45,7 +53,7 @@ export default function UsersPage() {
     email: "",
     nama_lengkap: "",
     password: "",
-    role: "user" as "admin" | "manager" | "chief" | "user",
+    role: "user" as AppRole,
     aktif_status: 1,
   });
 
@@ -89,11 +97,6 @@ export default function UsersPage() {
   } | null>(null);
 
   // Click outside to close modals
-  const userModalRef = useRef<HTMLDivElement>(null);
-  const credModalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(userModalRef, () => setShowModal(false), showModal);
-  useClickOutside(credModalRef, () => setShowCredModal(false), showCredModal);
-
   useEffect(() => {
     checkAuth();
   }, []);
@@ -215,6 +218,75 @@ export default function UsersPage() {
       role: "user",
       aktif_status: 1,
     });
+  };
+
+  const handleCloseCredModal = () => {
+    setShowCredModal(false);
+    setEditingCred(null);
+    setShowCredPassword(false);
+    setCredForm({
+      nama_layanan: "",
+      nama_pengguna_akun: "",
+      password: "",
+      catatan: "",
+      privat_status: true,
+    });
+  };
+
+  const handleCredSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    try {
+      if (editingCred) {
+        const res = await fetch(`/api/passwords/${editingCred.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id,
+          },
+          body: JSON.stringify(credForm),
+        });
+        const data = await res.json();
+        if (!res.ok)
+          throw new Error(data?.error || "Gagal update kredensial");
+
+        if (credForm.password && credForm.password.trim() !== "") {
+          setVisiblePasswords((prev) => {
+            const updated = { ...prev };
+            delete updated[editingCred.id];
+            return updated;
+          });
+          if (showingPasswordId === editingCred.id) {
+            setShowingPasswordId(null);
+          }
+        }
+
+        showMsg("success", "Kredensial berhasil diupdate!");
+      } else {
+        const res = await fetch(`/api/passwords`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id,
+          },
+          body: JSON.stringify(credForm),
+        });
+        const data = await res.json();
+        if (!res.ok)
+          throw new Error(data?.error || "Gagal menambah kredensial");
+        showMsg("success", "Kredensial berhasil ditambahkan!");
+      }
+      handleCloseCredModal();
+      await loadCredentials();
+    } catch (err) {
+      console.error(err);
+      showMsg(
+        "error",
+        `Terjadi kesalahan: ${
+          err instanceof Error ? err.message : "Unknown"
+        }`
+      );
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -431,6 +503,12 @@ export default function UsersPage() {
                               ? "bg-purple-100 text-purple-700"
                               : user.role === "manager"
                               ? "bg-blue-100 text-blue-700"
+                              : user.role === "staff"
+                              ? "bg-amber-100 text-amber-700"
+                              : user.role === "kasir"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : user.role === "operator"
+                              ? "bg-cyan-100 text-cyan-700"
                               : "bg-gray-100 text-gray-700"
                           }`}
                         >
@@ -874,20 +952,66 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Modal Form - Manage Users */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={userModalRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] rounded-t-2xl">
-              <h3 className="text-xl font-bold text-white">
+      <ModalFormShell
+        open={showModal}
+        onClose={handleCloseModal}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+                <UsersIcon size={28} className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white truncate">
                 {editingUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
               </h3>
             </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="users-manage-form"
+              className="px-6 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+            >
+              Simpan
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="users-manage-form"
+              onSubmit={handleSubmit}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
                   Username
@@ -1003,13 +1127,15 @@ export default function UsersPage() {
                 <select
                   value={formData.role}
                   onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value as any })
+                    setFormData({ ...formData, role: e.target.value as AppRole })
                   }
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
                 >
                   <option value="user">User</option>
+                  <option value="operator">Operator</option>
+                  <option value="kasir">Kasir</option>
+                  <option value="staff">Staff</option>
                   <option value="manager">Manager</option>
-                  <option value="chief">Chief</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
@@ -1035,110 +1161,67 @@ export default function UsersPage() {
                 </label>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
-                >
-                  {editingUser ? "Update" : "Tambah"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
-      {/* Modal Form - Password Manager */}
-      {showCredModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={credModalRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 rounded-t-2xl">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+      <ModalFormShell
+        open={showCredModal}
+        onClose={handleCloseCredModal}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 flex items-center justify-between shrink-0 gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
                 <KeyIcon size={24} className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white truncate">
                 {editingCred ? "Edit Kredensial" : "Tambah Kredensial"}
               </h3>
             </div>
+            <button
+              type="button"
+              onClick={handleCloseCredModal}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={handleCloseCredModal}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="cred-manager-form"
+              className="px-6 py-2 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+            >
+              Simpan
+            </button>
+          </div>
+        }
+      >
             <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!currentUser) return;
-                try {
-                  if (editingCred) {
-                    const res = await fetch(
-                      `/api/passwords/${editingCred.id}`,
-                      {
-                        method: "PUT",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "x-user-id": currentUser.id,
-                        },
-                        body: JSON.stringify(credForm),
-                      }
-                    );
-                    const data = await res.json();
-                    if (!res.ok)
-                      throw new Error(data?.error || "Gagal update kredensial");
-
-                    // Clear cached password if it was being displayed
-                    if (credForm.password && credForm.password.trim() !== "") {
-                      setVisiblePasswords((prev) => {
-                        const updated = { ...prev };
-                        delete updated[editingCred.id];
-                        return updated;
-                      });
-                      if (showingPasswordId === editingCred.id) {
-                        setShowingPasswordId(null);
-                      }
-                    }
-
-                    showMsg("success", "Kredensial berhasil diupdate!");
-                  } else {
-                    const res = await fetch(`/api/passwords`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "x-user-id": currentUser.id,
-                      },
-                      body: JSON.stringify(credForm),
-                    });
-                    const data = await res.json();
-                    if (!res.ok)
-                      throw new Error(
-                        data?.error || "Gagal menambah kredensial"
-                      );
-                    showMsg("success", "Kredensial berhasil ditambahkan!");
-                  }
-                  setShowCredModal(false);
-                  setEditingCred(null);
-                  setShowCredPassword(false);
-                  setCredForm({
-                    nama_layanan: "",
-                    nama_pengguna_akun: "",
-                    password: "",
-                    catatan: "",
-                    privat_status: true,
-                  });
-                  await loadCredentials();
-                } catch (err) {
-                  console.error(err);
-                  showMsg(
-                    "error",
-                    `Terjadi kesalahan: ${
-                      err instanceof Error ? err.message : "Unknown"
-                    }`
-                  );
-                }
-              }}
+              id="cred-manager-form"
+              onSubmit={handleCredSubmit}
               className="p-6 space-y-4"
             >
               <div>
@@ -1265,36 +1348,8 @@ export default function UsersPage() {
                   Sembunyikan dari user lain
                 </label>
               </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCredModal(false);
-                    setEditingCred(null);
-                    setShowCredPassword(false);
-                    setCredForm({
-                      nama_layanan: "",
-                      nama_pengguna_akun: "",
-                      password: "",
-                      catatan: "",
-                      privat_status: true,
-                    });
-                  }}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
-                >
-                  {editingCred ? "Update" : "Tambah"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (

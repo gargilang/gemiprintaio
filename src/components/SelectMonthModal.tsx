@@ -86,12 +86,37 @@ export default function SelectMonthModal({
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
       >
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white truncate">
+              Pilih Arsip Bulan
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+            aria-label="Tutup"
+          >
             <svg
-              className="w-6 h-6"
+              className="w-6 h-6 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -100,14 +125,13 @@ export default function SelectMonthModal({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-            Pilih Arsip Bulan
-          </h3>
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center py-10">
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-pink-600 border-t-transparent"></div>
@@ -191,12 +215,13 @@ export default function SelectMonthModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 bg-gray-50 shrink-0 flex items-center justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition-all font-semibold"
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
           >
-            Tutup
+            Batal
           </button>
         </div>
       </div>

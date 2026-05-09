@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import { useState, useEffect } from "react";
+import ModalFormShell from "@/components/ModalFormShell";
 
 interface VendorData {
   nama_perusahaan: string;
@@ -38,19 +38,6 @@ export default function QuickAddVendorModal({
   });
   const [saving, setSaving] = useState(false);
 
-  const modalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(modalRef, onClose, show);
-
-  // Handle ESC key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && show) onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [show, onClose]);
-
-  // Reset form when modal opens
   useEffect(() => {
     if (show) {
       setFormData({
@@ -81,7 +68,7 @@ export default function QuickAddVendorModal({
 
       await onCreateVendor({
         ...formData,
-        aktif_status: 1, // Default aktif
+        aktif_status: 1,
         ketentuan_bayar: "",
         catatan: "",
       });
@@ -97,27 +84,20 @@ export default function QuickAddVendorModal({
     }
   };
 
-  if (!show) return null;
+  const dismissDisabled = saving;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">
-              Tambah Vendor Cepat
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
-              disabled={saving}
-            >
+    <ModalFormShell
+      open={show}
+      onClose={onClose}
+      allowDismiss={!dismissDisabled}
+      maxWidthClass="max-w-md"
+      header={
+        <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-white/20 rounded-lg shrink-0">
               <svg
-                className="w-6 h-6"
+                className="w-6 h-6 text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -126,119 +106,147 @@ export default function QuickAddVendorModal({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                 />
               </svg>
-            </button>
+            </div>
+            <h2 className="text-xl font-bold text-white truncate">
+              Tambah Vendor Cepat
+            </h2>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors shrink-0 disabled:opacity-50"
+            disabled={dismissDisabled}
+            aria-label="Tutup"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      }
+      footer={
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={dismissDisabled}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="quick-add-vendor-form"
+            disabled={dismissDisabled}
+            className="px-6 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Menyimpan..." : "Simpan"}
+          </button>
+        </div>
+      }
+    >
+      <form
+        id="quick-add-vendor-form"
+        onSubmit={handleSubmit}
+        className="p-6 space-y-4"
+      >
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Nama Perusahaan <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.nama_perusahaan}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                nama_perusahaan: e.target.value,
+              }))
+            }
+            placeholder="PT. Contoh Vendor"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+            autoFocus
+          />
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Nama Perusahaan <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.nama_perusahaan}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  nama_perusahaan: e.target.value,
-                }))
-              }
-              placeholder="PT. Contoh Vendor"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              autoFocus
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Kontak Person
+          </label>
+          <input
+            type="text"
+            value={formData.kontak_person}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                kontak_person: e.target.value,
+              }))
+            }
+            placeholder="Nama contact person"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Kontak Person
-            </label>
-            <input
-              type="text"
-              value={formData.kontak_person}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  kontak_person: e.target.value,
-                }))
-              }
-              placeholder="Nama contact person"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Nomor Telepon <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            value={formData.telepon}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, telepon: e.target.value }))
+            }
+            placeholder="08123456789"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Nomor Telepon <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              value={formData.telepon}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, telepon: e.target.value }))
-              }
-              placeholder="08123456789"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Email
+          </label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, email: e.target.value }))
+            }
+            placeholder="vendor@email.com"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, email: e.target.value }))
-              }
-              placeholder="vendor@email.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Alamat
-            </label>
-            <textarea
-              value={formData.alamat}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, alamat: e.target.value }))
-              }
-              placeholder="Alamat lengkap vendor"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white font-semibold rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Menyimpan..." : "Simpan Vendor"}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Batal
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Alamat
+          </label>
+          <textarea
+            value={formData.alamat}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, alamat: e.target.value }))
+            }
+            placeholder="Alamat lengkap vendor"
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </form>
+    </ModalFormShell>
   );
 }

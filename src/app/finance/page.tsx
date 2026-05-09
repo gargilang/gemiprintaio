@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
-import { useClickOutside } from "@/hooks/useClickOutside";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
@@ -13,6 +12,7 @@ import DeleteAllCashbookModal from "@/components/DeleteAllCashbookModal";
 import EditManualModal from "@/components/EditManualModal";
 import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
+import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import {
@@ -39,6 +39,107 @@ const stripReferenceId = (text: string | null | undefined): string => {
   if (!text) return "";
   return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
 };
+
+/** Kolom angka di baris buku kas — label Indonesia untuk pengguna non-teknis */
+const FINANCE_DATA_SLOTS: Array<{
+  source_column: string;
+  metric_group: "summary" | "profit_share" | "cash_advance";
+  label: string;
+}> = [
+  { source_column: "saldo", metric_group: "summary", label: "Saldo kas" },
+  { source_column: "omzet", metric_group: "summary", label: "Omzet" },
+  {
+    source_column: "biaya_operasional",
+    metric_group: "summary",
+    label: "Biaya operasional",
+  },
+  { source_column: "biaya_bahan", metric_group: "summary", label: "Biaya bahan" },
+  { source_column: "laba_bersih", metric_group: "summary", label: "Laba bersih" },
+  {
+    source_column: "bagi_hasil_anwar",
+    metric_group: "profit_share",
+    label: "Bagian laba — Anwar",
+  },
+  {
+    source_column: "bagi_hasil_suri",
+    metric_group: "profit_share",
+    label: "Bagian laba — Suri",
+  },
+  {
+    source_column: "bagi_hasil_gemi",
+    metric_group: "profit_share",
+    label: "Bagian laba — Gemi",
+  },
+  {
+    source_column: "kasbon_anwar",
+    metric_group: "cash_advance",
+    label: "Kasbon — Anwar",
+  },
+  {
+    source_column: "kasbon_suri",
+    metric_group: "cash_advance",
+    label: "Kasbon — Suri",
+  },
+  {
+    source_column: "kasbon_cahaya",
+    metric_group: "cash_advance",
+    label: "Kasbon — Cahaya",
+  },
+  {
+    source_column: "kasbon_dinil",
+    metric_group: "cash_advance",
+    label: "Kasbon — Dinil",
+  },
+];
+
+const METRIC_GROUP_LABELS: Record<
+  "summary" | "profit_share" | "cash_advance",
+  string
+> = {
+  summary: "Ringkasan",
+  profit_share: "Bagi hasil",
+  cash_advance: "Kasbon",
+};
+
+function lookupFinanceSlotLabel(sourceColumn: string): string {
+  const hit = FINANCE_DATA_SLOTS.find((s) => s.source_column === sourceColumn);
+  return hit?.label ?? sourceColumn.replace(/_/g, " ");
+}
+
+function slugifyParticipantCode(name: string): string {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "")
+    .toUpperCase()
+    .slice(0, 16);
+  return base || `ORANG${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
+function slugifyCategoryCode(displayName: string): string {
+  const base = displayName
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toUpperCase()
+    .slice(0, 24);
+  return base || `KAT${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
+function roleTypeLabelIndo(
+  role: "profit_share" | "cash_advance" | "other"
+): string {
+  switch (role) {
+    case "profit_share":
+      return "Bagi hasil";
+    case "cash_advance":
+      return "Kasbon / pinjaman";
+    default:
+      return "Lainnya";
+  }
+}
 
 // Memoized CashBook Row Component - mencegah re-render yang tidak perlu
 const CashBookRow = memo(
@@ -188,6 +289,32 @@ interface User {
   is_active: number;
 }
 
+interface FinanceCategoryConfig {
+  id?: string;
+  category_code: string;
+  display_name: string;
+  color_bg: string;
+  color_text: string;
+  color_border: string;
+}
+
+interface FinanceMetricConfig {
+  id?: string;
+  metric_key: string;
+  metric_label: string;
+  metric_group: "summary" | "profit_share" | "cash_advance";
+  source_column: string;
+  participant_id?: string | null;
+  participant_name: string | null;
+}
+
+interface FinanceParticipantConfig {
+  id: string;
+  participant_code: string;
+  display_name: string;
+  role_type: "profit_share" | "cash_advance" | "other";
+}
+
 export default function FinancePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -218,11 +345,48 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
-  const [showBagiHasilAnwar, setShowBagiHasilAnwar] = useState(false);
-  const [showBagiHasilSuri, setShowBagiHasilSuri] = useState(false);
-  const [showBagiHasilGemi, setShowBagiHasilGemi] = useState(false);
-  const [showKasbonKaryawan, setShowKasbonKaryawan] = useState(false);
   const [showBagiHasilSection, setShowBagiHasilSection] = useState(false);
+  const [showKasbonSection, setShowKasbonSection] = useState(false);
+  const [financeCategories, setFinanceCategories] = useState<
+    FinanceCategoryConfig[]
+  >([]);
+  const [financeMetrics, setFinanceMetrics] = useState<FinanceMetricConfig[]>(
+    []
+  );
+  const [financeParticipants, setFinanceParticipants] = useState<
+    FinanceParticipantConfig[]
+  >([]);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [participantForm, setParticipantForm] = useState({
+    display_name: "",
+    role_type: "other" as "profit_share" | "cash_advance" | "other",
+  });
+  const [categoryForm, setCategoryForm] = useState({
+    display_name: "",
+  });
+  const [mappingForm, setMappingForm] = useState({
+    selectedSourceColumn: "",
+    metric_label: "",
+    participant_id: "",
+  });
+  const [mappingEdits, setMappingEdits] = useState<
+    Record<
+      string,
+      {
+        metric_label: string;
+        metric_group: "summary" | "profit_share" | "cash_advance";
+        source_column: string;
+        participant_id: string;
+      }
+    >
+  >({});
+  type FinanceConfigTabId = "people" | "categories" | "metrics";
+  const [financeConfigTab, setFinanceConfigTab] =
+    useState<FinanceConfigTabId>("people");
+  const [financeCfgPeopleQuery, setFinanceCfgPeopleQuery] = useState("");
+  const [financeCfgCategoryQuery, setFinanceCfgCategoryQuery] = useState("");
+  const [financeCfgMetricQuery, setFinanceCfgMetricQuery] = useState("");
 
   // New modals for cash book management
   const [showImportModal, setShowImportModal] = useState(false);
@@ -253,7 +417,7 @@ export default function FinancePage() {
 
   // Filter state - multi-select dengan checkbox
   const [selectedKategoriFilters, setSelectedKategoriFilters] = useState<
-    Set<KategoriTransaksi>
+    Set<string>
   >(new Set());
   const [showKategoriDropdown, setShowKategoriDropdown] = useState(false);
 
@@ -262,36 +426,29 @@ export default function FinancePage() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const debitInputRef = useRef<HTMLInputElement>(null);
-  const editFormRef = useRef<HTMLDivElement>(null);
 
-  // Close edit form when clicking outside
-  useClickOutside(
-    editFormRef,
-    () => {
-      if (showModal) {
-        setShowModal(false);
-        setEditingCashBook(null);
-      }
-    },
-    showModal
+  const kategoriOptions = useMemo(
+    () =>
+      financeCategories.length > 0
+        ? financeCategories.map((x) => x.category_code)
+        : [
+            "KAS",
+            "BIAYA",
+            "OMZET",
+            "INVESTOR",
+            "SUBSIDI",
+            "LUNAS",
+            "SUPPLY",
+            "LABA",
+            "KOMISI",
+            "TABUNGAN",
+            "HUTANG",
+            "PIUTANG",
+            "PRIBADI-A",
+            "PRIBADI-S",
+          ],
+    [financeCategories]
   );
-
-  const kategoriOptions: KategoriTransaksi[] = [
-    "KAS",
-    "BIAYA",
-    "OMZET",
-    "INVESTOR",
-    "SUBSIDI",
-    "LUNAS",
-    "SUPPLY",
-    "LABA",
-    "KOMISI",
-    "TABUNGAN",
-    "HUTANG",
-    "PIUTANG",
-    "PRIBADI-A",
-    "PRIBADI-S",
-  ];
 
   // Filtered cashbooks based on kategori selection
   const filteredCashBooks = useMemo(() => {
@@ -367,6 +524,170 @@ export default function FinancePage() {
     piutangCount,
   ]);
 
+  const dynamicMetricValue = useCallback(
+    (sourceColumn: string): number => {
+      const latest = viewingArchive
+        ? cashBooks[cashBooks.length - 1]
+        : cashBooks[0];
+      if (!latest) return 0;
+      const value = (latest as Record<string, any>)[sourceColumn];
+      return typeof value === "number" ? value : 0;
+    },
+    [cashBooks, viewingArchive]
+  );
+
+  const profitShareMetrics = useMemo(
+    () => financeMetrics.filter((item) => item.metric_group === "profit_share"),
+    [financeMetrics]
+  );
+  const cashAdvanceMetrics = useMemo(
+    () => financeMetrics.filter((item) => item.metric_group === "cash_advance"),
+    [financeMetrics]
+  );
+
+  const financeSlotsAvailableForNewMapping = useMemo(() => {
+    const used = new Set(financeMetrics.map((m) => m.source_column));
+    return FINANCE_DATA_SLOTS.filter((s) => !used.has(s.source_column));
+  }, [financeMetrics]);
+
+  const sourceColumnEditOptions = (
+    activeColumn: string,
+    fallbackGroup: "summary" | "profit_share" | "cash_advance"
+  ) => {
+    if (FINANCE_DATA_SLOTS.some((s) => s.source_column === activeColumn)) {
+      return FINANCE_DATA_SLOTS;
+    }
+    return [
+      ...FINANCE_DATA_SLOTS,
+      {
+        source_column: activeColumn,
+        metric_group: fallbackGroup,
+        label: `Posisi tersimpan: ${lookupFinanceSlotLabel(activeColumn)}`,
+      },
+    ];
+  };
+
+  const financeCfgParticipantsFiltered = useMemo(() => {
+    const q = financeCfgPeopleQuery.trim().toLowerCase();
+    if (!q) return financeParticipants;
+    return financeParticipants.filter(
+      (p) =>
+        p.display_name.toLowerCase().includes(q) ||
+        roleTypeLabelIndo(p.role_type).toLowerCase().includes(q)
+    );
+  }, [financeParticipants, financeCfgPeopleQuery]);
+
+  const financeCfgCategoriesFiltered = useMemo(() => {
+    const q = financeCfgCategoryQuery.trim().toLowerCase();
+    if (!q) return financeCategories;
+    return financeCategories.filter((c) =>
+      [c.display_name, c.category_code].some((t) =>
+        t.toLowerCase().includes(q)
+      )
+    );
+  }, [financeCategories, financeCfgCategoryQuery]);
+
+  const financeCfgMetricsFiltered = useMemo(() => {
+    const q = financeCfgMetricQuery.trim().toLowerCase();
+    if (!q) return financeMetrics;
+    return financeMetrics.filter((m) => {
+      const hay = [
+        m.metric_label,
+        lookupFinanceSlotLabel(m.source_column),
+        m.participant_name || "",
+        METRIC_GROUP_LABELS[m.metric_group],
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [financeMetrics, financeCfgMetricQuery]);
+
+  const financeCfgParticipantNameInput = participantForm.display_name.trim();
+  const financeCfgProposedParticipantCode =
+    financeCfgParticipantNameInput.length > 0
+      ? slugifyParticipantCode(financeCfgParticipantNameInput)
+      : "";
+
+  const financeCfgParticipantWarnings = useMemo(() => {
+    const parts: string[] = [];
+    const name = financeCfgParticipantNameInput;
+    if (!name) return parts;
+    const lower = name.toLowerCase();
+    const nameTaken = financeParticipants.some(
+      (p) => p.display_name.trim().toLowerCase() === lower
+    );
+    if (nameTaken) parts.push("Nama yang sama sudah ada di daftar.");
+    const codeTaken = financeParticipants.some(
+      (p) =>
+        p.participant_code.toUpperCase() ===
+        financeCfgProposedParticipantCode.toUpperCase()
+    );
+    if (!nameTaken && codeTaken)
+      parts.push(
+        "Kode singkat otomatis sama dengan orang lain — bedakan sedikit di nama."
+      );
+    return parts;
+  }, [
+    financeCfgParticipantNameInput,
+    financeCfgProposedParticipantCode,
+    financeParticipants,
+  ]);
+
+  const financeCfgCategoryNameInput = categoryForm.display_name.trim();
+  const financeCfgProposedCategoryCode =
+    financeCfgCategoryNameInput.length > 0
+      ? slugifyCategoryCode(financeCfgCategoryNameInput)
+      : "";
+
+  const financeCfgCategoryWarnings = useMemo(() => {
+    const parts: string[] = [];
+    const name = financeCfgCategoryNameInput;
+    if (!name) return parts;
+    const lower = name.toLowerCase();
+    const displayTaken = financeCategories.some(
+      (c) => c.display_name.trim().toLowerCase() === lower
+    );
+    if (displayTaken) parts.push("Kategori dengan nama ini sudah ada.");
+    const codeTaken = financeCategories.some(
+      (c) =>
+        c.category_code.toUpperCase() ===
+        financeCfgProposedCategoryCode.toUpperCase()
+    );
+    if (!displayTaken && codeTaken)
+      parts.push(
+        "Kode kategori otomatis bentrok — coba nama yang sedikit berbeda."
+      );
+    return parts;
+  }, [
+    financeCfgCategoryNameInput,
+    financeCfgProposedCategoryCode,
+    financeCategories,
+  ]);
+
+  const financeCfgDuplicatedMappingSources = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const m of financeMetrics) {
+      if (!m.id) continue;
+      const col =
+        mappingEdits[m.id]?.source_column ?? m.source_column;
+      count.set(col, (count.get(col) || 0) + 1);
+    }
+    const dup = new Set<string>();
+    count.forEach((n, col) => {
+      if (n > 1) dup.add(col);
+    });
+    return dup;
+  }, [financeMetrics, mappingEdits]);
+
+  const kategoriLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const category of financeCategories) {
+      map.set(category.category_code, category.display_name);
+    }
+    return map;
+  }, [financeCategories]);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -411,7 +732,8 @@ export default function FinancePage() {
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (showModal) handleCloseModal();
+        if (showConfigModal) setShowConfigModal(false);
+        else if (showModal) handleCloseModal();
         else if (confirmDialog?.show) setConfirmDialog(null);
         else if (showImportModal) setShowImportModal(false);
         else if (showDeleteAllModal) setShowDeleteAllModal(false);
@@ -425,6 +747,7 @@ export default function FinancePage() {
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [
+    showConfigModal,
     showModal,
     confirmDialog,
     showImportModal,
@@ -451,6 +774,15 @@ export default function FinancePage() {
     }
   }, [showKategoriDropdown]);
 
+  useEffect(() => {
+    if (!showConfigModal) {
+      setFinanceConfigTab("people");
+      setFinanceCfgPeopleQuery("");
+      setFinanceCfgCategoryQuery("");
+      setFinanceCfgMetricQuery("");
+    }
+  }, [showConfigModal]);
+
   const checkAuth = () => {
     const userSession = localStorage.getItem("user");
     if (!userSession) {
@@ -461,18 +793,71 @@ export default function FinancePage() {
     const user = JSON.parse(userSession);
     setCurrentUser(user);
 
-    // Check if user has permission (Admin, Manager, atau Chief)
+    // Check if user has permission (Admin, Manager, atau Staff)
     if (
       user.role !== "admin" &&
       user.role !== "manager" &&
-      user.role !== "chief"
+      user.role !== "staff"
     ) {
       router.push("/dashboard");
       return;
     }
 
     setLoading(false);
+    loadFinanceConfig();
     loadCashBooks();
+  };
+
+  const loadFinanceConfig = async () => {
+    try {
+      const res = await fetch("/api/finance/config", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Gagal memuat konfigurasi");
+      setFinanceCategories(data.categories || []);
+      setFinanceParticipants(data.participants || []);
+      setFinanceMetrics(data.metricMappings || []);
+      const edits: Record<string, any> = {};
+      for (const metric of data.metricMappings || []) {
+        if (!metric.id) continue;
+        edits[metric.id] = {
+          metric_label: metric.metric_label,
+          metric_group: metric.metric_group,
+          source_column: metric.source_column,
+          participant_id:
+            (data.participants || []).find(
+              (participant: FinanceParticipantConfig) =>
+                participant.display_name === metric.participant_name
+            )?.id || "",
+        };
+      }
+      setMappingEdits(edits);
+    } catch (err) {
+      console.error("Gagal memuat konfigurasi finance:", err);
+    }
+  };
+
+  const submitConfigAction = async (payload: Record<string, any>) => {
+    setConfigSaving(true);
+    try {
+      const res = await fetch("/api/finance/config/manage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Gagal menyimpan");
+      await loadFinanceConfig();
+      showMsg("success", "Konfigurasi keuangan berhasil diperbarui");
+    } catch (error) {
+      showMsg(
+        "error",
+        `Gagal menyimpan konfigurasi: ${
+          error instanceof Error ? error.message : "Unknown"
+        }`
+      );
+    } finally {
+      setConfigSaving(false);
+    }
   };
 
   const showMsg = (type: "success" | "error", message: string) => {
@@ -744,9 +1129,20 @@ export default function FinancePage() {
     }).format(amount);
   }, []);
 
-  const getKategoriColor = useCallback((kategori: KategoriTransaksi) => {
+  const getKategoriColor = useCallback((kategori: string) => {
+    const dynamicCategory = financeCategories.find(
+      (item) => item.category_code === kategori
+    );
+    if (dynamicCategory) {
+      return {
+        bg: dynamicCategory.color_bg,
+        text: dynamicCategory.color_text,
+        border: dynamicCategory.color_border,
+      };
+    }
+
     const colors: Record<
-      KategoriTransaksi,
+      string,
       { bg: string; text: string; border: string }
     > = {
       KAS: {
@@ -827,7 +1223,7 @@ export default function FinancePage() {
         border: "border-gray-300",
       }
     );
-  }, []);
+  }, [financeCategories]);
 
   const handleDelete = (cashBook: CashBook) => {
     // Check if this transaction is from purchases (pembelian cash or pembayaran hutang)
@@ -1250,11 +1646,12 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Bagi Hasil Summary - Hanya untuk Admin, Manager & Chief */}
+      {/* Dynamic Profit Share */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
-          currentUser.role === "chief") && (
+          currentUser.role === "staff") &&
+        profitShareMetrics.length > 0 && (
           <div className="mb-6">
             <button
               onClick={() => setShowBagiHasilSection(!showBagiHasilSection)}
@@ -1280,159 +1677,36 @@ export default function FinancePage() {
                 />
               </svg>
             </button>
-
             {showBagiHasilSection && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                {/* Bagi Hasil Anwar - Warna Amber */}
-                <div
-                  onClick={() => setShowBagiHasilAnwar(!showBagiHasilAnwar)}
-                  className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-4 border-2 border-amber-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  <p className="text-sm font-bold text-amber-800 mb-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
+                {profitShareMetrics.map((metric) => (
+                  <div
+                    key={metric.metric_key}
+                    className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-4 border-2 border-amber-200"
+                  >
+                    <p className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
                       <BriefcaseIcon size={16} className="text-amber-700" />
-                      Bagi Hasil Anwar
-                    </span>
-                    <svg
-                      className={`w-4 h-4 transform transition-transform ${
-                        showBagiHasilAnwar ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </p>
-                  <p className="text-2xl font-bold text-amber-900">
-                    {formatRupiah(summaryData.bagiHasilAnwar)}
-                  </p>
-                  {showBagiHasilAnwar && (
-                    <div className="mt-3 pt-3 border-t border-amber-300 space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-amber-700">
-                          Laba Bersih:
-                        </span>
-                        <span className="text-xs font-semibold text-amber-900">
-                          {formatRupiah(summaryData.labaBersih)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-amber-700">Kasbon:</span>
-                        <span className="text-xs font-semibold text-amber-900">
-                          {formatRupiah(summaryData.kasbonAnwar)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bagi Hasil Suri */}
-                <div
-                  onClick={() => setShowBagiHasilSuri(!showBagiHasilSuri)}
-                  className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl shadow-md p-4 border-2 border-pink-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  <p className="text-sm font-bold text-pink-800 mb-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <BriefcaseIcon size={16} className="text-pink-700" />
-                      Bagi Hasil Suri
-                    </span>
-                    <svg
-                      className={`w-4 h-4 transform transition-transform ${
-                        showBagiHasilSuri ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </p>
-                  <p className="text-2xl font-bold text-pink-900">
-                    {formatRupiah(summaryData.bagiHasilSuri)}
-                  </p>
-                  {showBagiHasilSuri && (
-                    <div className="mt-3 pt-3 border-t border-pink-300 space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-pink-700">
-                          Laba Bersih:
-                        </span>
-                        <span className="text-xs font-semibold text-pink-900">
-                          {formatRupiah(summaryData.labaBersih)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-pink-700">Kasbon:</span>
-                        <span className="text-xs font-semibold text-pink-900">
-                          {formatRupiah(summaryData.kasbonSuri)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bagi Hasil Gemi - Warna Biru (seperti Kasbon Pegawai) */}
-                <div
-                  onClick={() => setShowBagiHasilGemi(!showBagiHasilGemi)}
-                  className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-4 border-2 border-blue-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  <p className="text-sm font-bold text-blue-800 mb-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <BriefcaseIcon size={16} className="text-blue-700" />
-                      Bagi Hasil Gemi
-                    </span>
-                    <svg
-                      className={`w-4 h-4 transform transition-transform ${
-                        showBagiHasilGemi ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {formatRupiah(summaryData.bagiHasilGemi)}
-                  </p>
-                  {showBagiHasilGemi && (
-                    <div className="mt-3 pt-3 border-t border-blue-300 space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-blue-700">
-                          Laba Bersih:
-                        </span>
-                        <span className="text-xs font-semibold text-blue-900">
-                          {formatRupiah(summaryData.labaBersih)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      {metric.metric_label} {metric.participant_name || ""}
+                    </p>
+                    <p className="text-2xl font-bold text-amber-900">
+                      {formatRupiah(dynamicMetricValue(metric.source_column))}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-2">
+                      Laba Bersih: {formatRupiah(summaryData.labaBersih)}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
-      {/* Kasbon Karyawan Summary - Hanya untuk Admin & Manager */}
+      {/* Dynamic Cash Advance */}
       {currentUser &&
-        (currentUser.role === "admin" || currentUser.role === "manager") && (
+        (currentUser.role === "admin" || currentUser.role === "manager") &&
+        cashAdvanceMetrics.length > 0 && (
           <div className="mb-6">
             <button
-              onClick={() => setShowKasbonKaryawan(!showKasbonKaryawan)}
+              onClick={() => setShowKasbonSection(!showKasbonSection)}
               className="w-full bg-gradient-to-r from-violet-50 to-emerald-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
             >
               <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -1441,7 +1715,7 @@ export default function FinancePage() {
               </span>
               <svg
                 className={`w-5 h-5 transform transition-transform ${
-                  showKasbonKaryawan ? "rotate-180" : ""
+                  showKasbonSection ? "rotate-180" : ""
                 }`}
                 fill="none"
                 stroke="currentColor"
@@ -1455,27 +1729,22 @@ export default function FinancePage() {
                 />
               </svg>
             </button>
-
-            {showKasbonKaryawan && (
+            {showKasbonSection && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl shadow-md p-4 border-2 border-violet-200">
-                  <p className="text-sm font-bold text-violet-800 mb-2 flex items-center gap-2">
-                    <PersonIcon size={16} className="text-violet-700" />
-                    Kasbon Cahaya
-                  </p>
-                  <p className="text-2xl font-bold text-violet-900">
-                    {formatRupiah(summaryData.kasbonCahaya)}
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl shadow-md p-4 border-2 border-emerald-200">
-                  <p className="text-sm font-bold text-emerald-800 mb-2 flex items-center gap-2">
-                    <PersonIcon size={16} className="text-emerald-700" />
-                    Kasbon Dinil
-                  </p>
-                  <p className="text-2xl font-bold text-emerald-900">
-                    {formatRupiah(summaryData.kasbonDinil)}
-                  </p>
-                </div>
+                {cashAdvanceMetrics.map((metric) => (
+                  <div
+                    key={metric.metric_key}
+                    className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl shadow-md p-4 border-2 border-violet-200"
+                  >
+                    <p className="text-sm font-bold text-violet-800 mb-2 flex items-center gap-2">
+                      <PersonIcon size={16} className="text-violet-700" />
+                      {metric.metric_label} {metric.participant_name || ""}
+                    </p>
+                    <p className="text-2xl font-bold text-violet-900">
+                      {formatRupiah(dynamicMetricValue(metric.source_column))}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1568,7 +1837,7 @@ export default function FinancePage() {
                           isSelected ? "font-semibold text-cyan-700" : ""
                         }
                       >
-                        {kat}
+                        {kategoriLabelMap.get(kat) || kat}
                       </span>
                     </label>
                   );
@@ -1579,6 +1848,35 @@ export default function FinancePage() {
 
           {!viewingArchive && (
             <>
+              {(currentUser?.role === "admin" ||
+                currentUser?.role === "manager" ||
+                currentUser?.role === "staff") && (
+                <button
+                  onClick={() => setShowConfigModal(true)}
+                  className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10.325 4.317a1 1 0 011.35-.936l.82.307a1 1 0 00.962-.123l.73-.53a1 1 0 011.437.123l.52.67a1 1 0 00.916.375l.848-.06a1 1 0 011.054.999l.02.848a1 1 0 00.47.795l.72.45a1 1 0 01.287 1.438l-.48.7a1 1 0 00-.07.947l.34.777a1 1 0 01-.65 1.313l-.82.24a1 1 0 00-.68.69l-.24.82a1 1 0 01-1.312.65l-.778-.34a1 1 0 00-.947.07l-.7.48a1 1 0 01-1.438-.287l-.45-.72a1 1 0 00-.795-.47l-.848-.02a1 1 0 01-.999-1.054l.06-.848a1 1 0 00-.375-.916l-.67-.52a1 1 0 01-.123-1.437l.53-.73a1 1 0 00.123-.962l-.307-.82z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  Pengaturan tampilan
+                </button>
+              )}
               <button
                 onClick={() => setShowDeleteAllModal(true)}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
@@ -1823,22 +2121,65 @@ export default function FinancePage() {
           </table>
         </div>
       </div>
-      {/* Modal Form */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={editFormRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
-          >
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
-              <h3 className="text-xl font-bold text-white">
-                {editingCashBook
-                  ? "✏️ Edit Transaksi"
-                  : "Tambah Transaksi Baru"}
-              </h3>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <ModalFormShell
+        open={showModal}
+        onClose={handleCloseModal}
+        maxWidthClass="max-w-md"
+        header={
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 flex items-center justify-between shrink-0 gap-3 rounded-t-2xl">
+            <h3 className="text-xl font-bold text-white min-w-0">
+              {editingCashBook
+                ? "✏️ Edit Transaksi"
+                : "Tambah Transaksi Baru"}
+            </h3>
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-100 transition"
+              tabIndex={8}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="finance-cashbook-form"
+              className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
+              tabIndex={7}
+            >
+              Simpan
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="finance-cashbook-form"
+              onSubmit={handleSubmit}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
                   Tanggal
@@ -1915,7 +2256,7 @@ export default function FinancePage() {
                 >
                   {kategoriOptions.map((kat) => (
                     <option key={kat} value={kat}>
-                      {kat}
+                      {kategoriLabelMap.get(kat) || kat}
                     </option>
                   ))}
                 </select>
@@ -1953,27 +2294,730 @@ export default function FinancePage() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-100 transition"
-                  tabIndex={8}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
-                  tabIndex={7}
-                >
-                  {editingCashBook ? "Update" : "Simpan"}
-                </button>
-              </div>
             </form>
+      </ModalFormShell>
+      <ModalFormShell
+        open={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        maxWidthClass="max-w-5xl"
+        header={
+          <div
+            className="p-6 border-b border-gray-200 bg-gradient-to-r from-slate-600 to-slate-800 shrink-0 flex items-start justify-between gap-4"
+            role="presentation"
+          >
+            <div className="min-w-0">
+              <h3
+                id="finance-config-title"
+                className="text-xl font-bold text-white"
+              >
+                Pengaturan tampilan ringkasan
+              </h3>
+              <p className="text-slate-200 text-sm mt-2 leading-relaxed">
+                Sesuaikan nama dan kartu di halaman ini. Tidak perlu memahami
+                istilah teknis; cukup ikuti petunjuk di setiap kotak.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(false)}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup dialog"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
-        </div>
-      )}
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-100 bg-white"
+            >
+              Tutup
+            </button>
+          </div>
+        }
+      >
+            <div className="p-6 pb-4">
+              <div
+                className="flex flex-wrap gap-1 border-b border-gray-200 mb-5"
+                role="tablist"
+                aria-label="Bagian pengaturan"
+              >
+                {(
+                  [
+                    { id: "people" as const, label: "Orang" },
+                    { id: "categories" as const, label: "Kategori" },
+                    { id: "metrics" as const, label: "Kartu ringkasan" },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={financeConfigTab === id}
+                    onClick={() => setFinanceConfigTab(id)}
+                    className={`px-4 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 transition -mb-px ${
+                      financeConfigTab === id
+                        ? "border-slate-700 text-slate-900 bg-slate-50"
+                        : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                    }`}
+                  >
+                    {label}
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">
+                      {id === "people" && `(${financeParticipants.length})`}
+                      {id === "categories" && `(${financeCategories.length})`}
+                      {id === "metrics" && `(${financeMetrics.length})`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {financeConfigTab === "people" && (
+                <div className="space-y-5 min-h-[340px]">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <p className="font-bold text-gray-800 mb-1">
+                      Tambah orang baru
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                      Nama bisa muncul di kartu bagi hasil atau kasbon. Cukup isi
+                      nama biasa; sistem membuat kode singkat sendiri.
+                    </p>
+                    <div className="space-y-2 max-w-lg">
+                      <input
+                        value={participantForm.display_name}
+                        onChange={(e) =>
+                          setParticipantForm((prev) => ({
+                            ...prev,
+                            display_name: e.target.value,
+                          }))
+                        }
+                        className={`w-full px-3 py-2 border rounded-lg ${
+                          financeCfgParticipantWarnings.length > 0
+                            ? "border-amber-300"
+                            : ""
+                        }`}
+                        placeholder="Nama lengkap atau panggilan"
+                        aria-label="Nama orang"
+                      />
+                      <select
+                        value={participantForm.role_type}
+                        onChange={(e) =>
+                          setParticipantForm((prev) => ({
+                            ...prev,
+                            role_type: e.target.value as
+                              | "profit_share"
+                              | "cash_advance"
+                              | "other",
+                          }))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                        aria-label="Peran"
+                      >
+                        <option value="profit_share">Terlibat bagi hasil</option>
+                        <option value="cash_advance">
+                          Terlibat kasbon / pinjaman
+                        </option>
+                        <option value="other">Lainnya</option>
+                      </select>
+                      {financeCfgParticipantWarnings.length > 0 && (
+                        <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+                          {financeCfgParticipantWarnings.map((w, i) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        disabled={
+                          configSaving || financeCfgParticipantWarnings.length > 0
+                        }
+                        onClick={() => {
+                          const name = participantForm.display_name.trim();
+                          if (!name) {
+                            showMsg(
+                              "error",
+                              "Mohon isi nama orang terlebih dahulu."
+                            );
+                            return;
+                          }
+                          submitConfigAction({
+                            action: "create_participant",
+                            participant_code: slugifyParticipantCode(name),
+                            display_name: name,
+                            role_type: participantForm.role_type,
+                          });
+                        }}
+                        className="w-full max-w-lg px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50"
+                      >
+                        Tambah orang
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">
+                      Cari di daftar
+                    </label>
+                    <input
+                      type="search"
+                      value={financeCfgPeopleQuery}
+                      onChange={(e) => setFinanceCfgPeopleQuery(e.target.value)}
+                      className="w-full mt-1 max-w-lg px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      placeholder="Ketik nama atau peran…"
+                      aria-label="Cari orang"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 max-h-72 overflow-y-auto">
+                    {financeCfgParticipantsFiltered.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-6 text-center">
+                        {financeParticipants.length === 0
+                          ? "Belum ada orang terdaftar."
+                          : "Tidak ada yang cocok dengan pencarian."}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {financeCfgParticipantsFiltered.map((participant) => (
+                          <div
+                            key={participant.id}
+                            className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg p-3"
+                          >
+                            <div className="min-w-0">
+                              <span className="font-medium text-gray-800 block truncate">
+                                {participant.display_name}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {roleTypeLabelIndo(participant.role_type)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={configSaving}
+                              onClick={() =>
+                                submitConfigAction({
+                                  action: "delete_participant",
+                                  id: participant.id,
+                                })
+                              }
+                              className="text-red-600 hover:text-red-800 shrink-0 text-sm"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {financeConfigTab === "categories" && (
+                <div className="space-y-5 min-h-[340px]">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <p className="font-bold text-gray-800 mb-1">
+                      Tambah kategori baru
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                      Kategori muncul saat Anda mencatat transaksi atau memilih di
+                      tabel. Pakai kata yang dikenal seluruh staf.
+                    </p>
+                    <div className="space-y-2 max-w-lg">
+                      <input
+                        value={categoryForm.display_name}
+                        onChange={(e) =>
+                          setCategoryForm((prev) => ({
+                            ...prev,
+                            display_name: e.target.value,
+                          }))
+                        }
+                        className={`w-full px-3 py-2 border rounded-lg ${
+                          financeCfgCategoryWarnings.length > 0
+                            ? "border-amber-300"
+                            : ""
+                        }`}
+                        placeholder="Contoh: Bonus lebaran"
+                        aria-label="Nama kategori"
+                      />
+                      {financeCfgCategoryWarnings.length > 0 && (
+                        <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+                          {financeCfgCategoryWarnings.map((w, i) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        disabled={
+                          configSaving || financeCfgCategoryWarnings.length > 0
+                        }
+                        onClick={() => {
+                          const name = categoryForm.display_name.trim();
+                          if (!name) {
+                            showMsg("error", "Mohon isi nama kategori.");
+                            return;
+                          }
+                          submitConfigAction({
+                            action: "create_category",
+                            category_code: slugifyCategoryCode(name),
+                            display_name: name,
+                          });
+                        }}
+                        className="w-full max-w-lg px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50"
+                      >
+                        Tambah kategori
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">
+                      Cari di daftar
+                    </label>
+                    <input
+                      type="search"
+                      value={financeCfgCategoryQuery}
+                      onChange={(e) =>
+                        setFinanceCfgCategoryQuery(e.target.value)
+                      }
+                      className="w-full mt-1 max-w-lg px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      placeholder="Ketik nama kategori…"
+                      aria-label="Cari kategori"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 max-h-72 overflow-y-auto">
+                    {financeCfgCategoriesFiltered.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-6 text-center">
+                        {financeCategories.length === 0
+                          ? "Belum ada kategori tambahan."
+                          : "Tidak ada yang cocok dengan pencarian."}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {financeCfgCategoriesFiltered.map((category) => (
+                          <div
+                            key={category.id || category.category_code}
+                            className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg p-3"
+                          >
+                            <span className="font-medium text-gray-800 truncate min-w-0">
+                              {category.display_name}
+                            </span>
+                            {category.id && (
+                              <button
+                                type="button"
+                                disabled={configSaving}
+                                onClick={() =>
+                                  submitConfigAction({
+                                    action: "delete_category",
+                                    id: category.id,
+                                  })
+                                }
+                                className="text-red-600 hover:text-red-800 shrink-0 text-sm"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {financeConfigTab === "metrics" && (
+                <div className="space-y-5 min-h-[340px]">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <p className="font-bold text-gray-800 mb-1">
+                      Hubungkan angka ke kartu
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                      Satu angka di laporan hanya untuk satu kartu. Judul bisa
+                      disesuaikan supaya mudah dibaca tim.
+                    </p>
+                    <div className="space-y-2 max-w-xl">
+                      <select
+                        value={mappingForm.selectedSourceColumn}
+                        onChange={(e) =>
+                          setMappingForm((prev) => ({
+                            ...prev,
+                            selectedSourceColumn: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                        aria-label="Pilih sumber angka"
+                      >
+                        <option value="">
+                          {financeSlotsAvailableForNewMapping.length === 0
+                            ? "Semua pos sudah dipakai"
+                            : "Pilih sumber angka"}
+                        </option>
+                        {financeSlotsAvailableForNewMapping.map((slot) => (
+                          <option
+                            key={slot.source_column}
+                            value={slot.source_column}
+                          >
+                            {slot.label} ·{" "}
+                            {METRIC_GROUP_LABELS[slot.metric_group]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={mappingForm.metric_label}
+                        onChange={(e) =>
+                          setMappingForm((prev) => ({
+                            ...prev,
+                            metric_label: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="Judul di kartu, kosongkan jika sudah jelas"
+                        aria-label="Judul di kartu"
+                      />
+                      <select
+                        value={mappingForm.participant_id}
+                        onChange={(e) =>
+                          setMappingForm((prev) => ({
+                            ...prev,
+                            participant_id: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 border rounded-lg"
+                        aria-label="Hubungkan ke orang"
+                      >
+                        <option value="">Tidak perlu nama orang</option>
+                        {financeParticipants.map((participant) => (
+                          <option key={participant.id} value={participant.id}>
+                            {participant.display_name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={
+                          configSaving ||
+                          financeSlotsAvailableForNewMapping.length === 0
+                        }
+                        onClick={() => {
+                          const slot = FINANCE_DATA_SLOTS.find(
+                            (s) =>
+                              s.source_column === mappingForm.selectedSourceColumn
+                          );
+                          if (!slot || !mappingForm.selectedSourceColumn) {
+                            showMsg(
+                              "error",
+                              "Pilih sumber angka yang akan ditampilkan di kartu."
+                            );
+                            return;
+                          }
+                          submitConfigAction({
+                            action: "create_mapping",
+                            metric_key: `fin_${mappingForm.selectedSourceColumn}_${Date.now()}`,
+                            metric_label:
+                              mappingForm.metric_label.trim() || slot.label,
+                            metric_group: slot.metric_group,
+                            source_column: mappingForm.selectedSourceColumn,
+                            participant_id: mappingForm.participant_id || null,
+                          });
+                        }}
+                        className="w-full max-w-xl px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50"
+                      >
+                        Tambah ke kartu ringkasan
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">
+                      Cari di daftar kartu
+                    </label>
+                    <input
+                      type="search"
+                      value={financeCfgMetricQuery}
+                      onChange={(e) =>
+                        setFinanceCfgMetricQuery(e.target.value)
+                      }
+                      className="w-full mt-1 max-w-xl px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      placeholder="Ketik judul kartu, nama orang, atau bagian ringkasan…"
+                      aria-label="Cari kartu ringkasan"
+                    />
+                  </div>
+
+                  {financeCfgDuplicatedMappingSources.size > 0 && (
+                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      Ada lebih dari satu kartu yang memakai sumber angka yang
+                      sama. Sesuaikan pilihan hingga tidak ada pesan ini, lalu
+                      simpan tiap kartu.
+                    </p>
+                  )}
+
+                  <div className="space-y-3 max-h-[min(52vh,28rem)] overflow-y-auto">
+                    {financeCfgMetricsFiltered.map((metric) => {
+                      const editCol =
+                        (metric.id
+                          ? mappingEdits[metric.id]?.source_column
+                          : undefined) ?? metric.source_column;
+                      const editGroup =
+                        (metric.id
+                          ? mappingEdits[metric.id]?.metric_group
+                          : undefined) ?? metric.metric_group;
+                      const slotOptions = sourceColumnEditOptions(
+                        editCol,
+                        editGroup
+                      );
+                      let subtitleParticipantName: string | null =
+                        metric.participant_name;
+                      if (metric.id && mappingEdits[metric.id]) {
+                        const pid = mappingEdits[metric.id].participant_id;
+                        if (pid === "") subtitleParticipantName = null;
+                        else if (pid)
+                          subtitleParticipantName =
+                            financeParticipants.find((p) => p.id === pid)
+                              ?.display_name ?? metric.participant_name;
+                      }
+                      const mappingRowSourceDup =
+                        Boolean(metric.id) &&
+                        financeCfgDuplicatedMappingSources.has(editCol);
+                      return (
+                        <div
+                          key={metric.id || metric.metric_key}
+                          className="text-sm bg-gray-50 rounded-lg p-3 border border-gray-100"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900">
+                                {metric.metric_label}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {METRIC_GROUP_LABELS[editGroup]}
+                                {subtitleParticipantName
+                                  ? ` · ${subtitleParticipantName}`
+                                  : ""}
+                                {" · "}
+                                {lookupFinanceSlotLabel(editCol)}
+                              </p>
+                            </div>
+                            {metric.id && (
+                              <button
+                                type="button"
+                                disabled={configSaving}
+                                onClick={() =>
+                                  submitConfigAction({
+                                    action: "delete_mapping",
+                                    id: metric.id,
+                                  })
+                                }
+                                className="text-red-600 hover:text-red-800 shrink-0 text-xs"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                          {metric.id && (
+                            <div className="mt-3 space-y-2">
+                              <label className="block text-xs font-medium text-gray-600">
+                                Judul di kartu
+                              </label>
+                              <input
+                                value={
+                                  mappingEdits[metric.id]?.metric_label || ""
+                                }
+                                onChange={(e) =>
+                                  setMappingEdits((prev) => ({
+                                    ...prev,
+                                    [metric.id as string]: {
+                                      ...(prev[metric.id as string] || {
+                                        metric_label: "",
+                                        metric_group: "summary",
+                                        source_column: "",
+                                        participant_id: "",
+                                      }),
+                                      metric_label: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                                placeholder="Judul di kartu"
+                              />
+                              <label className="block text-xs font-medium text-gray-600">
+                                Sumber angka di laporan
+                              </label>
+                              <select
+                                value={editCol}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  const slot = FINANCE_DATA_SLOTS.find(
+                                    (s) => s.source_column === v
+                                  );
+                                  setMappingEdits((prev) => ({
+                                    ...prev,
+                                    [metric.id as string]: {
+                                      ...(prev[metric.id as string] || {
+                                        metric_label: "",
+                                        metric_group: "summary",
+                                        source_column: "",
+                                        participant_id: "",
+                                      }),
+                                      source_column: v,
+                                      metric_group: slot
+                                        ? slot.metric_group
+                                        : prev[metric.id as string]
+                                            ?.metric_group ??
+                                          metric.metric_group,
+                                    },
+                                  }));
+                                }}
+                                className={`w-full px-2 py-1.5 border rounded text-sm ${
+                                  mappingRowSourceDup
+                                    ? "border-amber-400 bg-amber-50/40"
+                                    : ""
+                                }`}
+                              >
+                                {slotOptions.map((s) => (
+                                  <option
+                                    key={`${s.source_column}-${s.label}`}
+                                    value={s.source_column}
+                                  >
+                                    {s.label}
+                                  </option>
+                                ))}
+                              </select>
+                              {mappingRowSourceDup && (
+                                <p className="text-xs text-amber-800">
+                                  Sumber angka ini dipakai lebih dari satu kartu.
+                                  Ubah salah satunya lalu simpan.
+                                </p>
+                              )}
+                              <label className="block text-xs font-medium text-gray-600">
+                                Tampil sebagai bagian dari
+                              </label>
+                              <select
+                                value={
+                                  mappingEdits[metric.id]?.metric_group ??
+                                  metric.metric_group
+                                }
+                                onChange={(e) =>
+                                  setMappingEdits((prev) => ({
+                                    ...prev,
+                                    [metric.id as string]: {
+                                      ...(prev[metric.id as string] || {
+                                        metric_label: "",
+                                        metric_group: "summary",
+                                        source_column: "",
+                                        participant_id: "",
+                                      }),
+                                      metric_group: e.target.value as
+                                        | "summary"
+                                        | "profit_share"
+                                        | "cash_advance",
+                                    },
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                              >
+                                <option value="summary">
+                                  {METRIC_GROUP_LABELS.summary}
+                                </option>
+                                <option value="profit_share">
+                                  {METRIC_GROUP_LABELS.profit_share}
+                                </option>
+                                <option value="cash_advance">
+                                  {METRIC_GROUP_LABELS.cash_advance}
+                                </option>
+                              </select>
+                              <label className="block text-xs font-medium text-gray-600">
+                                Orang terkait
+                              </label>
+                              <select
+                                value={
+                                  mappingEdits[metric.id]?.participant_id || ""
+                                }
+                                onChange={(e) =>
+                                  setMappingEdits((prev) => ({
+                                    ...prev,
+                                    [metric.id as string]: {
+                                      ...(prev[metric.id as string] || {
+                                        metric_label: "",
+                                        metric_group: "summary",
+                                        source_column: "",
+                                        participant_id: "",
+                                      }),
+                                      participant_id: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                              >
+                                <option value="">Tanpa nama orang</option>
+                                {financeParticipants.map((participant) => (
+                                  <option
+                                    key={participant.id}
+                                    value={participant.id}
+                                  >
+                                    {participant.display_name}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                disabled={configSaving || mappingRowSourceDup}
+                                onClick={() =>
+                                  submitConfigAction({
+                                    action: "update_mapping",
+                                    id: metric.id,
+                                    metric_label:
+                                      (metric.id
+                                        ? mappingEdits[metric.id]?.metric_label
+                                        : "") || metric.metric_label,
+                                    metric_group:
+                                      (metric.id
+                                        ? mappingEdits[metric.id]?.metric_group
+                                        : undefined) || metric.metric_group,
+                                    source_column:
+                                      (metric.id
+                                        ? mappingEdits[metric.id]?.source_column
+                                        : "") || metric.source_column,
+                                    participant_id:
+                                      (metric.id
+                                        ? mappingEdits[metric.id]
+                                            ?.participant_id
+                                        : "") || null,
+                                  })
+                                }
+                                className="text-xs w-full px-2 py-1.5 bg-slate-100 text-slate-800 rounded font-medium hover:bg-slate-200 disabled:opacity-50"
+                              >
+                                Simpan perubahan untuk baris ini
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {financeMetrics.length > 0 &&
+                      financeCfgMetricsFiltered.length === 0 && (
+                        <p className="text-sm text-gray-500 py-10 text-center">
+                          Tidak ada kartu yang cocok dengan pencarian.
+                        </p>
+                      )}
+                  </div>
+                </div>
+              )}
+            </div>
+      </ModalFormShell>
       {/* Confirm Dialog */}
       {/* Confirm Dialog */}
       {confirmDialog?.show && (

@@ -395,7 +395,7 @@ CREATE TABLE "profil" (
       email TEXT UNIQUE,
       nama_lengkap TEXT,
       password_hash TEXT NOT NULL,
-      role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'chief', 'user')),
+      role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'staff', 'kasir', 'operator', 'user')),
       aktif_status INTEGER DEFAULT 1,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now'))

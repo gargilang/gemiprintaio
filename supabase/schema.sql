@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS profil (
   email TEXT UNIQUE,
   nama_lengkap TEXT,
   password_hash TEXT NOT NULL,
-  role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'chief', 'user')),
+  role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'manager', 'staff', 'kasir', 'operator', 'user')),
   aktif_status INTEGER DEFAULT 1,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
@@ -548,6 +548,55 @@ CREATE TABLE IF NOT EXISTS keuangan (
 );
 
 CREATE INDEX IF NOT EXISTS idx_keuangan_sync_status ON keuangan(sync_status);
+
+-- Flexible finance configuration tables
+CREATE TABLE IF NOT EXISTS finance_category_definitions (
+  id TEXT PRIMARY KEY,
+  category_code TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  color_bg TEXT NOT NULL DEFAULT 'bg-gray-100',
+  color_text TEXT NOT NULL DEFAULT 'text-gray-800',
+  color_border TEXT NOT NULL DEFAULT 'border-gray-300',
+  direction TEXT NOT NULL DEFAULT 'both' CHECK(direction IN ('debit', 'kredit', 'both')),
+  is_active INTEGER NOT NULL DEFAULT 1,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS finance_participants (
+  id TEXT PRIMARY KEY,
+  participant_code TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  role_type TEXT NOT NULL DEFAULT 'other' CHECK(role_type IN ('profit_share', 'cash_advance', 'other')),
+  is_active INTEGER NOT NULL DEFAULT 1,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS finance_metric_mappings (
+  id TEXT PRIMARY KEY,
+  metric_key TEXT NOT NULL UNIQUE,
+  metric_label TEXT NOT NULL,
+  metric_group TEXT NOT NULL CHECK(metric_group IN ('summary', 'profit_share', 'cash_advance')),
+  source_column TEXT NOT NULL,
+  participant_id TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL
+);
 
 -- ============================================================================
 -- TRIGGERS FOR UPDATED_AT

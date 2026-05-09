@@ -113,11 +113,11 @@ export default function AddFinishingModal({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col"
       >
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-700 to-amber-900">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-700 to-amber-900 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2 min-w-0">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -155,7 +155,7 @@ export default function AddFinishingModal({
           <p className="text-white/90 text-sm mt-2">{itemName}</p>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="p-6 flex-1 min-h-0 overflow-y-auto">
           {/* Add Finishing Form */}
           <div className="space-y-4 mb-6">
             <div>
@@ -272,14 +272,16 @@ export default function AddFinishingModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
           <button
+            type="button"
             onClick={onClose}
             className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
           >
             Batal
           </button>
           <button
+            type="button"
             onClick={handleSave}
             className="px-6 py-2 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all font-semibold"
           >

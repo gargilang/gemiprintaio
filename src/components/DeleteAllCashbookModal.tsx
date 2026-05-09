@@ -40,11 +40,11 @@ export default function DeleteAllCashbookModal({
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
       >
-        <div className="p-6 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+        <div className="p-6 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -59,9 +59,9 @@ export default function DeleteAllCashbookModal({
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 className="text-xl font-bold text-white truncate flex items-center gap-2">
               <svg
-                className="w-6 h-6"
+                className="w-6 h-6 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -73,12 +73,33 @@ export default function DeleteAllCashbookModal({
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
-              Hapus Semua Data
+              <span className="truncate">Hapus Semua Data</span>
             </h3>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+            aria-label="Tutup"
+          >
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
           <p className="text-base text-gray-600">
             Aksi ini akan menghapus semua transaksi dari buku keuangan aktif
             secara permanen.
@@ -100,12 +121,12 @@ export default function DeleteAllCashbookModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex gap-3">
+        <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -113,7 +134,7 @@ export default function DeleteAllCashbookModal({
             type="button"
             onClick={onConfirm}
             disabled={deleting}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {deleting ? "Menghapus..." : "Ya, Hapus Semua"}
           </button>

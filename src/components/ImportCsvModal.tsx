@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import { useState } from "react";
+import ModalFormShell from "@/components/ModalFormShell";
 
 interface ImportCsvModalProps {
   show: boolean;
@@ -21,26 +21,6 @@ export default function ImportCsvModal({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string>("");
-
-  // Click outside to close modal (only when not uploading)
-  const modalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(modalRef, () => !uploading && onClose(), show && !uploading);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    if (!show) return;
-
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !uploading) {
-        handleClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscKey);
-    return () => window.removeEventListener("keydown", handleEscKey);
-  }, [show, uploading]);
-
-  if (!show) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -67,12 +47,10 @@ export default function ImportCsvModal({
     setError("");
 
     try {
-      // Read file content
       const csvText = await file.text();
 
       setProgress("Mengimpor data...");
 
-      // Import using callback
       const result = await onImportCsv(csvText, append);
 
       if (!result.success) {
@@ -81,7 +59,6 @@ export default function ImportCsvModal({
 
       setProgress(result.message);
 
-      // Show errors if any
       if (result.errors && result.errors.length > 0) {
         console.warn("Import warnings:", result.errors);
       }
@@ -105,16 +82,45 @@ export default function ImportCsvModal({
     onClose();
   };
 
+  const dismissDisabled = uploading;
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200"
-      >
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 rounded-t-2xl">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+    <ModalFormShell
+      open={show}
+      onClose={handleClose}
+      allowDismiss={!dismissDisabled}
+      maxWidthClass="max-w-md"
+      header={
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white truncate">
+              Import dari CSV
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={dismissDisabled}
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+            aria-label="Tutup"
+          >
             <svg
-              className="w-6 h-6"
+              className="w-6 h-6 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -123,110 +129,109 @@ export default function ImportCsvModal({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-            Import dari CSV
-          </h3>
+          </button>
+        </div>
+      }
+      footer={
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={dismissDisabled}
+            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="import-csv-form"
+            disabled={dismissDisabled || !file}
+            className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-pink-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? "Mengimport..." : "Simpan"}
+          </button>
+        </div>
+      }
+    >
+      <form
+        id="import-csv-form"
+        onSubmit={handleSubmit}
+        className="p-6 space-y-4"
+      >
+        <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
+          <div className="font-bold mb-2">Format CSV yang Didukung:</div>
+          <ul className="list-disc list-inside space-y-1 pl-2">
+            <li>
+              <strong>Header:</strong> TANGGAL, KATEGORI, DEBIT, KREDIT,
+              KEPERLUAN
+            </li>
+            <li>
+              <strong>Tanggal:</strong> MM/DD/YYYY (contoh: 12/31/2024)
+            </li>
+            <li>
+              <strong>Currency:</strong> Rp5,085,464 atau 5085464
+            </li>
+          </ul>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Info Box */}
-          <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
-            <div className="font-bold mb-2">Format CSV yang Didukung:</div>
-            <ul className="list-disc list-inside space-y-1 pl-2">
-              <li>
-                <strong>Header:</strong> TANGGAL, KATEGORI, DEBIT, KREDIT,
-                KEPERLUAN
-              </li>
-              <li>
-                <strong>Tanggal:</strong> MM/DD/YYYY (contoh: 12/31/2024)
-              </li>
-              <li>
-                <strong>Currency:</strong> Rp5,085,464 atau 5085464
-              </li>
-            </ul>
-          </div>
-
-          {/* File Input */}
-          <div>
-            <label
-              htmlFor="csv-file-input"
-              className="block text-sm font-semibold text-[#0a1b3d] mb-2"
-            >
-              Pilih File CSV
-            </label>
-            <input
-              id="csv-file-input"
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              disabled={uploading}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600"
-            />
-            {file && (
-              <p className="mt-2 text-xs text-gray-600">
-                File dipilih:{" "}
-                <span className="font-medium text-gray-800">{file.name}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Append Option */}
-          <div className="flex items-center pt-2">
-            <input
-              type="checkbox"
-              id="append"
-              checked={append}
-              onChange={(e) => setAppend(e.target.checked)}
-              disabled={uploading}
-              className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-600"
-            />
-            <label htmlFor="append" className="ml-3 text-sm text-gray-700">
-              Tambahkan ke data yang ada (jangan hapus data lama).
-            </label>
-          </div>
-
-          {!append && (
-            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
-              ⚠️ Tanpa ini, semua data aktif akan dihapus & diganti data CSV.
-            </div>
+        <div>
+          <label
+            htmlFor="csv-file-input"
+            className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+          >
+            Pilih File CSV
+          </label>
+          <input
+            id="csv-file-input"
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
+            disabled={uploading}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600"
+          />
+          {file && (
+            <p className="mt-2 text-xs text-gray-600">
+              File dipilih:{" "}
+              <span className="font-medium text-gray-800">{file.name}</span>
+            </p>
           )}
+        </div>
 
-          {/* Progress */}
-          {progress && (
-            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 text-sm text-green-800 font-medium">
-              {progress}
-            </div>
-          )}
+        <div className="flex items-center pt-2">
+          <input
+            type="checkbox"
+            id="append"
+            checked={append}
+            onChange={(e) => setAppend(e.target.checked)}
+            disabled={uploading}
+            className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-600"
+          />
+          <label htmlFor="append" className="ml-3 text-sm text-gray-700">
+            Tambahkan ke data yang ada (jangan hapus data lama).
+          </label>
+        </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-3 text-sm text-red-800 font-medium">
-              {error}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={uploading}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-semibold disabled:opacity-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={uploading || !file}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-pink-700 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {uploading ? "Mengimport..." : "Import"}
-            </button>
+        {!append && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
+            ⚠️ Tanpa ini, semua data aktif akan dihapus & diganti data CSV.
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        {progress && (
+          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 text-sm text-green-800 font-medium">
+            {progress}
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-3 text-sm text-red-800 font-medium">
+            {error}
+          </div>
+        )}
+      </form>
+    </ModalFormShell>
   );
 }

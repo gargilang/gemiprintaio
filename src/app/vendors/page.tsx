@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
-import { useClickOutside } from "@/hooks/useClickOutside";
+import ModalFormShell from "@/components/ModalFormShell";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
@@ -153,9 +153,6 @@ export default function VendorsPage() {
   } | null>(null);
 
   // Click outside to close modal
-  const vendorModalRef = useRef<HTMLDivElement>(null);
-  useClickOutside(vendorModalRef, () => setShowModal(false), showModal);
-
   // Virtualization state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -595,19 +592,82 @@ export default function VendorsPage() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div
-            ref={vendorModalRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="sticky top-0 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] p-6 text-white">
-              <h3 className="text-2xl font-bold">
+      <ModalFormShell
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        allowDismiss={!saving}
+        maxWidthClass="max-w-2xl"
+        header={
+          <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+                <svg
+                  className="w-7 h-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white truncate">
                 {editingVendor ? "Edit Vendor" : "Tambah Vendor Baru"}
               </h3>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              aria-label="Tutup"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        }
+        footer={
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={saving}
+              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="vendors-modal-form"
+              disabled={saving}
+              className="px-6 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        }
+      >
+            <form
+              id="vendors-modal-form"
+              onSubmit={handleSave}
+              className="p-6 space-y-4"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -757,26 +817,8 @@ export default function VendorsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6 pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </ModalFormShell>
 
       {/* Notification Toast */}
       {notice && (

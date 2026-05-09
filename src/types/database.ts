@@ -1,4 +1,10 @@
-export type UserRole = "admin" | "manager" | "chief" | "user";
+export type UserRole =
+  | "admin"
+  | "manager"
+  | "staff"
+  | "kasir"
+  | "operator"
+  | "user";
 
 // Indonesian Types
 export type TipePelanggan = "perorangan" | "perusahaan";
@@ -17,7 +23,8 @@ export type KategoriTransaksi =
   | "HUTANG" // Debt (payable)
   | "PIUTANG" // Receivable
   | "PRIBADI-A" // Personal Add
-  | "PRIBADI-S"; // Personal Subtract
+  | "PRIBADI-S"
+  | (string & {}); // allow dynamic categories per company
 
 export interface Profile {
   id: string;
