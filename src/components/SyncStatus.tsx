@@ -13,6 +13,17 @@ interface SyncStatusProps {
   className?: string;
 }
 
+function formatLastSyncDayDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function SyncStatus({ className = "" }: SyncStatusProps) {
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -112,11 +123,11 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
         {cloudConnected ? "Online" : "Mode Offline"}
       </div>
 
-      <span className="text-xs text-gray-600">
-        {pendingOps > 0
-          ? `${pendingOps} perubahan menunggu sinkron`
-          : "Sinkronisasi normal"}
-      </span>
+      {pendingOps > 0 && (
+        <span className="text-xs text-gray-600">
+          {pendingOps} perubahan menunggu sinkron
+        </span>
+      )}
 
       <button
         onClick={handleSync}
@@ -128,7 +139,7 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
 
       {lastSync && (
         <span className="text-xs text-gray-500">
-          Sinkron terakhir: {new Date(lastSync).toLocaleTimeString("id-ID")}
+          Sinkron terakhir: {formatLastSyncDayDate(lastSync)}
         </span>
       )}
 

@@ -124,8 +124,9 @@ export default function SettingsPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200
+                flex-1 px-4 h-12 rounded-lg font-semibold transition-all duration-200
                 flex items-center justify-center gap-2
+                whitespace-nowrap text-sm
                 ${
                   activeTab === tab.id
                     ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"
@@ -139,8 +140,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      {/* Tab Content - fixed min height so the window doesn't jump when
+          switching between tabs that have very different content lengths. */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[calc(100vh-220px)]">
         {activeTab === "company" && <CompanyTab />}
         {activeTab === "setup" && <SetupTab />}
         {activeTab === "system" && <SystemTab />}

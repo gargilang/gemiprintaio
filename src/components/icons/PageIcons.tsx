@@ -465,6 +465,62 @@ export const BoxIcon = ({ className = "", size = 24 }: IconProps) => (
   </svg>
 );
 
+/** Stok, barang & pembelian (menu grup Inventori) */
+export const InventoryIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M4 7H20V19C20 19.5523 19.5523 20 19 20H5C4.44772 20 4 19.5523 4 19V7Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path
+      d="M4 7L12 3L20 7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 11H15M9 15H12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** Hubungan bisnis: pelanggan & vendor (menu grup Relasi) */
+export const RelationsIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="7" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
+    <circle cx="17" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
+    <circle cx="12" cy="17" r="3" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M9.2 10.2L11 14M14.8 10.2L13 14"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const SparklesIcon = ({ className = "", size = 24 }: IconProps) => (
   <svg
     className={className}

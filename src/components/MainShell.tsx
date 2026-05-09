@@ -12,9 +12,18 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { LogoutIcon } from "./icons/PageIcons";
-import { MENU_ITEMS, PAGE_TITLE_MAP, canAccessPath } from "./menuConfig";
+import {
+  MENU_ENTRIES,
+  PAGE_TITLE_MAP,
+  canAccessPath,
+  isMenuGroup,
+  iterateMenuLeaves,
+  type MenuItem,
+} from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
+
+const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
 
 interface User {
   id: string;
@@ -30,7 +39,39 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((c) => {
+      const next = !c;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  const visibleLeaves = useMemo(
+    () =>
+      [...iterateMenuLeaves(MENU_ENTRIES)].filter((item) =>
+        canAccessPath(user?.role, item.href)
+      ),
+    [user?.role]
+  );
 
   // Clear user session when window/app is closed (Tauri + browser)
   useTauriWindowClose();
@@ -59,6 +100,22 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       router.push("/auth/login");
     }
   }, [router]);
+
+  // Buka grup sidebar (mis. Relasi) otomatis saat route aktif berada di anaknya
+  useEffect(() => {
+    if (!pathname) return;
+    for (const entry of MENU_ENTRIES) {
+      if (!isMenuGroup(entry)) continue;
+      const childActive = entry.children.some(
+        (c) => pathname === c.href || pathname.startsWith(c.href + "/")
+      );
+      if (childActive) {
+        setExpandedGroups((prev) =>
+          prev[entry.id] ? prev : { ...prev, [entry.id]: true }
+        );
+      }
+    }
+  }, [pathname]);
 
   // Route-level role guard. Whenever the active page or current user
   // changes, kick the user back to /dashboard if they're not allowed
@@ -131,77 +188,283 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  const navRowCore =
+    "flex gap-2.5 py-2.5 px-2 -mx-2 rounded-lg transition-colors duration-150 w-full text-left";
+  const navRowLeaf = `${navRowCore} items-center`;
+  const navRowGroupBtn = `${navRowCore} items-start pt-1`;
+  const navRowHover = "hover:bg-slate-50 active:bg-slate-100/80";
+
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Sidebar - permanent */}
-      <aside className="w-80 bg-white shadow-2xl flex-shrink-0 h-screen sticky top-0">
-        <div className="p-6 h-full flex flex-col">
-          {/* Logo & Brand in Sidebar (static brand) */}
-          <div className="flex items-center gap-3 mb-6">
+      <aside
+        className={`bg-white shadow-lg flex-shrink-0 h-screen sticky top-0 z-40 border-r border-gray-100 overflow-x-visible transition-[width] duration-200 ease-out ${
+          sidebarCollapsed ? "w-14" : "w-72"
+        }`}
+      >
+        <div
+          className={`h-full flex flex-col ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-3"}`}
+        >
+          <div
+            className={`flex-shrink-0 mb-3 ${sidebarCollapsed ? "flex flex-col items-center gap-2" : "flex items-center gap-2"}`}
+          >
             <Image
               src="/assets/images/logo-gemiprint-default.svg"
               alt="gemiprint Logo"
               width={40}
               height={40}
-              className="w-10 h-10"
+              className={`shrink-0 ${sidebarCollapsed ? "w-8 h-8" : "w-9 h-9"}`}
             />
-            <span className="font-bauhaus text-2xl tracking-wide italic">
-              <span className="text-[#00afef]">gemi</span>
-              <span className="text-[#0a1b3d]">print</span>
-            </span>
+            {!sidebarCollapsed && (
+              <span className="font-bauhaus text-2xl tracking-wide italic min-w-0 truncate">
+                <span className="text-[#00afef]">gemi</span>
+                <span className="text-[#0a1b3d]">print</span>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title={
+                sidebarCollapsed
+                  ? "Perluas sidebar"
+                  : "Ciutkan sidebar (ikon saja)"
+              }
+              aria-expanded={!sidebarCollapsed}
+              aria-label={
+                sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"
+              }
+              className={`rounded-lg p-1 text-[#6b7280] hover:bg-slate-100 hover:text-[#0a1b3d] transition-colors shrink-0 ${sidebarCollapsed ? "" : "ml-auto"}`}
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                aria-hidden
+              >
+                <rect
+                  x="3.5"
+                  y="4.5"
+                  width="17"
+                  height="15"
+                  rx="2"
+                  strokeLinejoin="round"
+                />
+                <line
+                  x1="9.75"
+                  y1="5.25"
+                  x2="9.75"
+                  y2="18.75"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
           </div>
 
-          {/* Navigation Menu - card-style buttons */}
-          <nav ref={navRef} className="space-y-3 flex-1 overflow-y-auto">
-            {MENU_ITEMS.map((item) => {
-              if (!canAccessPath(user?.role, item.href)) {
-                return null;
-              }
-              const active =
-                pathname === item.href || pathname?.startsWith(item.href + "/");
-              if (active) {
-                // Active item style like Users page: gradient strip + left border accent
+          {sidebarCollapsed ? (
+            <nav
+              ref={navRef}
+              className="flex flex-col flex-1 overflow-y-auto gap-0.5 min-h-0 -mx-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgb(203_213_225)_transparent]"
+            >
+              {visibleLeaves.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  pathname?.startsWith(item.href + "/");
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#00afef]/10 to-[#2266ff]/10 border-l-4 border-l-[#00afef] transition-all duration-200"
+                    title={item.label}
+                    className={`flex justify-center py-2 rounded-lg border-b border-gray-100 transition-colors ${navRowHover} ${
+                      active
+                        ? "border-b-2 border-b-[#00afef] bg-[#00afef]/5"
+                        : ""
+                    }`}
                   >
-                    <span className="text-[#00afef]">{item.icon}</span>
-                    <span className="font-twcenmt font-semibold text-[#00afef]">
-                      {item.label}
+                    <span
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm text-white bg-gradient-to-br ${item.color}`}
+                    >
+                      {item.icon}
                     </span>
                   </Link>
                 );
-              }
-              // Inactive items use card-style buttons
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group block rounded-xl border p-3 transition-all duration-200 bg-gray-50 border-gray-200 hover:bg-white hover:border-[#00afef]/60 hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all shadow-sm text-white bg-gradient-to-br ${item.color} group-hover:shadow-lg`}
-                    >
-                      {item.icon}
-                    </div>
-                    <span className="font-twcenmt font-semibold transition-colors text-[#0a1b3d] group-hover:text-[#00afef]">
-                      {item.label}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
+              })}
+            </nav>
+          ) : (
+            <nav
+              ref={navRef}
+              className="flex flex-col flex-1 overflow-y-auto min-h-0 gap-0 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgb(203_213_225)_transparent] pr-0.5"
+            >
+              {MENU_ENTRIES.map((entry) => {
+                if (isMenuGroup(entry)) {
+                  const visibleChildren = entry.children.filter((child) =>
+                    canAccessPath(user?.role, child.href)
+                  );
+                  if (visibleChildren.length === 0) return null;
 
-          {/* User Info + Logout - merged card */}
-          <div className="mt-auto pt-4">
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-100 overflow-hidden shadow-sm">
-              <div className="p-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-lg text-white shadow-md shrink-0">
+                  const expanded = expandedGroups[entry.id] ?? false;
+                  const groupChildActive = visibleChildren.some(
+                    (c) =>
+                      pathname === c.href ||
+                      pathname?.startsWith(c.href + "/")
+                  );
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="border-b border-gray-100/90 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedGroups((p) => ({
+                            ...p,
+                            [entry.id]: !p[entry.id],
+                          }))
+                        }
+                        className={`${navRowGroupBtn} ${navRowHover} border-b border-transparent ${
+                          groupChildActive
+                            ? "border-b-2 border-b-[#00afef]"
+                            : ""
+                        }`}
+                        aria-expanded={expanded}
+                      >
+                        <span
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm text-white bg-gradient-to-br mt-0.5 ${entry.color}`}
+                        >
+                          {entry.icon}
+                        </span>
+                        <span
+                          className={`font-twcenmt font-semibold text-base flex-1 min-w-0 text-left leading-snug ${
+                            groupChildActive
+                              ? "text-[#00afef]"
+                              : "text-[#0a1b3d]"
+                          }`}
+                        >
+                          {entry.label}
+                        </span>
+                        <svg
+                          className={`w-4 h-4 shrink-0 text-[#9ca3af] transition-transform ${
+                            expanded ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          aria-hidden
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                      {expanded && (
+                        <div className="mt-0.5 ml-2.5 pl-2.5 border-l border-[#00afef]/25 space-y-0">
+                          {visibleChildren.map((item) => {
+                            const active =
+                              pathname === item.href ||
+                              pathname?.startsWith(item.href + "/");
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`${navRowLeaf} ${navRowHover} ${
+                                  active
+                                    ? "border-b-2 border-b-[#00afef] -mb-px"
+                                    : "border-b border-gray-100"
+                                }`}
+                              >
+                                <span
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm text-white bg-gradient-to-br ${item.color}`}
+                                >
+                                  {item.icon}
+                                </span>
+                                <span
+                                  className={`font-twcenmt font-semibold text-base truncate ${
+                                    active
+                                      ? "text-[#00afef]"
+                                      : "text-[#0a1b3d]"
+                                  }`}
+                                >
+                                  {item.label}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                const item = entry as MenuItem;
+                if (!canAccessPath(user?.role, item.href)) {
+                  return null;
+                }
+                const active =
+                  pathname === item.href ||
+                  pathname?.startsWith(item.href + "/");
+                return (
+                  <div
+                    key={item.href}
+                    className="border-b border-gray-100/90 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
+                  >
+                    <Link
+                      href={item.href}
+                      className={`${navRowLeaf} ${navRowHover} ${
+                        active
+                          ? "border-b-2 border-b-[#00afef] -mb-px"
+                          : "border-b border-transparent"
+                      }`}
+                    >
+                      <span
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm text-white bg-gradient-to-br ${item.color}`}
+                      >
+                        {item.icon}
+                      </span>
+                      <span
+                        className={`font-twcenmt font-semibold text-base truncate ${
+                          active ? "text-[#00afef]" : "text-[#0a1b3d]"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </Link>
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+
+          <div
+            className={`flex-shrink-0 mt-auto pt-3 border-t border-gray-100 ${sidebarCollapsed ? "flex flex-col items-center gap-2" : ""}`}
+          >
+            {sidebarCollapsed ? (
+              <>
+                <div
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-sm text-white shadow-md"
+                  title={`${user?.nama_lengkap || user?.nama_pengguna} · @${user?.nama_pengguna} · ${user?.role}`}
+                >
+                  {user?.nama_lengkap?.charAt(0) ||
+                    user?.nama_pengguna?.charAt(0) ||
+                    "U"}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Logout"
+                  aria-label="Logout"
+                  className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogoutIcon size={17} />
+                </button>
+              </>
+            ) : (
+              <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-cyan-50/80 overflow-hidden">
+                <div className="p-2.5 flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-sm text-white shadow-md shrink-0">
                     {user?.nama_lengkap?.charAt(0) ||
                       user?.nama_pengguna?.charAt(0) ||
                       "U"}
@@ -210,25 +473,26 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                     <div className="font-bold text-sm text-[#0a1b3d] truncate leading-tight">
                       {user?.nama_lengkap || user?.nama_pengguna}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[11px] text-[#6b7280] truncate">
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      <span className="text-xs text-[#6b7280] truncate">
                         @{user?.nama_pengguna}
                       </span>
-                      <span className="text-[9px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white rounded-md shrink-0 tracking-wide">
+                      <span className="text-[10px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white/90 rounded shrink-0">
                         {user?.role}
                       </span>
                     </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 py-2.5 text-base font-semibold border-t border-red-100 transition-colors"
+                >
+                  <LogoutIcon size={20} />
+                  Logout
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2.5 hover:from-red-600 hover:to-red-700 transition-all font-semibold flex items-center justify-center gap-2 border-t-2 border-red-700/20"
-              >
-                <LogoutIcon size={18} />
-                Logout
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </aside>
@@ -238,8 +502,8 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
         {/* Header with indicators */}
         <header className="bg-white shadow-sm sticky top-0 z-30 border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-[#0a1b3d] font-twcenmt uppercase tracking-wide">
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="text-3xl font-bold text-[#0a1b3d] font-twcenmt uppercase tracking-wide truncate">
                 {computedTitle}
               </h1>
             </div>
