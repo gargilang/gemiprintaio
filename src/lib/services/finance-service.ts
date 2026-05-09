@@ -337,6 +337,81 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
   }
 }
 
+async function recalculateCashbookIfAvailable(): Promise<void> {
+  try {
+    const sqlite = await db.getNativeSQLite();
+    if (!sqlite) return;
+    const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+    await recalculateCashbook(sqlite);
+  } catch (e) {
+    console.warn("recalculateCashbook skipped:", e);
+  }
+}
+
+/**
+ * Delete a manual cash-book row (blocks rows tied to pembelian via [REF:purchase-).
+ */
+export async function deleteManualCashBookEntry(
+  id: string
+): Promise<"deleted" | "not_found" | "purchase_linked"> {
+  const entry = await getCashBookEntry(id);
+  if (!entry) return "not_found";
+  if (entry.keperluan?.includes("[REF:purchase-")) {
+    return "purchase_linked";
+  }
+  const del = await db.delete("keuangan", id);
+  if (del.error) throw del.error;
+  await recalculateCashbookIfAvailable();
+  return "deleted";
+}
+
+/**
+ * Update a manual cash-book row (same rules as legacy PUT /api/finance/cash-book/[id]).
+ */
+export async function updateManualCashBookEntry(
+  id: string,
+  body: {
+    tanggal: string;
+    kategori_transaksi: string;
+    debit?: number;
+    kredit?: number;
+    keperluan?: string;
+    catatan?: string;
+  }
+): Promise<"updated" | "not_found" | "purchase_linked" | "invalid"> {
+  const existingEntry = await getCashBookEntry(id);
+  if (!existingEntry) return "not_found";
+  if (existingEntry.keperluan?.includes("[REF:purchase-")) {
+    return "purchase_linked";
+  }
+
+  const debitVal =
+    typeof body.debit !== "undefined"
+      ? Number(body.debit)
+      : Number(existingEntry.debit ?? 0);
+  const kreditVal =
+    typeof body.kredit !== "undefined"
+      ? Number(body.kredit)
+      : Number(existingEntry.kredit ?? 0);
+
+  if (!body.tanggal || !body.kategori_transaksi) return "invalid";
+  if (debitVal > 0 && kreditVal > 0) return "invalid";
+  if (debitVal === 0 && kreditVal === 0) return "invalid";
+
+  const upd = await db.update("keuangan", id, {
+    tanggal: body.tanggal,
+    kategori_transaksi: body.kategori_transaksi,
+    debit: debitVal,
+    kredit: kreditVal,
+    keperluan: body.keperluan ?? "",
+    catatan: body.catatan ?? "",
+  });
+  if (upd.error) throw upd.error;
+
+  await recalculateCashbookIfAvailable();
+  return "updated";
+}
+
 /**
  * Delete all active cash book entries (preserves archived)
  */

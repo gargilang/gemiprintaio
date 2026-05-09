@@ -1,29 +1,14 @@
-/**
- * DEPRECATED: Use deleteAllCashbook() from finance-service.ts
- * @see /src/lib/services/finance-service.ts
- */
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import { join } from "path";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
+import { deleteAllCashbook } from "@/lib/services/finance-service";
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   try {
-    const db = new Database(DB_FILE);
-    db.pragma("foreign_keys = ON");
-
-    // Only delete active transactions (diarsipkan_pada IS NULL)
-    // This preserves archived transactions from "Tutup Buku"
-    const result = db
-      .prepare("DELETE FROM keuangan WHERE diarsipkan_pada IS NULL")
-      .run();
-
-    db.close();
+    const result = await deleteAllCashbook();
 
     return NextResponse.json({
       success: true,
-      deleted: result.changes,
+      deleted: result.deleted,
       message: `Transaksi aktif berhasil dihapus. Data arsip tetap tersimpan.`,
     });
   } catch (error: any) {

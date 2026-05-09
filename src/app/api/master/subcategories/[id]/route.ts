@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  countMaterialsBySubcategoryId,
+  deleteSubcategory,
+  getSubcategoryById,
+  getSubcategoryRowById,
+  updateSubcategory,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-// PUT update subcategory
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -25,54 +25,32 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
-
-    // Check if subcategory exists
-    const existing = db
-      .prepare("SELECT * FROM subkategori_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getSubcategoryById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Subkategori tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if name is already taken by another subcategory in the same category
-    const duplicate = db
-      .prepare(
-        "SELECT id FROM subkategori_barang WHERE kategori_id = ? AND nama = ? AND id != ?"
-      )
-      .get((existing as any).kategori_id, nama.trim(), params.id);
-
-    if (duplicate) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM subkategori_barang WHERE kategori_id = ? AND nama = ? AND id != ? LIMIT 1",
+      [existing.kategori_id, nama.trim(), params.id]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Subkategori dengan nama ini sudah ada dalam kategori ini" },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare(
-      `UPDATE subkategori_barang 
-       SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
-       WHERE id = ?`
-    );
+    await updateSubcategory(params.id, {
+      nama: nama.trim(),
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    stmt.run(nama.trim(), urutan_tampilan || 0, params.id);
-
-    const updatedSubcategory = db
-      .prepare(
-        `SELECT s.*, c.nama as category_name 
-         FROM subkategori_barang s
-         LEFT JOIN kategori_barang c ON s.kategori_id = c.id
-         WHERE s.id = ?`
-      )
-      .get(params.id);
-
-    db.close();
+    const updatedSubcategory = await getSubcategoryRowById(params.id);
 
     return NextResponse.json({
       message: "Subkategori berhasil diupdate",
@@ -87,47 +65,33 @@ export async function PUT(
   }
 }
 
-// DELETE subcategory
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    const db = getDb();
-
-    // Check if subcategory exists
-    const existing = db
-      .prepare("SELECT id FROM subkategori_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getSubcategoryById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Subkategori tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if there are bahan using this subcategory
-    const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM barang WHERE subkategori_id = ?")
-      .get(params.id) as { count: number };
+    const count = await countMaterialsBySubcategoryId(params.id);
 
-    if (materialsCount.count > 0) {
-      db.close();
+    if (count > 0) {
       return NextResponse.json(
         {
-          error: `Tidak dapat menghapus subkategori karena masih ada ${materialsCount.count} barang yang menggunakan subkategori ini`,
+          error: `Tidak dapat menghapus subkategori karena masih ada ${count} barang yang menggunakan subkategori ini`,
         },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare("DELETE FROM subkategori_barang WHERE id = ?");
-    stmt.run(params.id);
-
-    db.close();
+    await deleteSubcategory(params.id);
 
     return NextResponse.json({ message: "Subkategori berhasil dihapus" });
   } catch (error: any) {

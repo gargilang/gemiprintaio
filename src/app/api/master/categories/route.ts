@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createCategory,
+  getCategories,
+  getCategoryById,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "cat") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all categories
 export async function GET() {
   try {
-    const db = getDb();
-    const categories = db
-      .prepare("SELECT * FROM kategori_barang ORDER BY urutan_tampilan, nama")
-      .all();
-    db.close();
-
+    const categories = await getCategories();
     return NextResponse.json({ categories });
   } catch (error: any) {
     console.error("Error fetching categories:", error);
@@ -31,7 +20,6 @@ export async function GET() {
   }
 }
 
-// POST new category
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -44,42 +32,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if category already exists
-    const existing = db
-      .prepare("SELECT id FROM kategori_barang WHERE nama = ?")
-      .get(nama.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM kategori_barang WHERE nama = ? LIMIT 1",
+      [nama.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Kategori dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const id = generateId("cat");
-    const stmt = db.prepare(
-      `INSERT INTO kategori_barang (id, nama, butuh_spesifikasi_status, urutan_tampilan, dibuat_pada, diperbarui_pada)
-       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`
-    );
+    const created = await createCategory({
+      nama: nama.trim(),
+      butuh_spesifikasi_status: butuh_spesifikasi_status ? 1 : 0,
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    stmt.run(
-      id,
-      nama.trim(),
-      butuh_spesifikasi_status ? 1 : 0,
-      urutan_tampilan || 0
-    );
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal menambahkan kategori" },
+        { status: 500 }
+      );
+    }
 
-    const newCategory = db
-      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
-      .get(id);
-
-    db.close();
-
+    const category = await getCategoryById(created.id);
     return NextResponse.json(
-      { message: "Kategori berhasil ditambahkan", category: newCategory },
+      { message: "Kategori berhasil ditambahkan", category },
       { status: 201 }
     );
   } catch (error: any) {

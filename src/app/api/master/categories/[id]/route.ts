@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  countMaterialsByCategoryId,
+  deleteCategory,
+  getCategoryById,
+  updateCategory,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-// GET single category
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    const db = getDb();
-    const category = db
-      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
-      .get(params.id);
-
-    db.close();
+    const category = await getCategoryById(params.id);
 
     if (!category) {
       return NextResponse.json(
@@ -39,7 +33,6 @@ export async function GET(
   }
 }
 
-// PUT update category
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -56,52 +49,33 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
-
-    // Check if category exists
-    const existing = db
-      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getCategoryById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Kategori tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if name is already taken by another category
-    const duplicate = db
-      .prepare("SELECT id FROM kategori_barang WHERE nama = ? AND id != ?")
-      .get(nama.trim(), params.id);
-
-    if (duplicate) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM kategori_barang WHERE nama = ? AND id != ? LIMIT 1",
+      [nama.trim(), params.id]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Kategori dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare(
-      `UPDATE kategori_barang 
-       SET nama = ?, butuh_spesifikasi_status = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
-       WHERE id = ?`
-    );
+    await updateCategory(params.id, {
+      nama: nama.trim(),
+      butuh_spesifikasi_status: butuh_spesifikasi_status ? 1 : 0,
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    stmt.run(
-      nama.trim(),
-      butuh_spesifikasi_status ? 1 : 0,
-      urutan_tampilan || 0,
-      params.id
-    );
-
-    const updatedCategory = db
-      .prepare("SELECT * FROM kategori_barang WHERE id = ?")
-      .get(params.id);
-
-    db.close();
+    const updatedCategory = await getCategoryById(params.id);
 
     return NextResponse.json({
       message: "Kategori berhasil diupdate",
@@ -116,47 +90,33 @@ export async function PUT(
   }
 }
 
-// DELETE category
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    const db = getDb();
-
-    // Check if category exists
-    const existing = db
-      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getCategoryById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Kategori tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if there are bahan using this category
-    const materialsCount = db
-      .prepare("SELECT COUNT(*) as count FROM barang WHERE kategori_id = ?")
-      .get(params.id) as { count: number };
+    const count = await countMaterialsByCategoryId(params.id);
 
-    if (materialsCount.count > 0) {
-      db.close();
+    if (count > 0) {
       return NextResponse.json(
         {
-          error: `Tidak dapat menghapus kategori karena masih ada ${materialsCount.count} barang yang menggunakan kategori ini`,
+          error: `Tidak dapat menghapus kategori karena masih ada ${count} barang yang menggunakan kategori ini`,
         },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare("DELETE FROM kategori_barang WHERE id = ?");
-    stmt.run(params.id);
-
-    db.close();
+    await deleteCategory(params.id);
 
     return NextResponse.json({ message: "Kategori berhasil dihapus" });
   } catch (error: any) {

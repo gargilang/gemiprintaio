@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  deleteUnit,
+  getUnitById,
+  updateUnit,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-// PUT update unit
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -25,47 +23,32 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
-
-    // Check if unit exists
-    const existing = db
-      .prepare("SELECT id FROM satuan_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getUnitById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Satuan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if name is already taken by another unit
-    const duplicate = db
-      .prepare("SELECT id FROM satuan_barang WHERE nama = ? AND id != ?")
-      .get(nama.trim(), params.id);
-
-    if (duplicate) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM satuan_barang WHERE nama = ? AND id != ? LIMIT 1",
+      [nama.trim(), params.id]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Satuan dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare(
-      `UPDATE satuan_barang 
-       SET nama = ?, urutan_tampilan = ?, diperbarui_pada = datetime('now')
-       WHERE id = ?`
-    );
+    await updateUnit(params.id, {
+      nama: nama.trim(),
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    stmt.run(nama.trim(), urutan_tampilan || 0, params.id);
-
-    const updatedUnit = db
-      .prepare("SELECT * FROM satuan_barang WHERE id = ?")
-      .get(params.id);
-
-    db.close();
+    const updatedUnit = await getUnitById(params.id);
 
     return NextResponse.json({
       message: "Satuan berhasil diupdate",
@@ -80,32 +63,22 @@ export async function PUT(
   }
 }
 
-// DELETE unit
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    const db = getDb();
-
-    // Check if unit exists
-    const existing = db
-      .prepare("SELECT id FROM satuan_barang WHERE id = ?")
-      .get(params.id);
+    const existing = await getUnitById(params.id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Satuan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    const stmt = db.prepare("DELETE FROM satuan_barang WHERE id = ?");
-    stmt.run(params.id);
-
-    db.close();
+    await deleteUnit(params.id);
 
     return NextResponse.json({ message: "Satuan berhasil dihapus" });
   } catch (error: any) {

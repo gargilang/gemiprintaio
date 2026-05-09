@@ -201,6 +201,41 @@ export async function createMaterial(
   }
 }
 
+async function deleteOrphanUnitPricesSafe(
+  barangId: string,
+  keepIds: string[]
+): Promise<void> {
+  const existingResult = await db.query<{ id: string }>(
+    "harga_barang_satuan",
+    {
+      where: { barang_id: barangId },
+    }
+  );
+
+  const existingIds = (existingResult.data || []).map((r) => r.id);
+  const idsToDelete = existingIds.filter((uid) => !keepIds.includes(uid));
+  if (idsToDelete.length === 0) return;
+
+  const placeholders = idsToDelete.map(() => "?").join(",");
+  const referenced = await db.queryRaw<{ harga_satuan_id: string }>(
+    `SELECT DISTINCT harga_satuan_id FROM (
+      SELECT harga_satuan_id FROM item_pembelian WHERE harga_satuan_id IN (${placeholders})
+      UNION
+      SELECT harga_satuan_id FROM item_penjualan WHERE harga_satuan_id IN (${placeholders})
+    )`,
+    [...idsToDelete, ...idsToDelete]
+  );
+
+  const refSet = new Set(
+    (referenced || []).map((r) => r.harga_satuan_id).filter(Boolean)
+  );
+  const safeToDelete = idsToDelete.filter((uid) => !refSet.has(uid));
+
+  for (const uid of safeToDelete) {
+    await db.delete("harga_barang_satuan", uid);
+  }
+}
+
 /**
  * Update material and its unit prices
  */
@@ -212,6 +247,13 @@ export async function updateMaterial(
     // Separate unit_prices from material data
     const { unit_prices, category_name, subcategory_name, ...materialData } =
       material as any;
+
+    if (unit_prices !== undefined && Array.isArray(unit_prices)) {
+      const keepIds = unit_prices
+        .map((up: UnitPrice) => up.id)
+        .filter((x): x is string => Boolean(x));
+      await deleteOrphanUnitPricesSafe(id, keepIds);
+    }
 
     // Update material
     const normalizedMaterialData = {

@@ -1,50 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createQuickSpec,
+  getCategoryById,
+  getQuickSpecRowById,
+  listQuickSpecsWithCategory,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "spec") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all quick specs (optional category_id filter)
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("category_id");
 
-    const db = getDb();
-    let quickSpecs;
+    const specs = await listQuickSpecsWithCategory(categoryId);
 
-    if (categoryId) {
-      quickSpecs = db
-        .prepare(
-          `SELECT q.*, c.nama as category_name 
-           FROM spesifikasi_cepat_barang q
-           LEFT JOIN kategori_barang c ON q.kategori_id = c.id
-           WHERE q.kategori_id = ?
-           ORDER BY q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
-        )
-        .all(categoryId);
-    } else {
-      quickSpecs = db
-        .prepare(
-          `SELECT q.*, c.nama as category_name 
-           FROM spesifikasi_cepat_barang q
-           LEFT JOIN kategori_barang c ON q.kategori_id = c.id
-           ORDER BY c.urutan_tampilan, q.tipe_spesifikasi, q.urutan_tampilan, q.nilai_spesifikasi`
-        )
-        .all();
-    }
-
-    db.close();
-
-    return NextResponse.json({ specs: quickSpecs });
+    return NextResponse.json({ specs });
   } catch (error: any) {
     console.error("Error fetching quick specs:", error);
     return NextResponse.json(
@@ -54,7 +25,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST new quick spec
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -86,65 +56,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if category exists
-    const category = db
-      .prepare("SELECT id FROM kategori_barang WHERE id = ?")
-      .get(kategori_id);
-
+    const category = await getCategoryById(kategori_id);
     if (!category) {
-      db.close();
       return NextResponse.json(
         { error: "Kategori tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if quick spec already exists
-    const existing = db
-      .prepare(
-        "SELECT id FROM spesifikasi_cepat_barang WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ?"
-      )
-      .get(kategori_id, tipe_spesifikasi.trim(), nilai_spesifikasi.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM spesifikasi_cepat_barang WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ? LIMIT 1",
+      [kategori_id, tipe_spesifikasi.trim(), nilai_spesifikasi.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Spesifikasi ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const id = generateId("spec");
-    const stmt = db.prepare(
-      `INSERT INTO spesifikasi_cepat_barang (id, kategori_id, tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan, dibuat_pada, diperbarui_pada)
-       VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    );
-
-    stmt.run(
-      id,
+    const created = await createQuickSpec({
       kategori_id,
-      tipe_spesifikasi.trim(),
-      nilai_spesifikasi.trim(),
-      urutan_tampilan || 0
-    );
+      tipe_spesifikasi: tipe_spesifikasi.trim(),
+      nilai_spesifikasi: nilai_spesifikasi.trim(),
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    const newQuickSpec = db
-      .prepare(
-        `SELECT q.*, c.nama as category_name 
-         FROM spesifikasi_cepat_barang q
-         LEFT JOIN kategori_barang c ON q.kategori_id = c.id
-         WHERE q.id = ?`
-      )
-      .get(id);
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal menambahkan spesifikasi" },
+        { status: 500 }
+      );
+    }
 
-    db.close();
+    const quickSpec = await getQuickSpecRowById(created.id);
 
     return NextResponse.json(
       {
         message: "Spesifikasi cepat berhasil ditambahkan",
-        quickSpec: newQuickSpec,
+        quickSpec,
       },
       { status: 201 }
     );

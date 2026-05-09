@@ -7,6 +7,110 @@ import "server-only";
 
 import { db } from "../db-unified";
 
+async function recalculateCashbookIfAvailable(): Promise<void> {
+  try {
+    const sqlite = await db.getNativeSQLite();
+    if (!sqlite) return;
+    const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+    await recalculateCashbook(sqlite);
+  } catch (e) {
+    console.warn("recalculateCashbook skipped:", e);
+  }
+}
+
+/**
+ * Build purchase DTOs from pembelian rows using db-unified (Supabase / SQLite).
+ */
+async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase[]> {
+  if (pembelianRows.length === 0) return [];
+  const idSet = new Set(pembelianRows.map((p) => p.id));
+
+  const itemsRes = await db.query<any>("item_pembelian", {});
+  if (itemsRes.error) throw itemsRes.error;
+  const allItems = (itemsRes.data || []).filter((i) =>
+    idSet.has(i.pembelian_id)
+  );
+
+  const vendorIds = [
+    ...new Set(pembelianRows.map((p) => p.vendor_id).filter(Boolean)),
+  ] as string[];
+  const vendorMap = new Map<string, string>();
+  await Promise.all(
+    vendorIds.map(async (vid) => {
+      const v = await db.queryOne<{ nama_perusahaan: string }>("vendor", {
+        where: { id: vid },
+        select: "nama_perusahaan",
+      });
+      if (v.data?.nama_perusahaan)
+        vendorMap.set(vid, v.data.nama_perusahaan);
+    })
+  );
+
+  const creatorIds = [
+    ...new Set(pembelianRows.map((p) => p.dibuat_oleh).filter(Boolean)),
+  ] as string[];
+  const creatorMap = new Map<string, string>();
+  await Promise.all(
+    creatorIds.map(async (cid) => {
+      const u = await db.queryOne<{ nama_lengkap: string }>("profil", {
+        where: { id: cid },
+        select: "nama_lengkap",
+      });
+      if (u.data?.nama_lengkap) creatorMap.set(cid, u.data.nama_lengkap);
+    })
+  );
+
+  const barangIds = [
+    ...new Set(allItems.map((i) => i.barang_id).filter(Boolean)),
+  ] as string[];
+  const barangMap = new Map<string, string>();
+  await Promise.all(
+    barangIds.map(async (bid) => {
+      const b = await db.queryOne<{ nama: string }>("barang", {
+        where: { id: bid },
+        select: "nama",
+      });
+      if (b.data?.nama) barangMap.set(bid, b.data.nama);
+    })
+  );
+
+  const itemsByPurchase = new Map<string, any[]>();
+  for (const item of allItems) {
+    const pid = item.pembelian_id;
+    if (!itemsByPurchase.has(pid)) itemsByPurchase.set(pid, []);
+    itemsByPurchase.get(pid)!.push({
+      ...item,
+      nama_barang: barangMap.get(item.barang_id),
+    });
+  }
+
+  return pembelianRows.map((purchase) => {
+    const rawItems = itemsByPurchase.get(purchase.id) || [];
+    const items = normalizePurchaseItemsForUI(rawItems);
+    const calculatedTotal = items.reduce(
+      (sum: number, item: any) =>
+        sum +
+        (Number(item.subtotal) ||
+          Number(item.jumlah || 0) *
+            Number(item.harga_satuan || item.harga_beli || 0)),
+      0
+    );
+    const total_harga =
+      calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
+
+    const vid = purchase.vendor_id;
+    const cid = purchase.dibuat_oleh;
+
+    return {
+      ...purchase,
+      vendor_name: vid ? vendorMap.get(vid) : undefined,
+      created_by_name: cid ? creatorMap.get(cid) : undefined,
+      items,
+      total_harga,
+    } as Purchase;
+  });
+}
+
 function normalizePaymentMethod(method?: string): string {
   const value = (method || "").trim().toUpperCase();
   return value || "CASH";
@@ -18,6 +122,22 @@ function isCashPayment(method?: string): boolean {
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+async function nextNomorPembelian(): Promise<string> {
+  const rows = await db.queryRaw<{ nomor_pembelian: string }>(
+    "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1",
+    []
+  );
+  let nextNumber = 1;
+  const last = rows[0]?.nomor_pembelian;
+  if (last) {
+    const match = last.match(/(\d+)$/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+  return `PO-${nextNumber.toString().padStart(5, "0")}`;
 }
 
 function normalizePurchaseItemsForUI(items: any[]): any[] {
@@ -79,9 +199,11 @@ export interface InitData {
 export async function getPurchases(): Promise<Purchase[]> {
   try {
     const sqliteDb = await db.getNativeSQLite();
-    const purchases = sqliteDb
-      .prepare(
-        `
+    if (sqliteDb) {
+      try {
+        const purchases = sqliteDb
+          .prepare(
+            `
         SELECT
           p.*,
           v.nama_perusahaan as vendor_name,
@@ -91,13 +213,13 @@ export async function getPurchases(): Promise<Purchase[]> {
         LEFT JOIN profil ON p.dibuat_oleh = profil.id
         ORDER BY p.dibuat_pada DESC
       `
-      )
-      .all();
+          )
+          .all();
 
-    const purchasesWithItems = purchases.map((purchase: any) => {
-      const rawItems = sqliteDb
-        .prepare(
-          `
+        const purchasesWithItems = purchases.map((purchase: any) => {
+          const rawItems = sqliteDb
+            .prepare(
+              `
           SELECT
             ip.*,
             b.nama as nama_barang
@@ -105,29 +227,41 @@ export async function getPurchases(): Promise<Purchase[]> {
           LEFT JOIN barang b ON ip.barang_id = b.id
           WHERE ip.pembelian_id = ?
         `
-        )
-        .all(purchase.id);
-      const items = normalizePurchaseItemsForUI(rawItems);
+            )
+            .all(purchase.id);
+          const items = normalizePurchaseItemsForUI(rawItems);
 
-      const calculatedTotal = items.reduce(
-        (sum: number, item: any) =>
-          sum +
-          (Number(item.subtotal) ||
-            Number(item.jumlah || 0) *
-              Number(item.harga_satuan || item.harga_beli || 0)),
-        0
-      );
-      const total_harga =
-        calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
+          const calculatedTotal = items.reduce(
+            (sum: number, item: any) =>
+              sum +
+              (Number(item.subtotal) ||
+                Number(item.jumlah || 0) *
+                  Number(item.harga_satuan || item.harga_beli || 0)),
+            0
+          );
+          const total_harga =
+            calculatedTotal > 0
+              ? calculatedTotal
+              : Number(purchase.total_jumlah || 0);
 
-      return {
-        ...purchase,
-        items,
-        total_harga,
-      };
+          return {
+            ...purchase,
+            items,
+            total_harga,
+          };
+        });
+
+        return purchasesWithItems as Purchase[];
+      } catch (e) {
+        console.warn("SQLite getPurchases failed, using unified:", e);
+      }
+    }
+
+    const pemRes = await db.query<any>("pembelian", {
+      orderBy: { column: "dibuat_pada", ascending: false },
     });
-
-    return purchasesWithItems as Purchase[];
+    if (pemRes.error) throw pemRes.error;
+    return enrichPurchaseRows(pemRes.data || []);
   } catch (error) {
     console.error("Error fetching purchases:", error);
     throw error;
@@ -180,7 +314,7 @@ export async function getInitData(): Promise<InitData> {
  * Create new purchase with items
  */
 export async function createPurchase(data: {
-  nomor_pembelian: string;
+  nomor_pembelian?: string;
   nomor_faktur: string;
   vendor_id: string | null;
   tanggal: string;
@@ -189,7 +323,7 @@ export async function createPurchase(data: {
   dibuat_oleh?: string;
   items: Array<{
     barang_id: string;
-    harga_satuan_id: string;
+    harga_satuan_id?: string | null;
     nama_satuan: string;
     faktor_konversi: number;
     jumlah: number;
@@ -205,6 +339,17 @@ export async function createPurchase(data: {
     if (!data.items || data.items.length === 0) {
       throw new Error("Minimal harus ada 1 item pembelian");
     }
+
+    const nomorFakturNorm = data.nomor_faktur.trim();
+    const dup = await db.queryOne("pembelian", {
+      where: { nomor_faktur: nomorFakturNorm },
+    });
+    if (dup.data) {
+      throw new Error("Nomor faktur sudah digunakan");
+    }
+
+    const nomorPembelian =
+      data.nomor_pembelian?.trim() || (await nextNomorPembelian());
 
     // Generate ID
     const purchaseId = generateId("purchase");
@@ -223,8 +368,8 @@ export async function createPurchase(data: {
       // Create purchase header
       const purchase = {
         id: purchaseId,
-        nomor_pembelian: data.nomor_pembelian,
-        nomor_faktur: data.nomor_faktur.trim(),
+        nomor_pembelian: nomorPembelian,
+        nomor_faktur: nomorFakturNorm,
         vendor_id: data.vendor_id,
         tanggal: data.tanggal,
         metode_pembayaran: metodePembayaran,
@@ -262,41 +407,75 @@ export async function createPurchase(data: {
           throw itemResult.error;
         }
 
-        const materialResult = await db.query("barang", {
+        const materialResult = await db.queryOne("barang", {
           where: { id: item.barang_id },
         });
-        const material = materialResult.data?.[0];
+        const material = materialResult.data as Record<string, unknown> | null;
 
-        if (material && material.lacak_inventori_status) {
-          const jumlahDalamSatuanDasar =
-            item.jumlah * (item.faktor_konversi || 1);
-          const newStock = (material.jumlah_stok || 0) + jumlahDalamSatuanDasar;
+        if (!material) {
+          throw new Error(`Barang tidak ditemukan: ${item.barang_id}`);
+        }
 
-          const stockResult = await db.update("barang", item.barang_id, {
-            jumlah_stok: newStock,
-            diperbarui_pada: new Date().toISOString(),
-          });
-          if (stockResult.error) {
-            throw stockResult.error;
+        const jumlahDalamSatuanDasar =
+          item.jumlah * (item.faktor_konversi || 1);
+        const newStock =
+          (Number(material.jumlah_stok) || 0) + jumlahDalamSatuanDasar;
+
+        const stockResult = await db.update("barang", item.barang_id, {
+          jumlah_stok: newStock,
+          diperbarui_pada: new Date().toISOString(),
+        });
+        if (stockResult.error) {
+          throw stockResult.error;
+        }
+
+        if (item.harga_satuan_id && item.faktor_konversi) {
+          const pricePerBaseUnit = item.harga_satuan / item.faktor_konversi;
+          const upsRes = await db.query<{ id: string; faktor_konversi: number }>(
+            "harga_barang_satuan",
+            {
+              where: { barang_id: item.barang_id },
+            }
+          );
+          if (upsRes.error) throw upsRes.error;
+          for (const up of upsRes.data || []) {
+            const newPrice = pricePerBaseUnit * up.faktor_konversi;
+            const upd = await db.update("harga_barang_satuan", up.id, {
+              harga_beli: newPrice,
+              diperbarui_pada: new Date().toISOString(),
+            });
+            if (upd.error) throw upd.error;
           }
         }
       }
 
       if (isCashPayment(metodePembayaran)) {
-        const maxOrderResult = await db.queryRaw<{ max_order: number }>(
-          "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
-          []
-        );
-        const nextOrder = (maxOrderResult[0]?.max_order || 0) + 1;
+        const maxOrderResult = await db.query<any>("keuangan", {
+          orderBy: { column: "urutan_tampilan", ascending: false },
+          limit: 1,
+        });
+        const nextOrder =
+          (maxOrderResult.data?.[0]?.urutan_tampilan || 0) + 1;
 
         const vendorName = data.vendor_id
           ? (await db.queryOne("vendor", { where: { id: data.vendor_id } })).data
               ?.nama_perusahaan
           : null;
 
-        const keperluan = `Pembelian ${data.nomor_pembelian} (${data.nomor_faktur.trim()})${
-          vendorName ? ` - ${vendorName}` : ""
-        } [REF:${purchaseId}]`;
+        const catatanTrim = data.catatan?.trim();
+        const catatanExcerpt =
+          catatanTrim && catatanTrim.length > 0
+            ? catatanTrim.substring(0, 25) +
+              (catatanTrim.length > 25 ? "..." : "")
+            : null;
+
+        let keperluan = `Pembelian ${nomorPembelian} (${nomorFakturNorm})`;
+        if (vendorName) {
+          keperluan += ` - ${vendorName}`;
+        } else if (catatanExcerpt) {
+          keperluan += ` (${catatanExcerpt})`;
+        }
+        keperluan += ` [REF:${purchaseId}]`;
 
         const financeResult = await db.insert("keuangan", {
           id: generateId("keu"),
@@ -331,14 +510,18 @@ export async function createPurchase(data: {
           status: "AKTIF",
           catatan:
             metodePembayaran === "NET30"
-              ? "Tagihan jatuh tempo 30 hari"
-              : "Tagihan COD",
+              ? "Tagihan dengan jatuh tempo 30 hari"
+              : "Tagihan COD - bayar saat terima barang",
         });
         if (debtResult.error) {
           throw debtResult.error;
         }
       }
     });
+
+    if (isCashPayment(metodePembayaran)) {
+      await recalculateCashbookIfAvailable();
+    }
 
     return { id: purchaseId };
   } catch (error: any) {
@@ -353,9 +536,11 @@ export async function createPurchase(data: {
 export async function getPurchaseById(id: string): Promise<Purchase | null> {
   try {
     const sqliteDb = await db.getNativeSQLite();
-    const purchase = sqliteDb
-      .prepare(
-        `
+    if (sqliteDb) {
+      try {
+        const purchase = sqliteDb
+          .prepare(
+            `
         SELECT
           p.*,
           v.nama_perusahaan as vendor_name,
@@ -365,16 +550,16 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
         LEFT JOIN profil ON p.dibuat_oleh = profil.id
         WHERE p.id = ?
       `
-      )
-      .get(id) as any;
+          )
+          .get(id) as any;
 
-    if (!purchase) {
-      return null;
-    }
+        if (!purchase) {
+          return null;
+        }
 
-    const rawItems = sqliteDb
-      .prepare(
-        `
+        const rawItems = sqliteDb
+          .prepare(
+            `
         SELECT
           ip.*,
           b.nama as nama_barang
@@ -382,26 +567,37 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
         LEFT JOIN barang b ON ip.barang_id = b.id
         WHERE ip.pembelian_id = ?
       `
-      )
-      .all(id) as any[];
-    const items = normalizePurchaseItemsForUI(rawItems);
+          )
+          .all(id) as any[];
+        const items = normalizePurchaseItemsForUI(rawItems);
 
-    const calculatedTotal = items.reduce(
-      (sum: number, item: any) =>
-        sum +
-        (Number(item.subtotal) ||
-          Number(item.jumlah || 0) *
-            Number(item.harga_satuan || item.harga_beli || 0)),
-      0
-    );
-    const total_harga =
-      calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
+        const calculatedTotal = items.reduce(
+          (sum: number, item: any) =>
+            sum +
+            (Number(item.subtotal) ||
+              Number(item.jumlah || 0) *
+                Number(item.harga_satuan || item.harga_beli || 0)),
+          0
+        );
+        const total_harga =
+          calculatedTotal > 0
+            ? calculatedTotal
+            : Number(purchase.total_jumlah || 0);
 
-    return {
-      ...purchase,
-      items,
-      total_harga,
-    } as Purchase;
+        return {
+          ...purchase,
+          items,
+          total_harga,
+        } as Purchase;
+      } catch (e) {
+        console.warn("SQLite getPurchaseById failed, using unified:", e);
+      }
+    }
+
+    const one = await db.queryOne<any>("pembelian", { where: { id } });
+    if (!one.data) return null;
+    const enriched = await enrichPurchaseRows([one.data]);
+    return enriched[0] || null;
   } catch (error) {
     console.error("Error fetching purchase:", error);
     throw error;
@@ -554,14 +750,13 @@ export async function updatePurchase(
       data.nomor_faktur || data.nomor_pembelian
     }) [REF:${id}]`;
 
-    // Find keuangan entry with reference
-    const keuanganResult = await db.queryRaw<any>(
-      `SELECT id FROM keuangan WHERE keperluan LIKE ?`,
-      [`%[REF:${id}]%`]
+    const keuAllForRef = await db.query<any>("keuangan", {});
+    const matchingKeu = (keuAllForRef.data || []).filter((e: any) =>
+      String(e.keperluan || "").includes(`[REF:${id}]`)
     );
 
-    if (keuanganResult && keuanganResult.length > 0) {
-      const keuanganId = keuanganResult[0].id;
+    if (matchingKeu.length > 0) {
+      const keuanganId = matchingKeu[0].id;
       await db.update("keuangan", keuanganId, {
         tanggal: data.tanggal,
         keperluan: keperluanText,
@@ -570,6 +765,8 @@ export async function updatePurchase(
         catatan: data.catatan || null,
       });
     }
+
+    await recalculateCashbookIfAvailable();
 
     return { id };
   } catch (error) {
@@ -583,24 +780,50 @@ export async function updatePurchase(
  */
 export async function getDebts(): Promise<any[]> {
   try {
-    const result = await db.queryRaw<any>(`
-      SELECT 
-        p.id,
-        p.nomor_pembelian,
-        p.nomor_faktur,
-        p.tanggal,
-        p.total_jumlah,
-        p.jumlah_dibayar,
-        p.status_pembayaran,
-        (p.total_jumlah - p.jumlah_dibayar) as sisa_hutang,
-        v.nama_perusahaan as vendor_name
-      FROM pembelian p
-      LEFT JOIN vendor v ON p.vendor_id = v.id
-      WHERE p.status_pembayaran IN ('HUTANG', 'SEBAGIAN')
-      ORDER BY p.tanggal ASC, p.dibuat_pada ASC
-    `);
+    const pemRes = await db.query<any>("pembelian", {
+      orderBy: { column: "tanggal", ascending: true },
+    });
+    if (pemRes.error) throw pemRes.error;
 
-    return result || [];
+    const rows = (pemRes.data || []).filter((p: any) =>
+      ["HUTANG", "SEBAGIAN"].includes(
+        String(p.status_pembayaran || "").toUpperCase()
+      )
+    );
+
+    rows.sort((a: any, b: any) => {
+      const ta = String(a.tanggal || "").localeCompare(String(b.tanggal || ""));
+      if (ta !== 0) return ta;
+      return String(a.dibuat_pada || "").localeCompare(
+        String(b.dibuat_pada || "")
+      );
+    });
+
+    const vendorIds = [...new Set(rows.map((r: any) => r.vendor_id).filter(Boolean))];
+    const vendorMap = new Map<string, string>();
+    await Promise.all(
+      vendorIds.map(async (vid: string) => {
+        const v = await db.queryOne<{ nama_perusahaan: string }>("vendor", {
+          where: { id: vid },
+          select: "nama_perusahaan",
+        });
+        if (v.data?.nama_perusahaan)
+          vendorMap.set(vid, v.data.nama_perusahaan);
+      })
+    );
+
+    return rows.map((p: any) => ({
+      id: p.id,
+      nomor_pembelian: p.nomor_pembelian,
+      nomor_faktur: p.nomor_faktur,
+      tanggal: p.tanggal,
+      total_jumlah: p.total_jumlah,
+      jumlah_dibayar: p.jumlah_dibayar,
+      status_pembayaran: p.status_pembayaran,
+      sisa_hutang:
+        Number(p.total_jumlah || 0) - Number(p.jumlah_dibayar || 0),
+      vendor_name: p.vendor_id ? vendorMap.get(p.vendor_id) ?? null : null,
+    }));
   } catch (error) {
     console.error("Error fetching debts:", error);
     throw error;
@@ -658,9 +881,7 @@ export async function deletePurchase(id: string): Promise<void> {
     const result = await db.delete("pembelian", id);
     if (result.error) throw result.error;
 
-    // TODO: Recalculate cashbook if keuangan was affected
-    // This requires importing calculate-cashbook which may not work in unified layer
-    console.log("Purchase deleted, cashbook recalculation may be needed");
+    await recalculateCashbookIfAvailable();
   } catch (error) {
     console.error("Error deleting purchase:", error);
     throw error;
@@ -670,15 +891,15 @@ export async function deletePurchase(id: string): Promise<void> {
 /**
  * Revert payment - change purchase from LUNAS back to HUTANG
  */
-export async function revertPayment(purchaseId: string): Promise<void> {
+export async function revertPayment(
+  purchaseId: string
+): Promise<{ payments_deleted: number }> {
   try {
-    // Get purchase
     const purchase = await getPurchaseById(purchaseId);
     if (!purchase) {
       throw new Error("Pembelian tidak ditemukan");
     }
 
-    // Validate status
     if ((purchase.status_pembayaran || "").toUpperCase() !== "LUNAS") {
       throw new Error(
         "Hanya pembelian dengan status LUNAS yang dapat direvert ke HUTANG"
@@ -691,46 +912,61 @@ export async function revertPayment(purchaseId: string): Promise<void> {
       );
     }
 
-    // Get hutang_pembelian record
-    const hutangResult = await db.queryRaw<any>(
-      "SELECT * FROM hutang_pembelian WHERE id_pembelian = ?",
-      [purchaseId]
-    );
-
-    const hutangRecord = hutangResult[0];
+    const hutangRow = await db.queryOne<any>("hutang_pembelian", {
+      where: { id_pembelian: purchaseId },
+    });
+    const hutangRecord = hutangRow.data;
     if (!hutangRecord) {
       throw new Error("Data hutang tidak ditemukan");
     }
 
-    // Delete pelunasan_hutang records
-    await db.executeRaw("DELETE FROM pelunasan_hutang WHERE id_hutang = ?", [
-      hutangRecord.id,
-    ]);
+    const pelunasanList = await db.query<any>("pelunasan_hutang", {
+      where: { id_hutang: hutangRecord.id },
+    });
+    const payments_deleted = pelunasanList.data?.length || 0;
 
-    // Delete keuangan entries (SUPPLY category)
-    await db.executeRaw(
-      "DELETE FROM keuangan WHERE kategori_transaksi = 'SUPPLY' AND keperluan LIKE ?",
-      [`%${purchase.nomor_faktur}%`]
+    if (payments_deleted === 0) {
+      throw new Error("Tidak ada catatan pembayaran yang ditemukan");
+    }
+
+    for (const row of pelunasanList.data || []) {
+      const del = await db.delete("pelunasan_hutang", row.id);
+      if (del.error) throw del.error;
+    }
+
+    const keuAll = await db.query<any>("keuangan", {});
+    const nomorFaktur = String(purchase.nomor_faktur || "");
+    const toDelKeu = (keuAll.data || []).filter(
+      (k: any) =>
+        k.kategori_transaksi === "SUPPLY" &&
+        String(k.keperluan || "").includes(nomorFaktur)
+    );
+    for (const k of toDelKeu) {
+      const delK = await db.delete("keuangan", k.id);
+      if (delK.error) throw delK.error;
+    }
+
+    const jumlahHutang = Number(
+      hutangRecord.jumlah_hutang ??
+        (purchase as any).total_jumlah ??
+        purchase.total_harga ??
+        0
     );
 
-    // Reset hutang_pembelian
-    await db.executeRaw(
-      `UPDATE hutang_pembelian 
-       SET jumlah_terbayar = 0,
-           sisa_hutang = jumlah_hutang,
-           status = 'AKTIF'
-       WHERE id = ?`,
-      [hutangRecord.id]
-    );
+    await db.update("hutang_pembelian", hutangRecord.id, {
+      jumlah_terbayar: 0,
+      sisa_hutang: jumlahHutang,
+      status: "AKTIF",
+    });
 
-    // Reset pembelian to HUTANG status
     await db.update("pembelian", purchaseId, {
       jumlah_dibayar: 0,
       status_pembayaran: "HUTANG",
     });
 
-    // TODO: Recalculate cashbook
-    console.log("Payment reverted, cashbook recalculation may be needed");
+    await recalculateCashbookIfAvailable();
+
+    return { payments_deleted };
   } catch (error) {
     console.error("Error reverting payment:", error);
     throw error;
@@ -776,16 +1012,18 @@ export async function payDebt(data: {
     const newSisaHutang = purchase.total_harga - newJumlahDibayar;
     const newStatus = newSisaHutang <= 0 ? "LUNAS" : "SEBAGIAN";
 
-    // Get or create hutang_pembelian record
-    const hutangResult = await db.queryRaw<any>(
-      "SELECT * FROM hutang_pembelian WHERE id_pembelian = ?",
-      [data.purchase_id]
+    const purchaseTotal = Number(
+      (purchase as any).total_jumlah ?? purchase.total_harga ?? 0
     );
 
-    let hutangId = hutangResult[0]?.id;
+    // Get or create hutang_pembelian record
+    const hutangRow = await db.queryOne<any>("hutang_pembelian", {
+      where: { id_pembelian: data.purchase_id },
+    });
+
+    let hutangId = hutangRow.data?.id as string | undefined;
 
     if (!hutangId) {
-      // Create hutang record
       hutangId = `hutang-${Date.now()}-${Math.random()
         .toString(36)
         .substr(2, 9)}`;
@@ -793,9 +1031,9 @@ export async function payDebt(data: {
       await db.insert("hutang_pembelian", {
         id: hutangId,
         id_pembelian: data.purchase_id,
-        jumlah_hutang: purchase.total_harga,
+        jumlah_hutang: purchaseTotal,
         jumlah_terbayar: 0,
-        sisa_hutang: purchase.total_harga,
+        sisa_hutang: purchaseTotal,
         status: "AKTIF",
       });
     }
@@ -817,20 +1055,11 @@ export async function payDebt(data: {
       dibuat_oleh: data.dibuat_oleh || null,
     });
 
-    // Update hutang_pembelian
-    await db.executeRaw(
-      `UPDATE hutang_pembelian 
-       SET jumlah_terbayar = jumlah_terbayar + ?,
-           sisa_hutang = sisa_hutang - ?,
-           status = ?
-       WHERE id = ?`,
-      [
-        data.jumlah_bayar,
-        data.jumlah_bayar,
-        newSisaHutang <= 0 ? "LUNAS" : "AKTIF",
-        hutangId,
-      ]
-    );
+    await db.update("hutang_pembelian", hutangId, {
+      jumlah_terbayar: newJumlahDibayar,
+      sisa_hutang: newSisaHutang,
+      status: newSisaHutang <= 0 ? "LUNAS" : "AKTIF",
+    });
 
     // Update pembelian
     await db.update("pembelian", data.purchase_id, {
@@ -839,17 +1068,20 @@ export async function payDebt(data: {
     });
 
     // Create keuangan entry (SUPPLY category)
-    const maxOrderResult = await db.queryRaw<{ max_order: number }>(
-      "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
-      []
-    );
-    const nextOrder = (maxOrderResult[0]?.max_order || 0) + 1;
+    const maxOrderResult = await db.query<any>("keuangan", {
+      orderBy: { column: "urutan_tampilan", ascending: false },
+      limit: 1,
+    });
+    const nextOrder =
+      (maxOrderResult.data?.[0]?.urutan_tampilan || 0) + 1;
 
     // Get vendor info
-    const vendorResult = await db.query("vendor", {
-      where: { id: purchase.vendor_id },
-    });
-    const vendor = vendorResult.data?.[0];
+    const vendorResult = purchase.vendor_id
+      ? await db.queryOne<any>("vendor", {
+          where: { id: purchase.vendor_id },
+        })
+      : { data: null };
+    const vendor = vendorResult.data;
 
     const keperluan = `Pembayaran Hutang ${purchase.nomor_faktur}${
       vendor ? ` - ${vendor.nama_perusahaan}` : ""
@@ -871,11 +1103,10 @@ export async function payDebt(data: {
       urutan_tampilan: nextOrder,
     });
 
-    // TODO: Recalculate cashbook
-    console.log("Debt payment recorded, cashbook recalculation may be needed");
+    await recalculateCashbookIfAvailable();
 
     return {
-      status: newStatus.toLowerCase(),
+      status: newStatus,
       sisa_hutang: newSisaHutang,
     };
   } catch (error) {

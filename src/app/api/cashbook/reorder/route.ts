@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import { join } from "path";
-import { recalculateCashbook } from "@/lib/calculate-cashbook";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,24 +14,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = new Database(DB_FILE);
-    db.pragma("foreign_keys = ON");
-
-    // Update urutan_tampilan for each row
-    const updateStmt = db.prepare(
-      "UPDATE keuangan SET urutan_tampilan = ? WHERE id = ?"
-    );
-
-    reorderedIds.forEach((id, index) => {
-      updateStmt.run(index, id);
-    });
-
-    // Note: We DO NOT recalculate after reorder
-    // The user's request is to keep drag&drop UI but NOT recalculate
-    // Calculation only based on input order (display_order), not user drag&drop
-    // await recalculateCashbook(db);
-
-    db.close();
+    for (let index = 0; index < reorderedIds.length; index++) {
+      const id = reorderedIds[index];
+      const upd = await db.update("keuangan", id, {
+        urutan_tampilan: index,
+      });
+      if (upd.error) {
+        throw upd.error;
+      }
+    }
 
     return NextResponse.json({
       success: true,

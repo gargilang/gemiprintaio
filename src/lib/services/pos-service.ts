@@ -7,14 +7,18 @@
 
 import "server-only";
 
-import {
-  db,
-  generateId,
-  getCurrentTimestamp,
-  isTauriApp,
-  withSQLiteDatabase,
-} from "../db-unified";
+import { db, generateId, getCurrentTimestamp } from "../db-unified";
 import { recalculateCashbook } from "../calculate-cashbook";
+
+async function recalculateCashbookIfAvailable(): Promise<void> {
+  try {
+    const sqlite = await db.getNativeSQLite();
+    if (!sqlite) return;
+    await recalculateCashbook(sqlite);
+  } catch (e) {
+    console.warn("recalculateCashbook skipped:", e);
+  }
+}
 
 // ============================================================================
 // TYPES
@@ -342,7 +346,7 @@ export async function createSale(data: CreateSaleData): Promise<{
       (isFullPaymentMethod && actualPaid < data.total_jumlah && actualPaid > 0);
 
     // Execute in transaction
-    return await db.transaction(async () => {
+    const saleResultPayload = await db.transaction(async () => {
       // Create sale record
       const sale = {
         id: saleId,
@@ -483,13 +487,6 @@ export async function createSale(data: CreateSaleData): Promise<{
         }
       }
 
-      // Recalculate cashbook (Tauri only)
-      if (isTauriApp()) {
-        await withSQLiteDatabase(async (dbInstance) => {
-          await recalculateCashbook(dbInstance);
-        });
-      }
-
       // Create production order
       const spkNumber = await generateSPKNumber();
       const orderId = `OP-${Date.now()}`;
@@ -584,6 +581,9 @@ export async function createSale(data: CreateSaleData): Promise<{
         spk_number: spkNumber,
       };
     });
+
+    await recalculateCashbookIfAvailable();
+    return saleResultPayload;
   } catch (error: any) {
     console.error("Error creating sale:", error);
     throw error;
@@ -595,7 +595,7 @@ export async function createSale(data: CreateSaleData): Promise<{
  */
 export async function deleteSale(id: string): Promise<boolean> {
   try {
-    return await db.transaction(async () => {
+    await db.transaction(async () => {
       // Get sale
       const saleResult = await db.queryOne("penjualan", { where: { id } });
       if (!saleResult.data) {
@@ -665,16 +665,10 @@ export async function deleteSale(id: string): Promise<boolean> {
       // Delete sale
       const deleteResult = await db.delete("penjualan", id);
       if (deleteResult.error) throw deleteResult.error;
-
-      // Recalculate cashbook (Tauri only)
-      if (isTauriApp()) {
-        await withSQLiteDatabase(async (dbInstance) => {
-          await recalculateCashbook(dbInstance);
-        });
-      }
-
-      return true;
     });
+
+    await recalculateCashbookIfAvailable();
+    return true;
   } catch (error) {
     console.error("Error deleting sale:", error);
     throw error;
@@ -752,7 +746,7 @@ export async function payReceivable(data: {
       throw new Error("Jumlah pembayaran harus lebih dari 0");
     }
 
-    return await db.transaction(async () => {
+    const payResult = await db.transaction(async () => {
       // Get piutang info
       const piutangResult = await db.queryOne("piutang_penjualan", {
         where: { id: data.piutang_id },
@@ -841,13 +835,6 @@ export async function payReceivable(data: {
         dibuat_oleh: data.dibuat_oleh,
       });
 
-      // Recalculate cashbook (Tauri only)
-      if (isTauriApp()) {
-        await withSQLiteDatabase(async (dbInstance) => {
-          await recalculateCashbook(dbInstance);
-        });
-      }
-
       return {
         id: paymentId,
         jumlah_bayar: data.jumlah_bayar,
@@ -855,6 +842,9 @@ export async function payReceivable(data: {
         sisa_piutang: newSisaPiutang,
       };
     });
+
+    await recalculateCashbookIfAvailable();
+    return payResult;
   } catch (error) {
     console.error("Error paying receivable:", error);
     throw error;
@@ -869,7 +859,7 @@ export async function revertSalePayment(data: {
   dibuat_oleh?: string;
 }): Promise<number> {
   try {
-    return await db.transaction(async () => {
+    const revertedCount = await db.transaction(async () => {
       // Get sale
       const saleResult = await db.queryOne("penjualan", {
         where: { id: data.sale_id },
@@ -936,15 +926,11 @@ export async function revertSalePayment(data: {
         diperbarui_pada: getCurrentTimestamp(),
       });
 
-      // Recalculate cashbook (Tauri only)
-      if (isTauriApp()) {
-        await withSQLiteDatabase(async (dbInstance) => {
-          await recalculateCashbook(dbInstance);
-        });
-      }
-
       return payments.length;
     });
+
+    await recalculateCashbookIfAvailable();
+    return revertedCount;
   } catch (error) {
     console.error("Error reverting sale payment:", error);
     throw error;

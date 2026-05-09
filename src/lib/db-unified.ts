@@ -112,6 +112,14 @@ function withSyncMetadata(
   return next;
 }
 
+/**
+ * When GEMIPRINT_SKIP_SERVER_SQLITE_MIRROR=1, successful Supabase mutations on the
+ * Next.js server skip writing to ./database/gemiprint.db (needed for serverless).
+ */
+function skipServerSqliteMirror(): boolean {
+  return process.env.GEMIPRINT_SKIP_SERVER_SQLITE_MIRROR === "1";
+}
+
 // Environment detection
 export function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -662,8 +670,9 @@ class UnifiedDatabase {
         if (supabaseAvailable) {
           const result = await this.insertServerSupabase(table, data);
           if (!result.error) {
-            // Also save to local SQLite for backup
-            await this.insertServerSQLite(table, data);
+            if (!skipServerSqliteMirror()) {
+              await this.insertServerSQLite(table, data);
+            }
             return result;
           }
           console.warn(`⚠️ Supabase insert failed, falling back to SQLite`);
@@ -726,8 +735,9 @@ class UnifiedDatabase {
         if (supabaseAvailable) {
           const result = await this.updateServerSupabase(table, id, updateData);
           if (!result.error) {
-            // Also update local SQLite for backup
-            await this.updateServerSQLite(table, id, updateData);
+            if (!skipServerSqliteMirror()) {
+              await this.updateServerSQLite(table, id, updateData);
+            }
             return result;
           }
           console.warn(`⚠️ Supabase update failed, falling back to SQLite`);
@@ -789,8 +799,9 @@ class UnifiedDatabase {
         if (supabaseAvailable) {
           const result = await this.deleteServerSupabase(table, id);
           if (!result.error) {
-            // Also delete from local SQLite for backup
-            await this.deleteServerSQLite(table, id);
+            if (!skipServerSqliteMirror()) {
+              await this.deleteServerSQLite(table, id);
+            }
             return result;
           }
           console.warn(`⚠️ Supabase delete failed, falling back to SQLite`);

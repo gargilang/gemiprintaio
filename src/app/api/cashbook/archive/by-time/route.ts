@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import { join } from "path";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,19 +15,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const db = new Database(DB_FILE);
-
-    // For archived transactions, sort by urutan_tampilan ASC (oldest first)
-    // This shows transactions in chronological order from oldest to newest
-    const cashBooks = db
-      .prepare(
+    const cashBooks =
+      (await db.queryRaw(
         `SELECT * FROM keuangan 
          WHERE label_arsip = ? AND diarsipkan_pada = ?
-         ORDER BY urutan_tampilan ASC, dibuat_pada ASC`
-      )
-      .all(label, at);
-
-    db.close();
+         ORDER BY urutan_tampilan ASC, dibuat_pada ASC`,
+        [label, at]
+      )) || [];
 
     return NextResponse.json({ cashBooks });
   } catch (error: any) {

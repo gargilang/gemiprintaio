@@ -6,17 +6,13 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   try {
-    const sqliteDb = await db.getNativeSQLite();
-
-    // Get only active transactions (not archived)
-    // Sort by urutan_tampilan DESC (newest first = highest urutan_tampilan)
-    const cashBooks = sqliteDb
-      .prepare(
+    const cashBooks =
+      (await db.queryRaw(
         `SELECT * FROM keuangan 
          WHERE diarsipkan_pada IS NULL 
-         ORDER BY urutan_tampilan DESC, dibuat_pada DESC`
-      )
-      .all();
+         ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
+        []
+      )) || [];
 
     return NextResponse.json({ cashBooks });
   } catch (error) {

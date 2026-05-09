@@ -1,45 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createVendor,
+  deleteVendor,
+  getVendorById,
+  getVendors,
+  updateVendor,
+} from "@/lib/services/vendors-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "vendor") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all vendor
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const db = getDb();
-
-    const vendor = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          nama_perusahaan,
-          email,
-          telepon,
-          alamat,
-          kontak_person,
-          ketentuan_bayar,
-          aktif_status,
-          catatan,
-          dibuat_pada,
-          diperbarui_pada
-        FROM vendor
-        ORDER BY nama_perusahaan
-      `
-      )
-      .all();
-
-    db.close();
-
+    const vendor = await getVendors();
     return NextResponse.json({ vendor });
   } catch (error: any) {
     console.error("Error fetching vendor:", error);
@@ -50,7 +22,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST new vendor
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -72,67 +43,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if vendor with same company name already exists
-    const existing = db
-      .prepare("SELECT id FROM vendor WHERE nama_perusahaan = ?")
-      .get(nama_perusahaan.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM vendor WHERE nama_perusahaan = ? LIMIT 1",
+      [nama_perusahaan.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const vendorId = generateId("vendor");
+    const created = await createVendor({
+      nama_perusahaan: nama_perusahaan.trim(),
+      email: email?.trim() || "",
+      telepon: telepon?.trim() || "",
+      alamat: alamat?.trim() || "",
+      kontak_person: kontak_person?.trim() || null,
+      ketentuan_bayar: ketentuan_bayar?.trim() || null,
+      aktif_status: aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
+      catatan: catatan?.trim() || null,
+    });
 
-    const stmt = db.prepare(`
-      INSERT INTO vendor (
-        id, nama_perusahaan, email, telepon, alamat,
-        kontak_person, ketentuan_bayar, aktif_status, catatan,
-        dibuat_pada, diperbarui_pada
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal membuat vendor" },
+        { status: 500 }
+      );
+    }
 
-    stmt.run(
-      vendorId,
-      nama_perusahaan.trim(),
-      email?.trim() || null,
-      telepon?.trim() || null,
-      alamat?.trim() || null,
-      kontak_person?.trim() || null,
-      ketentuan_bayar?.trim() || null,
-      aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
-      catatan?.trim() || null
-    );
-
-    const newVendor = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          nama_perusahaan,
-          email,
-          telepon,
-          alamat,
-          kontak_person,
-          ketentuan_bayar,
-          aktif_status,
-          catatan,
-          dibuat_pada,
-          diperbarui_pada
-        FROM vendor WHERE id = ?
-      `
-      )
-      .get(vendorId);
-
-    db.close();
-
-    return NextResponse.json({ vendor: newVendor }, { status: 201 });
+    const vendor = await getVendorById(created.id);
+    return NextResponse.json({ vendor }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating vendor:", error);
     return NextResponse.json(
@@ -142,7 +83,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT update vendor
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -169,80 +109,37 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if vendor exists
-    const existing = db.prepare("SELECT id FROM vendor WHERE id = ?").get(id);
-
+    const existing = await getVendorById(id);
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Vendor tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if another vendor has the same company name
-    const duplicate = db
-      .prepare("SELECT id FROM vendor WHERE nama_perusahaan = ? AND id != ?")
-      .get(nama_perusahaan.trim(), id);
-
-    if (duplicate) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM vendor WHERE nama_perusahaan = ? AND id != ? LIMIT 1",
+      [nama_perusahaan.trim(), id]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const stmt = db.prepare(`
-      UPDATE vendor
-      SET nama_perusahaan = ?,
-          email = ?,
-          telepon = ?,
-          alamat = ?,
-          kontak_person = ?,
-          ketentuan_bayar = ?,
-          aktif_status = ?,
-          catatan = ?,
-          diperbarui_pada = datetime('now')
-      WHERE id = ?
-    `);
+    await updateVendor(id, {
+      nama_perusahaan: nama_perusahaan.trim(),
+      email: email?.trim() || "",
+      telepon: telepon?.trim() || "",
+      alamat: alamat?.trim() || "",
+      kontak_person: kontak_person?.trim() || null,
+      ketentuan_bayar: ketentuan_bayar?.trim() || null,
+      aktif_status: aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
+      catatan: catatan?.trim() || null,
+    });
 
-    stmt.run(
-      nama_perusahaan.trim(),
-      email?.trim() || null,
-      telepon?.trim() || null,
-      alamat?.trim() || null,
-      kontak_person?.trim() || null,
-      ketentuan_bayar?.trim() || null,
-      aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
-      catatan?.trim() || null,
-      id
-    );
-
-    const updatedVendor = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          nama_perusahaan,
-          email,
-          telepon,
-          alamat,
-          kontak_person,
-          ketentuan_bayar,
-          aktif_status,
-          catatan,
-          dibuat_pada,
-          diperbarui_pada
-        FROM vendor WHERE id = ?
-      `
-      )
-      .get(id);
-
-    db.close();
-
+    const updatedVendor = await getVendorById(id);
     return NextResponse.json({ vendor: updatedVendor });
   } catch (error: any) {
     console.error("Error updating vendor:", error);
@@ -253,7 +150,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE vendor
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -263,26 +159,19 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
     }
 
-    const db = getDb();
-
-    // Check if vendor exists
-    const existing = db.prepare("SELECT id FROM vendor WHERE id = ?").get(id);
-
+    const existing = await getVendorById(id);
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Vendor tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if vendor is used in pembelian
-    const usedInPurchases = db
-      .prepare("SELECT id FROM pembelian WHERE vendor_id = ? LIMIT 1")
-      .get(id);
-
-    if (usedInPurchases) {
-      db.close();
+    const used = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM pembelian WHERE vendor_id = ? LIMIT 1",
+      [id]
+    );
+    if (used.length > 0) {
       return NextResponse.json(
         {
           error:
@@ -292,11 +181,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const stmt = db.prepare("DELETE FROM vendor WHERE id = ?");
-    stmt.run(id);
-
-    db.close();
-
+    await deleteVendor(id);
     return NextResponse.json({ message: "Vendor berhasil dihapus" });
   } catch (error: any) {
     console.error("Error deleting vendor:", error);

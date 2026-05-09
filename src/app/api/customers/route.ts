@@ -1,45 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createCustomer,
+  deleteCustomer,
+  getCustomerById,
+  getCustomers,
+  updateCustomer,
+} from "@/lib/services/customers-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "cust") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all pelanggan
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const db = getDb();
-
-    const pelanggan = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          tipe_pelanggan,
-          nama,
-          nama_perusahaan,
-          npwp,
-          email,
-          telepon,
-          alamat,
-          member_status,
-          dibuat_pada,
-          diperbarui_pada
-        FROM pelanggan
-        ORDER BY nama_perusahaan, nama
-      `
-      )
-      .all();
-
-    db.close();
-
+    const pelanggan = await getCustomers();
     return NextResponse.json({ pelanggan });
   } catch (error: any) {
     console.error("Error fetching pelanggan:", error);
@@ -50,7 +22,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST new customer
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -72,73 +43,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if customer with same name already exists
-    const existing = db
-      .prepare("SELECT id FROM pelanggan WHERE nama = ?")
-      .get(nama.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM pelanggan WHERE nama = ? LIMIT 1",
+      [nama.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const customerId = generateId("cust");
-
-    // Determine tipe_pelanggan
     const customerType =
-      nama_perusahaan && nama_perusahaan.trim()
+      nama_perusahaan && String(nama_perusahaan).trim()
         ? tipe_pelanggan || "perusahaan"
         : "perorangan";
 
-    const stmt = db.prepare(`
-      INSERT INTO pelanggan (
-        id, tipe_pelanggan, nama, nama_perusahaan, npwp,
-        email, telepon, alamat, member_status,
-        dibuat_pada, diperbarui_pada, sync_status, sync_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), 'pending', NULL)
-    `);
+    const created = await createCustomer({
+      tipe_pelanggan: customerType,
+      nama: nama.trim(),
+      nama_perusahaan: nama_perusahaan?.trim() || null,
+      npwp: npwp?.trim() || null,
+      email: email?.trim() || "",
+      telepon: telepon?.trim() || "",
+      alamat: alamat?.trim() || "",
+      member_status: member_status ? 1 : 0,
+    });
 
-    stmt.run(
-      customerId,
-      customerType,
-      nama.trim(),
-      nama_perusahaan?.trim() || null,
-      npwp?.trim() || null,
-      email?.trim() || null,
-      telepon?.trim() || null,
-      alamat?.trim() || null,
-      member_status ? 1 : 0
-    );
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal membuat pelanggan" },
+        { status: 500 }
+      );
+    }
 
-    const newCustomer = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          tipe_pelanggan,
-          nama,
-          nama_perusahaan,
-          npwp,
-          email,
-          telepon,
-          alamat,
-          member_status,
-          dibuat_pada,
-          diperbarui_pada
-        FROM pelanggan WHERE id = ?
-      `
-      )
-      .get(customerId);
-
-    db.close();
-
-    return NextResponse.json({ customer: newCustomer }, { status: 201 });
+    const customer = await getCustomerById(created.id);
+    return NextResponse.json({ customer }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating customer:", error);
     return NextResponse.json(
@@ -148,7 +88,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT update customer
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -175,90 +114,42 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if customer exists
-    const existing = db
-      .prepare("SELECT id FROM pelanggan WHERE id = ?")
-      .get(id);
-
+    const existing = await getCustomerById(id);
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if another customer has the same name
-    const duplicate = db
-      .prepare("SELECT id FROM pelanggan WHERE nama = ? AND id != ?")
-      .get(nama.trim(), id);
-
-    if (duplicate) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM pelanggan WHERE nama = ? AND id != ? LIMIT 1",
+      [nama.trim(), id]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    // Determine tipe_pelanggan
     const customerType =
-      nama_perusahaan && nama_perusahaan.trim()
+      nama_perusahaan && String(nama_perusahaan).trim()
         ? tipe_pelanggan || "perusahaan"
         : "perorangan";
 
-    const stmt = db.prepare(`
-      UPDATE pelanggan
-      SET tipe_pelanggan = ?,
-          nama = ?,
-          nama_perusahaan = ?,
-          npwp = ?,
-          email = ?,
-          telepon = ?,
-          alamat = ?,
-          member_status = ?,
-          diperbarui_pada = datetime('now'),
-          sync_status = 'pending',
-          sync_at = NULL
-      WHERE id = ?
-    `);
+    await updateCustomer(id, {
+      tipe_pelanggan: customerType,
+      nama: nama.trim(),
+      nama_perusahaan: nama_perusahaan?.trim() || null,
+      npwp: npwp?.trim() || null,
+      email: email?.trim() || "",
+      telepon: telepon?.trim() || "",
+      alamat: alamat?.trim() || "",
+      member_status: member_status ? 1 : 0,
+    });
 
-    stmt.run(
-      customerType,
-      nama.trim(),
-      nama_perusahaan?.trim() || null,
-      npwp?.trim() || null,
-      email?.trim() || null,
-      telepon?.trim() || null,
-      alamat?.trim() || null,
-      member_status ? 1 : 0,
-      id
-    );
-
-    const updatedCustomer = db
-      .prepare(
-        `
-        SELECT 
-          id,
-          tipe_pelanggan,
-          nama,
-          nama_perusahaan,
-          npwp,
-          email,
-          telepon,
-          alamat,
-          member_status,
-          dibuat_pada,
-          diperbarui_pada
-        FROM pelanggan WHERE id = ?
-      `
-      )
-      .get(id);
-
-    db.close();
-
+    const updatedCustomer = await getCustomerById(id);
     return NextResponse.json({ customer: updatedCustomer });
   } catch (error: any) {
     console.error("Error updating customer:", error);
@@ -269,7 +160,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE customer
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -279,39 +169,19 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
     }
 
-    const db = getDb();
-
-    // Check if customer exists
-    const existing = db
-      .prepare("SELECT id FROM pelanggan WHERE id = ?")
-      .get(id);
-
+    const existing = await getCustomerById(id);
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // Check if customer is used in penjualan. The penjualan table may still use the
-    // English column name (customer_id) or the migrated Indonesian name
-    // (pelanggan_id). Try the Indonesian column first and fall back if it
-    // doesn't exist to avoid runtime errors during incremental migration.
-    let usedInSales = null;
-    try {
-      usedInSales = db
-        .prepare("SELECT id FROM penjualan WHERE pelanggan_id = ? LIMIT 1")
-        .get(id);
-    } catch (err) {
-      // pelanggan_id doesn't exist yet; try the legacy column name
-      usedInSales = db
-        .prepare("SELECT id FROM penjualan WHERE customer_id = ? LIMIT 1")
-        .get(id);
-    }
-
-    if (usedInSales) {
-      db.close();
+    const used = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM penjualan WHERE pelanggan_id = ? LIMIT 1",
+      [id]
+    );
+    if (used.length > 0) {
       return NextResponse.json(
         {
           error:
@@ -321,11 +191,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const stmt = db.prepare("DELETE FROM pelanggan WHERE id = ?");
-    stmt.run(id);
-
-    db.close();
-
+    await deleteCustomer(id);
     return NextResponse.json({ message: "Pelanggan berhasil dihapus" });
   } catch (error: any) {
     console.error("Error deleting customer:", error);

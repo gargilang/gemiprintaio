@@ -1,22 +1,11 @@
-/**
- * DEPRECATED: Use reorderCategories() from master-service.ts
- * @see /src/lib/services/master-service.ts
- */
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { reorderCategories } from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-// PUT reorder categories
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { items } = body; // Array of { id, urutan_tampilan }
+    const { items } = body;
 
     if (!items || !Array.isArray(items)) {
       return NextResponse.json(
@@ -25,22 +14,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Update each category's urutan_tampilan in a transaction
-    const updateStmt = db.prepare(
-      "UPDATE kategori_barang SET urutan_tampilan = ?, diperbarui_pada = datetime('now') WHERE id = ?"
-    );
-
-    const transaction = db.transaction((itemsToUpdate: any[]) => {
-      for (const item of itemsToUpdate) {
-        updateStmt.run(item.urutan_tampilan, item.id);
-      }
-    });
-
-    transaction(items);
-
-    db.close();
+    await reorderCategories(items);
 
     return NextResponse.json({
       message: "Urutan kategori berhasil diperbarui",

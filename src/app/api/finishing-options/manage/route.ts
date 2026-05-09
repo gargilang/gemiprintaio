@@ -1,32 +1,16 @@
-/**
- * DEPRECATED: Use finishing-options-service.ts functions
- * @see /src/lib/services/finishing-options-service.ts
- */
 import { NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const dbPath = path.join(process.cwd(), "database", "gemiprint.db");
+import {
+  createFinishingOption,
+  deleteFinishingOption,
+  getFinishingOptions,
+  reorderFinishingOptions,
+  updateFinishingOption,
+} from "@/lib/services/finishing-options-service";
 
-function generateId(prefix: string = "id"): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all finishing options (including inactive)
 export async function GET() {
   try {
-    const db = new Database(dbPath);
-
-    const options = db
-      .prepare(
-        `SELECT id, nama, urutan_tampilan, aktif_status, dibuat_pada, diperbarui_pada
-         FROM opsi_finishing 
-         ORDER BY urutan_tampilan ASC, nama ASC`
-      )
-      .all();
-
-    db.close();
-
+    const options = await getFinishingOptions();
     return NextResponse.json({
       success: true,
       options,
@@ -43,7 +27,6 @@ export async function GET() {
   }
 }
 
-// POST - Add new finishing option
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -56,35 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = new Database(dbPath);
-
-    // Check if nama already exists
-    const existing = db
-      .prepare("SELECT id FROM opsi_finishing WHERE nama = ?")
-      .get(nama.trim());
-
-    if (existing) {
-      db.close();
-      return NextResponse.json(
-        { success: false, error: "Opsi dengan nama ini sudah ada" },
-        { status: 400 }
-      );
-    }
-
-    // Get max urutan_tampilan
-    const maxOrder: any = db
-      .prepare("SELECT MAX(urutan_tampilan) as max_order FROM opsi_finishing")
-      .get();
-
-    const newOrder = (maxOrder?.max_order || 0) + 1;
-    const id = generateId("FIN-OPT");
-
-    db.prepare(
-      `INSERT INTO opsi_finishing (id, nama, urutan_tampilan, aktif_status)
-       VALUES (?, ?, ?, 1)`
-    ).run(id, nama.trim(), newOrder);
-
-    db.close();
+    await createFinishingOption({ nama });
 
     return NextResponse.json({
       success: true,
@@ -92,17 +47,18 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Error creating finishing option:", error);
+    const msg = error.message || "Failed to create finishing option";
+    const clientError =
+      msg.includes("kosong") ||
+      msg.includes("sudah ada") ||
+      msg.includes("tidak boleh");
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to create finishing option",
-      },
-      { status: 500 }
+      { success: false, error: msg },
+      { status: clientError ? 400 : 500 }
     );
   }
 }
 
-// PUT - Update finishing option name
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
@@ -115,28 +71,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const db = new Database(dbPath);
-
-    // Check if nama already exists (excluding current)
-    const existing = db
-      .prepare("SELECT id FROM opsi_finishing WHERE nama = ? AND id != ?")
-      .get(nama.trim(), id);
-
-    if (existing) {
-      db.close();
-      return NextResponse.json(
-        { success: false, error: "Opsi dengan nama ini sudah ada" },
-        { status: 400 }
-      );
-    }
-
-    db.prepare(
-      `UPDATE opsi_finishing 
-       SET nama = ?, diperbarui_pada = datetime('now')
-       WHERE id = ?`
-    ).run(nama.trim(), id);
-
-    db.close();
+    await updateFinishingOption(id, { nama });
 
     return NextResponse.json({
       success: true,
@@ -144,17 +79,18 @@ export async function PUT(request: Request) {
     });
   } catch (error: any) {
     console.error("Error updating finishing option:", error);
+    const msg = error.message || "Failed to update finishing option";
+    const clientError =
+      msg.includes("kosong") ||
+      msg.includes("sudah ada") ||
+      msg.includes("tidak boleh");
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to update finishing option",
-      },
-      { status: 500 }
+      { success: false, error: msg },
+      { status: clientError ? 400 : 500 }
     );
   }
 }
 
-// DELETE - Soft delete finishing option
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
@@ -167,16 +103,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const db = new Database(dbPath);
-
-    // Soft delete by setting aktif_status to 0
-    db.prepare(
-      `UPDATE opsi_finishing 
-       SET aktif_status = 0, diperbarui_pada = datetime('now')
-       WHERE id = ?`
-    ).run(id);
-
-    db.close();
+    await deleteFinishingOption(id);
 
     return NextResponse.json({
       success: true,
@@ -194,7 +121,6 @@ export async function DELETE(request: Request) {
   }
 }
 
-// PATCH - Update order (reorder)
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
@@ -207,32 +133,12 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const db = new Database(dbPath);
+    await reorderFinishingOptions(updates);
 
-    db.exec("BEGIN TRANSACTION");
-
-    try {
-      const stmt = db.prepare(
-        `UPDATE opsi_finishing 
-         SET urutan_tampilan = ?, diperbarui_pada = datetime('now')
-         WHERE id = ?`
-      );
-
-      for (const update of updates) {
-        stmt.run(update.urutan_tampilan, update.id);
-      }
-
-      db.exec("COMMIT");
-      db.close();
-
-      return NextResponse.json({
-        success: true,
-        message: "Urutan berhasil diperbarui",
-      });
-    } catch (error) {
-      db.exec("ROLLBACK");
-      throw error;
-    }
+    return NextResponse.json({
+      success: true,
+      message: "Urutan berhasil diperbarui",
+    });
   } catch (error: any) {
     console.error("Error updating finishing option order:", error);
     return NextResponse.json(

@@ -73,7 +73,12 @@ export async function getCategories(): Promise<Category[]> {
     const result = await db.query<Category>("kategori_barang", {
       orderBy: { column: "urutan_tampilan", ascending: true },
     });
-    return result.data || [];
+    const data = result.data || [];
+    return [...data].sort((a, b) => {
+      const u = a.urutan_tampilan - b.urutan_tampilan;
+      if (u !== 0) return u;
+      return (a.nama || "").localeCompare(b.nama || "");
+    });
   } catch (error) {
     console.error("Error fetching categories:", error);
     throw error;
@@ -154,11 +159,67 @@ export async function getSubcategories(
       where: kategori_id ? { kategori_id } : undefined,
       orderBy: { column: "urutan_tampilan", ascending: true },
     });
-    return result.data || [];
+    const data = result.data || [];
+    return [...data].sort((a, b) => {
+      const u = a.urutan_tampilan - b.urutan_tampilan;
+      if (u !== 0) return u;
+      return (a.nama || "").localeCompare(b.nama || "");
+    });
   } catch (error) {
     console.error("Error fetching subcategories:", error);
     throw error;
   }
+}
+
+export type SubcategoryWithCategory = Subcategory & { category_name?: string };
+
+export async function getSubcategoryById(
+  id: string
+): Promise<Subcategory | null> {
+  try {
+    const result = await db.queryOne<Subcategory>("subkategori_barang", {
+      where: { id },
+    });
+    return result.data ?? null;
+  } catch (error) {
+    console.error("Error fetching subcategory:", error);
+    return null;
+  }
+}
+
+export async function getSubcategoryRowById(
+  id: string
+): Promise<SubcategoryWithCategory | null> {
+  const sub = await getSubcategoryById(id);
+  if (!sub) return null;
+  const cat = await getCategoryById(sub.kategori_id);
+  return { ...sub, category_name: cat?.nama };
+}
+
+/** Subcategory rows with category_name (same ordering as legacy SQL routes). */
+export async function listSubcategoriesWithCategory(
+  categoryId?: string | null
+): Promise<SubcategoryWithCategory[]> {
+  const subs = await getSubcategories(categoryId || undefined);
+  if (categoryId) {
+    const cat = await getCategoryById(categoryId);
+    return subs.map((s) => ({ ...s, category_name: cat?.nama }));
+  }
+  const categories = await getCategories();
+  const catOrder = new Map(categories.map((c) => [c.id, c.urutan_tampilan]));
+  const map = new Map(categories.map((c) => [c.id, c.nama]));
+  const enriched = subs.map((s) => ({
+    ...s,
+    category_name: map.get(s.kategori_id),
+  }));
+  return enriched.sort((a, b) => {
+    const ca = catOrder.get(a.kategori_id) ?? 0;
+    const cb = catOrder.get(b.kategori_id) ?? 0;
+    if (ca !== cb) return ca - cb;
+    const u = a.urutan_tampilan - b.urutan_tampilan;
+    if (u !== 0) return u;
+    return (a.nama || "").localeCompare(b.nama || "");
+  });
 }
 
 export async function createSubcategory(
@@ -218,12 +279,29 @@ export async function deleteSubcategory(id: string): Promise<boolean> {
 export async function getUnits(): Promise<Unit[]> {
   try {
     const result = await db.query<Unit>("satuan_barang", {
-      orderBy: { column: "nama", ascending: true },
+      orderBy: { column: "urutan_tampilan", ascending: true },
     });
-    return result.data || [];
+    const data = result.data || [];
+    return [...data].sort((a, b) => {
+      const u = (a.urutan_tampilan ?? 0) - (b.urutan_tampilan ?? 0);
+      if (u !== 0) return u;
+      return (a.nama || "").localeCompare(b.nama || "");
+    });
   } catch (error) {
     console.error("Error fetching units:", error);
     throw error;
+  }
+}
+
+export async function getUnitById(id: string): Promise<Unit | null> {
+  try {
+    const result = await db.queryOne<Unit>("satuan_barang", {
+      where: { id },
+    });
+    return result.data ?? null;
+  } catch (error) {
+    console.error("Error fetching unit:", error);
+    return null;
   }
 }
 
@@ -294,6 +372,86 @@ export async function getQuickSpecs(
     console.error("Error fetching quick specs:", error);
     throw error;
   }
+}
+
+export type QuickSpecWithCategory = QuickSpec & { category_name?: string };
+
+export async function getQuickSpecById(id: string): Promise<QuickSpec | null> {
+  try {
+    const result = await db.queryOne<QuickSpec>("spesifikasi_cepat_barang", {
+      where: { id },
+    });
+    return result.data ?? null;
+  } catch (error) {
+    console.error("Error fetching quick spec:", error);
+    return null;
+  }
+}
+
+export async function getQuickSpecRowById(
+  id: string
+): Promise<QuickSpecWithCategory | null> {
+  const spec = await getQuickSpecById(id);
+  if (!spec) return null;
+  const cat = await getCategoryById(spec.kategori_id);
+  return { ...spec, category_name: cat?.nama };
+}
+
+/** Quick specs with category_name and legacy sort order. */
+export async function listQuickSpecsWithCategory(
+  categoryId?: string | null
+): Promise<QuickSpecWithCategory[]> {
+  const specs = await getQuickSpecs(categoryId || undefined);
+  const categories = await getCategories();
+  const catOrder = new Map(
+    categories.map((c) => [c.id, c.urutan_tampilan])
+  );
+  const catName = new Map(categories.map((c) => [c.id, c.nama]));
+  const enriched: QuickSpecWithCategory[] = specs.map((q) => ({
+    ...q,
+    category_name: catName.get(q.kategori_id),
+  }));
+
+  if (categoryId) {
+    return enriched.sort((a, b) => {
+      const t = a.tipe_spesifikasi.localeCompare(b.tipe_spesifikasi);
+      if (t !== 0) return t;
+      const u = a.urutan_tampilan - b.urutan_tampilan;
+      if (u !== 0) return u;
+      return a.nilai_spesifikasi.localeCompare(b.nilai_spesifikasi);
+    });
+  }
+
+  return enriched.sort((a, b) => {
+    const ca = catOrder.get(a.kategori_id) ?? 0;
+    const cb = catOrder.get(b.kategori_id) ?? 0;
+    if (ca !== cb) return ca - cb;
+    const t = a.tipe_spesifikasi.localeCompare(b.tipe_spesifikasi);
+    if (t !== 0) return t;
+    const u = a.urutan_tampilan - b.urutan_tampilan;
+    if (u !== 0) return u;
+    return a.nilai_spesifikasi.localeCompare(b.nilai_spesifikasi);
+  });
+}
+
+export async function countMaterialsByCategoryId(
+  kategori_id: string
+): Promise<number> {
+  const rows = await db.queryRaw<{ count: number }>(
+    "SELECT COUNT(*) as count FROM barang WHERE kategori_id = ?",
+    [kategori_id]
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function countMaterialsBySubcategoryId(
+  subkategori_id: string
+): Promise<number> {
+  const rows = await db.queryRaw<{ count: number }>(
+    "SELECT COUNT(*) as count FROM barang WHERE subkategori_id = ?",
+    [subkategori_id]
+  );
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function createQuickSpec(

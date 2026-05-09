@@ -1,16 +1,9 @@
-/**
- * DEPRECATED: This API route is deprecated.
- * Use production-service.ts instead.
- * @see src/lib/services/production-service.ts
- */
-
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const dbPath = path.join(process.cwd(), "database", "gemiprint.db");
+import { updateProductionOrderStatus } from "@/lib/services/production-service";
 
-// PATCH update production order status
+const ORDER_STATUSES = ["MENUNGGU", "PROSES", "SELESAI", "DIBATALKAN"] as const;
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,28 +20,14 @@ export async function PATCH(
       );
     }
 
-    const db = new Database(dbPath);
-
-    const updateData: any = {
-      status,
-      diperbarui_pada: new Date().toISOString(),
-    };
-
-    if (status === "SELESAI") {
-      updateData.diselesaikan_pada = new Date().toISOString();
+    if (!ORDER_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { success: false, error: "Status tidak valid" },
+        { status: 400 }
+      );
     }
 
-    const fields = Object.keys(updateData)
-      .map((key) => `${key} = ?`)
-      .join(", ");
-    const values = Object.values(updateData);
-
-    db.prepare(`UPDATE order_produksi SET ${fields} WHERE id = ?`).run(
-      ...values,
-      orderId
-    );
-
-    db.close();
+    await updateProductionOrderStatus(orderId, status);
 
     return NextResponse.json({
       success: true,

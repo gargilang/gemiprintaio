@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createUnit,
+  getUnits,
+  getUnitById,
+} from "@/lib/services/master-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "unit") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all units
 export async function GET() {
   try {
-    const db = getDb();
-    const units = db
-      .prepare("SELECT * FROM satuan_barang ORDER BY urutan_tampilan, nama")
-      .all();
-    db.close();
-
+    const units = await getUnits();
     return NextResponse.json({ units });
   } catch (error: any) {
     console.error("Error fetching units:", error);
@@ -31,7 +20,6 @@ export async function GET() {
   }
 }
 
-// POST new unit
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -44,37 +32,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if unit already exists
-    const existing = db
-      .prepare("SELECT id FROM satuan_barang WHERE nama = ?")
-      .get(nama.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM satuan_barang WHERE nama = ? LIMIT 1",
+      [nama.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Satuan dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const id = generateId("unit");
-    const stmt = db.prepare(
-      `INSERT INTO satuan_barang (id, nama, urutan_tampilan, dibuat_pada, diperbarui_pada)
-       VALUES (?, ?, ?, datetime('now'), datetime('now'))`
-    );
+    const created = await createUnit({
+      nama: nama.trim(),
+      urutan_tampilan: urutan_tampilan || 0,
+    });
 
-    stmt.run(id, nama.trim(), urutan_tampilan || 0);
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal menambahkan satuan" },
+        { status: 500 }
+      );
+    }
 
-    const newUnit = db
-      .prepare("SELECT * FROM satuan_barang WHERE id = ?")
-      .get(id);
-
-    db.close();
+    const unit = await getUnitById(created.id);
 
     return NextResponse.json(
-      { message: "Satuan berhasil ditambahkan", unit: newUnit },
+      { message: "Satuan berhasil ditambahkan", unit },
       { status: 201 }
     );
   } catch (error: any) {

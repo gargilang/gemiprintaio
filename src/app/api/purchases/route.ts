@@ -1,67 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { db } from "@/lib/db-unified";
+
 import { getTodayJakarta } from "@/lib/date-utils";
+import {
+  createPurchase,
+  getPurchaseById,
+  getPurchases,
+} from "@/lib/services/purchases-service";
 
-function generateId(prefix: string = "purchase") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all purchases with details
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
-    const sqliteDb = await db.getNativeSQLite();
-
-    // Get all purchases with vendor info
-    const purchases = sqliteDb
-      .prepare(
-        `
-        SELECT 
-          p.*,
-          v.nama_perusahaan as vendor_name,
-          profil.nama_lengkap as created_by_name
-        FROM pembelian p
-        LEFT JOIN vendor v ON p.vendor_id = v.id
-        LEFT JOIN profil ON p.dibuat_oleh = profil.id
-        ORDER BY p.dibuat_pada DESC
-      `
-      )
-      .all();
-
-    // Get items for each purchase
-    const purchasesWithItems = purchases.map((purchase: any) => {
-      const items = sqliteDb
-        .prepare(
-          `
-          SELECT 
-            ip.*,
-            b.nama as nama_barang,
-            ip.harga_satuan_id as id_satuan,
-            ip.nama_satuan,
-            ip.faktor_konversi,
-            ip.harga_satuan as harga_beli
-          FROM item_pembelian ip
-          LEFT JOIN barang b ON ip.barang_id = b.id
-          WHERE ip.pembelian_id = ?
-        `
-        )
-        .all(purchase.id);
-
-      // Calculate total_harga from items (using subtotal from table or calculate it)
-      const total_harga = items.reduce(
-        (sum: number, item: any) =>
-          sum + (item.subtotal || item.jumlah * item.harga_satuan),
-        0
-      );
-
-      return {
-        ...purchase,
-        items,
-        total_harga,
-      };
-    });
-
+    const purchasesWithItems = await getPurchases();
     return NextResponse.json({ purchases: purchasesWithItems });
   } catch (error: any) {
     console.error("Error fetching purchases:", error);
@@ -72,7 +22,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST create new purchase
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -83,7 +32,7 @@ export async function POST(req: NextRequest) {
       tanggal,
       metode_pembayaran,
       catatan,
-      items, // Array of purchase items
+      items,
       dibuat_oleh,
     } = body;
 
@@ -101,8 +50,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate total
-    let total_jumlah = 0;
     for (const item of items) {
       if (!item.barang_id) {
         return NextResponse.json(
@@ -122,268 +69,42 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      item.subtotal = item.jumlah * item.harga_satuan;
-      total_jumlah += item.subtotal;
     }
 
-    const sqliteDb = await db.getNativeSQLite();
+    const { id } = await createPurchase({
+      nomor_pembelian,
+      nomor_faktur,
+      vendor_id: vendor_id || null,
+      tanggal: tanggal || getTodayJakarta(),
+      metode_pembayaran,
+      catatan,
+      dibuat_oleh,
+      items: items.map((item: any) => ({
+        barang_id: item.barang_id,
+        harga_satuan_id: item.harga_satuan_id ?? null,
+        nama_satuan: item.nama_satuan,
+        faktor_konversi: item.faktor_konversi ?? 1,
+        jumlah: item.jumlah,
+        harga_satuan: item.harga_satuan,
+      })),
+    });
 
-    // Check if nomor_faktur already exists
-    const existing = sqliteDb
-      .prepare("SELECT id FROM pembelian WHERE nomor_faktur = ?")
-      .get(nomor_faktur.trim());
+    const purchase = await getPurchaseById(id);
 
-    if (existing) {
-      return NextResponse.json(
-        { error: "Nomor faktur sudah digunakan" },
-        { status: 400 }
-      );
-    }
-
-    const purchaseId = generateId("purchase");
-    const metodePembayaran = metode_pembayaran || "CASH";
-    const isLunas = metodePembayaran === "CASH";
-    const statusPembayaran = isLunas ? "LUNAS" : "HUTANG";
-    const jumlahDibayar = isLunas ? total_jumlah : 0;
-
-    // Generate nomor_pembelian (auto-increment style)
-    const lastPurchase: any = sqliteDb
-      .prepare(
-        "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1"
-      )
-      .get();
-
-    let nextNumber = 1;
-    if (lastPurchase && lastPurchase.nomor_pembelian) {
-      const match = lastPurchase.nomor_pembelian.match(/(\d+)$/);
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1;
-      }
-    }
-    const nomorPembelian = `PO-${nextNumber.toString().padStart(5, "0")}`;
-
-    // Begin transaction
-    sqliteDb.exec("BEGIN TRANSACTION");
-
-    try {
-      // Insert purchase
-      const purchaseStmt = sqliteDb.prepare(`
-        INSERT INTO pembelian (
-          id, nomor_pembelian, nomor_faktur, tanggal, vendor_id, total_jumlah,
-          jumlah_dibayar, metode_pembayaran, status_pembayaran, catatan,
-          dibuat_oleh, dibuat_pada, diperbarui_pada
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `);
-
-      purchaseStmt.run(
-        purchaseId,
-        nomorPembelian,
-        nomor_faktur.trim(),
-        tanggal || getTodayJakarta(),
-        vendor_id || null,
-        total_jumlah,
-        jumlahDibayar,
-        metodePembayaran,
-        statusPembayaran,
-        catatan?.trim() || null,
-        dibuat_oleh || null
-      );
-
-      // Insert items and update stock & prices
-      const itemStmt = sqliteDb.prepare(`
-        INSERT INTO item_pembelian (
-          id, pembelian_id, barang_id, harga_satuan_id,
-          jumlah, nama_satuan, faktor_konversi,
-          harga_satuan, subtotal, dibuat_pada
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `);
-
-      for (const item of items) {
-        const itemId = generateId("item");
-
-        itemStmt.run(
-          itemId,
-          purchaseId,
-          item.barang_id,
-          item.harga_satuan_id || null,
-          item.jumlah,
-          item.nama_satuan,
-          item.faktor_konversi || 1,
-          item.harga_satuan,
-          item.subtotal
-        );
-
-        // Update stock barang (add stock in base unit)
-        const stockToAdd = item.jumlah * (item.faktor_konversi || 1);
-        sqliteDb.prepare(
-          `UPDATE barang 
-           SET jumlah_stok = jumlah_stok + ?,
-               diperbarui_pada = datetime('now')
-           WHERE id = ?`
-        ).run(stockToAdd, item.barang_id);
-
-        // Update harga_beli for ALL unit prices based on the purchased unit's price
-        if (item.harga_satuan_id && item.faktor_konversi) {
-          // Calculate price per base unit (e.g., price per lembar)
-          const pricePerBaseUnit = item.harga_satuan / item.faktor_konversi;
-
-          // Get all unit prices for this material
-          const allUnitPrices = sqliteDb
-            .prepare(
-              `SELECT id, faktor_konversi FROM harga_barang_satuan WHERE barang_id = ?`
-            )
-            .all(item.barang_id);
-
-          // Update each unit price proportionally
-          const updatePriceStmt = sqliteDb.prepare(
-            `UPDATE harga_barang_satuan 
-             SET harga_beli = ?,
-                 diperbarui_pada = datetime('now')
-             WHERE id = ?`
-          );
-
-          allUnitPrices.forEach((unitPrice: any) => {
-            const newPrice = pricePerBaseUnit * unitPrice.faktor_konversi;
-            updatePriceStmt.run(newPrice, unitPrice.id);
-          });
-        }
-      }
-
-      // Only create keuangan entry if CASH (LUNAS)
-      if (isLunas) {
-        // Get the highest urutan_tampilan to assign next value
-        const maxDisplayOrder = sqliteDb
-          .prepare(`SELECT MAX(urutan_tampilan) as max_order FROM keuangan`)
-          .get() as any;
-
-        const nextDisplayOrder = (maxDisplayOrder?.max_order || 0) + 1;
-
-        const keuanganId = generateId("keu");
-        const keuanganStmt = sqliteDb.prepare(`
-          INSERT INTO keuangan (
-            id, tanggal, kategori_transaksi,
-            debit, kredit, keperluan,
-            biaya_bahan, catatan, dibuat_oleh,
-            urutan_tampilan,
-            dibuat_pada, diperbarui_pada
-          )
-          VALUES (?, ?, 'SUPPLY', 0, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        `);
-
-        // Get vendor name if vendor_id exists
-        const vendorInfo: any = vendor_id
-          ? sqliteDb
-              .prepare("SELECT nama_perusahaan FROM vendor WHERE id = ?")
-              .get(vendor_id)
-          : null;
-
-        // Format catatan - take first 25 chars if exists
-        const catatanExcerpt =
-          catatan && catatan.trim()
-            ? catatan.trim().substring(0, 25) +
-              (catatan.trim().length > 25 ? "..." : "")
-            : null;
-
-        // Build keperluan string with vendor and/or catatan
-        let keperluan = `Pembelian ${nomorPembelian} (${nomor_faktur})`;
-        if (vendorInfo?.nama_perusahaan) {
-          keperluan += ` - ${vendorInfo.nama_perusahaan}`;
-        } else if (catatanExcerpt) {
-          keperluan += ` (${catatanExcerpt})`;
-        }
-        keperluan += ` [REF:${purchaseId}]`;
-
-        keuanganStmt.run(
-          keuanganId,
-          tanggal || getTodayJakarta(),
-          total_jumlah,
-          keperluan,
-          total_jumlah,
-          catatan || null,
-          dibuat_oleh || null,
-          nextDisplayOrder
-        );
-      } else {
-        // Create hutang entry for NET30 or COD
-        const hutangId = generateId("hutang");
-        const jatuhTempo =
-          metodePembayaran === "NET30"
-            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0]
-            : null;
-
-        const hutangStmt = sqliteDb.prepare(`
-          INSERT INTO hutang_pembelian (
-            id, id_pembelian, jumlah_hutang, jumlah_terbayar,
-            sisa_hutang, jatuh_tempo, status, catatan,
-            dibuat_pada, diperbarui_pada
-          )
-          VALUES (?, ?, ?, 0, ?, ?, 'AKTIF', ?, datetime('now'), datetime('now'))
-        `);
-
-        hutangStmt.run(
-          hutangId,
-          purchaseId,
-          total_jumlah,
-          total_jumlah,
-          jatuhTempo,
-          metodePembayaran === "NET30"
-            ? `Tagihan dengan jatuh tempo 30 hari`
-            : `Tagihan COD - bayar saat terima barang`
-        );
-      }
-
-      // Recalculate cashbook if keuangan entry was created
-      if (isLunas) {
-        const { recalculateCashbook } = await import(
-          "@/lib/calculate-cashbook"
-        );
-        await recalculateCashbook(sqliteDb);
-      }
-
-      sqliteDb.exec("COMMIT");
-
-      // Get created purchase with items
-      const newPurchase: any = sqliteDb
-        .prepare(
-          `SELECT p.*, v.nama_perusahaan as vendor_name 
-           FROM pembelian p
-           LEFT JOIN vendor v ON p.vendor_id = v.id
-           WHERE p.id = ?`
-        )
-        .get(purchaseId);
-
-      const newItems = sqliteDb
-        .prepare(
-          `SELECT ip.*, b.nama as barang_name 
-           FROM item_pembelian ip
-           LEFT JOIN barang b ON ip.barang_id = b.id
-           WHERE ip.pembelian_id = ?`
-        )
-        .all(purchaseId);
-
-      return NextResponse.json(
-        {
-          message: "Pembelian berhasil ditambahkan",
-          purchase: {
-            ...newPurchase,
-            items: newItems,
-          },
-        },
-        { status: 201 }
-      );
-    } catch (error) {
-      sqliteDb.exec("ROLLBACK");
-      throw error;
-    }
+    return NextResponse.json(
+      {
+        message: "Pembelian berhasil ditambahkan",
+        purchase,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Error creating purchase:", error);
+    const msg = error.message || "Failed to create purchase";
+    const conflict = msg.includes("Nomor faktur sudah digunakan");
     return NextResponse.json(
-      { error: error.message || "Failed to create purchase" },
-      { status: 500 }
+      { error: msg },
+      { status: conflict ? 400 : 500 }
     );
   }
 }

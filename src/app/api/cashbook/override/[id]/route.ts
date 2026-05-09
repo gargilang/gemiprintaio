@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import { join } from "path";
-import { recalculateCashbook } from "@/lib/calculate-cashbook";
 
-const DB_FILE = join(process.cwd(), "database", "gemiprint.db");
+import { recalculateCashbook } from "@/lib/calculate-cashbook";
+import { db } from "@/lib/db-unified";
+
+const EDITABLE_FIELDS = [
+  "saldo",
+  "omzet",
+  "biaya_operasional",
+  "biaya_bahan",
+  "laba_bersih",
+  "kasbon_anwar",
+  "kasbon_suri",
+  "kasbon_cahaya",
+  "kasbon_dinil",
+  "bagi_hasil_anwar",
+  "bagi_hasil_suri",
+  "bagi_hasil_gemi",
+] as const;
 
 export async function PATCH(
   request: NextRequest,
@@ -13,34 +26,21 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const db = new Database(DB_FILE);
-    db.pragma("foreign_keys = ON");
+    const sqlite = await db.getNativeSQLite();
+    if (!sqlite) {
+      return NextResponse.json(
+        { error: "SQLite tidak tersedia di lingkungan ini" },
+        { status: 503 }
+      );
+    }
 
-    // Build dynamic UPDATE query based on provided fields
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
-    // Editable fields with their override flags
-    const editableFields = [
-      "saldo",
-      "omzet",
-      "biaya_operasional",
-      "biaya_bahan",
-      "laba_bersih",
-      "kasbon_anwar",
-      "kasbon_suri",
-      "kasbon_cahaya",
-      "kasbon_dinil",
-      "bagi_hasil_anwar",
-      "bagi_hasil_suri",
-      "bagi_hasil_gemi",
-    ];
-
-    for (const field of editableFields) {
+    for (const field of EDITABLE_FIELDS) {
       if (field in body && body[field] !== undefined) {
         updates.push(`${field} = ?`);
         values.push(body[field]);
-        // Set override flag
         updates.push(`override_${field} = ?`);
         values.push(1);
       }
@@ -54,27 +54,17 @@ export async function PATCH(
     }
 
     values.push(id);
-
     const query = `UPDATE keuangan SET ${updates.join(", ")} WHERE id = ?`;
-    console.log("Override Query:", query);
-    console.log("Override Values:", values);
-    console.log("Override ID:", id);
-
-    const result = db.prepare(query).run(...values);
-    console.log("Override Result:", result);
+    const result = sqlite.prepare(query).run(...values);
 
     if (result.changes === 0) {
-      db.close();
       return NextResponse.json(
-        { error: "Keuangan entry not found", id, query },
+        { error: "Keuangan entry not found", id },
         { status: 404 }
       );
     }
 
-    // Recalculate subsequent rows using centralized function
-    await recalculateCashbook(db);
-
-    db.close();
+    await recalculateCashbook(sqlite);
 
     return NextResponse.json({
       success: true,
@@ -105,25 +95,29 @@ export async function DELETE(
       );
     }
 
-    const db = new Database(DB_FILE);
-    db.pragma("foreign_keys = ON");
+    if (!(EDITABLE_FIELDS as readonly string[]).includes(field)) {
+      return NextResponse.json({ error: "Invalid field" }, { status: 400 });
+    }
 
-    // Remove override flag
+    const sqlite = await db.getNativeSQLite();
+    if (!sqlite) {
+      return NextResponse.json(
+        { error: "SQLite tidak tersedia di lingkungan ini" },
+        { status: 503 }
+      );
+    }
+
     const query = `UPDATE keuangan SET override_${field} = 0 WHERE id = ?`;
-    const result = db.prepare(query).run(id);
+    const result = sqlite.prepare(query).run(id);
 
     if (result.changes === 0) {
-      db.close();
       return NextResponse.json(
         { error: "Keuangan entry not found" },
         { status: 404 }
       );
     }
 
-    // Recalculate all rows using centralized function
-    await recalculateCashbook(db);
-
-    db.close();
+    await recalculateCashbook(sqlite);
 
     return NextResponse.json({
       success: true,

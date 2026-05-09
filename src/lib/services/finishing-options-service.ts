@@ -30,9 +30,37 @@ export async function getFinishingOptions(): Promise<FinishingOption[]> {
     });
 
     if (result.error) throw result.error;
-    return result.data || [];
+    const data = (result.data || []) as FinishingOption[];
+    return [...data].sort((a, b) => {
+      const u =
+        (Number(a.urutan_tampilan) || 0) - (Number(b.urutan_tampilan) || 0);
+      if (u !== 0) return u;
+      return (a.nama || "").localeCompare(b.nama || "");
+    });
   } catch (error) {
     console.error("Error fetching finishing options:", error);
+    throw error;
+  }
+}
+
+/** Active-only finishing options (e.g. POS / picker). */
+export async function getActiveFinishingOptions(): Promise<FinishingOption[]> {
+  try {
+    const result = await db.query<FinishingOption>("opsi_finishing", {
+      where: { aktif_status: 1 },
+      orderBy: { column: "urutan_tampilan", ascending: true },
+    });
+
+    if (result.error) throw result.error;
+    const data = result.data || [];
+    return [...data].sort((a, b) => {
+      const u =
+        (Number(a.urutan_tampilan) || 0) - (Number(b.urutan_tampilan) || 0);
+      if (u !== 0) return u;
+      return (a.nama || "").localeCompare(b.nama || "");
+    });
+  } catch (error) {
+    console.error("Error fetching active finishing options:", error);
     throw error;
   }
 }

@@ -1,59 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "gemiprint.db");
+import { db } from "@/lib/db-unified";
+import {
+  createMaterial,
+  getMaterialById,
+  getMaterials,
+} from "@/lib/services/materials-service";
 
-function getDb() {
-  return new Database(DB_PATH);
-}
-
-function generateId(prefix: string = "mat") {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// GET all barang with their unit prices
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const db = getDb();
-
-    // Get all barang
-    const barang = db
-      .prepare(
-        `
-        SELECT 
-          m.*,
-          mc.nama as category_name,
-          ms.nama as subcategory_name
-        FROM barang m
-        LEFT JOIN kategori_barang mc ON m.kategori_id = mc.id
-        LEFT JOIN subkategori_barang ms ON m.subkategori_id = ms.id
-        ORDER BY m.nama
-      `
-      )
-      .all();
-
-    // Get unit prices for each material
-    const materialsWithUnits = barang.map((material: any) => {
-      const unitPrices = db
-        .prepare(
-          `
-          SELECT * FROM harga_barang_satuan
-          WHERE barang_id = ?
-          ORDER BY urutan_tampilan, nama_satuan
-        `
-        )
-        .all(material.id);
-
-      return {
-        ...material,
-        unit_prices: unitPrices,
-      };
-    });
-
-    db.close();
-
-    return NextResponse.json({ barang: materialsWithUnits });
+    const barang = await getMaterials();
+    return NextResponse.json({ barang });
   } catch (error: any) {
     console.error("Error fetching materials:", error);
     return NextResponse.json(
@@ -63,7 +20,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST new material with unit prices
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -78,7 +34,7 @@ export async function POST(req: NextRequest) {
       level_stok_minimum,
       lacak_inventori_status,
       butuh_dimensi_status,
-      unit_prices, // Array of unit price objects
+      unit_prices,
     } = body;
 
     if (!nama || !nama.trim()) {
@@ -102,90 +58,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
-
-    // Check if material already exists
-    const existing = db
-      .prepare("SELECT id FROM barang WHERE nama = ?")
-      .get(nama.trim());
-
-    if (existing) {
-      db.close();
+    const dup = await db.queryRaw<{ id: string }>(
+      "SELECT id FROM barang WHERE nama = ? LIMIT 1",
+      [nama.trim()]
+    );
+    if (dup.length > 0) {
       return NextResponse.json(
         { error: "Barang dengan nama ini sudah ada" },
         { status: 400 }
       );
     }
 
-    const materialId = generateId("mat");
+    const mappedPrices = unit_prices.map((up: any, index: number) => ({
+      nama_satuan: up.nama_satuan,
+      faktor_konversi: up.faktor_konversi ?? 1,
+      harga_jual: up.harga_jual ?? 0,
+      harga_member: up.harga_member ?? 0,
+      harga_beli: up.harga_beli ?? 0,
+      default_status: up.default_status,
+      urutan_tampilan: up.urutan_tampilan ?? index,
+    }));
 
-    // Insert material
-    const materialStmt = db.prepare(`
-      INSERT INTO barang (
-        id, nama, deskripsi, kategori_id, subkategori_id,
-        satuan_dasar, spesifikasi, jumlah_stok, level_stok_minimum,
-        lacak_inventori_status, butuh_dimensi_status, dibuat_pada, diperbarui_pada
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-
-    materialStmt.run(
-      materialId,
-      nama.trim(),
-      deskripsi?.trim() || null,
-      kategori_id || null,
-      subkategori_id || null,
-      satuan_dasar.trim(),
-      spesifikasi?.trim() || null,
-      jumlah_stok || 0,
-      level_stok_minimum || 0,
-      lacak_inventori_status !== false ? 1 : 0,
-      butuh_dimensi_status ? 1 : 0
-    );
-
-    // Insert unit prices
-    const unitPriceStmt = db.prepare(`
-      INSERT INTO harga_barang_satuan (
-        id, barang_id, nama_satuan, faktor_konversi,
-        harga_beli, harga_jual, harga_member,
-        default_status, urutan_tampilan, dibuat_pada, diperbarui_pada
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-
-    unit_prices.forEach((up: any, index: number) => {
-      const unitPriceId = generateId("up");
-      unitPriceStmt.run(
-        unitPriceId,
-        materialId,
-        up.nama_satuan,
-        up.faktor_konversi,
-        up.harga_beli || 0,
-        up.harga_jual || 0,
-        up.harga_member || 0,
-        up.default_status ? 1 : 0,
-        index
-      );
+    const created = await createMaterial({
+      nama: nama.trim(),
+      deskripsi: deskripsi?.trim() || null,
+      kategori_id: kategori_id || null,
+      subkategori_id: subkategori_id || null,
+      satuan_dasar: satuan_dasar.trim(),
+      spesifikasi: spesifikasi?.trim() || null,
+      jumlah_stok: jumlah_stok || 0,
+      level_stok_minimum: level_stok_minimum || 0,
+      lacak_inventori_status: lacak_inventori_status !== false,
+      butuh_dimensi_status: !!butuh_dimensi_status,
+      unit_prices: mappedPrices,
     });
 
-    // Get the created material with unit prices
-    const newMaterial: any = db
-      .prepare("SELECT * FROM barang WHERE id = ?")
-      .get(materialId);
+    if (!created?.id) {
+      return NextResponse.json(
+        { error: "Gagal menambahkan barang" },
+        { status: 500 }
+      );
+    }
 
-    const newUnitPrices = db
-      .prepare("SELECT * FROM harga_barang_satuan WHERE barang_id = ?")
-      .all(materialId);
-
-    db.close();
-
+    const material = await getMaterialById(created.id);
     return NextResponse.json(
       {
         message: "Barang berhasil ditambahkan",
-        material: {
-          ...newMaterial,
-          unit_prices: newUnitPrices,
-        },
+        material,
       },
       { status: 201 }
     );
