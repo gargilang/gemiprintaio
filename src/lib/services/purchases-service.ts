@@ -20,6 +20,18 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function normalizePurchaseItemsForUI(items: any[]): any[] {
+  return items.map((item) => ({
+    ...item,
+    id_barang: item.id_barang ?? item.barang_id,
+    id_satuan: item.id_satuan ?? item.harga_satuan_id,
+    harga_beli: item.harga_beli ?? item.harga_satuan ?? 0,
+    subtotal:
+      item.subtotal ??
+      (Number(item.jumlah || 0) * Number(item.harga_satuan || item.harga_beli || 0)),
+  }));
+}
+
 export interface Purchase {
   id: string;
   nomor_pembelian: string;
@@ -66,66 +78,56 @@ export interface InitData {
  */
 export async function getPurchases(): Promise<Purchase[]> {
   try {
-    // Get all purchases with vendor info
-    const purchasesResult = await db.query<Purchase>("pembelian", {
-      orderBy: { column: "dibuat_pada", ascending: false },
+    const sqliteDb = await db.getNativeSQLite();
+    const purchases = sqliteDb
+      .prepare(
+        `
+        SELECT
+          p.*,
+          v.nama_perusahaan as vendor_name,
+          profil.nama_lengkap as created_by_name
+        FROM pembelian p
+        LEFT JOIN vendor v ON p.vendor_id = v.id
+        LEFT JOIN profil ON p.dibuat_oleh = profil.id
+        ORDER BY p.dibuat_pada DESC
+      `
+      )
+      .all();
+
+    const purchasesWithItems = purchases.map((purchase: any) => {
+      const rawItems = sqliteDb
+        .prepare(
+          `
+          SELECT
+            ip.*,
+            b.nama as nama_barang
+          FROM item_pembelian ip
+          LEFT JOIN barang b ON ip.barang_id = b.id
+          WHERE ip.pembelian_id = ?
+        `
+        )
+        .all(purchase.id);
+      const items = normalizePurchaseItemsForUI(rawItems);
+
+      const calculatedTotal = items.reduce(
+        (sum: number, item: any) =>
+          sum +
+          (Number(item.subtotal) ||
+            Number(item.jumlah || 0) *
+              Number(item.harga_satuan || item.harga_beli || 0)),
+        0
+      );
+      const total_harga =
+        calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
+
+      return {
+        ...purchase,
+        items,
+        total_harga,
+      };
     });
 
-    if (purchasesResult.error) {
-      throw purchasesResult.error;
-    }
-
-    const purchases = purchasesResult.data || [];
-
-    // Get vendors for enrichment
-    const vendorsResult = await db.query("vendor");
-    const vendors = vendorsResult.data || [];
-
-    // Get items for each purchase
-    const purchasesWithItems = await Promise.all(
-      purchases.map(async (purchase) => {
-        // Get items
-        const itemsResult = await db.query<PurchaseItem>("item_pembelian", {
-          where: { pembelian_id: purchase.id },
-        });
-
-        const items = itemsResult.data || [];
-
-        // Get material names
-        const itemsWithNames = await Promise.all(
-          items.map(async (item) => {
-            const materialResult = await db.query("barang", {
-              where: { id: item.barang_id },
-            });
-            const material = materialResult.data?.[0];
-
-            return {
-              ...item,
-              nama_barang: material?.nama || "",
-            };
-          })
-        );
-
-        // Find vendor name
-        const vendor = vendors.find((v: any) => v.id === purchase.vendor_id);
-
-        // Calculate total
-        const total_harga = itemsWithNames.reduce(
-          (sum, item) =>
-            sum + (item.subtotal || item.jumlah * item.harga_satuan),
-          0
-        );
-
-        return {
-          ...purchase,
-          vendor_name: vendor?.nama_perusahaan || "",
-          items: itemsWithNames,
-          total_harga,
-        };
-      })
-    );
-
-    return purchasesWithItems;
+    return purchasesWithItems as Purchase[];
   } catch (error) {
     console.error("Error fetching purchases:", error);
     throw error;
@@ -350,56 +352,56 @@ export async function createPurchase(data: {
  */
 export async function getPurchaseById(id: string): Promise<Purchase | null> {
   try {
-    const purchaseResult = await db.queryOne<Purchase>("pembelian", {
-      where: { id },
-    });
+    const sqliteDb = await db.getNativeSQLite();
+    const purchase = sqliteDb
+      .prepare(
+        `
+        SELECT
+          p.*,
+          v.nama_perusahaan as vendor_name,
+          profil.nama_lengkap as created_by_name
+        FROM pembelian p
+        LEFT JOIN vendor v ON p.vendor_id = v.id
+        LEFT JOIN profil ON p.dibuat_oleh = profil.id
+        WHERE p.id = ?
+      `
+      )
+      .get(id) as any;
 
-    if (purchaseResult.error || !purchaseResult.data) {
+    if (!purchase) {
       return null;
     }
 
-    const purchase = purchaseResult.data;
+    const rawItems = sqliteDb
+      .prepare(
+        `
+        SELECT
+          ip.*,
+          b.nama as nama_barang
+        FROM item_pembelian ip
+        LEFT JOIN barang b ON ip.barang_id = b.id
+        WHERE ip.pembelian_id = ?
+      `
+      )
+      .all(id) as any[];
+    const items = normalizePurchaseItemsForUI(rawItems);
 
-    // Get items
-    const itemsResult = await db.query<PurchaseItem>("item_pembelian", {
-      where: { pembelian_id: id },
-    });
-
-    const items = itemsResult.data || [];
-
-    // Get material names
-    const itemsWithNames = await Promise.all(
-      items.map(async (item) => {
-        const materialResult = await db.query("barang", {
-          where: { id: item.barang_id },
-        });
-        const material = materialResult.data?.[0];
-
-        return {
-          ...item,
-          nama_barang: material?.nama || "",
-        };
-      })
-    );
-
-    // Get vendor name
-    const vendorResult = await db.query("vendor", {
-      where: { id: purchase.vendor_id },
-    });
-    const vendor = vendorResult.data?.[0];
-
-    // Calculate total
-    const total_harga = itemsWithNames.reduce(
-      (sum, item) => sum + (item.subtotal || item.jumlah * item.harga_satuan),
+    const calculatedTotal = items.reduce(
+      (sum: number, item: any) =>
+        sum +
+        (Number(item.subtotal) ||
+          Number(item.jumlah || 0) *
+            Number(item.harga_satuan || item.harga_beli || 0)),
       0
     );
+    const total_harga =
+      calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
 
     return {
       ...purchase,
-      vendor_name: vendor?.nama_perusahaan || "",
-      items: itemsWithNames,
+      items,
       total_harga,
-    };
+    } as Purchase;
   } catch (error) {
     console.error("Error fetching purchase:", error);
     throw error;
@@ -634,15 +636,23 @@ export async function deletePurchase(id: string): Promise<void> {
       }
     }
 
-    // Delete keuangan entry by reference (if exists)
-    await db.executeRaw("DELETE FROM keuangan WHERE keperluan LIKE ?", [
-      `%[REF:${id}]%`,
-    ]);
+    // Delete linked cashbook entries by reference (works on Supabase + SQLite)
+    const linkedCashbook = await db.query("keuangan", {});
+    if (linkedCashbook.data) {
+      const toDelete = linkedCashbook.data.filter((entry: any) =>
+        String(entry.keperluan || "").includes(`[REF:${id}]`)
+      );
+      for (const entry of toDelete) {
+        const delResult = await db.delete("keuangan", entry.id);
+        if (delResult.error) throw delResult.error;
+      }
+    }
 
-    // Delete purchase items
-    await db.executeRaw("DELETE FROM item_pembelian WHERE pembelian_id = ?", [
-      id,
-    ]);
+    // Delete purchase items by record id (works on Supabase + SQLite)
+    for (const item of items) {
+      const delItemResult = await db.delete("item_pembelian", item.id);
+      if (delItemResult.error) throw delItemResult.error;
+    }
 
     // Delete purchase
     const result = await db.delete("pembelian", id);

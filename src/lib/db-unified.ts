@@ -985,13 +985,21 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server Supabase not configured") };
     }
 
-    if (!(await this.registerMutationIfNeeded(table, data.id, data))) {
+    const tableColumns = await getServerSQLiteTableColumns(table);
+    const payload =
+      tableColumns.size > 0
+        ? Object.fromEntries(
+            Object.entries(data).filter(([key]) => tableColumns.has(key))
+          )
+        : data;
+
+    if (!(await this.registerMutationIfNeeded(table, data.id, payload))) {
       return { data: { id: data.id }, error: null };
     }
 
     const { data: inserted, error } = await supabase
       .from(table)
-      .upsert(data, { onConflict: "id" })
+      .upsert(payload, { onConflict: "id" })
       .select("id")
       .single();
 
@@ -1013,11 +1021,19 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server Supabase not configured") };
     }
 
-    if (!(await this.registerMutationIfNeeded(table, id, data))) {
+    const tableColumns = await getServerSQLiteTableColumns(table);
+    const payload =
+      tableColumns.size > 0
+        ? Object.fromEntries(
+            Object.entries(data).filter(([key]) => tableColumns.has(key))
+          )
+        : data;
+
+    if (!(await this.registerMutationIfNeeded(table, id, payload))) {
       return { data: { id }, error: null };
     }
 
-    const { error } = await supabase.from(table).update(data).eq("id", id);
+    const { error } = await supabase.from(table).update(payload).eq("id", id);
 
     if (error) {
       console.error(`Server Supabase update error on ${table}:`, error);
@@ -1691,11 +1707,36 @@ class UnifiedDatabase {
 
       let pulled = 0;
       let failed = 0;
+      const deferredForeignKeyRows: Array<{
+        table: string;
+        entries: Array<[string, any]>;
+        shouldCountAsChange: boolean;
+      }> = [];
 
       for (const table of SYNC_V2_TABLES) {
         try {
           const { data, error } = await supabase.from(table).select("*");
           if (error) {
+            const code = (error as any)?.code;
+            const message = String((error as any)?.message || "");
+            const isSchemaDrift =
+              code === "PGRST204" ||
+              code === "PGRST205" ||
+              code === "42P01" ||
+              message.includes("schema cache") ||
+              message.includes("Could not find the table") ||
+              message.includes("Could not find the");
+
+            // Non-fatal: skip tables that are not present yet in cloud schema.
+            if (isSchemaDrift) {
+              console.warn(
+                `⚠️ syncFromCloud skipped table ${table} due to schema drift:`,
+                code || message
+              );
+              continue;
+            }
+
+            console.error(`❌ syncFromCloud failed on table ${table}:`, error);
             failed++;
             continue;
           }
@@ -1729,17 +1770,101 @@ class UnifiedDatabase {
             const names = entries.map(([key]) => key);
             const values = entries.map(([, value]) => value);
             const placeholders = names.map(() => "?").join(", ");
-            sqlite
-              .prepare(
-                `INSERT OR REPLACE INTO ${table} (${names.join(", ")}) VALUES (${placeholders})`
-              )
-              .run(...values);
-            if (shouldCountAsChange) {
-              pulled++;
+            const upsertAssignments = names
+              .filter((name) => name !== "id")
+              .map((name) => `${name}=excluded.${name}`)
+              .join(", ");
+            const upsertSql =
+              upsertAssignments.length > 0
+                ? `INSERT INTO ${table} (${names.join(", ")}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${upsertAssignments}`
+                : `INSERT OR IGNORE INTO ${table} (${names.join(", ")}) VALUES (${placeholders})`;
+            try {
+              sqlite
+                .prepare(upsertSql)
+                .run(...values);
+              if (shouldCountAsChange) {
+                pulled++;
+              }
+            } catch (rowError: any) {
+              const isForeignKeyError =
+                rowError?.code === "SQLITE_CONSTRAINT_FOREIGNKEY" ||
+                String(rowError?.message || "").includes("FOREIGN KEY");
+              if (isForeignKeyError) {
+                // Retry after full pass; parent records may be synced in later tables.
+                deferredForeignKeyRows.push({
+                  table,
+                  entries,
+                  shouldCountAsChange,
+                });
+                continue;
+              }
+              throw rowError;
             }
           }
         } catch (error) {
+          console.error(`❌ syncFromCloud exception on table ${table}:`, error);
           failed++;
+        }
+      }
+
+      // Retry rows that previously failed due to FK ordering.
+      if (deferredForeignKeyRows.length > 0) {
+        for (const deferred of deferredForeignKeyRows) {
+          try {
+            let entries = [...deferred.entries];
+
+            // Self-heal FK drift for barang: if referenced category/subcategory
+            // does not exist locally, set FK columns to NULL (schema uses ON DELETE SET NULL).
+            if (deferred.table === "barang") {
+              const entryMap = new Map(entries);
+              const kategoriId = entryMap.get("kategori_id");
+              const subkategoriId = entryMap.get("subkategori_id");
+
+              if (kategoriId) {
+                const existsKategori = sqlite
+                  .prepare("SELECT 1 FROM kategori_barang WHERE id = ? LIMIT 1")
+                  .get(kategoriId);
+                if (!existsKategori) {
+                  entryMap.set("kategori_id", null);
+                }
+              }
+
+              if (subkategoriId) {
+                const existsSubkategori = sqlite
+                  .prepare("SELECT 1 FROM subkategori_barang WHERE id = ? LIMIT 1")
+                  .get(subkategoriId);
+                if (!existsSubkategori) {
+                  entryMap.set("subkategori_id", null);
+                }
+              }
+
+              entries = Array.from(entryMap.entries());
+            }
+
+            const names = entries.map(([key]) => key);
+            const values = entries.map(([, value]) => value);
+            const placeholders = names.map(() => "?").join(", ");
+            const upsertAssignments = names
+              .filter((name) => name !== "id")
+              .map((name) => `${name}=excluded.${name}`)
+              .join(", ");
+            const upsertSql =
+              upsertAssignments.length > 0
+                ? `INSERT INTO ${deferred.table} (${names.join(", ")}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${upsertAssignments}`
+                : `INSERT OR IGNORE INTO ${deferred.table} (${names.join(", ")}) VALUES (${placeholders})`;
+            sqlite
+              .prepare(upsertSql)
+              .run(...values);
+            if (deferred.shouldCountAsChange) {
+              pulled++;
+            }
+          } catch (retryError: any) {
+            console.warn(
+              `⚠️ syncFromCloud FK retry failed on table ${deferred.table}:`,
+              retryError?.code || retryError?.message || retryError
+            );
+            failed++;
+          }
         }
       }
 

@@ -8,6 +8,13 @@ import {
   runSyncCycle as runSyncCycleClient,
 } from "@/lib/sync-client";
 
+declare global {
+  interface Window {
+    __gemiSyncInFlight?: boolean;
+    __gemiLastSyncAt?: number;
+  }
+}
+
 /**
  * Auto-sync hook to process pending operations when connection is restored
  * This hook monitors online/offline status and triggers sync when coming back online
@@ -29,21 +36,24 @@ export function useAutoSync() {
 
     const runSyncTrigger = async (reason: string) => {
       // Prevent multiple simultaneous syncs
-      if (syncingRef.current) {
+      if (syncingRef.current || window.__gemiSyncInFlight) {
         console.log("🔄 Sync already in progress, skipping...");
         return;
       }
 
       // Rate limit: don't sync more than once per 5 seconds
       const now = Date.now();
-      if (now - lastSyncRef.current < 5000) {
+      const globalLastSyncAt = window.__gemiLastSyncAt || 0;
+      if (now - lastSyncRef.current < 5000 || now - globalLastSyncAt < 5000) {
         console.log("⏱️ Rate limited, skipping sync");
         return;
       }
 
       console.log(`🔄 Triggering sync cycle (${reason})...`);
       syncingRef.current = true;
+      window.__gemiSyncInFlight = true;
       lastSyncRef.current = now;
+      window.__gemiLastSyncAt = now;
 
       try {
         const result = await runSyncCycleClient();
@@ -53,6 +63,7 @@ export function useAutoSync() {
         console.error("❌ Sync cycle error:", error);
       } finally {
         syncingRef.current = false;
+        window.__gemiSyncInFlight = false;
       }
     };
 
