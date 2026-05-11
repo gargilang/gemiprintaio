@@ -14,6 +14,43 @@
 
 ---
 
+## Status implementasi (diperbarui 2026-05-11)
+
+Ringkasan: patch keamanan utama **sudah di-merge ke `main`**, autodeploy Vercel sukses, dan **smoke test** https://app.gemiprint.com oleh pemilik **tanpa error**.
+
+| Item | Status | Catatan singkat |
+|------|--------|-------------------|
+| 1.1 Queue offline lewat API | ✅ Selesai | Browser tidak lagi menulis langsung ke PostgREST dengan anon key. |
+| 1.2 Rotasi key Supabase (anon + service_role) | ⏳ **Tindakan Anda** | **Masih disarankan**: key lama pernah diekspos di klien; reset di Supabase Dashboard lalu update env Vercel. |
+| 1.3 RLS (tanpa policy = deny anon) | ✅ Selesai | Migrasi `20260511120000_enable_rls_service_role_only.sql` + sudah `db push`. |
+| 1.4 bcrypt + cookie HttpOnly (JWT) | ✅ Selesai | Termasuk migrasi lazy SHA-256 → bcrypt saat login. |
+| 1.5 Middleware + `x-session-uid` | ✅ Selesai | `src/middleware.ts`. |
+| 1.6 `PASSWORD_ENC_SECRET` | ⚠️ Sebagian | **Production Vercel**: sudah. **Preview Vercel**: belum otomatis (keterbatasan CLI); isi manual jika pakai preview deployment. **Lokal**: `.env.local`. |
+| 2.1 Security headers / CSP | ✅ Selesai | `next.config.ts`. |
+| 2.2 Rate limiting Upstash | ⚠️ Siap kode | Paket terpasang; **aktif** hanya bila env `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` di-set. |
+| 2.3 Persetujuan admin registrasi | ✅ Selesai | `POST /api/auth/register` + `aktif_status: 0`; admin mengaktifkan lewat `/users`. |
+| 2.4 Sanitasi error API | ⚠️ Sebagian | Banyak route memakai `apiError`; **sisanya** bisa dibersihkan bertahap tanpa mengubah perilaku bisnis. |
+| 3.1 Tabel `audit_log` + helper | ⚠️ Dasar jadi | Dipakai di beberapa operasi (mis. hapus penjualan, hapus semua cashbook); **bisa diperluas** ke endpoint lain. |
+| 3.2 Cloudflare / WAF | ⏳ Tunda | Sesuai keputusan dokumen asli. |
+| 4.1 npm audit / Dependabot | ⚠️ Rutin / manual | Jalankan `npm audit` sesekali; **Dependabot**: aktifkan di GitHub → Settings → Code security. |
+| 4.2 Dokumen rotasi rahasia | ✅ Selesai | `docs/SECRET_ROTATION.md`. |
+| 4.3 Monitoring (Sentry, dll.) | ⏳ Belum | Opsional. |
+
+### Checklist uji (setelah deploy) — dicentang pemilik
+
+- [x] Build & deploy Vercel sukses; tidak ada error di dashboard Vercel  
+- [x] Smoke test: buka halaman aplikasi production  
+- [ ] _(disarankan)_ Verifikasi setelah **rotasi key Supabase** (1.2) — lakukan ketika Anda sudah reset key  
+- [ ] _(opsional)_ Pasang Upstash + env agar rate limit aktif  
+- [ ] _(opsional)_ Pasang `SESSION_SECRET` / `PASSWORD_ENC_SECRET` untuk **Preview** di Vercel  
+
+### Langkah berikutnya yang paling penting
+
+1. **Rotasi Supabase API keys** (anon + `service_role`) dan update di Vercel — ini satu-satunya poin **critical** di rencana yang masih bergantung pada tindakan manual di dashboard.  
+2. Sisanya pada tabel di atas: **opsional** atau **perawatan berkala** (audit error route sisa, perluas audit log, Dependabot, Sentry).
+
+---
+
 ## TL;DR — Severity & Order
 
 | Order | Phase | Severity | Why critical |
@@ -601,17 +638,17 @@ Setup GitHub Dependabot di repo settings untuk auto-PR security updates.
 
 ## Testing Checklist Setelah Phase 1 Selesai
 
-- [ ] `npm run build` pass tanpa error
-- [ ] Login dengan akun lama (SHA-256 hash) sukses → password ter-migrate ke bcrypt otomatis
+- [x] `npm run build` pass tanpa error
+- [ ] Login dengan akun lama (SHA-256 hash) sukses → password ter-migrate ke bcrypt otomatis _(uji jika masih punya user seed SHA-256)_
 - [ ] Register user baru → login langsung gagal "Akun tidak aktif"
 - [ ] Admin set `aktif_status=1` → user bisa login
-- [ ] Cookie `gp_session` ter-set HttpOnly+Secure+SameSite
-- [ ] Akses `/dashboard` tanpa login → redirect ke `/auth/login`
+- [ ] Cookie `gp_session` ter-set HttpOnly+Secure+SameSite _(di production HTTPS; lokal `Secure` off)_
+- [x] Akses `/dashboard` tanpa login → redirect ke `/auth/login`
 - [ ] Logout → cookie hilang → akses `/dashboard` → redirect login
-- [ ] Curl direct ke `<supabase-url>/rest/v1/profil` pakai anon key → 401 atau empty
+- [ ] Curl direct ke `<supabase-url>/rest/v1/profil` pakai anon key → 401 atau empty _(disarankan setelah 1.2 rotasi + RLS)_
 - [ ] Curl `/api/customers` tanpa cookie → 401
 - [ ] Curl `/api/customers` dengan cookie valid → 200
 - [ ] Browser Network tab: tidak ada lagi request `*.supabase.co/rest/v1/*` dari client
 - [ ] Offline queue tetap berfungsi (kalau dipakai)
-- [ ] Smoke test https://app.gemiprint.com setelah deploy
+- [x] Smoke test https://app.gemiprint.com setelah deploy
 
