@@ -33,7 +33,11 @@ import {
   getArchivedPeriodsAction,
   archiveCashbookAction,
 } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useSWRConfig } from "swr";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
 const stripReferenceId = (text: string | null | undefined): string => {
@@ -313,11 +317,43 @@ interface FinanceParticipantConfig {
   role_type: "profit_share" | "cash_advance" | "other";
 }
 
+const CASHBOOKS_CACHE_KEY = "cashbooks-active";
+
 export default function FinancePage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cashBooks, setCashBooks] = useState<CashBook[]>([]);
+  const swr = useSWRConfig();
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const initialCashBooks =
+    typeof window !== "undefined"
+      ? (((swr.cache.get(CASHBOOKS_CACHE_KEY) as { data?: CashBook[] } | undefined)
+          ?.data ?? []) as CashBook[])
+      : [];
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
+  const [loading, setLoading] = useState(initialUser === null);
+  const [cashBooks, setCashBooksState] =
+    useState<CashBook[]>(initialCashBooks);
+  const setCashBooks = useCallback<
+    (next: CashBook[] | ((prev: CashBook[]) => CashBook[])) => void
+  >(
+    (next) => {
+      setCashBooksState((prev) => {
+        const resolved =
+          typeof next === "function"
+            ? (next as (p: CashBook[]) => CashBook[])(prev)
+            : next;
+        // Mirror into SWR cache only when we are viewing the active (non-archive) table.
+        if (!viewingArchiveRef.current) {
+          swr.mutate(CASHBOOKS_CACHE_KEY, resolved, { revalidate: false });
+        }
+        return resolved;
+      });
+    },
+    [swr]
+  );
+  const viewingArchiveRef = useRef<string | null>(null);
   const [totalHutang, setTotalHutang] = useState(0);
   const [hutangCount, setHutangCount] = useState(0);
   const [totalPiutang, setTotalPiutang] = useState(0);
@@ -405,6 +441,11 @@ export default function FinancePage() {
     label: string;
     archived_at: string;
   } | null>(null);
+
+  // Keep ref in sync so setCashBooks knows whether to mirror to SWR cache.
+  useEffect(() => {
+    viewingArchiveRef.current = viewingArchive;
+  }, [viewingArchive]);
 
   // Helper function to update a single cashbook in state without reloading
   function updateCashBookInState(updated: CashBook) {
@@ -712,6 +753,8 @@ export default function FinancePage() {
       });
       setLoading(false);
       loadFinanceConfig();
+      // Always refresh active cashbooks on mount. The cached snapshot is shown
+      // instantly while this network refresh fills in any new transactions.
       loadCashBooks();
     })();
     return () => {
@@ -1502,7 +1545,7 @@ export default function FinancePage() {
     });
   };
 
-  if (loading) {
+  if (loading && cashBooks.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

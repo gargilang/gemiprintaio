@@ -16,7 +16,11 @@ import {
   updateProductionStatusAction,
   updateProductionItemStatusAction,
 } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
   id: string;
@@ -26,9 +30,21 @@ interface User {
 
 export default function ProductionPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
+  const {
+    data: ordersData,
+    isLoading: ordersLoading,
+    mutate: mutateOrders,
+  } = useCachedData<ProductionOrder[]>("production-orders", async () => {
+    const list = await getProductionOrdersAction();
+    return (list as ProductionOrder[]) || [];
+  });
+  const orders = ordersData ?? [];
+  const loading = currentUser === null && ordersLoading;
   const [filteredOrders, setFilteredOrders] = useState<ProductionOrder[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterPriority, setFilterPriority] = useState<string>("ALL");
@@ -49,7 +65,6 @@ export default function ProductionPage() {
         return;
       }
       setCurrentUser(user);
-      loadOrders();
     })();
     return () => {
       cancelled = true;
@@ -61,15 +76,12 @@ export default function ProductionPage() {
   }, [orders, filterStatus, filterPriority, searchQuery]);
 
   const loadOrders = async () => {
-    setLoading(true);
     try {
-      const orders = await getProductionOrdersAction();
-      setOrders(orders);
+      await mutateOrders();
     } catch (error) {
       console.error("Error loading production orders:", error);
       showMsg("error", "Gagal memuat data produksi");
     }
-    setLoading(false);
   };
 
   const applyFilters = () => {
@@ -449,7 +461,7 @@ export default function ProductionPage() {
     }
   };
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

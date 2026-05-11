@@ -13,7 +13,11 @@ import {
   ClipboardIcon,
 } from "@/components/icons/ContentIcons";
 import { getArchivedPeriodsAction } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
   id: string;
@@ -33,15 +37,31 @@ type ReportType = "financial" | "inventory" | "pos" | "receivables";
 
 export default function ReportsPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const isPrivileged =
+    initialUser?.role === "admin" || initialUser?.role === "manager";
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [selectedReportType, setSelectedReportType] =
     useState<ReportType>("financial");
-  const [archives, setArchives] = useState<Archive[]>([]);
+  const {
+    data: archivesData,
+    isLoading: loadingArchives,
+    mutate: mutateArchives,
+  } = useCachedData<Archive[]>(
+    isPrivileged ? "archived-periods" : null,
+    async () => {
+      const list = await getArchivedPeriodsAction();
+      return (list as Archive[]) || [];
+    }
+  );
+  const archives = archivesData ?? [];
   const [selectedArchive, setSelectedArchive] = useState<Archive | null>(null);
-  const [loadingArchives, setLoadingArchives] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const loading = currentUser === null;
 
   useEffect(() => {
     let cancelled = false;
@@ -63,8 +83,6 @@ export default function ReportsPage() {
         role: user.role,
         aktif_status: user.aktif_status,
       });
-      setLoading(false);
-      loadArchives();
     })();
     return () => {
       cancelled = true;
@@ -77,14 +95,10 @@ export default function ReportsPage() {
   };
 
   const loadArchives = async () => {
-    setLoadingArchives(true);
     try {
-      const data = await getArchivedPeriodsAction();
-      setArchives(data || []);
+      await mutateArchives();
     } catch (err: any) {
       showMsg("error", err.message || "Terjadi kesalahan");
-    } finally {
-      setLoadingArchives(false);
     }
   };
 

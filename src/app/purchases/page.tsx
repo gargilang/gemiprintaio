@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import PurchaseForm from "@/components/PurchaseForm";
 import PurchaseTable from "@/components/PurchaseTable";
@@ -28,7 +28,11 @@ import {
   getDebtsAction,
   payDebtAction,
 } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
   id: string;
@@ -36,16 +40,91 @@ interface User {
   role: string;
 }
 
+type PurchasesInitData = {
+  purchases: any[];
+  materials: any[];
+  vendors: any[];
+  categories: any[];
+  subcategories: any[];
+  units: any[];
+};
+
+const EMPTY_INIT_DATA: PurchasesInitData = {
+  purchases: [],
+  materials: [],
+  vendors: [],
+  categories: [],
+  subcategories: [],
+  units: [],
+};
+
 export default function PurchasesPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [units, setUnits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
+
+  const {
+    data: initData,
+    isLoading: initLoading,
+    mutate: mutateInit,
+  } = useCachedData<PurchasesInitData>("purchases-init", async () => {
+    const data = await getInitDataAction();
+    return {
+      purchases: data.purchases || [],
+      materials: data.materials || [],
+      vendors: data.vendors || [],
+      categories: data.categories || [],
+      subcategories: data.subcategories || [],
+      units: data.units || [],
+    };
+  });
+  const safeInit = initData ?? EMPTY_INIT_DATA;
+  const purchases = safeInit.purchases;
+  const materials = safeInit.materials;
+  const vendors = safeInit.vendors;
+  const categories = safeInit.categories;
+  const subcategories = safeInit.subcategories;
+  const units = safeInit.units;
+  const loading = currentUser === null && initLoading;
+
+  const patchInit = useCallback(
+    (partial: Partial<PurchasesInitData>) => {
+      void mutateInit(
+        (prev) => ({
+          ...(prev ?? EMPTY_INIT_DATA),
+          ...partial,
+        }),
+        { revalidate: false }
+      );
+    },
+    [mutateInit]
+  );
+  const setPurchases = useCallback<
+    (next: any[] | ((prev: any[]) => any[])) => void
+  >(
+    (next) => {
+      void mutateInit(
+        (prev) => {
+          const base = prev ?? EMPTY_INIT_DATA;
+          const nextPurchases =
+            typeof next === "function"
+              ? (next as (p: any[]) => any[])(base.purchases)
+              : next;
+          return { ...base, purchases: nextPurchases };
+        },
+        { revalidate: false }
+      );
+    },
+    [mutateInit]
+  );
+  const setMaterials = (m: any[]) => patchInit({ materials: m });
+  const setVendors = (v: any[]) => patchInit({ vendors: v });
+  const setCategories = (c: any[]) => patchInit({ categories: c });
+  const setSubcategories = (s: any[]) => patchInit({ subcategories: s });
+  const setUnits = (u: any[]) => patchInit({ units: u });
   const [editingPurchase, setEditingPurchase] = useState<any>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
@@ -77,7 +156,6 @@ export default function PurchasesPage() {
         nama_pengguna: user.nama_pengguna,
         role: user.role,
       });
-      loadAllData();
     })();
     return () => {
       cancelled = true;
@@ -100,20 +178,11 @@ export default function PurchasesPage() {
   }, [editingPurchase, confirmDialog]);
 
   const loadAllData = async () => {
-    setLoading(true);
     try {
-      const data = await getInitDataAction();
-
-      setPurchases(data.purchases || []);
-      setMaterials(data.materials || []);
-      setVendors(data.vendors || []);
-      setCategories(data.categories || []);
-      setSubcategories(data.subcategories || []);
-      setUnits(data.units || []);
+      await mutateInit();
     } catch (error) {
       console.error("Error loading all data:", error);
     }
-    setLoading(false);
   };
 
   // Keep individual loaders for refresh after operations
@@ -128,8 +197,8 @@ export default function PurchasesPage() {
 
   const loadMaterials = async () => {
     try {
-      const materials = await getMaterialsAction();
-      setMaterials(materials || []);
+      const list = await getMaterialsAction();
+      setMaterials(list || []);
     } catch (error) {
       console.error("Error loading materials:", error);
     }
@@ -137,8 +206,8 @@ export default function PurchasesPage() {
 
   const loadVendors = async () => {
     try {
-      const vendors = await getVendorsAction();
-      setVendors(vendors || []);
+      const list = await getVendorsAction();
+      setVendors(list || []);
     } catch (error) {
       console.error("Error loading vendors:", error);
     }
@@ -146,8 +215,8 @@ export default function PurchasesPage() {
 
   const loadCategories = async () => {
     try {
-      const categories = await getCategoriesAction();
-      setCategories(categories || []);
+      const list = await getCategoriesAction();
+      setCategories(list || []);
     } catch (error) {
       console.error("Error loading categories:", error);
     }
@@ -155,8 +224,8 @@ export default function PurchasesPage() {
 
   const loadSubcategories = async () => {
     try {
-      const subcategories = await getSubcategoriesAction();
-      setSubcategories(subcategories || []);
+      const list = await getSubcategoriesAction();
+      setSubcategories(list || []);
     } catch (error) {
       console.error("Error loading subcategories:", error);
     }
@@ -164,8 +233,8 @@ export default function PurchasesPage() {
 
   const loadUnits = async () => {
     try {
-      const units = await getUnitsAction();
-      setUnits(units || []);
+      const list = await getUnitsAction();
+      setUnits(list || []);
     } catch (error) {
       console.error("Error loading units:", error);
     }
@@ -181,7 +250,7 @@ export default function PurchasesPage() {
 
     // If editing and we have updated data, update local state
     if (editingPurchase && updatedPurchase) {
-      setPurchases((prev) =>
+      setPurchases((prev: any[]) =>
         prev.map((p) =>
           p.id === updatedPurchase.id ? { ...p, ...updatedPurchase } : p
         )
@@ -235,9 +304,9 @@ export default function PurchasesPage() {
       onConfirm: async () => {
         try {
           await deletePurchaseAction(purchase.id);
-
-          // Remove from local state instead of reloading
-          setPurchases((prev) => prev.filter((p) => p.id !== purchase.id));
+          setPurchases((prev: any[]) =>
+            prev.filter((p) => p.id !== purchase.id)
+          );
           showMsg("success", "Pembelian berhasil dihapus!");
         } catch (error: any) {
           console.error("Error deleting purchase:", error);
@@ -370,7 +439,7 @@ export default function PurchasesPage() {
 
           <PurchaseTable
             purchases={purchases}
-            loading={loading}
+            loading={loading && purchases.length === 0}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onRevert={handleRevert}

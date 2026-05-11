@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import POSCart from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
@@ -20,7 +20,11 @@ import {
   payReceivableAction,
   getFinishingOptionsAction,
 } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
   id: string;
@@ -125,15 +129,90 @@ function getRoundedDimensions(
   }
 }
 
+type POSInitData = {
+  customers: Customer[];
+  materials: Material[];
+  sales: any[];
+};
+
+const EMPTY_POS_INIT: POSInitData = {
+  customers: [],
+  materials: [],
+  sales: [],
+};
+
 export default function POSPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
 
-  // Data
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
+  // Data — cached via SWR so it shows up instantly on re-visit.
+  const {
+    data: posInitData,
+    isLoading: posInitLoading,
+    mutate: mutatePosInit,
+  } = useCachedData<POSInitData>("pos-init", async () => {
+    const data = await getPOSInitDataAction();
+    return {
+      customers: (data.customers as Customer[]) || [],
+      materials: (data.materials as Material[]) || [],
+      sales: (data.sales as any[]) || [],
+    };
+  });
+  const safePos = posInitData ?? EMPTY_POS_INIT;
+  const customers = safePos.customers;
+  const materials = safePos.materials;
+  const sales = safePos.sales;
+  const [loading, setLoading] = useState(posInitLoading);
+  const patchPos = useCallback(
+    (partial: Partial<POSInitData>) => {
+      void mutatePosInit(
+        (prev) => ({ ...(prev ?? EMPTY_POS_INIT), ...partial }),
+        { revalidate: false }
+      );
+    },
+    [mutatePosInit]
+  );
+  const setCustomers = useCallback<
+    (next: Customer[] | ((prev: Customer[]) => Customer[])) => void
+  >(
+    (next) => {
+      void mutatePosInit(
+        (prev) => {
+          const base = prev ?? EMPTY_POS_INIT;
+          const updated =
+            typeof next === "function"
+              ? (next as (p: Customer[]) => Customer[])(base.customers)
+              : next;
+          return { ...base, customers: updated };
+        },
+        { revalidate: false }
+      );
+    },
+    [mutatePosInit]
+  );
+  const setMaterials = (m: Material[]) => patchPos({ materials: m });
+  const setSales = useCallback<
+    (next: any[] | ((prev: any[]) => any[])) => void
+  >(
+    (next) => {
+      void mutatePosInit(
+        (prev) => {
+          const base = prev ?? EMPTY_POS_INIT;
+          const updated =
+            typeof next === "function"
+              ? (next as (p: any[]) => any[])(base.sales)
+              : next;
+          return { ...base, sales: updated };
+        },
+        { revalidate: false }
+      );
+    },
+    [mutatePosInit]
+  );
 
   // Cart & Transaction State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -182,7 +261,6 @@ export default function POSPage() {
         return;
       }
       setCurrentUser(user);
-      loadAllData();
     })();
     return () => {
       cancelled = true;
@@ -215,10 +293,7 @@ export default function POSPage() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const data = await getPOSInitDataAction();
-      setCustomers(data.customers || []);
-      setMaterials(data.materials || []);
-      setSales(data.sales || []);
+      await mutatePosInit();
     } catch (error) {
       console.error("Error loading all data:", error);
       showMsg("error", "Gagal memuat data POS");

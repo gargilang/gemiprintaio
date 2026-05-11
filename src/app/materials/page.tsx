@@ -18,6 +18,7 @@ import {
   getUnitsAction,
   getQuickSpecsAction,
 } from "./actions";
+import { useCachedData } from "@/lib/use-cached-data";
 
 // Memoized Material Row Component - mencegah re-render yang tidak perlu
 const MaterialRow = memo(
@@ -183,8 +184,32 @@ type Material = { id: string; [k: string]: any };
 
 export default function MaterialsPage() {
   const [showModal, setShowModal] = useState(false);
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: materialsData,
+    isLoading: materialsLoading,
+    mutate: mutateMaterials,
+  } = useCachedData<any[]>("materials", async () => {
+    const list = await getMaterialsAction();
+    return (list as any[]) || [];
+  });
+  const materials = materialsData ?? [];
+  const setMaterials = useCallback<
+    (next: any[] | ((prev: any[]) => any[])) => void
+  >(
+    (next) => {
+      void mutateMaterials(
+        (prev) => {
+          const base = (prev as any[] | undefined) ?? [];
+          return typeof next === "function"
+            ? (next as (p: any[]) => any[])(base)
+            : next;
+        },
+        { revalidate: false }
+      );
+    },
+    [mutateMaterials]
+  );
+  const loading = materialsLoading;
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
@@ -207,7 +232,7 @@ export default function MaterialsPage() {
 
   // Helper function to update a single material in state without reloading
   function updateMaterialInState(updated: Material) {
-    setMaterials((prev) =>
+    setMaterials((prev: any[]) =>
       prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
     );
   }
@@ -266,9 +291,7 @@ export default function MaterialsPage() {
     return filteredMaterials.slice(visibleRange.start, visibleRange.end);
   }, [filteredMaterials, visibleRange]);
 
-  useEffect(() => {
-    loadMaterials();
-  }, []);
+  // SWR auto-fetches on mount via useCachedData; no manual call needed.
 
   // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
@@ -321,14 +344,10 @@ export default function MaterialsPage() {
 
   const loadMaterials = async () => {
     try {
-      setLoading(true);
-      const materials = await getMaterialsAction();
-      setMaterials(materials || []);
+      await mutateMaterials();
     } catch (error) {
       console.error("Error loading materials:", error);
       showNotification("error", "Gagal memuat data barang");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -388,8 +407,9 @@ export default function MaterialsPage() {
         setConfirmDialog(null);
         try {
           await deleteMaterialAction(material.id);
-          // Remove from local state instead of reloading
-          setMaterials((prev) => prev.filter((m) => m.id !== material.id));
+          setMaterials((prev: any[]) =>
+            prev.filter((m) => m.id !== material.id)
+          );
           showNotification(
             "success",
             `Barang "${material.nama}" berhasil dihapus`
@@ -640,7 +660,7 @@ export default function MaterialsPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && materials.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center">
                     <div className="flex items-center justify-center gap-2">
