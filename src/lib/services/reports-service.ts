@@ -5,7 +5,7 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import { db, getServerSupabaseClient } from "../db-unified";
 
 // ============================================================================
 // TYPES
@@ -53,8 +53,45 @@ export interface FinancialReport {
  * Get all archived periods
  */
 export async function getArchivedPeriods(): Promise<Archive[]> {
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data, error } = await sb
+      .from("keuangan")
+      .select("label_arsip, tanggal, diarsipkan_pada")
+      .not("diarsipkan_pada", "is", null);
+    if (error) throw error;
+
+    const groups = new Map<
+      string,
+      { label: string; archived_at: string; dates: string[] }
+    >();
+
+    for (const row of data || []) {
+      const lab = row.label_arsip as string | null;
+      const at = row.diarsipkan_pada as string | null;
+      const tanggal = row.tanggal as string | null;
+      if (!lab || !at || !tanggal) continue;
+      const key = `${lab}\0${at}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { label: lab, archived_at: at, dates: [] };
+        groups.set(key, g);
+      }
+      g.dates.push(tanggal);
+    }
+
+    return [...groups.values()]
+      .map((g) => ({
+        archived_label: g.label,
+        count: g.dates.length,
+        start_date: g.dates.reduce((a, b) => (a < b ? a : b)),
+        end_date: g.dates.reduce((a, b) => (a > b ? a : b)),
+        archived_at: g.archived_at,
+      }))
+      .sort((a, b) => b.archived_at.localeCompare(a.archived_at));
+  }
+
   try {
-    // Query for grouped archives
     const result = await db.queryRaw<any>(`
       SELECT 
         label_arsip as archived_label,
@@ -83,23 +120,35 @@ export async function archiveCashbook(data: {
   endDate: string;
   label: string;
 }): Promise<{ archived: number }> {
+  if (!data.startDate || !data.endDate || !data.label) {
+    throw new Error("startDate, endDate, and label are required");
+  }
+
+  const now = new Date().toISOString();
+  const sb = getServerSupabaseClient();
+
+  if (sb) {
+    const { error } = await sb
+      .from("keuangan")
+      .update({
+        diarsipkan_pada: now,
+        label_arsip: data.label,
+      })
+      .gte("tanggal", data.startDate)
+      .lte("tanggal", data.endDate)
+      .is("diarsipkan_pada", null);
+    if (error) throw error;
+    return { archived: 0 };
+  }
+
   try {
-    if (!data.startDate || !data.endDate || !data.label) {
-      throw new Error("startDate, endDate, and label are required");
-    }
-
-    const now = new Date().toISOString();
-
-    // Update keuangan records to mark as archived
-    const result = await db.executeRaw(
+    await db.executeRaw(
       `UPDATE keuangan 
        SET diarsipkan_pada = ?, label_arsip = ?
        WHERE tanggal >= ? AND tanggal <= ? AND diarsipkan_pada IS NULL`,
       [now, data.label, data.startDate, data.endDate]
     );
-
-    // Result from executeRaw is not standardized, so we'll assume success
-    return { archived: 0 }; // We can't get the exact count easily
+    return { archived: 0 };
   } catch (error) {
     console.error("Error archiving cashbook:", error);
     throw error;
@@ -118,20 +167,33 @@ export async function getFinancialReport(
       throw new Error("Missing required params: label and archivedAt");
     }
 
-    // Get archived cashbook entries
-    // Note: We're using 'keuangan' table as the source
-    const cashBooks = await db.queryRaw<any>(
-      `SELECT * FROM keuangan 
+    let cashBooks: any[];
+
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      const { data, error } = await sb
+        .from("keuangan")
+        .select("*")
+        .eq("label_arsip", label)
+        .eq("diarsipkan_pada", archivedAt)
+        .order("tanggal", { ascending: true })
+        .order("dibuat_pada", { ascending: true });
+      if (error) throw error;
+      cashBooks = data || [];
+    } else {
+      cashBooks =
+        (await db.queryRaw<any>(
+          `SELECT * FROM keuangan 
        WHERE label_arsip = ? AND diarsipkan_pada = ?
        ORDER BY tanggal ASC, dibuat_pada ASC`,
-      [label, archivedAt]
-    );
+          [label, archivedAt]
+        )) || [];
+    }
 
     if (!cashBooks || cashBooks.length === 0) {
       throw new Error("No data found for this archive");
     }
 
-    // Calculate summary
     let totalIncome = 0;
     let totalExpenses = 0;
     const categoryTotals: { [key: string]: number } = {};
@@ -144,7 +206,6 @@ export async function getFinancialReport(
         totalExpenses += row.kredit;
       }
 
-      // Group by category
       const category = row.kategori_transaksi || "Uncategorized";
       if (!categoryTotals[category]) {
         categoryTotals[category] = 0;
@@ -155,7 +216,6 @@ export async function getFinancialReport(
     const netProfit = totalIncome - totalExpenses;
     const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
 
-    // Transform category totals to array with percentages
     const categoryBreakdown = Object.entries(categoryTotals).map(
       ([category, amount]) => ({
         category,
@@ -167,7 +227,6 @@ export async function getFinancialReport(
       })
     );
 
-    // Transform transactions to expected format
     const transactions = cashBooks.map((row: any) => ({
       date: row.tanggal,
       description: row.keperluan || "No description",
@@ -204,12 +263,22 @@ export async function restoreArchivedTransactions(
   label: string,
   archivedAt: string
 ): Promise<{ restored: number }> {
-  try {
-    if (!label || !archivedAt) {
-      throw new Error("Missing required params: label and archivedAt");
-    }
+  if (!label || !archivedAt) {
+    throw new Error("Missing required params: label and archivedAt");
+  }
 
-    // Unarchive transactions
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { error } = await sb
+      .from("keuangan")
+      .update({ diarsipkan_pada: null, label_arsip: null })
+      .eq("label_arsip", label)
+      .eq("diarsipkan_pada", archivedAt);
+    if (error) throw error;
+    return { restored: 0 };
+  }
+
+  try {
     await db.executeRaw(
       `UPDATE keuangan 
        SET diarsipkan_pada = NULL, label_arsip = NULL
@@ -217,7 +286,7 @@ export async function restoreArchivedTransactions(
       [label, archivedAt]
     );
 
-    return { restored: 0 }; // Can't get exact count easily
+    return { restored: 0 };
   } catch (error) {
     console.error("Error restoring archived transactions:", error);
     throw error;

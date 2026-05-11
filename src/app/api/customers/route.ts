@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import {
+  pelangganHasPenjualan,
+  rowExistsEq,
+} from "@/lib/duplicate-check";
 import {
   createCustomer,
   deleteCustomer,
@@ -43,11 +46,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM pelanggan WHERE nama = ? LIMIT 1",
-      [nama.trim()]
-    );
-    if (dup.length > 0) {
+    const dup = await rowExistsEq("pelanggan", "nama", nama.trim());
+    if (dup) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
         { status: 400 }
@@ -122,11 +122,8 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM pelanggan WHERE nama = ? AND id != ? LIMIT 1",
-      [nama.trim(), id]
-    );
-    if (dup.length > 0) {
+    const dup = await rowExistsEq("pelanggan", "nama", nama.trim(), id);
+    if (dup) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
         { status: 400 }
@@ -177,11 +174,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const used = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM penjualan WHERE pelanggan_id = ? LIMIT 1",
-      [id]
-    );
-    if (used.length > 0) {
+    const used = await pelangganHasPenjualan(id);
+    if (used) {
       return NextResponse.json(
         {
           error:

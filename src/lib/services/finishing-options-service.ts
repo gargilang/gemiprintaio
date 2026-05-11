@@ -5,7 +5,8 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import { db, getServerSupabaseClient } from "../db-unified";
+import { existsTableRow } from "../server-data-supabase";
 
 export interface FinishingOption {
   id: string;
@@ -124,14 +125,22 @@ export async function updateFinishingOption(
       throw new Error("Nama opsi tidak boleh kosong");
     }
 
-    // Check if nama already exists (excluding current)
-    const existing = await db.queryRaw<any>(
-      "SELECT id FROM opsi_finishing WHERE nama = ? AND id != ?",
-      [data.nama.trim(), id]
-    );
-
-    if (existing && existing.length > 0) {
-      throw new Error("Opsi dengan nama ini sudah ada");
+    if (getServerSupabaseClient()) {
+      const dup = await existsTableRow(
+        "opsi_finishing",
+        "nama",
+        data.nama.trim(),
+        id
+      );
+      if (dup) throw new Error("Opsi dengan nama ini sudah ada");
+    } else {
+      const existing = await db.queryRaw<any>(
+        "SELECT id FROM opsi_finishing WHERE nama = ? AND id != ?",
+        [data.nama.trim(), id]
+      );
+      if (existing && existing.length > 0) {
+        throw new Error("Opsi dengan nama ini sudah ada");
+      }
     }
 
     const result = await db.update("opsi_finishing", id, {

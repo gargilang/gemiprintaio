@@ -1,0 +1,22 @@
+# Tauri desktop bundle artifacts (not needed for web deploy)
+src-tauri
+tauri-bundle
+
+# Local SQLite database files (web deploy uses Supabase)
+database/gemiprint.db
+database/gemiprint.db-shm
+database/gemiprint.db-wal
+
+# Desktop binaries
+*.exe
+*.dmg
+*.deb
+*.AppImage
+*.app
+
+# Test artifacts
+coverage
+__tests__
+
+# Misc
+.DS_Store

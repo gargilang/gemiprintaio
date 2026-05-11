@@ -5,7 +5,8 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import { db, getServerSupabaseClient } from "../db-unified";
+import { getReferencedHargaSatuanIds } from "../server-data-supabase";
 
 function toDbIntBoolean(value: unknown): 0 | 1 {
   return value === true || value === 1 ? 1 : 0;
@@ -216,19 +217,23 @@ async function deleteOrphanUnitPricesSafe(
   const idsToDelete = existingIds.filter((uid) => !keepIds.includes(uid));
   if (idsToDelete.length === 0) return;
 
-  const placeholders = idsToDelete.map(() => "?").join(",");
-  const referenced = await db.queryRaw<{ harga_satuan_id: string }>(
-    `SELECT DISTINCT harga_satuan_id FROM (
+  let refSet: Set<string>;
+  if (getServerSupabaseClient()) {
+    refSet = await getReferencedHargaSatuanIds(idsToDelete);
+  } else {
+    const placeholders = idsToDelete.map(() => "?").join(",");
+    const referenced = await db.queryRaw<{ harga_satuan_id: string }>(
+      `SELECT DISTINCT harga_satuan_id FROM (
       SELECT harga_satuan_id FROM item_pembelian WHERE harga_satuan_id IN (${placeholders})
       UNION
       SELECT harga_satuan_id FROM item_penjualan WHERE harga_satuan_id IN (${placeholders})
     )`,
-    [...idsToDelete, ...idsToDelete]
-  );
-
-  const refSet = new Set(
-    (referenced || []).map((r) => r.harga_satuan_id).filter(Boolean)
-  );
+      [...idsToDelete, ...idsToDelete]
+    );
+    refSet = new Set(
+      (referenced || []).map((r) => r.harga_satuan_id).filter(Boolean)
+    );
+  }
   const safeToDelete = idsToDelete.filter((uid) => !refSet.has(uid));
 
   for (const uid of safeToDelete) {

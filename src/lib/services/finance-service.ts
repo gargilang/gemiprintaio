@@ -5,7 +5,21 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import {
+  type CashbookRecalcInputRow,
+  computeCashbookRecalculationUpdates,
+  sortCashbookRowsForRecalc,
+} from "../cashbook-recalc-logic";
+import {
+  db,
+  generateId,
+  getCurrentTimestamp,
+  getServerSupabaseClient,
+} from "../db-unified";
+import {
+  deleteKeuanganWhereNotArchived,
+  getMaxUrutanTampilanKeuangan,
+} from "../server-data-supabase";
 
 export interface CashBookEntry {
   id: string;
@@ -239,7 +253,9 @@ async function calculateRunningTotals(
 }
 
 /**
- * Create new cash book entry
+ * Create new cash book entry (aligned with legacy POST /api/finance/cash-book).
+ * Inserts running totals, then runs recalculateCashbook when native SQLite is available
+ * so overrides / batch rules match src/lib/calculate-cashbook.ts.
  */
 export async function createCashBookEntry(data: {
   tanggal: string;
@@ -249,63 +265,56 @@ export async function createCashBookEntry(data: {
   keperluan?: string;
   catatan?: string;
   dibuat_oleh?: string;
-}): Promise<{ id: string }> {
-  try {
-    const debit = data.debit || 0;
-    const kredit = data.kredit || 0;
+}): Promise<{ id: string; cashBook: CashBookEntry | null }> {
+  const debit = data.debit ?? 0;
+  const kredit = data.kredit ?? 0;
 
-    // Validasi
-    if (!data.tanggal || !data.kategori_transaksi) {
-      throw new Error("Tanggal dan kategori wajib diisi");
-    }
-
-    if (debit > 0 && kredit > 0) {
-      throw new Error("Tidak boleh mengisi debit dan kredit bersamaan");
-    }
-
-    if (debit === 0 && kredit === 0) {
-      throw new Error("Debit atau kredit harus diisi");
-    }
-
-    // Get max urutan_tampilan
-    const maxOrderResult = await db.queryRaw<{ max_order: number }>(
-      "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
-      []
-    );
-    const nextOrder = (maxOrderResult[0]?.max_order || 0) + 1;
-
-    // Calculate running totals
-    const totals = await calculateRunningTotals(
-      data.kategori_transaksi,
-      debit,
-      kredit,
-      data.keperluan || ""
-    );
-
-    // Create entry
-    const id = `cb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    const entry = {
-      id,
-      tanggal: data.tanggal,
-      kategori_transaksi: data.kategori_transaksi,
-      debit,
-      kredit,
-      keperluan: data.keperluan || "",
-      catatan: data.catatan || "",
-      urutan_tampilan: nextOrder,
-      dibuat_oleh: data.dibuat_oleh || "",
-      ...totals,
-    };
-
-    const result = await db.insert("keuangan", entry);
-    if (result.error) throw result.error;
-
-    return { id };
-  } catch (error: any) {
-    console.error("Error creating cash book entry:", error);
-    throw error;
+  if (!data.tanggal || !data.kategori_transaksi) {
+    throw new Error("Tanggal dan kategori wajib diisi");
   }
+
+  if (debit > 0 && kredit > 0) {
+    throw new Error("Tidak boleh mengisi debit dan kredit bersamaan");
+  }
+
+  if (debit === 0 && kredit === 0) {
+    throw new Error("Debit atau kredit harus diisi");
+  }
+
+  const nextOrder = await nextUrutanTampilanKeuangan();
+
+  const totals = await calculateRunningTotals(
+    data.kategori_transaksi,
+    debit,
+    kredit,
+    data.keperluan || ""
+  );
+
+  const id = generateId();
+  const now = getCurrentTimestamp();
+
+  const entry = {
+    id,
+    tanggal: data.tanggal,
+    kategori_transaksi: data.kategori_transaksi,
+    debit,
+    kredit,
+    keperluan: data.keperluan ?? "",
+    catatan: data.catatan ?? "",
+    urutan_tampilan: nextOrder,
+    dibuat_oleh: data.dibuat_oleh ?? "",
+    dibuat_pada: now,
+    diperbarui_pada: now,
+    ...totals,
+  };
+
+  const result = await db.insert("keuangan", entry);
+  if (result.error) throw result.error;
+
+  await recalculateCashbookIfAvailable();
+
+  const cashBook = await getCashBookEntry(id);
+  return { id, cashBook };
 }
 
 /**
@@ -337,15 +346,68 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
   }
 }
 
-async function recalculateCashbookIfAvailable(): Promise<void> {
+/**
+ * Runs full cashbook cascade (overrides, LUNAS, order).
+ * Uses native SQLite when present; otherwise applies the same rules via Supabase (serverless web).
+ */
+export async function recalculateCashbookIfAvailable(): Promise<boolean> {
   try {
     const sqlite = await db.getNativeSQLite();
-    if (!sqlite) return;
-    const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
-    await recalculateCashbook(sqlite);
+    if (sqlite) {
+      const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+      await recalculateCashbook(sqlite);
+      return true;
+    }
+    return await recalculateCashbookViaSupabase();
   } catch (e) {
     console.warn("recalculateCashbook skipped:", e);
+    return false;
   }
+}
+
+async function nextUrutanTampilanKeuangan(): Promise<number> {
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const max = await getMaxUrutanTampilanKeuangan();
+    return max + 1;
+  }
+  const maxOrderResult = await db.queryRaw<{ max_order: number }>(
+    "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
+    []
+  );
+  return (maxOrderResult[0]?.max_order ?? 0) + 1;
+}
+
+async function recalculateCashbookViaSupabase(): Promise<boolean> {
+  const sb = getServerSupabaseClient();
+  if (!sb) return false;
+
+  const { data: rows, error } = await sb
+    .from("keuangan")
+    .select("*")
+    .is("diarsipkan_pada", null)
+    .order("urutan_tampilan", { ascending: true })
+    .order("dibuat_pada", { ascending: true });
+
+  if (error) {
+    console.warn("recalculateCashbookViaSupabase fetch:", error);
+    return false;
+  }
+
+  const sorted = sortCashbookRowsForRecalc(
+    (rows || []) as CashbookRecalcInputRow[]
+  );
+  const batch = computeCashbookRecalculationUpdates(sorted);
+
+  for (const { id, updates } of batch) {
+    if (Object.keys(updates).length === 0) continue;
+    const res = await db.update("keuangan", id, updates);
+    if (res.error) {
+      console.warn("recalculateCashbookViaSupabase update:", res.error);
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -412,16 +474,90 @@ export async function updateManualCashBookEntry(
   return "updated";
 }
 
+/** Columns that support manual override (paired with `override_<column>` on `keuangan`). */
+export const CASHBOOK_MANUAL_OVERRIDE_FIELDS = [
+  "saldo",
+  "omzet",
+  "biaya_operasional",
+  "biaya_bahan",
+  "laba_bersih",
+  "kasbon_anwar",
+  "kasbon_suri",
+  "kasbon_cahaya",
+  "kasbon_dinil",
+  "bagi_hasil_anwar",
+  "bagi_hasil_suri",
+  "bagi_hasil_gemi",
+] as const;
+
+export type CashbookManualOverrideField =
+  (typeof CASHBOOK_MANUAL_OVERRIDE_FIELDS)[number];
+
+function isCashbookManualOverrideField(
+  f: string
+): f is CashbookManualOverrideField {
+  return (CASHBOOK_MANUAL_OVERRIDE_FIELDS as readonly string[]).includes(f);
+}
+
+/**
+ * PATCH manual overrides on calculated columns (persists via db-unified → Supabase / SQLite).
+ */
+export async function patchCashBookManualOverrides(
+  id: string,
+  body: Record<string, unknown>
+): Promise<"updated" | "no_fields" | "not_found"> {
+  const existing = await getCashBookEntry(id);
+  if (!existing) return "not_found";
+
+  const patch: Record<string, unknown> = {};
+  for (const field of CASHBOOK_MANUAL_OVERRIDE_FIELDS) {
+    if (field in body && body[field] !== undefined) {
+      patch[field] = body[field];
+      patch[`override_${field}`] = 1;
+    }
+  }
+
+  if (Object.keys(patch).length === 0) return "no_fields";
+
+  const res = await db.update("keuangan", id, patch);
+  if (res.error) throw res.error;
+
+  await recalculateCashbookIfAvailable();
+  return "updated";
+}
+
+/**
+ * Clear one manual override flag (recalculates row from rules where applicable).
+ */
+export async function clearCashBookManualOverride(
+  id: string,
+  field: string
+): Promise<"cleared" | "not_found" | "invalid_field"> {
+  if (!isCashbookManualOverrideField(field)) return "invalid_field";
+
+  const existing = await getCashBookEntry(id);
+  if (!existing) return "not_found";
+
+  const res = await db.update("keuangan", id, {
+    [`override_${field}`]: 0,
+  });
+  if (res.error) throw res.error;
+
+  await recalculateCashbookIfAvailable();
+  return "cleared";
+}
+
 /**
  * Delete all active cash book entries (preserves archived)
  */
 export async function deleteAllCashbook(): Promise<{ deleted: number }> {
   try {
-    // Only delete active transactions (diarsipkan_pada IS NULL)
-    // This preserves archived transactions from "Tutup Buku"
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      await deleteKeuanganWhereNotArchived();
+      return { deleted: 0 };
+    }
     await db.executeRaw("DELETE FROM keuangan WHERE diarsipkan_pada IS NULL");
-
-    // Can't get exact count easily, return 0
     return { deleted: 0 };
   } catch (error) {
     console.error("Error deleting all cashbook:", error);
@@ -616,11 +752,7 @@ export async function importCashbookFromCSV(
     }
 
     // Get max urutan_tampilan to continue numbering
-    const maxOrderResult = await db.queryRaw<{ max_order: number }>(
-      "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
-      []
-    );
-    let nextDisplayOrder = (maxOrderResult[0]?.max_order || 0) + 1;
+    let nextDisplayOrder = await nextUrutanTampilanKeuangan();
 
     let imported = 0;
     let skipped = 0;
@@ -709,9 +841,7 @@ export async function importCashbookFromCSV(
       }
     }
 
-    // Recalculate running totals
-    // Note: This would need to call calculate-cashbook recalculation
-    // For now, we'll skip this as it requires the calculate-cashbook module
+    await recalculateCashbookIfAvailable();
 
     return {
       success: true,

@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
 import { importCashbookFromCSV } from "@/lib/services/finance-service";
-
-async function recalculateIfPossible(): Promise<void> {
-  try {
-    const sqlite = await db.getNativeSQLite();
-    if (!sqlite) return;
-    const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
-    await recalculateCashbook(sqlite);
-  } catch (e) {
-    console.warn("recalculateCashbook skipped:", e);
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,13 +19,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result, { status: 400 });
     }
 
-    await recalculateIfPossible();
-
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Import error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to import CSV", details: error.message },
+      { error: "Failed to import CSV", details: message },
       { status: 500 }
     );
   }

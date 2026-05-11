@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { rowExistsCompositeEq } from "@/lib/duplicate-check";
 import {
   countMaterialsBySubcategoryId,
   deleteSubcategory,
@@ -34,11 +34,15 @@ export async function PUT(
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM subkategori_barang WHERE kategori_id = ? AND nama = ? AND id != ? LIMIT 1",
-      [existing.kategori_id, nama.trim(), params.id]
+    const dup = await rowExistsCompositeEq(
+      "subkategori_barang",
+      [
+        ["kategori_id", existing.kategori_id],
+        ["nama", nama.trim()],
+      ],
+      params.id
     );
-    if (dup.length > 0) {
+    if (dup) {
       return NextResponse.json(
         { error: "Subkategori dengan nama ini sudah ada dalam kategori ini" },
         { status: 400 }

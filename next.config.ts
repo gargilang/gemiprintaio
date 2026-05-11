@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   // For Tauri, use standalone to bundle Next.js server
   output: isTauri ? "standalone" : undefined,
 
+  // Keep better-sqlite3 (native module) out of the Next bundle so Vercel's
+  // serverless runtime can require it from node_modules at runtime.
+  serverExternalPackages: ["better-sqlite3"],
+
   images: {
     unoptimized: true,
   },

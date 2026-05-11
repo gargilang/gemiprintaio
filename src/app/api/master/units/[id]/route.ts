@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { rowExistsEq } from "@/lib/duplicate-check";
 import {
   deleteUnit,
   getUnitById,
@@ -32,11 +32,13 @@ export async function PUT(
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM satuan_barang WHERE nama = ? AND id != ? LIMIT 1",
-      [nama.trim(), params.id]
+    const dup = await rowExistsEq(
+      "satuan_barang",
+      "nama",
+      nama.trim(),
+      params.id
     );
-    if (dup.length > 0) {
+    if (dup) {
       return NextResponse.json(
         { error: "Satuan dengan nama ini sudah ada" },
         { status: 400 }

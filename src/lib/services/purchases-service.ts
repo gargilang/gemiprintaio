@@ -5,7 +5,8 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import { db, getServerSupabaseClient } from "../db-unified";
+import { fetchLastNomorPembelian } from "../server-data-supabase";
 
 async function recalculateCashbookIfAvailable(): Promise<void> {
   try {
@@ -125,12 +126,17 @@ function generateId(prefix: string): string {
 }
 
 async function nextNomorPembelian(): Promise<string> {
-  const rows = await db.queryRaw<{ nomor_pembelian: string }>(
-    "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1",
-    []
-  );
+  let last: string | null | undefined;
+  if (getServerSupabaseClient()) {
+    last = await fetchLastNomorPembelian();
+  } else {
+    const rows = await db.queryRaw<{ nomor_pembelian: string }>(
+      "SELECT nomor_pembelian FROM pembelian ORDER BY dibuat_pada DESC LIMIT 1",
+      []
+    );
+    last = rows[0]?.nomor_pembelian;
+  }
   let nextNumber = 1;
-  const last = rows[0]?.nomor_pembelian;
   if (last) {
     const match = last.match(/(\d+)$/);
     if (match) {

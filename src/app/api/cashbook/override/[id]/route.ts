@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { recalculateCashbook } from "@/lib/calculate-cashbook";
-import { db } from "@/lib/db-unified";
-
-const EDITABLE_FIELDS = [
-  "saldo",
-  "omzet",
-  "biaya_operasional",
-  "biaya_bahan",
-  "laba_bersih",
-  "kasbon_anwar",
-  "kasbon_suri",
-  "kasbon_cahaya",
-  "kasbon_dinil",
-  "bagi_hasil_anwar",
-  "bagi_hasil_suri",
-  "bagi_hasil_gemi",
-] as const;
+import {
+  patchCashBookManualOverrides,
+  clearCashBookManualOverride,
+} from "@/lib/services/finance-service";
 
 export async function PATCH(
   request: NextRequest,
@@ -26,54 +13,30 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const sqlite = await db.getNativeSQLite();
-    if (!sqlite) {
-      return NextResponse.json(
-        { error: "SQLite tidak tersedia di lingkungan ini" },
-        { status: 503 }
-      );
-    }
+    const outcome = await patchCashBookManualOverrides(id, body);
 
-    const updates: string[] = [];
-    const values: unknown[] = [];
-
-    for (const field of EDITABLE_FIELDS) {
-      if (field in body && body[field] !== undefined) {
-        updates.push(`${field} = ?`);
-        values.push(body[field]);
-        updates.push(`override_${field} = ?`);
-        values.push(1);
-      }
-    }
-
-    if (updates.length === 0) {
+    if (outcome === "no_fields") {
       return NextResponse.json(
         { error: "No fields to update" },
         { status: 400 }
       );
     }
-
-    values.push(id);
-    const query = `UPDATE keuangan SET ${updates.join(", ")} WHERE id = ?`;
-    const result = sqlite.prepare(query).run(...values);
-
-    if (result.changes === 0) {
+    if (outcome === "not_found") {
       return NextResponse.json(
         { error: "Keuangan entry not found", id },
         { status: 404 }
       );
     }
 
-    await recalculateCashbook(sqlite);
-
     return NextResponse.json({
       success: true,
       message: "Successfully updated cash book entry with manual override",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Override error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to update cash book entry", details: error.message },
+      { error: "Failed to update cash book entry", details: message },
       { status: 500 }
     );
   }
@@ -95,38 +58,27 @@ export async function DELETE(
       );
     }
 
-    if (!(EDITABLE_FIELDS as readonly string[]).includes(field)) {
+    const outcome = await clearCashBookManualOverride(id, field);
+
+    if (outcome === "invalid_field") {
       return NextResponse.json({ error: "Invalid field" }, { status: 400 });
     }
-
-    const sqlite = await db.getNativeSQLite();
-    if (!sqlite) {
-      return NextResponse.json(
-        { error: "SQLite tidak tersedia di lingkungan ini" },
-        { status: 503 }
-      );
-    }
-
-    const query = `UPDATE keuangan SET override_${field} = 0 WHERE id = ?`;
-    const result = sqlite.prepare(query).run(id);
-
-    if (result.changes === 0) {
+    if (outcome === "not_found") {
       return NextResponse.json(
         { error: "Keuangan entry not found" },
         { status: 404 }
       );
     }
 
-    await recalculateCashbook(sqlite);
-
     return NextResponse.json({
       success: true,
       message: `Successfully removed override for ${field}`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Remove override error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to remove override", details: error.message },
+      { error: "Failed to remove override", details: message },
       { status: 500 }
     );
   }

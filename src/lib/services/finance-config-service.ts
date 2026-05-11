@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db } from "@/lib/db-unified";
+import { db, getServerSupabaseClient } from "@/lib/db-unified";
 
 export interface FinanceCategoryDefinition {
   id?: string;
@@ -64,6 +64,57 @@ const DEFAULT_MAPPINGS: FinanceMetricMapping[] = [
   { metric_key: "kasbon_dinil", metric_label: "Kasbon", metric_group: "cash_advance", source_column: "kasbon_dinil", participant_name: "Dinil", display_order: 50 },
 ];
 
+async function nextDisplayOrderParticipants(): Promise<number> {
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data } = await sb
+      .from("finance_participants")
+      .select("display_order")
+      .order("display_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (Number((data as { display_order?: number })?.display_order) || 0) + 10;
+  }
+  const existing = await db.queryRaw<{ max_order: number }>(
+    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_participants"
+  );
+  return (existing[0]?.max_order || 0) + 10;
+}
+
+async function nextDisplayOrderCategories(): Promise<number> {
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data } = await sb
+      .from("finance_category_definitions")
+      .select("display_order")
+      .order("display_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (Number((data as { display_order?: number })?.display_order) || 0) + 10;
+  }
+  const existing = await db.queryRaw<{ max_order: number }>(
+    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_category_definitions"
+  );
+  return (existing[0]?.max_order || 0) + 10;
+}
+
+async function nextDisplayOrderMappings(): Promise<number> {
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data } = await sb
+      .from("finance_metric_mappings")
+      .select("display_order")
+      .order("display_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (Number((data as { display_order?: number })?.display_order) || 0) + 10;
+  }
+  const existing = await db.queryRaw<{ max_order: number }>(
+    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_metric_mappings"
+  );
+  return (existing[0]?.max_order || 0) + 10;
+}
+
 export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
   let categoriesResult = {
     data: null as FinanceCategoryDefinition[] | null,
@@ -85,17 +136,56 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
   }
 
   try {
-    participantRows = (await db.query<FinanceParticipant>("finance_participants", {
-      where: { is_active: 1 },
-      orderBy: { column: "display_order", ascending: true },
-    })).data || [];
+    participantRows =
+      (
+        await db.query<FinanceParticipant>("finance_participants", {
+          where: { is_active: 1 },
+          orderBy: { column: "display_order", ascending: true },
+        })
+      ).data || [];
   } catch {
     participantRows = [];
   }
 
   try {
-    metricRows = await db.queryRaw<FinanceMetricMapping>(
-      `SELECT
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      const { data: mappings, error: em } = await sb
+        .from("finance_metric_mappings")
+        .select(
+          "id, metric_key, metric_label, metric_group, source_column, participant_id, display_order"
+        )
+        .eq("is_active", 1)
+        .order("metric_group", { ascending: true })
+        .order("display_order", { ascending: true });
+      if (em) throw em;
+
+      const { data: participants } = await sb
+        .from("finance_participants")
+        .select("id, display_name");
+
+      const pmap = new Map(
+        (participants || []).map((p: { id: string; display_name: string }) => [
+          p.id,
+          p.display_name,
+        ])
+      );
+
+      metricRows = (mappings || []).map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        metric_key: m.metric_key as string,
+        metric_label: m.metric_label as string,
+        metric_group: m.metric_group as FinanceMetricMapping["metric_group"],
+        source_column: m.source_column as string,
+        participant_id: (m.participant_id as string | null) ?? null,
+        participant_name: m.participant_id
+          ? pmap.get(m.participant_id as string) ?? null
+          : null,
+        display_order: Number(m.display_order),
+      }));
+    } else {
+      metricRows = await db.queryRaw<FinanceMetricMapping>(
+        `SELECT
         m.id,
         m.metric_key,
         m.metric_label,
@@ -108,7 +198,8 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
       LEFT JOIN finance_participants p ON p.id = m.participant_id
       WHERE m.is_active = 1
       ORDER BY m.metric_group ASC, m.display_order ASC`
-    );
+      );
+    }
   } catch {
     metricRows = [];
   }
@@ -126,10 +217,7 @@ export async function createFinanceParticipant(input: {
   role_type: "profit_share" | "cash_advance" | "other";
 }) {
   const id = `fin-participant-${Date.now()}`;
-  const existing = await db.queryRaw<{ max_order: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_participants"
-  );
-  const displayOrder = (existing[0]?.max_order || 0) + 10;
+  const displayOrder = await nextDisplayOrderParticipants();
   return db.insert("finance_participants", {
     id,
     participant_code: input.participant_code.toUpperCase().trim(),
@@ -141,11 +229,18 @@ export async function createFinanceParticipant(input: {
 }
 
 export async function deleteFinanceParticipant(id: string) {
-  // Soft-delete participant and unlink mappings
-  await db.executeRaw(
-    "UPDATE finance_metric_mappings SET participant_id = NULL WHERE participant_id = ?",
-    [id]
-  );
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    await sb
+      .from("finance_metric_mappings")
+      .update({ participant_id: null })
+      .eq("participant_id", id);
+  } else {
+    await db.executeRaw(
+      "UPDATE finance_metric_mappings SET participant_id = NULL WHERE participant_id = ?",
+      [id]
+    );
+  }
   return db.update("finance_participants", id, { is_active: 0 });
 }
 
@@ -154,10 +249,7 @@ export async function createFinanceCategory(input: {
   display_name: string;
 }) {
   const id = `fin-cat-${Date.now()}`;
-  const existing = await db.queryRaw<{ max_order: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_category_definitions"
-  );
-  const displayOrder = (existing[0]?.max_order || 0) + 10;
+  const displayOrder = await nextDisplayOrderCategories();
   return db.insert("finance_category_definitions", {
     id,
     category_code: input.category_code.toUpperCase().trim(),
@@ -183,10 +275,7 @@ export async function createFinanceMetricMapping(input: {
   participant_id?: string | null;
 }) {
   const id = `fin-metric-${Date.now()}`;
-  const existing = await db.queryRaw<{ max_order: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_metric_mappings"
-  );
-  const displayOrder = (existing[0]?.max_order || 0) + 10;
+  const displayOrder = await nextDisplayOrderMappings();
   return db.insert("finance_metric_mappings", {
     id,
     metric_key: input.metric_key.trim(),

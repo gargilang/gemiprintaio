@@ -1,6 +1,9 @@
 /**
  * Sync Service
  * Handles synchronization between SQLite (offline) and Supabase (cloud)
+ *
+ * @deprecated For new database access use `@/lib/db-unified`. This module still relies on
+ * `sqlite-db` for the legacy sync queue until that path is migrated.
  */
 
 import { supabase } from "./supabase";

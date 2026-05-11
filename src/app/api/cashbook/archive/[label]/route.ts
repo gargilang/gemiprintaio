@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { db, getServerSupabaseClient } from "@/lib/db-unified";
+import { fetchKeuanganByArchiveLabel } from "@/lib/server-data-supabase";
 
 export async function GET(
   _request: NextRequest,
@@ -9,6 +10,11 @@ export async function GET(
   try {
     const { label: labelParam } = await params;
     const label = labelParam?.trim();
+
+    if (getServerSupabaseClient()) {
+      const cashBooks = await fetchKeuanganByArchiveLabel(label || "");
+      return NextResponse.json({ cashBooks });
+    }
 
     let cashBooks =
       (await db.queryRaw(

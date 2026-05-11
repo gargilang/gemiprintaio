@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { db, getServerSupabaseClient } from "@/lib/db-unified";
+import { fetchKeuanganByArchiveLabelAndTime } from "@/lib/server-data-supabase";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,11 @@ export async function GET(request: NextRequest) {
         { error: "Missing required params: label and at" },
         { status: 400 }
       );
+    }
+
+    if (getServerSupabaseClient()) {
+      const cashBooks = await fetchKeuanganByArchiveLabelAndTime(label, at);
+      return NextResponse.json({ cashBooks });
     }
 
     const cashBooks =

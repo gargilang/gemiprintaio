@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { rowExistsEq, vendorHasPembelian } from "@/lib/duplicate-check";
 import {
   createVendor,
   deleteVendor,
@@ -43,11 +43,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM vendor WHERE nama_perusahaan = ? LIMIT 1",
-      [nama_perusahaan.trim()]
+    const dup = await rowExistsEq(
+      "vendor",
+      "nama_perusahaan",
+      nama_perusahaan.trim()
     );
-    if (dup.length > 0) {
+    if (dup) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
@@ -117,11 +118,13 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM vendor WHERE nama_perusahaan = ? AND id != ? LIMIT 1",
-      [nama_perusahaan.trim(), id]
+    const dup = await rowExistsEq(
+      "vendor",
+      "nama_perusahaan",
+      nama_perusahaan.trim(),
+      id
     );
-    if (dup.length > 0) {
+    if (dup) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
         { status: 400 }
@@ -167,11 +170,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const used = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM pembelian WHERE vendor_id = ? LIMIT 1",
-      [id]
-    );
-    if (used.length > 0) {
+    const used = await vendorHasPembelian(id);
+    if (used) {
       return NextResponse.json(
         {
           error:

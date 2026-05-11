@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db-unified";
+import { rowExistsCompositeEq } from "@/lib/duplicate-check";
 import {
   deleteQuickSpec,
   getQuickSpecById,
@@ -40,16 +40,16 @@ export async function PUT(
       );
     }
 
-    const dup = await db.queryRaw<{ id: string }>(
-      "SELECT id FROM spesifikasi_cepat_barang WHERE kategori_id = ? AND tipe_spesifikasi = ? AND nilai_spesifikasi = ? AND id != ? LIMIT 1",
+    const dup = await rowExistsCompositeEq(
+      "spesifikasi_cepat_barang",
       [
-        existing.kategori_id,
-        tipe_spesifikasi.trim(),
-        nilai_spesifikasi.trim(),
-        params.id,
-      ]
+        ["kategori_id", existing.kategori_id],
+        ["tipe_spesifikasi", tipe_spesifikasi.trim()],
+        ["nilai_spesifikasi", nilai_spesifikasi.trim()],
+      ],
+      params.id
     );
-    if (dup.length > 0) {
+    if (dup) {
       return NextResponse.json(
         { error: "Spesifikasi ini sudah ada" },
         { status: 400 }

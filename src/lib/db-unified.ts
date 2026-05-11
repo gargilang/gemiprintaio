@@ -383,7 +383,8 @@ function getSupabaseClient(): SupabaseClient | null {
 // Supabase client for Server-side
 let serverSupabaseClient: SupabaseClient | null = null;
 
-function getServerSupabaseClient(): SupabaseClient | null {
+/** Exported for server-side services that need PostgREST directly (Vercel / Supabase-only paths). */
+export function getServerSupabaseClient(): SupabaseClient | null {
   if (!isServerSide()) return null;
 
   if (!serverSupabaseClient) {

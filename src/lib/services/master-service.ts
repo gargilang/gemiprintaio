@@ -5,7 +5,8 @@
 
 import "server-only";
 
-import { db } from "../db-unified";
+import { db, getServerSupabaseClient } from "../db-unified";
+import { countBarangWhere } from "../server-data-supabase";
 
 // ============================================================================
 // TYPES / INTERFACES
@@ -437,6 +438,9 @@ export async function listQuickSpecsWithCategory(
 export async function countMaterialsByCategoryId(
   kategori_id: string
 ): Promise<number> {
+  if (getServerSupabaseClient()) {
+    return countBarangWhere("kategori_id", kategori_id);
+  }
   const rows = await db.queryRaw<{ count: number }>(
     "SELECT COUNT(*) as count FROM barang WHERE kategori_id = ?",
     [kategori_id]
@@ -447,6 +451,9 @@ export async function countMaterialsByCategoryId(
 export async function countMaterialsBySubcategoryId(
   subkategori_id: string
 ): Promise<number> {
+  if (getServerSupabaseClient()) {
+    return countBarangWhere("subkategori_id", subkategori_id);
+  }
   const rows = await db.queryRaw<{ count: number }>(
     "SELECT COUNT(*) as count FROM barang WHERE subkategori_id = ?",
     [subkategori_id]
