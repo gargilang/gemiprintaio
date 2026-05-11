@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { login } from "@/lib/services/auth-service";
-import { createSession } from "@/lib/session";
+import { createSessionWithUser } from "@/lib/session";
 import { apiError } from "@/lib/api-error";
 import { limitOrPass, loginLimiter } from "@/lib/rate-limit";
 
@@ -35,7 +35,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: loginStatus(msg) });
     }
 
-    await createSession(result.user.id, result.user.role);
+    await createSessionWithUser({
+      uid: result.user.id,
+      role: result.user.role,
+      nama_pengguna: result.user.nama_pengguna,
+      email: result.user.email ?? null,
+      nama_lengkap: result.user.nama_lengkap ?? null,
+    });
 
     return NextResponse.json({
       success: true,

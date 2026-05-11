@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
 import NotificationToast, {
@@ -16,7 +16,12 @@ import {
   deleteVendorAction,
 } from "./actions";
 import { CheckIcon } from "@/components/icons/ContentIcons";
-import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+  type SessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 // Memoized Vendor Row Component - mencegah re-render yang tidak perlu
 const VendorRow = memo(
@@ -116,9 +121,37 @@ type Vendor = VendorType;
 
 export default function VendorsPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined" ? getCachedSessionUser() : null;
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(
+    initialUser
+  );
+  const {
+    data: vendorsData,
+    isLoading: vendorsLoading,
+    mutate: mutateVendors,
+  } = useCachedData<Vendor[]>("vendors", async () => {
+    const result = await getVendorsAction();
+    return (result as Vendor[]) || [];
+  });
+  const vendors = vendorsData ?? [];
+  const setVendors = useCallback<
+    (next: Vendor[] | ((prev: Vendor[]) => Vendor[])) => void
+  >(
+    (next) => {
+      void mutateVendors(
+        (prev) => {
+          const base = (prev as Vendor[] | undefined) ?? [];
+          return typeof next === "function"
+            ? (next as (p: Vendor[]) => Vendor[])(base)
+            : next;
+        },
+        { revalidate: false }
+      );
+    },
+    [mutateVendors]
+  );
+  const loading = currentUser === null && vendorsLoading;
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState({
@@ -154,7 +187,7 @@ export default function VendorsPage() {
 
   // Helper function to update a single vendor in state without reloading
   function updateVendorInState(updated: Vendor) {
-    setVendors((prev) =>
+    setVendors((prev: Vendor[]) =>
       prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v))
     );
   }
@@ -201,8 +234,6 @@ export default function VendorsPage() {
         return;
       }
       setCurrentUser(user);
-      setLoading(false);
-      loadVendors();
     })();
     return () => {
       cancelled = true;
@@ -268,8 +299,7 @@ export default function VendorsPage() {
 
   const loadVendors = async () => {
     try {
-      const vendors = await getVendorsAction();
-      setVendors(vendors || []);
+      await mutateVendors();
     } catch (error) {
       console.error("Error loading vendors:", error);
       showMsg("error", "Gagal memuat data vendor");
@@ -355,7 +385,9 @@ export default function VendorsPage() {
         try {
           await deleteVendorAction(vendor.id);
           // Remove from local state instead of reloading
-          setVendors((prev) => prev.filter((v) => v.id !== vendor.id));
+          setVendors((prev: Vendor[]) =>
+            prev.filter((v) => v.id !== vendor.id)
+          );
           showMsg("success", "Vendor berhasil dihapus");
         } catch (error: any) {
           showMsg("error", error.message || "Gagal menghapus vendor");
@@ -368,7 +400,7 @@ export default function VendorsPage() {
   const activeVendors = vendors.filter((v) => v.aktif_status === 1).length;
   const inactiveVendors = totalVendors - activeVendors;
 
-  if (loading) {
+  if (loading && vendors.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>

@@ -24,6 +24,7 @@ import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
 import {
   fetchSessionUser,
+  getCachedSessionUser,
   logoutSession,
   type SessionUser,
 } from "@/lib/client-session";
@@ -33,8 +34,9 @@ const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialUser = typeof window !== "undefined" ? getCachedSessionUser() : null;
+  const [user, setUser] = useState<SessionUser | null>(initialUser);
+  const [loading, setLoading] = useState(initialUser === null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {}
   );
@@ -78,6 +80,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       const userData = await fetchSessionUser();
       if (cancelled) return;
       if (!userData || !userData.aktif_status) {
+        setUser(null);
         setLoading(false);
         router.push("/auth/login");
         return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
 import NotificationToast, {
@@ -15,7 +15,12 @@ import {
   updateCustomerAction,
   deleteCustomerAction,
 } from "./actions";
-import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+  type SessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 // Memoized Customer Row Component - mencegah re-render yang tidak perlu
 const CustomerRow = memo(
@@ -117,9 +122,37 @@ type Customer = CustomerType;
 
 export default function CustomersPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined" ? getCachedSessionUser() : null;
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(
+    initialUser
+  );
+  const {
+    data: customersData,
+    isLoading: customersLoading,
+    mutate: mutateCustomers,
+  } = useCachedData<Customer[]>("customers", async () => {
+    const result = await getCustomersAction();
+    return (result as Customer[]) || [];
+  });
+  const customers = customersData ?? [];
+  const setCustomers = useCallback<
+    (next: Customer[] | ((prev: Customer[]) => Customer[])) => void
+  >(
+    (next) => {
+      void mutateCustomers(
+        (prev) => {
+          const base = (prev as Customer[] | undefined) ?? [];
+          return typeof next === "function"
+            ? (next as (p: Customer[]) => Customer[])(base)
+            : next;
+        },
+        { revalidate: false }
+      );
+    },
+    [mutateCustomers]
+  );
+  const loading = currentUser === null && customersLoading;
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
@@ -154,7 +187,7 @@ export default function CustomersPage() {
 
   // Helper function to update a single customer in state without reloading
   function updateCustomerInState(updated: Customer) {
-    setCustomers((prev) =>
+    setCustomers((prev: Customer[]) =>
       prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
     );
   }
@@ -201,8 +234,6 @@ export default function CustomersPage() {
         return;
       }
       setCurrentUser(user);
-      setLoading(false);
-      loadCustomers();
     })();
     return () => {
       cancelled = true;
@@ -268,8 +299,7 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      const customers = await getCustomersAction();
-      setCustomers(customers || []);
+      await mutateCustomers();
     } catch (error) {
       console.error("Error loading customers:", error);
       showMsg("error", "Gagal memuat data pelanggan");
@@ -354,8 +384,9 @@ export default function CustomersPage() {
         setConfirmDialog(null);
         try {
           await deleteCustomerAction(customer.id);
-          // Remove from local state instead of reloading
-          setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+          setCustomers((prev: Customer[]) =>
+            prev.filter((c) => c.id !== customer.id)
+          );
           showMsg("success", "Pelanggan berhasil dihapus");
         } catch (error: any) {
           showMsg("error", error.message || "Gagal menghapus pelanggan");
@@ -368,7 +399,7 @@ export default function CustomersPage() {
   const totalMembers = customers.filter((c) => c.member_status === 1).length;
   const totalNonMembers = totalCustomers - totalMembers;
 
-  if (loading) {
+  if (loading && customers.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent"></div>

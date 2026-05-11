@@ -442,8 +442,28 @@ async function isOnline(): Promise<boolean> {
 let serverOnlineStatus: boolean | null = null;
 let lastServerOnlineCheck = 0;
 
+/**
+ * Whether to skip the per-process Supabase health check ping.
+ *
+ * On Vercel (or any serverless host) every cold function would otherwise
+ * issue an extra `SELECT id FROM profil LIMIT 1` before the real query,
+ * adding ~100-300 ms of round trip latency. When VERCEL=1 or the env flag
+ * GEMIPRINT_SKIP_SUPABASE_HEALTHCHECK=1 is set we assume Supabase is
+ * available and fall back to SQLite only if the actual query errors.
+ */
+function shouldSkipServerHealthCheck(): boolean {
+  if (process.env.GEMIPRINT_SKIP_SUPABASE_HEALTHCHECK === "1") return true;
+  if (process.env.VERCEL === "1") return true;
+  return false;
+}
+
 async function isServerSupabaseAvailable(): Promise<boolean> {
   if (!isServerSide()) return false;
+
+  if (shouldSkipServerHealthCheck()) {
+    const supabase = getServerSupabaseClient();
+    return !!supabase;
+  }
 
   const now = Date.now();
   if (

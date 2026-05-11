@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -20,7 +20,11 @@ import {
   deleteUserAction,
   changePasswordAction,
 } from "./actions";
-import { fetchSessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+} from "@/lib/client-session";
+import { useCachedData } from "@/lib/use-cached-data";
 
 type AppRole =
   | "admin"
@@ -44,9 +48,39 @@ interface User {
 
 export default function UsersPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined"
+      ? (getCachedSessionUser() as User | null)
+      : null;
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
+  const isPrivileged =
+    initialUser?.role === "admin" || initialUser?.role === "manager";
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    mutate: mutateUsers,
+  } = useCachedData<User[]>(isPrivileged ? "users" : null, async () => {
+    const u = await getUsersAction();
+    return (u as User[]) || [];
+  });
+  const users = usersData ?? [];
+  const setUsers = useCallback<
+    (next: User[] | ((prev: User[]) => User[])) => void
+  >(
+    (next) => {
+      void mutateUsers(
+        (prev) => {
+          const base = (prev as User[] | undefined) ?? [];
+          return typeof next === "function"
+            ? (next as (p: User[]) => User[])(base)
+            : next;
+        },
+        { revalidate: false }
+      );
+    },
+    [mutateUsers]
+  );
+  const loading = currentUser === null && usersLoading;
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
@@ -108,14 +142,16 @@ export default function UsersPage() {
         return;
       }
       setCurrentUser(user as User);
-      setLoading(false);
-      await loadUsers(user as User);
+      const isAllowed = user.role === "admin" || user.role === "manager";
+      if (isAllowed) {
+        await mutateUsers();
+      }
       await loadCredentials(user as User);
     })();
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, mutateUsers]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -151,13 +187,11 @@ export default function UsersPage() {
 
   const loadUsers = async (viewer?: User) => {
     if (viewer && viewer.role !== "admin" && viewer.role !== "manager") {
-      // Only admins can view/manage users table
       setUsers([]);
       return;
     }
     try {
-      const users = await getUsersAction();
-      setUsers((users as any) || []);
+      await mutateUsers();
     } catch (err) {
       console.error("Gagal memuat users:", err);
       showMsg("error", "Tidak bisa memuat data users dari database.");
@@ -402,7 +436,7 @@ export default function UsersPage() {
     router.push("/auth/login");
   };
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

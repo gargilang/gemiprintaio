@@ -17,8 +17,38 @@ function cookieSecure(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+export type SessionUserClaims = {
+  uid: string;
+  role: string;
+  nama_pengguna: string;
+  email?: string | null;
+  nama_lengkap?: string | null;
+};
+
+/**
+ * Backward-compatible session creation (uid + role only).
+ * Prefer createSessionWithUser when full user data is available.
+ */
 export async function createSession(userId: string, role: string) {
-  const jwt = await new SignJWT({ uid: userId, role })
+  return createSessionWithUser({
+    uid: userId,
+    role,
+    nama_pengguna: "",
+  });
+}
+
+/**
+ * Create session JWT with full user info embedded.
+ * Lets /api/auth/me return user data without hitting the DB.
+ */
+export async function createSessionWithUser(user: SessionUserClaims) {
+  const jwt = await new SignJWT({
+    uid: user.uid,
+    role: user.role,
+    nama_pengguna: user.nama_pengguna,
+    email: user.email ?? null,
+    nama_lengkap: user.nama_lengkap ?? null,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -34,7 +64,13 @@ export async function createSession(userId: string, role: string) {
   });
 }
 
-export type SessionPayload = { uid: string; role: string };
+export type SessionPayload = {
+  uid: string;
+  role: string;
+  nama_pengguna?: string;
+  email?: string | null;
+  nama_lengkap?: string | null;
+};
 
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
@@ -45,7 +81,14 @@ export async function getSession(): Promise<SessionPayload | null> {
     const uid = payload.uid as string | undefined;
     const role = payload.role as string | undefined;
     if (!uid || !role) return null;
-    return { uid, role };
+    return {
+      uid,
+      role,
+      nama_pengguna: (payload.nama_pengguna as string | undefined) ?? undefined,
+      email: (payload.email as string | null | undefined) ?? undefined,
+      nama_lengkap:
+        (payload.nama_lengkap as string | null | undefined) ?? undefined,
+    };
   } catch {
     return null;
   }

@@ -2,7 +2,11 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
+import {
+  fetchSessionUser,
+  getCachedSessionUser,
+  type SessionUser,
+} from "@/lib/client-session";
 
 interface AuthWrapperProps {
   children: (user: SessionUser) => ReactNode;
@@ -14,8 +18,10 @@ interface AuthWrapperProps {
  */
 export default function AuthWrapper({ children, fallback }: AuthWrapperProps) {
   const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialUser =
+    typeof window !== "undefined" ? getCachedSessionUser() : null;
+  const [user, setUser] = useState<SessionUser | null>(initialUser);
+  const [loading, setLoading] = useState(initialUser === null);
 
   useEffect(() => {
     let cancelled = false;

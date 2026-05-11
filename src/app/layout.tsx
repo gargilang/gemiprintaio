@@ -6,6 +6,7 @@ import MainShell from "@/components/MainShell";
 import IndonesianNativeValidity from "@/components/IndonesianNativeValidity";
 import { usePathname } from "next/navigation";
 import { useAutoSync } from "@/hooks/use-auto-sync";
+import { SwrProvider } from "@/lib/swr-provider";
 
 // export const metadata: Metadata = {
 //   title: "app gemiprint",
@@ -41,7 +42,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <IndonesianNativeValidity />
-        {isAuthPage ? children : <MainShell>{children}</MainShell>}
+        <SwrProvider>
+          {isAuthPage ? children : <MainShell>{children}</MainShell>}
+        </SwrProvider>
       </body>
     </html>
   );

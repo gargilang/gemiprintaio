@@ -55,3 +55,10 @@ src-tauri/Cargo.lock
 *.deb
 *.AppImage
 *.app
+
+# SQLite runtime artifacts (WAL / shared-memory; never source of truth)
+*.db-shm
+*.db-wal
+
+# Windows accidental redirection artifacts (e.g. `cmd 2>nul`)
+nul
