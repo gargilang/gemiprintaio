@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { getBrowserSupabaseForTauri } from "@/lib/supabase";
 import { REALTIME_PULL_ENABLED } from "@/lib/sync-config";
 import {
@@ -20,6 +21,10 @@ declare global {
  * This hook monitors online/offline status and triggers sync when coming back online
  */
 export function useAutoSync() {
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+
   const syncingRef = useRef(false);
   const lastSyncRef = useRef<number>(0);
 
@@ -35,6 +40,13 @@ export function useAutoSync() {
     };
 
     const runSyncTrigger = async (reason: string) => {
+      const path =
+        pathnameRef.current ||
+        (typeof window !== "undefined" ? window.location.pathname : "");
+      if (path.startsWith("/auth")) {
+        return;
+      }
+
       // Prevent multiple simultaneous syncs
       if (syncingRef.current || window.__gemiSyncInFlight) {
         console.log("🔄 Sync already in progress, skipping...");
@@ -135,5 +147,5 @@ export function useAutoSync() {
         unsubscribeRealtime();
       }
     };
-  }, []);
+  }, [pathname]);
 }

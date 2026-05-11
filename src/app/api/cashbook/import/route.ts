@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { importCashbookFromCSV } from "@/lib/services/finance-service";
+import { apiError } from "@/lib/api-error";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +22,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error: unknown) {
-    console.error("Import error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to import CSV", details: message },
-      { status: 500 }
-    );
+    return apiError("Failed to import CSV", 500, error);
   }
 }

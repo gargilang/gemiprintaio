@@ -38,13 +38,10 @@ export async function POST(_request: NextRequest) {
         details: [],
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Manual sync error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      { success: false, error: "Manual sync gagal" },
       { status: 500 }
     );
   }

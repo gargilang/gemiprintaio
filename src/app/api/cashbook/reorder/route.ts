@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db-unified";
+import { apiError } from "@/lib/api-error";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,11 +29,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Successfully reordered (no recalculation)",
     });
-  } catch (error: any) {
-    console.error("Reorder error:", error);
-    return NextResponse.json(
-      { error: "Failed to reorder rows", details: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiError("Failed to reorder rows", 500, error);
   }
 }

@@ -1,28 +1,42 @@
 "use client";
 
-import { useEffect, ReactNode } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { requireAuth, User } from "@/lib/auth-helper";
+import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
 
 interface AuthWrapperProps {
-  children: (user: User) => ReactNode;
+  children: (user: SessionUser) => ReactNode;
   fallback?: ReactNode;
 }
 
 /**
- * Auth Wrapper Component
- * Wraps pages that require authentication
- * Automatically redirects to login if not authenticated
+ * Wraps pages that require authentication (cookie session).
  */
 export default function AuthWrapper({ children, fallback }: AuthWrapperProps) {
   const router = useRouter();
-  const user = requireAuth(router);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    requireAuth(router);
+    let cancelled = false;
+    (async () => {
+      const u = await fetchSessionUser();
+      if (cancelled) return;
+      if (!u || !u.aktif_status) {
+        router.replace("/auth/login");
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      setUser(u);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  if (!user) {
+  if (loading) {
     return (
       <>
         {fallback || (
@@ -35,6 +49,10 @@ export default function AuthWrapper({ children, fallback }: AuthWrapperProps) {
         )}
       </>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return <>{children(user)}</>;

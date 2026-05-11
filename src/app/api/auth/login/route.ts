@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { login } from "@/lib/services/auth-service";
+import { createSession } from "@/lib/session";
+import { apiError } from "@/lib/api-error";
+import { limitOrPass, loginLimiter } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +21,11 @@ function loginStatus(errorMessage: string): number {
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = await limitOrPass(loginLimiter, request, "login");
+    if (!limited.ok) {
+      return apiError("Too many attempts", 429);
+    }
+
     const { username, password } = await request.json();
 
     const result = await login(username, password);
@@ -27,20 +35,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: loginStatus(msg) });
     }
 
+    await createSession(result.user.id, result.user.role);
+
     return NextResponse.json({
       success: true,
       user: result.user,
     });
   } catch (error) {
-    console.error("Login error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      {
-        error: "Terjadi kesalahan saat login",
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    return apiError("Terjadi kesalahan saat login", 500, error);
   }
 }

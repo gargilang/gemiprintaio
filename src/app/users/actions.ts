@@ -12,9 +12,14 @@ import {
   changePassword,
   type User,
 } from "@/lib/services/users-service";
+import {
+  requireAdminManagerOrSelf,
+  requireAdminOrManager,
+} from "@/lib/auth-guard-server";
 
 export async function getUsersAction() {
   try {
+    await requireAdminOrManager();
     return await getUsers();
   } catch (error) {
     console.error("Error in getUsersAction:", error);
@@ -24,6 +29,7 @@ export async function getUsersAction() {
 
 export async function createUserAction(data: any) {
   try {
+    await requireAdminOrManager();
     return await createUser(data);
   } catch (error) {
     console.error("Error in createUserAction:", error);
@@ -33,6 +39,7 @@ export async function createUserAction(data: any) {
 
 export async function updateUserAction(id: string, data: any) {
   try {
+    await requireAdminOrManager();
     return await updateUser(id, data);
   } catch (error) {
     console.error("Error in updateUserAction:", error);
@@ -42,6 +49,7 @@ export async function updateUserAction(id: string, data: any) {
 
 export async function deleteUserAction(id: string) {
   try {
+    await requireAdminOrManager();
     return await deleteUser(id);
   } catch (error) {
     console.error("Error in deleteUserAction:", error);
@@ -55,7 +63,7 @@ export async function changePasswordAction(
   newPassword: string
 ) {
   try {
-    // Note: currentPassword is validated on client side, service only needs userId and newPassword
+    await requireAdminManagerOrSelf(userId);
     return await changePassword(userId, newPassword);
   } catch (error) {
     console.error("Error in changePasswordAction:", error);

@@ -5,7 +5,11 @@
 import "server-only";
 
 import { db } from "../db-unified";
-import crypto from "crypto";
+import {
+  hashPassword,
+  isLegacySha256Hash,
+  verifyPassword,
+} from "../password-hash";
 
 export interface LoginResult {
   success: boolean;
@@ -13,15 +17,11 @@ export interface LoginResult {
     id: string;
     nama_pengguna: string;
     email?: string | null;
-    nama_lengkap?: string;
+    nama_lengkap?: string | null;
     role: string;
     aktif_status: number;
   };
   error?: string;
-}
-
-async function simpleHash(text: string): Promise<string> {
-  return crypto.createHash("sha256").update(text).digest("hex");
 }
 
 /**
@@ -39,7 +39,6 @@ export async function login(
       };
     }
 
-    // Get user by username
     const result = await db.queryOne<any>("profil", {
       where: { nama_pengguna: username },
     });
@@ -60,34 +59,41 @@ export async function login(
       };
     }
 
-    // Verify password
-    const passwordHash = await simpleHash(password);
+    const storedHash = String(user.password_hash || "");
+    const ok = await verifyPassword(password, storedHash);
 
-    if (user.password_hash !== passwordHash) {
+    if (!ok) {
       return {
         success: false,
         error: "Password salah",
       };
     }
 
-    // Remove password_hash from response
-    const { password_hash, ...userWithoutPassword } = user;
+    if (isLegacySha256Hash(storedHash)) {
+      const newHash = await hashPassword(password);
+      const upd = await db.update("profil", user.id, { password_hash: newHash });
+      if (upd.error) {
+        console.error("Lazy password migration failed:", upd.error);
+      }
+    }
+
+    const { password_hash: _pw, ...userWithoutPassword } = user;
 
     return {
       success: true,
       user: userWithoutPassword,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login error:", error);
     return {
       success: false,
-      error: error.message || "Login gagal",
+      error: "Login gagal",
     };
   }
 }
 
 /**
- * Verify session (placeholder - implement based on your session strategy)
+ * Verify session user still exists and is active
  */
 export async function verifySession(userId: string): Promise<boolean> {
   try {

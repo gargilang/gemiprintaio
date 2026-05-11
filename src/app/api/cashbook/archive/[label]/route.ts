@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db, getServerSupabaseClient } from "@/lib/db-unified";
 import { fetchKeuanganByArchiveLabel } from "@/lib/server-data-supabase";
+import { apiError } from "@/lib/api-error";
 
 export async function GET(
   _request: NextRequest,
@@ -35,11 +36,7 @@ export async function GET(
     }
 
     return NextResponse.json({ cashBooks });
-  } catch (error: any) {
-    console.error("Get archived cashbooks error:", error);
-    return NextResponse.json(
-      { error: "Failed to get archived cashbooks", details: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiError("Failed to get archived cashbooks", 500, error);
   }
 }

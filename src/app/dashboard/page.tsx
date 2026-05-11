@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { fetchSessionUser } from "@/lib/client-session";
 
 interface User {
   id: string;
   nama_pengguna: string;
-  email: string;
-  nama_lengkap?: string;
+  email?: string | null;
+  nama_lengkap?: string | null;
   role: string;
   aktif_status: number;
 }
@@ -17,10 +18,14 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    try {
-      const userSession = localStorage.getItem("user");
-      if (userSession) setUser(JSON.parse(userSession));
-    } catch {}
+    let cancelled = false;
+    (async () => {
+      const u = await fetchSessionUser();
+      if (!cancelled && u) setUser(u);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

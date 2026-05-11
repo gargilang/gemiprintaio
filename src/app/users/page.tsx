@@ -20,6 +20,7 @@ import {
   deleteUserAction,
   changePasswordAction,
 } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 type AppRole =
   | "admin"
@@ -98,8 +99,23 @@ export default function UsersPage() {
 
   // Click outside to close modals
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser(user as User);
+      setLoading(false);
+      await loadUsers(user as User);
+      await loadCredentials(user as User);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -128,21 +144,6 @@ export default function UsersPage() {
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [showModal, showCredModal, confirmDialog]);
 
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    setLoading(false);
-    // Load initial data
-    loadUsers(user);
-    loadCredentials(user);
-  };
-
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 2500);
@@ -167,10 +168,9 @@ export default function UsersPage() {
     const v = viewer || currentUser;
     if (!v) return;
     try {
-      // TODO: Replace with passwords-service once created
       const res = await fetch(`/api/passwords`, {
         cache: "no-store",
-        headers: { "x-user-id": v.id },
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat kredensial");
@@ -242,8 +242,8 @@ export default function UsersPage() {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": currentUser.id,
           },
+          credentials: "include",
           body: JSON.stringify(credForm),
         });
         const data = await res.json();
@@ -267,8 +267,8 @@ export default function UsersPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": currentUser.id,
           },
+          credentials: "include",
           body: JSON.stringify(credForm),
         });
         const data = await res.json();
@@ -710,7 +710,7 @@ export default function UsersPage() {
                               const res = await fetch(
                                 `/api/passwords/${c.id}`,
                                 {
-                                  headers: { "x-user-id": currentUser!.id },
+                                  credentials: "include",
                                 }
                               );
                               const data = await res.json();
@@ -803,9 +803,7 @@ export default function UsersPage() {
                                 const res = await fetch(
                                   `/api/passwords/${c.id}`,
                                   {
-                                    headers: {
-                                      "x-user-id": currentUser!.id,
-                                    },
+                                    credentials: "include",
                                   }
                                 );
                                 const data = await res.json();
@@ -898,9 +896,7 @@ export default function UsersPage() {
                                   `/api/passwords/${c.id}`,
                                   {
                                     method: "DELETE",
-                                    headers: {
-                                      "x-user-id": currentUser!.id,
-                                    },
+                                    credentials: "include",
                                   }
                                 );
                                 const data = await res.json();

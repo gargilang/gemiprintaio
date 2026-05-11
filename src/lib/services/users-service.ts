@@ -6,6 +6,7 @@ import "server-only";
 
 import { db } from "../db-unified";
 import crypto from "crypto";
+import { hashPassword } from "../password-hash";
 
 export interface User {
   id: string;
@@ -16,10 +17,6 @@ export interface User {
   aktif_status: number;
   dibuat_pada?: string;
   diperbarui_pada?: string;
-}
-
-async function simpleHash(text: string): Promise<string> {
-  return crypto.createHash("sha256").update(text).digest("hex");
 }
 
 /**
@@ -99,8 +96,7 @@ export async function createUser(data: {
       }
     }
 
-    // Hash password
-    const password_hash = await simpleHash(data.password);
+    const password_hash = await hashPassword(data.password);
 
     const id = crypto.randomUUID();
 
@@ -164,7 +160,7 @@ export async function changePassword(
   newPassword: string
 ): Promise<void> {
   try {
-    const password_hash = await simpleHash(newPassword);
+    const password_hash = await hashPassword(newPassword);
 
     const result = await db.update("profil", id, { password_hash });
     if (result.error) throw result.error;
@@ -223,7 +219,7 @@ export async function patchProfil(
   if (typeof body.aktif_status !== "undefined")
     payload.aktif_status = body.aktif_status ? 1 : 0;
   if (body.password) {
-    payload.password_hash = await simpleHash(body.password);
+    payload.password_hash = await hashPassword(body.password);
   }
 
   if (Object.keys(payload).length === 0) {

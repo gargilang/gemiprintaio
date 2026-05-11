@@ -76,11 +76,6 @@ function computeRetryDelayMs(attempts: number): number {
 
 async function syncWebOfflineQueue(): Promise<{ synced: number; failed: number }> {
   if (!canUseBrowserStorage()) return { synced: 0, failed: 0 };
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !anonKey) {
-    return { synced: 0, failed: getOfflineQueueCount() };
-  }
 
   let queue: any[] = [];
   try {
@@ -90,89 +85,68 @@ async function syncWebOfflineQueue(): Promise<{ synced: number; failed: number }
   }
   if (!Array.isArray(queue) || queue.length === 0) return { synced: 0, failed: 0 };
 
-  const remaining: any[] = [];
-  let synced = 0;
-  let failed = 0;
-
+  const now = Date.now();
+  const due: any[] = [];
+  const deferred: any[] = [];
   for (const rawOp of queue) {
     const op = rawOp || {};
-    const now = Date.now();
     const nextRetryAt = typeof op.nextRetryAt === "number" ? op.nextRetryAt : 0;
     if (nextRetryAt > now) {
-      remaining.push(op);
+      deferred.push(op);
       continue;
     }
-
-    try {
-      const table = String(op.table || "");
-      const operation = String(op.operation || "");
-      const recordId = op.recordId ? String(op.recordId) : null;
-      const payload = op.data ?? {};
-      if (!table || !operation) {
-        failed++;
-        continue;
-      }
-
-      let url = `${supabaseUrl}/rest/v1/${table}`;
-      let method: "POST" | "PATCH" | "DELETE" = "POST";
-      let body: any = undefined;
-      const headers: Record<string, string> = {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      };
-
-      if (operation === "insert") {
-        method = "POST";
-        body = payload;
-      } else if (operation === "update" && recordId) {
-        method = "PATCH";
-        url += `?id=eq.${encodeURIComponent(recordId)}`;
-        body = payload;
-      } else if (operation === "delete" && recordId) {
-        method = "DELETE";
-        url += `?id=eq.${encodeURIComponent(recordId)}`;
-      } else {
-        failed++;
-        continue;
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: method === "DELETE" ? undefined : JSON.stringify(body),
-      });
-      if (!response.ok) {
-        const attempts = Number(op.attempts || 0) + 1;
-        if (attempts < MAX_WEB_RETRY_ATTEMPTS) {
-          remaining.push({
-            ...op,
-            attempts,
-            lastError: `HTTP ${response.status}`,
-            nextRetryAt: Date.now() + computeRetryDelayMs(attempts),
-          });
-        }
-        failed++;
-      } else {
-        synced++;
-      }
-    } catch {
-      const attempts = Number(op.attempts || 0) + 1;
-      if (attempts < MAX_WEB_RETRY_ATTEMPTS) {
-        remaining.push({
-          ...op,
-          attempts,
-          lastError: "Network error",
-          nextRetryAt: Date.now() + computeRetryDelayMs(attempts),
-        });
-      }
-      failed++;
-    }
+    due.push(op);
   }
 
-  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remaining));
-  return { synced, failed };
+  if (due.length === 0) {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(deferred));
+    return { synced: 0, failed: 0 };
+  }
+
+  try {
+    const response = await fetch("/api/sync/offline-queue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ queue: due }),
+    });
+
+    if (!response.ok) {
+      localStorage.setItem(
+        OFFLINE_QUEUE_KEY,
+        JSON.stringify([...deferred, ...due])
+      );
+      return { synced: 0, failed: getOfflineQueueCount() };
+    }
+
+    const payload = await response.json();
+    const remainingFromServer = Array.isArray(payload.remaining)
+      ? payload.remaining
+      : [];
+
+    const withBackoff = remainingFromServer.map((op: any) => {
+      const attempts = Number(op.attempts || 0);
+      const delay =
+        attempts < MAX_WEB_RETRY_ATTEMPTS
+          ? computeRetryDelayMs(attempts)
+          : MAX_RETRY_MS;
+      return { ...op, nextRetryAt: Date.now() + delay };
+    });
+
+    const mergedRemaining = [...deferred, ...withBackoff];
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(mergedRemaining));
+
+    return {
+      synced: Number(payload.synced || 0),
+      failed: Number(payload.failed || 0),
+    };
+  } catch {
+    localStorage.setItem(
+      OFFLINE_QUEUE_KEY,
+      JSON.stringify([...deferred, ...due])
+    );
+    return { synced: 0, failed: getOfflineQueueCount() };
+  }
 }
 
 export async function runSyncCycle(): Promise<{
@@ -199,6 +173,7 @@ export async function runSyncCycle(): Promise<{
     const response = await fetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ action: "process-queue" }),
     });
     if (response.ok) {
@@ -216,6 +191,7 @@ export async function runSyncCycle(): Promise<{
     const pullResponse = await fetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ action: "pull" }),
     });
     if (pullResponse.ok) {
@@ -257,6 +233,7 @@ export async function runPullOnlyCycle(): Promise<{
     const response = await fetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ action: "pull" }),
     });
     if (!response.ok) {

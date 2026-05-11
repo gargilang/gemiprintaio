@@ -16,6 +16,7 @@ import {
   deleteVendorAction,
 } from "./actions";
 import { CheckIcon } from "@/components/icons/ContentIcons";
+import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
 
 // Memoized Vendor Row Component - mencegah re-render yang tidak perlu
 const VendorRow = memo(
@@ -110,18 +111,12 @@ const VendorRow = memo(
 
 VendorRow.displayName = "VendorRow";
 
-interface User {
-  id: string;
-  username: string;
-  role: string;
-}
-
 // Use Vendor type from service
 type Vendor = VendorType;
 
 export default function VendorsPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -197,8 +192,22 @@ export default function VendorsPage() {
   }, [filteredVendors, visibleRange]);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser(user);
+      setLoading(false);
+      loadVendors();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
@@ -251,18 +260,6 @@ export default function VendorsPage() {
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [showModal, confirmDialog]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    setLoading(false);
-    loadVendors();
-  };
 
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });

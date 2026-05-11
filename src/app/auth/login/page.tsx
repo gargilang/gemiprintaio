@@ -3,16 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { loginAction, createUserAction } from "./actions";
-
-// Simple hash function for password verification (development only)
-async function simpleHash(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,28 +23,27 @@ export default function LoginPage() {
     setSuccess("");
 
     try {
-      console.log("🔐 Attempting login with username:", username);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
 
-      // Call auth service
-      const result = await loginAction(username, password);
+      const result = await res.json();
 
-      console.log("📥 Login result:", result);
-
-      if (!result.success || !result.user) {
-        console.log("Login failed:", result.error);
-
-        // Provide more helpful error messages
-        let errorMessage = result.error || "Username atau password salah";
+      if (!res.ok || !result.success || !result.user) {
+        let errorMessage =
+          result.error || "Username atau password salah";
         if (result.error === "Username tidak ditemukan") {
           errorMessage = "Username tidak ditemukan. Silakan daftar akun baru.";
         }
-
+        if (res.status === 429) {
+          errorMessage = "Terlalu banyak percobaan. Coba lagi nanti.";
+        }
         throw new Error(errorMessage);
       }
 
-      const user = result.user;
-      console.log("Login successful, user:", user);
-      localStorage.setItem("user", JSON.stringify(user));
       router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -71,21 +60,26 @@ export default function LoginPage() {
     setSuccess("");
 
     try {
-      console.log("📝 Attempting registration with username:", username);
-
-      // Call users service to create new user
-      await createUserAction({
-        nama_pengguna: username,
-        email: email.trim() === "" ? undefined : email.trim(),
-        nama_lengkap: fullName,
-        password,
-        role: "user", // Always "user" for self-registration
-        aktif_status: 1,
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          nama_pengguna: username,
+          email: email.trim() === "" ? undefined : email.trim(),
+          nama_lengkap: fullName,
+          password,
+        }),
       });
 
-      console.log("Registration successful");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Pendaftaran gagal");
+      }
+
       setSuccess(
-        "Pendaftaran berhasil! Silakan login dengan akun yang baru dibuat."
+        data.message ||
+          "Pendaftaran diterima. Administrator harus mengaktifkan akun Anda sebelum dapat login."
       );
       // Switch to login tab and keep username/password for quick login
       setMode("login");

@@ -33,6 +33,7 @@ import {
   getArchivedPeriodsAction,
   archiveCashbookAction,
 } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
 const stripReferenceId = (text: string | null | undefined): string => {
@@ -282,11 +283,8 @@ CashBookRow.displayName = "CashBookRow";
 
 interface User {
   id: string;
-  username: string;
-  email: string;
-  full_name?: string;
   role: string;
-  is_active: number;
+  aktif_status: number;
 }
 
 interface FinanceCategoryConfig {
@@ -689,8 +687,37 @@ export default function FinancePage() {
   }, [financeCategories]);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+
+      if (
+        user.role !== "admin" &&
+        user.role !== "manager" &&
+        user.role !== "staff"
+      ) {
+        router.push("/dashboard");
+        return;
+      }
+
+      setCurrentUser({
+        id: user.id,
+        role: user.role,
+        aktif_status: user.aktif_status,
+      });
+      setLoading(false);
+      loadFinanceConfig();
+      loadCashBooks();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
@@ -782,31 +809,6 @@ export default function FinancePage() {
       setFinanceCfgMetricQuery("");
     }
   }, [showConfigModal]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-
-    // Check if user has permission (Admin, Manager, atau Staff)
-    if (
-      user.role !== "admin" &&
-      user.role !== "manager" &&
-      user.role !== "staff"
-    ) {
-      router.push("/dashboard");
-      return;
-    }
-
-    setLoading(false);
-    loadFinanceConfig();
-    loadCashBooks();
-  };
 
   const loadFinanceConfig = async () => {
     try {

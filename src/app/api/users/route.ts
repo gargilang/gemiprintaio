@@ -4,8 +4,16 @@ import { createUser, getUser, getUsers } from "@/lib/services/users-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function requireAdminOrManager(request: NextRequest): boolean {
+  const role = request.headers.get("x-session-role");
+  return role === "admin" || role === "manager";
+}
+
+export async function GET(request: NextRequest) {
   try {
+    if (!requireAdminOrManager(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const users = await getUsers();
     return NextResponse.json({ users });
   } catch (error) {
@@ -16,6 +24,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!requireAdminOrManager(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const {
       nama_pengguna,
       email,

@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const viewerId = request.headers.get("x-user-id") || undefined;
+    const viewerId = request.headers.get("x-session-uid") || undefined;
     const { id } = await params;
 
     try {
@@ -45,7 +45,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const viewerId = request.headers.get("x-user-id") || undefined;
+    const viewerId = request.headers.get("x-session-uid") || undefined;
     const { id } = await params;
     const body = await request.json();
 
@@ -91,7 +91,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const viewerId = request.headers.get("x-user-id") || undefined;
+    const viewerId = request.headers.get("x-session-uid") || undefined;
     const { id } = await params;
 
     try {

@@ -28,10 +28,11 @@ import {
   getDebtsAction,
   payDebtAction,
 } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 interface User {
   id: string;
-  username: string;
+  nama_pengguna: string;
   role: string;
 }
 
@@ -63,8 +64,25 @@ export default function PurchasesPage() {
   const formSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser({
+        id: user.id,
+        nama_pengguna: user.nama_pengguna,
+        role: user.role,
+      });
+      loadAllData();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // Handle ESC key to close modals and cancel edit
   useEffect(() => {
@@ -80,17 +98,6 @@ export default function PurchasesPage() {
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [editingPurchase, confirmDialog]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    loadAllData();
-  };
 
   const loadAllData = async () => {
     setLoading(true);

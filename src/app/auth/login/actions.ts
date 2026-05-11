@@ -4,20 +4,7 @@
  * Server Actions for Login Page
  */
 
-import { login } from "@/lib/services/auth-service";
-import { createUser, type User } from "@/lib/services/users-service";
-
-/**
- * Login user with username and password
- */
-export async function loginAction(username: string, password: string) {
-  try {
-    return await login(username, password);
-  } catch (error) {
-    console.error("Error in loginAction:", error);
-    throw error;
-  }
-}
+import { createUser } from "@/lib/services/users-service";
 
 /**
  * Create a new user (for initial setup)

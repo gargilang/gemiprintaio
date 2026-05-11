@@ -16,6 +16,7 @@ import {
   updateProductionStatusAction,
   updateProductionItemStatusAction,
 } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 interface User {
   id: string;
@@ -39,23 +40,25 @@ export default function ProductionPage() {
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser(user);
+      loadOrders();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   useEffect(() => {
     applyFilters();
   }, [orders, filterStatus, filterPriority, searchQuery]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    loadOrders();
-  };
 
   const loadOrders = async () => {
     setLoading(true);

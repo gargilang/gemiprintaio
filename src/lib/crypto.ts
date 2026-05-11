@@ -1,9 +1,7 @@
 import crypto from "crypto";
 
 function getSecret(): Buffer {
-  const secret =
-    process.env.PASSWORD_ENC_SECRET ||
-    process.env.NEXT_PUBLIC_PASSWORD_ENC_SECRET;
+  const secret = process.env.PASSWORD_ENC_SECRET;
   const passphrase = secret || "dev-secret-please-change";
   if (!secret) {
     console.warn(

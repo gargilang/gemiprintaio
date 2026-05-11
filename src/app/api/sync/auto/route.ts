@@ -1,18 +1,5 @@
-/**
- * ⚠️ DEPRECATED - DO NOT USE IN NEW CODE ⚠️
- *
- * This API route has been migrated to sync-operations-service.ts
- * Use the following functions instead:
- * - startAutoSync(intervalMinutes) - to start auto-sync
- * - stopAutoSync() - to stop auto-sync
- * - getAutoSyncSettings() - to get current settings
- *
- * This route will be removed after full migration verification.
- *
- * @deprecated Use src/lib/services/sync-operations-service.ts
- */
-
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import {
   startAutoSync,
   stopAutoSync,
@@ -52,12 +39,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error: any) {
-    console.error("Auto-sync control error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiError("Auto-sync control failed", 500, error);
   }
 }
 
@@ -68,10 +51,7 @@ export async function GET() {
       success: true,
       stats,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiError("Auto-sync status failed", 500, error);
   }
 }

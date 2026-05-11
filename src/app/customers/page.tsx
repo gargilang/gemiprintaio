@@ -15,6 +15,7 @@ import {
   updateCustomerAction,
   deleteCustomerAction,
 } from "./actions";
+import { fetchSessionUser, type SessionUser } from "@/lib/client-session";
 
 // Memoized Customer Row Component - mencegah re-render yang tidak perlu
 const CustomerRow = memo(
@@ -111,18 +112,12 @@ const CustomerRow = memo(
 
 CustomerRow.displayName = "CustomerRow";
 
-interface User {
-  id: string;
-  username: string;
-  role: string;
-}
-
 // Use Customer type from service
 type Customer = CustomerType;
 
 export default function CustomersPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -197,8 +192,22 @@ export default function CustomersPage() {
   }, [filteredCustomers, visibleRange]);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser(user);
+      setLoading(false);
+      loadCustomers();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // Scroll handler untuk lazy loading rows (virtualization)
   useEffect(() => {
@@ -251,18 +260,6 @@ export default function CustomersPage() {
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [showModal, confirmDialog]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    setLoading(false);
-    loadCustomers();
-  };
 
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });

@@ -7,9 +7,16 @@ import {
   triggerPullFromCloud,
   triggerSyncCycle,
 } from "@/lib/services/sync-operations-service";
+import { apiError } from "@/lib/api-error";
+import { limitOrPass, syncApiLimiter } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = await limitOrPass(syncApiLimiter, request, "sync-post");
+    if (!limited.ok) {
+      return apiError("Too many requests", 429);
+    }
+
     const { action } = await request.json();
 
     switch (action) {
@@ -44,17 +51,21 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sync API error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError("Sync gagal", 500, error);
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const limited = await limitOrPass(syncApiLimiter, request, "sync-get");
+    if (!limited.ok) {
+      return apiError("Too many requests", 429);
+    }
     const status = await getSyncStatus();
     return NextResponse.json(status);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return apiError("Sync gagal", 500, error);
   }
 }

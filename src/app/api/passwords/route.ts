@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const viewerId = request.headers.get("x-user-id") || undefined;
+    const viewerId = request.headers.get("x-session-uid") || undefined;
     const kredensial = await listCredentials(viewerId);
     return NextResponse.json({ kredensial });
   } catch (error) {
@@ -23,7 +23,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const viewerId = request.headers.get("x-user-id") || undefined;
+    const viewerId = request.headers.get("x-session-uid") || undefined;
+    if (!viewerId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const {
       nama_layanan,
       nama_pengguna_akun,
@@ -32,12 +35,6 @@ export async function POST(request: NextRequest) {
       privat_status = 1,
     } = await request.json();
 
-    if (!viewerId) {
-      return NextResponse.json(
-        { error: "Viewer tidak diketahui" },
-        { status: 400 }
-      );
-    }
     if (!nama_layanan || !nama_pengguna_akun || !password) {
       return NextResponse.json(
         { error: "nama_layanan, nama_pengguna_akun, password wajib diisi" },

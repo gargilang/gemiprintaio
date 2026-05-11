@@ -22,22 +22,18 @@ import {
 } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
+import {
+  fetchSessionUser,
+  logoutSession,
+  type SessionUser,
+} from "@/lib/client-session";
 
 const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
-
-interface User {
-  id: string;
-  nama_pengguna: string;
-  email: string;
-  nama_lengkap?: string;
-  role: string;
-  aktif_status: number;
-}
 
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {}
@@ -77,28 +73,21 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   useTauriWindowClose();
 
   useEffect(() => {
-    try {
-      const userSession = localStorage.getItem("user");
-      if (!userSession) {
-        // Redirect to login if not authenticated
-        setLoading(false);
-        router.push("/auth/login");
-        return;
-      }
-      const userData = JSON.parse(userSession);
-      if (!userData.aktif_status) {
-        localStorage.removeItem("user");
+    let cancelled = false;
+    (async () => {
+      const userData = await fetchSessionUser();
+      if (cancelled) return;
+      if (!userData || !userData.aktif_status) {
         setLoading(false);
         router.push("/auth/login");
         return;
       }
       setUser(userData);
       setLoading(false);
-    } catch (e) {
-      localStorage.removeItem("user");
-      setLoading(false);
-      router.push("/auth/login");
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Buka grup sidebar (mis. Relasi) otomatis saat route aktif berada di anaknya
@@ -165,8 +154,10 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("user");
-    router.push("/auth/login");
+    void (async () => {
+      await logoutSession();
+      router.push("/auth/login");
+    })();
   }, [router]);
 
   // Development helper: Clear session with Ctrl+Shift+L
@@ -174,8 +165,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "L") {
         console.log("🔓 [DEV] Clearing session and redirecting to login...");
-        localStorage.removeItem("user");
-        router.push("/auth/login");
+        void logoutSession().then(() => router.push("/auth/login"));
       }
     };
 

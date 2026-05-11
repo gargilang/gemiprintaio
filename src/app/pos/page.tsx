@@ -20,6 +20,7 @@ import {
   payReceivableAction,
   getFinishingOptionsAction,
 } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 interface User {
   id: string;
@@ -172,8 +173,21 @@ export default function POSPage() {
   const customerDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+      setCurrentUser(user);
+      loadAllData();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -197,17 +211,6 @@ export default function POSPage() {
       setSelectedUnit(defaultUnit || selectedMaterial.unit_prices[0]);
     }
   }, [selectedMaterial]);
-
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-    loadAllData();
-  };
 
   const loadAllData = async () => {
     setLoading(true);

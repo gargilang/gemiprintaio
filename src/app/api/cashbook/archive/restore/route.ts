@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { restoreArchivedTransactions } from "@/lib/services/reports-service";
+import { apiError } from "@/lib/api-error";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +22,7 @@ export async function POST(request: NextRequest) {
       restored: result.restored,
       message: `Successfully restored transactions from "${label}"`,
     });
-  } catch (error: any) {
-    console.error("Restore archive error:", error);
-    return NextResponse.json(
-      { error: "Failed to restore archive", details: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiError("Failed to restore archive", 500, error);
   }
 }

@@ -2,29 +2,25 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fetchSessionUser } from "@/lib/client-session";
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check for user session in localStorage (SQLite offline mode)
-    const userSession = localStorage.getItem("user");
-
-    if (userSession) {
-      try {
-        const user = JSON.parse(userSession);
-        if (user && user.id) {
-          router.push("/dashboard");
-          return;
-        }
-      } catch (e) {
-        // Invalid session, clear it
-        localStorage.removeItem("user");
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (user?.id && user.aktif_status) {
+        router.push("/dashboard");
+      } else {
+        router.push("/auth/login");
       }
-    }
-
-    // No valid session, redirect to login
-    router.push("/auth/login");
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (

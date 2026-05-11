@@ -1,32 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
+import { logoutSession } from "@/lib/client-session";
 
 /**
- * Custom hook to handle Tauri window close event
- * Clears localStorage and sessionStorage when app is closed
+ * Tauri: end server session when the desktop window close is requested.
+ * Browser: session persists across reloads (HTTP-only cookie).
  */
 export function useTauriWindowClose() {
   useEffect(() => {
-    // Only run on client side
     if (typeof window === "undefined") return;
 
-    // Check if running in Tauri
     const isTauri = "__TAURI__" in window;
 
     let cleanupFn: (() => void) | undefined;
 
     if (isTauri) {
-      // Import Tauri event API dynamically
       import("@tauri-apps/api/event")
         .then(async ({ listen }) => {
-          // Listen for window close event
           const unlisten = await listen("tauri://close-requested", () => {
-            console.log("Tauri window closing - clearing user session...");
-            localStorage.removeItem("user");
-            sessionStorage.clear();
+            void logoutSession();
           });
-
           cleanupFn = unlisten;
         })
         .catch((error) => {
@@ -34,17 +28,7 @@ export function useTauriWindowClose() {
         });
     }
 
-    // Fallback for browser: use beforeunload
-    const handleBeforeUnload = () => {
-      console.log("Window unloading - clearing user session...");
-      localStorage.removeItem("user");
-      sessionStorage.clear();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
       if (cleanupFn) cleanupFn();
     };
   }, []);

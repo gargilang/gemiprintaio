@@ -13,14 +13,12 @@ import {
   ClipboardIcon,
 } from "@/components/icons/ContentIcons";
 import { getArchivedPeriodsAction } from "./actions";
+import { fetchSessionUser } from "@/lib/client-session";
 
 interface User {
   id: string;
-  username: string;
-  email: string;
-  full_name?: string;
   role: string;
-  is_active: number;
+  aktif_status: number;
 }
 
 interface Archive {
@@ -46,28 +44,32 @@ export default function ReportsPage() {
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const user = await fetchSessionUser();
+      if (cancelled) return;
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
 
-  const checkAuth = () => {
-    const userSession = localStorage.getItem("user");
-    if (!userSession) {
-      router.push("/auth/login");
-      return;
-    }
+      if (user.role !== "admin" && user.role !== "manager") {
+        router.push("/dashboard");
+        return;
+      }
 
-    const user = JSON.parse(userSession);
-    setCurrentUser(user);
-
-    // Check if user has permission (Admin atau Manager)
-    if (user.role !== "admin" && user.role !== "manager") {
-      router.push("/dashboard");
-      return;
-    }
-
-    setLoading(false);
-    loadArchives();
-  };
+      setCurrentUser({
+        id: user.id,
+        role: user.role,
+        aktif_status: user.aktif_status,
+      });
+      setLoading(false);
+      loadArchives();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });

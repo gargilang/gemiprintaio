@@ -1,8 +1,8 @@
 -- Seed data: admin user, material categories, units, quick specs.
 -- Table names must match database/sqlite-schema.sql (e.g. *_barang, not *_bahan).
--- SQLite: loaded after sqlite-schema.sql (see src/lib/sqlite-db.ts, scripts).
+-- SQLite: loaded after sqlite-schema.sql (see scripts/ and src/lib/db-unified.ts).
 
--- Default admin (username: gemi, password: admin) — app uses SHA-256 of plaintext (see /api/auth/login)
+-- Default admin (username: gemi, password: admin) — password_hash is legacy SHA-256; login migrates to bcrypt automatically.
 INSERT OR IGNORE INTO profil (id, nama_pengguna, email, nama_lengkap, password_hash, role, aktif_status)
 VALUES (
   'admin-gemi-001',

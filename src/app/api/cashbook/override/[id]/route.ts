@@ -4,6 +4,7 @@ import {
   patchCashBookManualOverrides,
   clearCashBookManualOverride,
 } from "@/lib/services/finance-service";
+import { apiError } from "@/lib/api-error";
 
 export async function PATCH(
   request: NextRequest,
@@ -33,12 +34,7 @@ export async function PATCH(
       message: "Successfully updated cash book entry with manual override",
     });
   } catch (error: unknown) {
-    console.error("Override error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to update cash book entry", details: message },
-      { status: 500 }
-    );
+    return apiError("Failed to update cash book entry", 500, error);
   }
 }
 
@@ -75,11 +71,6 @@ export async function DELETE(
       message: `Successfully removed override for ${field}`,
     });
   } catch (error: unknown) {
-    console.error("Remove override error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to remove override", details: message },
-      { status: 500 }
-    );
+    return apiError("Failed to remove override", 500, error);
   }
 }
