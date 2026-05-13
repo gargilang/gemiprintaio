@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GemiPrint</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .container { text-align: center; padding: 2rem; }
+
+    .logo {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 2rem;
+    }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(59,130,246,.2);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status   { font-size: 1rem;  color: #94a3b8; margin-bottom: .5rem; }
+    .substatus{ font-size: .85rem; color: #64748b; }
+
+    .error-container {
+      display: none;
+      max-width: 520px;
+      text-align: center;
+    }
+    .error-icon  { font-size: 3rem; margin-bottom: 1rem; }
+    .error-title {
+      font-size: 1.5rem; font-weight: 600;
+      color: #f87171; margin-bottom: 1rem;
+    }
+    .error-message {
+      color: #94a3b8; line-height: 1.6; margin-bottom: 1.5rem;
+    }
+    .log-path {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .8rem;
+      color: #cbd5e1;
+      word-break: break-all;
+      margin-bottom: 1.5rem;
+      text-align: left;
+      line-height: 1.7;
+    }
+    .btn {
+      display: inline-block;
+      padding: .75rem 1.5rem;
+      border: none; border-radius: 8px;
+      font-size: .95rem; font-weight: 500;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-primary  { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="container" id="loading">
+    <div class="logo">GemiPrint</div>
+    <div class="spinner"></div>
+    <div class="status" id="statusText">Memulai server aplikasi&hellip;</div>
+    <div class="substatus" id="substatusText">Mohon tunggu sebentar</div>
+  </div>
+
+  <div class="error-container" id="error">
+    <div class="error-icon">&#9888;&#65039;</div>
+    <div class="error-title">Server Gagal Dimulai</div>
+    <div class="error-message">
+      Server lokal tidak dapat dimulai dalam waktu yang ditentukan.<br>
+      Periksa file log di bawah ini untuk detail error.
+    </div>
+    <div class="log-path" id="logPath">
+      Lokasi log:<br>
+      &bull; %APPDATA%\com.gemiprint.app\server.log<br>
+      &bull; %APPDATA%\com.gemiprint.app\node-stdout.log<br>
+      &bull; %APPDATA%\com.gemiprint.app\node-stderr.log
+    </div>
+    <button class="btn btn-primary" onclick="retry()">Coba Lagi</button>
+  </div>
+
+  <script>
+    var SERVER_URL = 'http://127.0.0.1:3000';
+    var POLL_MS    = 1000;
+    var TIMEOUT_MS = 90000;
+    var t0 = Date.now();
+
+    function checkServer() {
+      var elapsed = Math.floor((Date.now() - t0) / 1000);
+      document.getElementById('substatusText').textContent =
+        'Menunggu server\u2026 (' + elapsed + 's)';
+
+      fetch(SERVER_URL + '/', { mode: 'no-cors', cache: 'no-cache' })
+        .then(function () { window.location.href = SERVER_URL + '/'; })
+        .catch(function () {
+          if (Date.now() - t0 > TIMEOUT_MS) { showError(); }
+          else { setTimeout(checkServer, POLL_MS); }
+        });
+    }
+
+    function showError() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display  = 'block';
+
+      if (window.__TAURI_INTERNALS__) {
+        window.__TAURI_INTERNALS__.invoke('get_server_log_path')
+          .then(function (p) {
+            if (!p) return;
+            var dir = p.substring(0, p.lastIndexOf('\\'));
+            document.getElementById('logPath').innerHTML =
+              'Lokasi log: <strong>' + dir + '</strong><br>' +
+              '&bull; server.log &nbsp;(log startup Tauri)<br>' +
+              '&bull; node-stdout.log &nbsp;(output server Next.js)<br>' +
+              '&bull; node-stderr.log &nbsp;(error server Next.js)';
+          })
+          .catch(function () {});
+      }
+    }
+
+    function retry() { window.location.reload(); }
+
+    checkServer();
+  </script>
+</body>
+</html>

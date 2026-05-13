@@ -49,12 +49,26 @@ node_modules/
 
 # Tauri
 src-tauri/target/
-src-tauri/Cargo.lock
-*.exe
 *.dmg
 *.deb
 *.AppImage
 *.app
+
+# Sample/test data
+/csv/
+
+# Old scripts (superseded by build.bat)
+build-tauri.bat
+build-tauri.sh
+update-actions.sh
+
+# Tauri bundle: large binaries/build artifacts (downloaded/built automatically)
+tauri-bundle/node/
+tauri-bundle/server/standalone/
+
+# Built executables
+*.msi
+*.nsis
 
 # SQLite runtime artifacts (WAL / shared-memory; never source of truth)
 *.db-shm

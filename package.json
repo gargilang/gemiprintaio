@@ -37,7 +37,6 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:build:portable": "npm run tauri:build",
-    "tauri:dist": "node scripts/create-distribution.js",
     "tauri:build:windows": "tauri build --target x86_64-pc-windows-msvc",
     "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
     "tauri:build:mac": "tauri build --target x86_64-apple-darwin"
