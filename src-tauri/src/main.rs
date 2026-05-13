@@ -704,21 +704,25 @@ fn find_standalone_server_dir() -> Option<PathBuf> {
 }
 
 /// Bundled `tauri-bundle/`: `node` + `server/standalone` under `base`.
+/// Tauri maps `../tauri-bundle` → `_up_/tauri-bundle` inside the resource dir,
+/// so we try both `_up_/tauri-bundle/…` and plain `tauri-bundle/…`.
 #[cfg(not(debug_assertions))]
 fn bundled_node_and_server(base: &std::path::Path) -> Option<(PathBuf, PathBuf)> {
     #[cfg(windows)]
     {
-        let node = base
-            .join("tauri-bundle")
-            .join("node")
-            .join("node-v22.22.0-win-x64")
-            .join("node.exe");
-        let server = base
-            .join("tauri-bundle")
-            .join("server")
-            .join("standalone");
-        if node.is_file() && server.join("server.js").is_file() {
-            return Some((node, server));
+        for prefix in &["_up_/tauri-bundle", "tauri-bundle"] {
+            let node = base
+                .join(prefix)
+                .join("node")
+                .join("node-v22.22.0-win-x64")
+                .join("node.exe");
+            let server = base
+                .join(prefix)
+                .join("server")
+                .join("standalone");
+            if node.is_file() && server.join("server.js").is_file() {
+                return Some((node, server));
+            }
         }
     }
     #[cfg(not(windows))]
@@ -791,18 +795,20 @@ fn start_nextjs_server(app_handle: &tauri::AppHandle) -> Result<Option<Child>, B
             server_dir = Some(s);
         } else {
             slog("Bundled node/server NOT found in resource dir");
-            let node_check = resource_dir
-                .join("tauri-bundle")
-                .join("node")
-                .join("node-v22.22.0-win-x64")
-                .join("node.exe");
-            let srv_check = resource_dir
-                .join("tauri-bundle")
-                .join("server")
-                .join("standalone")
-                .join("server.js");
-            slog(&format!("  node path: {} (exists: {})", node_check.display(), node_check.exists()));
-            slog(&format!("  server.js: {} (exists: {})", srv_check.display(), srv_check.exists()));
+            for prefix in &["_up_/tauri-bundle", "tauri-bundle"] {
+                let node_check = resource_dir
+                    .join(prefix)
+                    .join("node")
+                    .join("node-v22.22.0-win-x64")
+                    .join("node.exe");
+                let srv_check = resource_dir
+                    .join(prefix)
+                    .join("server")
+                    .join("standalone")
+                    .join("server.js");
+                slog(&format!("  [{prefix}] node: {} (exists: {})", node_check.display(), node_check.exists()));
+                slog(&format!("  [{prefix}] server.js: {} (exists: {})", srv_check.display(), srv_check.exists()));
+            }
         }
     } else {
         slog("Could not get resource dir from Tauri");
