@@ -759,21 +759,6 @@ fn spawn_next_process(
         }
     }
 
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-
-    let log_dir = init_log_dir();
-    if let Ok(f) = std::fs::File::create(log_dir.join("node-stdout.log")) {
-        cmd.stdout(f);
-    }
-    if let Ok(f) = std::fs::File::create(log_dir.join("node-stderr.log")) {
-        cmd.stderr(f);
-    }
-
     cmd.spawn()
 }
 

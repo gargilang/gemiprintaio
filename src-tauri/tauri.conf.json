@@ -35,7 +35,7 @@
     },
     "resources": [
       "../database/gemiprint.db",
-      "../tauri-bundle"
+      "../tauri-bundle/**/*"
     ],
     "externalBin": [],
     "copyright": "",
