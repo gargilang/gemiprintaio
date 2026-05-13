@@ -763,6 +763,13 @@ fn spawn_next_process(
         }
     }
 
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+        cmd.creation_flags(CREATE_NEW_CONSOLE);
+    }
+
     cmd.spawn()
 }
 
