@@ -62,9 +62,10 @@ build-tauri.bat
 build-tauri.sh
 update-actions.sh
 
-# Tauri bundle: large binaries/build artifacts (downloaded/built automatically)
-tauri-bundle/node/
-tauri-bundle/server/standalone/
+# Tauri bundle: only ignore the large node binary (downloaded by build.bat).
+# Do NOT ignore the directories themselves — Tauri's resource bundler uses
+# the `ignore` crate which respects .gitignore and would skip them.
+tauri-bundle/node/**/node.exe
 
 # Built executables
 *.msi
