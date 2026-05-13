@@ -6,6 +6,7 @@ import MainShell from "@/components/MainShell";
 import IndonesianNativeValidity from "@/components/IndonesianNativeValidity";
 import { usePathname } from "next/navigation";
 import { useAutoSync } from "@/hooks/use-auto-sync";
+import { useAppUpdater } from "@/hooks/use-app-updater";
 import { SwrProvider } from "@/lib/swr-provider";
 
 // export const metadata: Metadata = {
@@ -24,8 +25,8 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
 
-  // Enable auto-sync globally
   useAutoSync();
+  useAppUpdater();
 
   // Don't wrap login/auth pages with MainShell
   const isAuthPage = pathname?.startsWith("/auth/");

@@ -8,7 +8,7 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
 #[cfg(not(debug_assertions))]
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -673,6 +673,20 @@ async fn sync_from_cloud(
     }))
 }
 
+/// Strip the Windows extended-length path prefix `\\?\` before handing a
+/// path to Node.js. Node.js can open `\\?\` paths but Next.js's internal
+/// regex-based path matching (e.g. `^[A-Z]:\\`) breaks when `__dirname`
+/// starts with the prefix, causing the standalone server to crash on init.
+#[cfg(all(not(debug_assertions), windows))]
+fn strip_extended_prefix(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(rest.to_string())
+    } else {
+        p
+    }
+}
+
 fn next_port_listening(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
@@ -738,20 +752,38 @@ fn spawn_next_process(
     server_dir: &std::path::Path,
     server_port: u16,
 ) -> Result<Child, std::io::Error> {
+    use std::fs::OpenOptions;
+
+    // Redirect Node.js stdout/stderr to log files so crash output is visible.
+    let log_dir = init_log_dir();
+    let stdout_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join("node-stdout.log"))?;
+    let stderr_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join("node-stderr.log"))?;
+
     let server_js = server_dir.join("server.js");
     let mut cmd = Command::new(node_exe);
     cmd.arg(&server_js)
         .current_dir(server_dir)
         .env("PORT", server_port.to_string())
         .env("HOSTNAME", "127.0.0.1")
-        .env("NODE_ENV", "production");
+        .env("NODE_ENV", "production")
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file));
 
     // Forward env vars the Next.js server needs (set via .env or parent process).
+    // SUPABASE_SERVICE_ROLE_KEY is intentionally omitted: RLS policies on the
+    // remote database allow the public anon key to perform all operations the
+    // desktop app requires, so the privileged key never needs to leave the server.
     for key in [
         "SESSION_SECRET",
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY",
         "DATABASE_URL",
         "SYNC_ENGINE_V2",
         "REALTIME_PULL_ENABLED",
@@ -766,8 +798,9 @@ fn spawn_next_process(
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
-        cmd.creation_flags(CREATE_NEW_CONSOLE);
+        // Hide the console window; all output goes to the log files above.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
     cmd.spawn()
@@ -840,8 +873,8 @@ fn start_nextjs_server(app_handle: &tauri::AppHandle) -> Result<Option<Child>, B
             slog("Spawning via system 'node' command");
             let child = spawn_next_process(std::path::Path::new("node"), &dir, BUNDLED_NEXT_PORT)?;
             slog(&format!("Node process spawned (pid {})", child.id()));
-            if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(10)) {
-                slog(&format!("Port {BUNDLED_NEXT_PORT} not ready after 10s — loading page will keep polling"));
+            if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(30)) {
+                slog(&format!("Port {BUNDLED_NEXT_PORT} not ready after 30s — loading page will keep polling"));
             } else {
                 slog(&format!("Next.js ready on port {BUNDLED_NEXT_PORT} (system node)"));
             }
@@ -850,11 +883,16 @@ fn start_nextjs_server(app_handle: &tauri::AppHandle) -> Result<Option<Child>, B
     }
 
     if let (Some(node), Some(dir)) = (node_exe, server_dir) {
+        // Strip \\?\ extended-length prefix: Next.js internal path-matching
+        // regex breaks when __dirname starts with \\?\ instead of a drive letter.
+        #[cfg(windows)]
+        let (node, dir) = (strip_extended_prefix(node), strip_extended_prefix(dir));
+
         slog(&format!("Spawning: {} server.js in {}", node.display(), dir.display()));
         let child = spawn_next_process(&node, &dir, BUNDLED_NEXT_PORT)?;
         slog(&format!("Node process spawned (pid {})", child.id()));
-        if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(10)) {
-            slog(&format!("Port {BUNDLED_NEXT_PORT} not ready after 10s — loading page will keep polling"));
+        if !wait_for_port_listening(BUNDLED_NEXT_PORT, Duration::from_secs(30)) {
+            slog(&format!("Port {BUNDLED_NEXT_PORT} not ready after 30s — loading page will keep polling"));
         } else {
             slog(&format!("Next.js ready on port {BUNDLED_NEXT_PORT} (bundled)"));
         }
@@ -882,14 +920,21 @@ fn start_nextjs_server_dev() {
 }
 
 fn load_env_file() {
+    // 1. AppData config (user-writable, no admin rights needed; lowest priority so
+    //    exe-dir config can override it).
+    let appdata_env = init_log_dir().join(".env.local");
+    if appdata_env.is_file() {
+        slog(&format!("Loading env from {}", appdata_env.display()));
+        let _ = dotenvy::from_path(&appdata_env);
+    }
+
+    // 2. Exe dir (highest priority — admin-placed config overrides AppData).
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
-    let candidates = [".env.local", ".env"];
-
     if let Some(ref dir) = exe_dir {
-        for name in &candidates {
+        for name in &[".env.local", ".env"] {
             let path = dir.join(name);
             if path.is_file() {
                 slog(&format!("Loading env from {}", path.display()));
@@ -899,7 +944,8 @@ fn load_env_file() {
         }
     }
 
-    for name in &candidates {
+    // 3. CWD fallback (dev convenience).
+    for name in &[".env.local", ".env"] {
         if std::path::Path::new(name).is_file() {
             slog(&format!("Loading env from cwd/{name}"));
             let _ = dotenvy::from_filename(name);
@@ -907,7 +953,48 @@ fn load_env_file() {
         }
     }
 
-    slog("No .env file found (optional)");
+    if !appdata_env.is_file() {
+        slog(&format!(
+            "No .env file found — place .env.local in {} for Supabase/session config",
+            init_log_dir().display()
+        ));
+    }
+}
+
+/// Ensure SESSION_SECRET is available for the Next.js server.
+/// If not already set, auto-generates a random 256-bit hex secret and persists
+/// it in the AppData config so it survives restarts without losing sessions.
+fn ensure_session_secret() {
+    if std::env::var("SESSION_SECRET").is_ok() {
+        return;
+    }
+
+    // Generate using two UUIDs: 128 bits × 2 = 256 bits of randomness.
+    let secret = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+
+    let config_path = init_log_dir().join(".env.local");
+    let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
+    if !existing.contains("SESSION_SECRET=") {
+        let mut content = existing;
+        if !content.is_empty() && !content.ends_with('\n') {
+            content.push('\n');
+        }
+        content.push_str(&format!("SESSION_SECRET={secret}\n"));
+        match std::fs::write(&config_path, &content) {
+            Ok(_) => slog(&format!(
+                "Auto-generated SESSION_SECRET saved to {}",
+                config_path.display()
+            )),
+            Err(e) => slog(&format!(
+                "Warning: could not save SESSION_SECRET ({}); session will reset on next start",
+                e
+            )),
+        }
+    }
+
+    // Set for the current process so it is forwarded to the Node.js server.
+    std::env::set_var("SESSION_SECRET", &secret);
+    slog("SESSION_SECRET set (auto-generated)");
 }
 
 #[tauri::command]
@@ -926,12 +1013,13 @@ fn main() {
         }
     }
 
-    slog("=== GemiPrint starting ===");
+    slog("=== gemiprint starting ===");
     slog(&format!("Version: {}", env!("CARGO_PKG_VERSION")));
     slog(&format!("Exe: {:?}", std::env::current_exe().ok()));
     slog(&format!("CWD: {:?}", std::env::current_dir().ok()));
 
     load_env_file();
+    ensure_session_secret();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -939,6 +1027,8 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let main_window = app
                 .get_webview_window("main")
@@ -995,10 +1085,21 @@ fn main() {
                 if let Some(state) = app_handle.try_state::<NextServerProcess>() {
                     if let Ok(mut guard) = state.0.lock() {
                         if let Some(ref mut child) = *guard {
-                            println!("Shutting down Next.js server (pid {})…", child.id());
+                            let pid = child.id();
+                            slog(&format!("Shutting down Next.js server (pid {pid})…"));
+                            // On Windows, use taskkill /F /T to force-terminate the entire
+                            // process tree (node.exe + any workers it spawned).
+                            #[cfg(windows)]
+                            {
+                                use std::os::windows::process::CommandExt;
+                                let _ = std::process::Command::new("taskkill")
+                                    .args(["/F", "/T", "/PID", &pid.to_string()])
+                                    .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+                                    .output();
+                            }
                             let _ = child.kill();
                             let _ = child.wait();
-                            println!("Next.js server stopped.");
+                            slog("Next.js server stopped.");
                         }
                     }
                 }
