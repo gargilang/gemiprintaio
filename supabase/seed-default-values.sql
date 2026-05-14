@@ -1,4 +1,4 @@
--- Default seed for GemiPrint (aligned with database/sqlite-default-values.sql)
+-- Default seed for gemiprint (aligned with database/sqlite-default-values.sql)
 -- Run after supabase/schema.sql. Idempotent: safe to re-run (ON CONFLICT DO NOTHING).
 -- In Dashboard: run schema.sql first, then this file.
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Build script untuk GemiPrint Tauri App
+# Build script untuk gemiprint Tauri App
 
 set -e
 
-echo "🚀 Building GemiPrint Tauri App..."
+echo "🚀 Building gemiprint Tauri App..."
 echo ""
 
 # Check if Rust is installed

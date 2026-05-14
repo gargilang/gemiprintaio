@@ -112,7 +112,7 @@ console.log("📄  updates/latest.json diperbarui");
 console.log(`🚀  Membuat GitHub Release ${tag}…`);
 try {
   execSync(
-    `gh release create ${tag} "${installer}" --title "GemiPrint ${tag}" --notes "Rilis ${tag}" --repo gargilang/gemiprintaio`,
+    `gh release create ${tag} "${installer}" --title "gemiprint ${tag}" --notes "Rilis ${tag}" --repo gargilang/gemiprintaio`,
     { cwd: ROOT, stdio: "inherit" }
   );
 } catch {

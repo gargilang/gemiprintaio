@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default permissions for GemiPrint app",
+  "description": "Default permissions for gemiprint app",
   "local": true,
   "remote": {
     "urls": [

@@ -1,7 +1,7 @@
 -- Wipe all tables/views/types in the public schema (Supabase-safe pattern).
 -- Does NOT remove auth, storage, or other system schemas.
 -- Run in: Supabase Dashboard → SQL Editor → New query → paste → Run.
--- After this, run supabase/schema.sql from this repo to recreate Gemiprint tables.
+-- After this, run supabase/schema.sql from this repo to recreate gemiprint tables.
 
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;

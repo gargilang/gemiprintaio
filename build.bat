@@ -1,8 +1,8 @@
 @echo off
-REM Build script untuk GemiPrint Tauri App (Windows)
+REM Build script untuk gemiprint Tauri App (Windows)
 
 echo.
-echo Building GemiPrint Tauri App...
+echo Building gemiprint Tauri App...
 echo.
 
 REM Check if Rust is installed

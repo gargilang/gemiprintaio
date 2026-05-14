@@ -26,7 +26,7 @@ export function useAppUpdater() {
 
         const yes = await ask(
           `Versi baru tersedia: ${update.version}\n\n${update.body ?? ""}\n\nInstal sekarang?`,
-          { title: "Update GemiPrint", kind: "info" }
+          { title: "Update gemiprint", kind: "info" }
         );
 
         if (yes) {
