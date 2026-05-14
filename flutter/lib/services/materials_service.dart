@@ -5,8 +5,8 @@ class MaterialsService {
   final ApiClient _api;
   MaterialsService(this._api);
 
-  Future<List<MaterialItem>> getAll() async {
-    final data = await _api.get('/api/materials');
+  Future<List<MaterialItem>> getAll({bool forceRefresh = false}) async {
+    final data = await _api.get('/api/materials', forceRefresh: forceRefresh);
     final list = data['barang'] as List? ?? [];
     return list.map((j) => MaterialItem.fromJson(j as Map<String, dynamic>)).toList();
   }

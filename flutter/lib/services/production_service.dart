@@ -4,8 +4,8 @@ class ProductionService {
   final ApiClient _api;
   ProductionService(this._api);
 
-  Future<List<dynamic>> getOrders() async {
-    final data = await _api.get('/api/production');
+  Future<List<dynamic>> getOrders({bool forceRefresh = false}) async {
+    final data = await _api.get('/api/production', forceRefresh: forceRefresh);
     return data['orders'] as List? ?? [];
   }
 

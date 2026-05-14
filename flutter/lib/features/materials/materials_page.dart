@@ -31,10 +31,12 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_materials.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
-      final data = await ref.read(materialsServiceProvider).getAll();
+      final data = await ref.read(materialsServiceProvider).getAll(forceRefresh: forceRefresh);
       if (mounted) setState(() { _materials = data; _isLoading = false; });
     } on ApiException catch (e) {
       if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, e.message); }
@@ -109,7 +111,7 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
                           ) : null,
                         )
                       : RefreshIndicator(
-                          onRefresh: _loadData,
+                          onRefresh: () => _loadData(forceRefresh: true),
                           child: ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                             itemCount: filtered.length,

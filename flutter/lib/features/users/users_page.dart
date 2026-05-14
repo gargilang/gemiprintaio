@@ -26,10 +26,12 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_users.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
-      final data = await ref.read(usersServiceProvider).getAll();
+      final data = await ref.read(usersServiceProvider).getAll(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _users = data

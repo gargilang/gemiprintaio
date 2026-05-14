@@ -4,11 +4,11 @@ class FinanceService {
   final ApiClient _api;
   FinanceService(this._api);
 
-  Future<Map<String, dynamic>> getCashBook({String? archiveId}) async {
+  Future<Map<String, dynamic>> getCashBook({String? archiveId, bool forceRefresh = false}) async {
     final path = archiveId != null
         ? '/api/finance/cash-book?archiveId=$archiveId'
         : '/api/finance/cash-book';
-    return await _api.get(path) as Map<String, dynamic>;
+    return await _api.get(path, forceRefresh: forceRefresh) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> createEntry(Map<String, dynamic> body) async {

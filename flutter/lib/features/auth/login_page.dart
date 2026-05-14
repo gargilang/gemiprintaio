@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gemiprint/core/config/app_config.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -59,21 +60,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
+                SvgPicture.asset(
+                  'assets/logo-gemiprint-white.svg',
                   width: 72,
                   height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Center(
-                    child: Text('g', style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
-                  ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'gemiprint',
-                  style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                      text: 'gemi',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 30,
+                        fontFamily: AppFonts.brand,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: 'print',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontFamily: AppFonts.brand,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ]),
                 ),
                 const SizedBox(height: 8),
                 Text(

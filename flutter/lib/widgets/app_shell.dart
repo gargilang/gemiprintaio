@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
@@ -101,19 +102,34 @@ class AppShell extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Center(
-                        child: Text('g', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                      ),
+                    SvgPicture.asset(
+                      'assets/logo-gemiprint-white.svg',
+                      width: 36,
+                      height: 36,
                     ),
                     const SizedBox(width: 12),
-                    const Text('gemiprint', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text.rich(
+                      TextSpan(children: [
+                        TextSpan(
+                          text: 'gemi',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 22,
+                            fontFamily: AppFonts.brand,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: 'print',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontFamily: AppFonts.brand,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ]),
+                    ),
                   ],
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -26,19 +27,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     _loadStats();
   }
 
-  Future<void> _loadStats() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _loadStats({bool forceRefresh = false}) async {
+    if (_stats == null) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final api = ref.read(apiClientProvider);
 
-      // Load pos data for today's sales stats and production stats in parallel
       final results = await Future.wait([
-        api.get('/api/pos/init-data'),
-        api.get('/api/production'),
-        api.get('/api/finance/cash-book'),
+        api.get('/api/pos/init-data', forceRefresh: forceRefresh),
+        api.get('/api/production', forceRefresh: forceRefresh),
+        api.get('/api/finance/cash-book', forceRefresh: forceRefresh),
       ]);
 
       if (mounted) {
@@ -126,7 +128,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final user = ref.watch(authStateProvider).valueOrNull;
 
     return RefreshIndicator(
-      onRefresh: _loadStats,
+      onRefresh: () => _loadStats(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -148,19 +150,56 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Selamat Datang, ${user?.displayName ?? ''}!',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Selamat Datang, ${user?.displayName ?? ''}!',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Opacity(
+                        opacity: 0.35,
+                        child: SvgPicture.asset(
+                          'assets/logo-gemiprint-white.svg',
+                          width: 48,
+                          height: 48,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'gemiprint — Sistem Manajemen Percetakan',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 13),
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(
+                        text: 'gemi',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          fontFamily: AppFonts.brand,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'print',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          fontFamily: AppFonts.brand,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' — Sistem Manajemen Percetakan',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ]),
                   ),
                   if (user != null) ...[
                     const SizedBox(height: 8),

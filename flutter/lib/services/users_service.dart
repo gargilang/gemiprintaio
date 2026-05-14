@@ -4,8 +4,8 @@ class UsersService {
   final ApiClient _api;
   UsersService(this._api);
 
-  Future<List<dynamic>> getAll() async {
-    final data = await _api.get('/api/users');
+  Future<List<dynamic>> getAll({bool forceRefresh = false}) async {
+    final data = await _api.get('/api/users', forceRefresh: forceRefresh);
     return data['users'] as List? ?? [];
   }
 

@@ -20,6 +20,7 @@ dependencies:
   uuid: ^4.5.1
   pdf: ^3.11.2
   printing: ^5.14.2
+  flutter_svg: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -31,3 +32,26 @@ flutter:
 
   assets:
     - assets/
+    - assets/fonts/
+
+  fonts:
+    - family: TwCenMT
+      fonts:
+        - asset: assets/fonts/TwCenMTStd.otf
+          weight: 400
+        - asset: assets/fonts/TwCenMTStdSemiBold.otf
+          weight: 600
+        - asset: assets/fonts/TwCenMTStdBold.otf
+          weight: 700
+        - asset: assets/fonts/TwCenMTStdExtraBold.otf
+          weight: 800
+    - family: Bauhaus93
+      fonts:
+        - asset: assets/fonts/BAUHS93.ttf
+          weight: 400
+    - family: Bauhaus
+      fonts:
+        - asset: assets/fonts/BauhausRegular.ttf
+          weight: 400
+        - asset: assets/fonts/BauhausBold.ttf
+          weight: 700

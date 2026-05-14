@@ -37,10 +37,12 @@ class _FinancePageState extends ConsumerState<FinancePage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_entries.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
-      final data = await ref.read(financeServiceProvider).getCashBook();
+      final data = await ref.read(financeServiceProvider).getCashBook(forceRefresh: forceRefresh);
       final list = data['entries'] as List? ?? data['keuangan'] as List? ?? [];
       if (mounted) {
         setState(() {
@@ -388,7 +390,7 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                           icon: Icons.account_balance_wallet_rounded,
                           title: 'Belum ada entri keuangan')
                       : RefreshIndicator(
-                          onRefresh: _loadData,
+                          onRefresh: () => _loadData(forceRefresh: true),
                           child: ListView.separated(
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 80),

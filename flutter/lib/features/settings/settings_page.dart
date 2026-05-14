@@ -26,15 +26,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_categories.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final api = ref.read(apiClientProvider);
       final results = await Future.wait([
-        api.get('/api/master/categories'),
-        api.get('/api/master/subcategories'),
-        api.get('/api/master/units'),
-        api.get('/api/finishing-options'),
+        api.get('/api/master/categories', forceRefresh: forceRefresh),
+        api.get('/api/master/subcategories', forceRefresh: forceRefresh),
+        api.get('/api/master/units', forceRefresh: forceRefresh),
+        api.get('/api/finishing-options', forceRefresh: forceRefresh),
       ]);
       if (mounted) {
         setState(() {

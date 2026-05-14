@@ -36,10 +36,12 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_orders.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
-      final data = await ref.read(productionServiceProvider).getOrders();
+      final data = await ref.read(productionServiceProvider).getOrders(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _orders = data
@@ -162,7 +164,7 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
                       icon: Icons.print_rounded,
                       title: 'Tidak ada order produksi')
                   : RefreshIndicator(
-                      onRefresh: _loadData,
+                      onRefresh: () => _loadData(forceRefresh: true),
                       child: ListView.separated(
                         padding:
                             const EdgeInsets.fromLTRB(16, 0, 16, 16),

@@ -94,10 +94,13 @@ class _PosPageState extends ConsumerState<PosPage>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_materials.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
-      final data = await ref.read(posServiceProvider).getInitData();
+      final api = ref.read(apiClientProvider);
+      final data = await api.get('/api/pos/init-data', forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _materials = (data['materials'] as List?)
@@ -1129,7 +1132,7 @@ class _PosPageState extends ConsumerState<PosPage>
         ),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _loadData,
+            onRefresh: () => _loadData(forceRefresh: true),
             child: filtered.isEmpty
                 ? const Center(
                     child: Text('Belum ada riwayat penjualan',

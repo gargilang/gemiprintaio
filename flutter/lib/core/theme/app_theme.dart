@@ -12,6 +12,12 @@ class AppColors {
   static const Color pink = Color(0xFFFF2F91);
 }
 
+class AppFonts {
+  static const String body = 'TwCenMT';
+  static const String brand = 'Bauhaus93';
+  static const String brandAlt = 'Bauhaus';
+}
+
 class AppTheme {
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
@@ -26,6 +32,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: AppFonts.body,
       scaffoldBackgroundColor: AppColors.surface,
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primaryDark,
@@ -37,7 +44,7 @@ class AppTheme {
         backgroundColor: Colors.white,
         indicatorColor: AppColors.primary.withValues(alpha: 0.15),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.primaryDark),
+          TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.primaryDark, fontFamily: AppFonts.body),
         ),
       ),
       drawerTheme: const DrawerThemeData(
@@ -49,7 +56,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: AppFonts.body),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -89,7 +96,7 @@ class AppTheme {
       dividerTheme: DividerThemeData(color: Colors.grey.shade200, thickness: 1),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-        labelStyle: const TextStyle(color: AppColors.primaryDark, fontSize: 13),
+        labelStyle: const TextStyle(color: AppColors.primaryDark, fontSize: 13, fontFamily: AppFonts.body),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         side: BorderSide.none,
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/cache/app_cache.dart';
 import 'package:gemiprint/models/user.dart';
 import 'package:gemiprint/services/api_client.dart';
 import 'package:gemiprint/services/auth_service.dart';
@@ -102,6 +103,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
 
   Future<void> logout() async {
     await _authService.logout();
+    await AppCache().clear();
     state = const AsyncValue.data(null);
   }
 
