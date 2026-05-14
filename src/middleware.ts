@@ -31,8 +31,12 @@ function getSecret(): Uint8Array | null {
 
 let loggedMissingSessionSecret = false;
 
+const MOBILE_UA =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host") ?? "";
 
   if (
     pathname.startsWith("/_next/static") ||
@@ -40,6 +44,14 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico"
   ) {
     return NextResponse.next();
+  }
+
+  if (
+    host.startsWith("app.gemiprint.com") &&
+    !pathname.startsWith("/api/") &&
+    MOBILE_UA.test(request.headers.get("user-agent") ?? "")
+  ) {
+    return NextResponse.redirect("https://m.gemiprint.com" + pathname);
   }
 
   if (isPublicPath(pathname)) {

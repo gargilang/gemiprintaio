@@ -164,11 +164,11 @@ Agar Flutter bisa menggunakan API routes yang sudah ada:
 
 | # | Task | Status |
 |---|------|--------|
-| 10.1 | Build Flutter web target | ⬜ |
-| 10.2 | Deploy ke hosting untuk m.gemiprint.com | ⬜ |
-| 10.3 | Configure GoDaddy DNS (CNAME untuk m.gemiprint.com) | ⬜ |
-| 10.4 | Tambah mobile user-agent redirect di Next.js middleware | ⬜ |
-| 10.5 | Test end-to-end redirect flow | ⬜ |
+| 10.1 | Build Flutter web target | ✅ |
+| 10.2 | Deploy ke Vercel sebagai static site untuk m.gemiprint.com | ✅ |
+| 10.3 | Configure GoDaddy DNS (A record m → 76.76.21.21) | ✅ |
+| 10.4 | Tambah mobile user-agent redirect di Next.js middleware | ✅ |
+| 10.5 | Test end-to-end redirect flow | ⬜ (menunggu DNS propagasi) |
 
 ---
 
@@ -212,6 +212,7 @@ Catatan: `supabase_flutter` TIDAK digunakan. Flutter konek ke Supabase via Next.
 
 ## Mobile Redirect Strategy
 
-1. Tambah deteksi user-agent di `src/middleware.ts` (Next.js) untuk redirect mobile → `m.gemiprint.com`
-2. Setup CNAME `m.gemiprint.com` di GoDaddy DNS mengarah ke Flutter web hosting
-3. Deploy Flutter web build ke hosting tersebut (Firebase Hosting / Vercel / Cloudflare Pages)
+1. ✅ Tambah deteksi user-agent di `src/middleware.ts` (Next.js) untuk redirect mobile → `m.gemiprint.com`
+2. ✅ Setup A record `m.gemiprint.com` → `76.76.21.21` di GoDaddy DNS
+3. ✅ Deploy Flutter web build ke Vercel (project: `web`, domain: `m.gemiprint.com`)
+4. ⬜ End-to-end test setelah DNS propagasi selesai (biasanya < 1 jam, maks 48 jam)
