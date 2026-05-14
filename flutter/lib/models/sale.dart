@@ -10,6 +10,10 @@ class Sale {
   final String? kasirId;
   final String? kasirNama;
   final String? catatan;
+  final String? statusPembayaran;
+  final double sisaPiutang;
+  final bool hasPelunasan;
+  final String? prioritas;
   final String? createdAt;
   final String? updatedAt;
   final List<SaleItem> items;
@@ -26,27 +30,42 @@ class Sale {
     this.kasirId,
     this.kasirNama,
     this.catatan,
+    this.statusPembayaran,
+    this.sisaPiutang = 0,
+    this.hasPelunasan = false,
+    this.prioritas,
     this.createdAt,
     this.updatedAt,
     this.items = const [],
   });
 
+  bool get isPiutang => statusPembayaran == 'AKTIF' || statusPembayaran == 'SEBAGIAN';
+  bool get isLunas => statusPembayaran == 'LUNAS' || statusPembayaran == null;
+
   factory Sale.fromJson(Map<String, dynamic> json) {
     final itemList = json['items'] ?? json['item_penjualan'];
+    final hasPelunasanRaw = json['has_pelunasan'];
     return Sale(
       id: json['id'] as String,
       nomorInvoice: (json['nomor_invoice'] ?? '') as String,
       pelangganId: json['pelanggan_id'] as String?,
       pelangganNama: json['pelanggan_nama'] as String?,
-      totalHarga: (json['total_harga'] as num?)?.toDouble() ?? 0,
-      dibayar: (json['dibayar'] as num?)?.toDouble() ?? 0,
-      kembalian: (json['kembalian'] as num?)?.toDouble() ?? 0,
+      totalHarga: (json['total_jumlah'] as num?)?.toDouble() ??
+          (json['total_harga'] as num?)?.toDouble() ?? 0,
+      dibayar: (json['jumlah_dibayar'] as num?)?.toDouble() ??
+          (json['dibayar'] as num?)?.toDouble() ?? 0,
+      kembalian: (json['jumlah_kembalian'] as num?)?.toDouble() ??
+          (json['kembalian'] as num?)?.toDouble() ?? 0,
       metodePembayaran: json['metode_pembayaran'] as String?,
       kasirId: json['kasir_id'] as String?,
       kasirNama: json['kasir_nama'] as String?,
       catatan: json['catatan'] as String?,
-      createdAt: json['created_at'] as String?,
-      updatedAt: json['updated_at'] as String?,
+      statusPembayaran: json['status_pembayaran'] as String?,
+      sisaPiutang: (json['sisa_piutang'] as num?)?.toDouble() ?? 0,
+      hasPelunasan: hasPelunasanRaw == true || hasPelunasanRaw == 1,
+      prioritas: json['prioritas'] as String?,
+      createdAt: json['dibuat_pada'] as String? ?? json['created_at'] as String?,
+      updatedAt: json['diperbarui_pada'] as String? ?? json['updated_at'] as String?,
       items: itemList is List
           ? itemList.map((i) => SaleItem.fromJson(i as Map<String, dynamic>)).toList()
           : [],

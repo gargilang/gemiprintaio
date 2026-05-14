@@ -10,6 +10,11 @@ import 'package:gemiprint/widgets/search_field.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
 import 'package:intl/intl.dart';
 
+const _kategoriList = [
+  'KAS', 'BIAYA', 'OMZET', 'SUPPLY', 'LABA',
+  'KOMISI', 'TABUNGAN', 'HUTANG', 'PIUTANG',
+];
+
 class FinancePage extends ConsumerStatefulWidget {
   const FinancePage({super.key});
 
@@ -21,8 +26,10 @@ class _FinancePageState extends ConsumerState<FinancePage> {
   List<CashBookEntry> _entries = [];
   bool _isLoading = true;
   String _search = '';
+  String _filterKategori = 'SEMUA';
 
-  final _fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _fmt =
+      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
   @override
   void initState() {
@@ -37,76 +44,148 @@ class _FinancePageState extends ConsumerState<FinancePage> {
       final list = data['entries'] as List? ?? data['keuangan'] as List? ?? [];
       if (mounted) {
         setState(() {
-          _entries = list.map((j) => CashBookEntry.fromJson(j as Map<String, dynamic>)).toList();
+          _entries = list
+              .map((j) => CashBookEntry.fromJson(j as Map<String, dynamic>))
+              .toList();
           _isLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat data keuangan'); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, 'Gagal memuat data keuangan');
+      }
     }
   }
 
   List<CashBookEntry> get _filtered {
-    if (_search.isEmpty) return _entries;
-    final q = _search.toLowerCase();
-    return _entries.where((e) =>
-      e.kategoriTransaksi.toLowerCase().contains(q) ||
-      (e.keperluan?.toLowerCase().contains(q) ?? false) ||
-      (e.catatan?.toLowerCase().contains(q) ?? false)
-    ).toList();
+    var list = _entries;
+    if (_filterKategori != 'SEMUA') {
+      list = list
+          .where((e) => e.kategoriTransaksi == _filterKategori)
+          .toList();
+    }
+    if (_search.isNotEmpty) {
+      final q = _search.toLowerCase();
+      list = list
+          .where((e) =>
+              e.kategoriTransaksi.toLowerCase().contains(q) ||
+              (e.keperluan?.toLowerCase().contains(q) ?? false) ||
+              (e.catatan?.toLowerCase().contains(q) ?? false))
+          .toList();
+    }
+    return list;
   }
 
+  double get _totalDebit =>
+      _filtered.fold(0.0, (s, e) => s + e.debit);
+  double get _totalKredit =>
+      _filtered.fold(0.0, (s, e) => s + e.kredit);
+  double get _totalSaldo =>
+      _entries.isNotEmpty ? _entries.last.saldo : 0.0;
+
   Future<void> _deleteEntry(CashBookEntry entry) async {
-    final ok = await showConfirmDialog(context, title: 'Hapus Entri', message: 'Hapus entri ini?', isDangerous: true);
+    final ok = await showConfirmDialog(context,
+        title: 'Hapus Entri', message: 'Hapus entri ini?', isDangerous: true);
     if (!ok) return;
     try {
       await ref.read(financeServiceProvider).deleteEntry(entry.id);
-      if (mounted) { showSuccessSnackbar(context, 'Entri berhasil dihapus'); _loadData(); }
+      if (mounted) {
+        showSuccessSnackbar(context, 'Entri berhasil dihapus');
+        _loadData();
+      }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
     }
   }
 
-  Future<void> _showAddDialog() async {
-    final tanggalCtrl = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
-    final debitCtrl = TextEditingController();
-    final kreditCtrl = TextEditingController();
-    final keperluanCtrl = TextEditingController();
-    String kategori = 'KAS';
+  Future<void> _showEntryForm({CashBookEntry? existing}) async {
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    String tanggal = existing?.tanggal ?? todayStr;
+    String kategori = existing?.kategoriTransaksi ?? 'KAS';
+    final debitCtrl = TextEditingController(
+        text: existing != null && existing.debit > 0
+            ? existing.debit.toStringAsFixed(0)
+            : '');
+    final kreditCtrl = TextEditingController(
+        text: existing != null && existing.kredit > 0
+            ? existing.kredit.toStringAsFixed(0)
+            : '');
+    final keperluanCtrl =
+        TextEditingController(text: existing?.keperluan ?? '');
+    final catatanCtrl =
+        TextEditingController(text: existing?.catatan ?? '');
 
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          expand: false,
-          builder: (_, scroll) => Container(
-            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-            child: Column(
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            expand: false,
+            builder: (_, scroll) => Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      const Expanded(child: Text('Tambah Entri', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600))),
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+                      Expanded(
+                        child: Text(
+                          existing == null ? 'Tambah Entri' : 'Edit Entri',
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Batal')),
                       ElevatedButton(
                         onPressed: () async {
                           try {
-                            await ref.read(financeServiceProvider).createEntry({
-                              'tanggal': tanggalCtrl.text,
+                            final body = {
+                              'tanggal': tanggal,
                               'kategori_transaksi': kategori,
-                              'debit': double.tryParse(debitCtrl.text) ?? 0,
-                              'kredit': double.tryParse(kreditCtrl.text) ?? 0,
+                              'debit':
+                                  double.tryParse(debitCtrl.text) ?? 0,
+                              'kredit':
+                                  double.tryParse(kreditCtrl.text) ?? 0,
                               'keperluan': keperluanCtrl.text.trim(),
-                            });
+                              'catatan': catatanCtrl.text.trim().isEmpty
+                                  ? null
+                                  : catatanCtrl.text.trim(),
+                            };
+                            if (existing == null) {
+                              await ref
+                                  .read(financeServiceProvider)
+                                  .createEntry(body);
+                            } else {
+                              await ref
+                                  .read(financeServiceProvider)
+                                  .updateEntry({...body, 'id': existing.id});
+                            }
                             if (ctx.mounted) Navigator.pop(ctx, true);
                           } on ApiException catch (e) {
-                            if (ctx.mounted) showErrorSnackbar(ctx, e.message);
+                            if (ctx.mounted) {
+                              showErrorSnackbar(ctx, e.message);
+                            }
                           }
                         },
                         child: const Text('Simpan'),
@@ -114,26 +193,98 @@ class _FinancePageState extends ConsumerState<FinancePage> {
                     ],
                   ),
                 ),
+                const Divider(height: 1),
                 Expanded(
                   child: ListView(
                     controller: scroll,
                     padding: const EdgeInsets.all(16),
                     children: [
-                      TextFormField(controller: tanggalCtrl, decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)')),
+                      // Tanggal dengan date picker
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: DateTime.tryParse(tanggal) ??
+                                DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now()
+                                .add(const Duration(days: 30)),
+                            locale: const Locale('id', 'ID'),
+                          );
+                          if (picked != null) {
+                            setLocal(() {
+                              tanggal =
+                                  '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                            });
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration:
+                              const InputDecoration(labelText: 'Tanggal'),
+                          child: Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(tanggal,
+                                  style: const TextStyle(fontSize: 15)),
+                              const Icon(Icons.calendar_today,
+                                  size: 18, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      StatefulBuilder(builder: (ctx, setLocal) => DropdownButtonFormField<String>(
-                        initialValue: kategori,
-                        decoration: const InputDecoration(labelText: 'Kategori'),
-                        items: const ['KAS', 'BIAYA', 'OMZET', 'SUPPLY', 'LABA', 'KOMISI', 'TABUNGAN', 'HUTANG', 'PIUTANG']
-                            .map((k) => DropdownMenuItem(value: k, child: Text(k))).toList(),
-                        onChanged: (v) => setLocal(() => kategori = v ?? 'KAS'),
-                      )),
+                      DropdownButtonFormField<String>(
+                        value: kategori,
+                        decoration:
+                            const InputDecoration(labelText: 'Kategori'),
+                        items: _kategoriList
+                            .map((k) => DropdownMenuItem(
+                                value: k, child: Text(k)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setLocal(() => kategori = v ?? 'KAS'),
+                      ),
                       const SizedBox(height: 12),
-                      TextFormField(controller: debitCtrl, decoration: const InputDecoration(labelText: 'Debit'), keyboardType: TextInputType.number),
+                      TextFormField(
+                        controller: keperluanCtrl,
+                        decoration: const InputDecoration(
+                            labelText: 'Keperluan / Keterangan'),
+                        maxLines: 2,
+                      ),
                       const SizedBox(height: 12),
-                      TextFormField(controller: kreditCtrl, decoration: const InputDecoration(labelText: 'Kredit'), keyboardType: TextInputType.number),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: debitCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Debit (Masuk)',
+                                prefixText: 'Rp ',
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: kreditCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Kredit (Keluar)',
+                                prefixText: 'Rp ',
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
-                      TextFormField(controller: keperluanCtrl, decoration: const InputDecoration(labelText: 'Keperluan'), maxLines: 2),
+                      TextFormField(
+                        controller: catatanCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Catatan (opsional)'),
+                        maxLines: 2,
+                      ),
                     ],
                   ),
                 ),
@@ -143,8 +294,15 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         ),
       ),
     );
+
+    debitCtrl.dispose();
+    kreditCtrl.dispose();
+    keperluanCtrl.dispose();
+    catatanCtrl.dispose();
+
     if (result == true && mounted) {
-      showSuccessSnackbar(context, 'Entri berhasil ditambahkan');
+      showSuccessSnackbar(context,
+          existing == null ? 'Entri berhasil ditambahkan' : 'Entri berhasil diperbarui');
       _loadData();
     }
   }
@@ -152,70 +310,93 @@ class _FinancePageState extends ConsumerState<FinancePage> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
-    final totalSaldo = _entries.isNotEmpty ? _entries.last.saldo : 0.0;
 
     return Stack(
       children: [
         Column(
           children: [
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Summary cards
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Column(
                 children: [
-                  const Text('Saldo', style: TextStyle(color: Colors.white, fontSize: 14)),
-                  Text(_fmt.format(totalSaldo), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      _summaryCard('Saldo', _totalSaldo, AppColors.primary,
+                          Icons.account_balance_wallet_rounded),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _miniSummaryCard(
+                            'Total Masuk', _totalDebit, AppColors.success),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _miniSummaryCard(
+                            'Total Keluar', _totalKredit, AppColors.error),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
+            const SizedBox(height: 8),
+
+            // Filter kategori
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  'SEMUA',
+                  ..._kategoriList,
+                ].map((k) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: FilterChip(
+                    label: Text(k, style: const TextStyle(fontSize: 11)),
+                    selected: _filterKategori == k,
+                    onSelected: (_) =>
+                        setState(() => _filterKategori = k),
+                    selectedColor:
+                        AppColors.primary.withValues(alpha: 0.2),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )).toList(),
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            // Search
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: SearchField(hintText: 'Cari entri...', onChanged: (v) => setState(() => _search = v)),
+              child: SearchField(
+                hintText: 'Cari entri...',
+                onChanged: (v) => setState(() => _search = v),
+              ),
             ),
+
+            // List
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filtered.isEmpty
-                      ? const EmptyState(icon: Icons.account_balance_wallet_rounded, title: 'Belum ada entri keuangan')
+                      ? const EmptyState(
+                          icon: Icons.account_balance_wallet_rounded,
+                          title: 'Belum ada entri keuangan')
                       : RefreshIndicator(
                           onRefresh: _loadData,
                           child: ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 80),
                             itemCount: filtered.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 4),
-                            itemBuilder: (_, i) {
-                              final e = filtered[i];
-                              final isDebit = e.debit > 0;
-                              return Card(
-                                child: ListTile(
-                                  dense: true,
-                                  leading: CircleAvatar(
-                                    backgroundColor: (isDebit ? AppColors.success : AppColors.error).withValues(alpha: 0.15),
-                                    radius: 18,
-                                    child: Icon(isDebit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, color: isDebit ? AppColors.success : AppColors.error, size: 18),
-                                  ),
-                                  title: Text(e.keperluan ?? e.kategoriTransaksi, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
-                                  subtitle: Text('${e.tanggal} · ${e.kategoriTransaksi}', style: const TextStyle(fontSize: 11)),
-                                  trailing: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '${isDebit ? '+' : '-'}${_fmt.format(isDebit ? e.debit : e.kredit)}',
-                                        style: TextStyle(color: isDebit ? AppColors.success : AppColors.error, fontWeight: FontWeight.w600, fontSize: 13),
-                                      ),
-                                      Text('Saldo: ${_fmt.format(e.saldo)}', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                                    ],
-                                  ),
-                                  onLongPress: () => _deleteEntry(e),
-                                ),
-                              );
-                            },
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 4),
+                            itemBuilder: (_, i) =>
+                                _buildCard(filtered[i]),
                           ),
                         ),
             ),
@@ -224,9 +405,134 @@ class _FinancePageState extends ConsumerState<FinancePage> {
         Positioned(
           right: 16,
           bottom: 16,
-          child: FloatingActionButton(onPressed: _showAddDialog, child: const Icon(Icons.add_rounded)),
+          child: FloatingActionButton(
+            onPressed: () => _showEntryForm(),
+            child: const Icon(Icons.add_rounded),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _summaryCard(
+      String label, double value, Color color, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.8)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12)),
+                  Text(
+                    _fmt.format(value),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniSummaryCard(String label, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11,
+                  color: color.withValues(alpha: 0.8))),
+          const SizedBox(height: 2),
+          Text(
+            _fmt.format(value),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(CashBookEntry e) {
+    final isDebit = e.debit > 0;
+    final color = isDebit ? AppColors.success : AppColors.error;
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showEntryForm(existing: e),
+        child: ListTile(
+          dense: true,
+          leading: CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.15),
+            radius: 18,
+            child: Icon(
+              isDebit
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              color: color,
+              size: 16,
+            ),
+          ),
+          title: Text(
+            e.keperluan ?? e.kategoriTransaksi,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            '${e.tanggal} · ${e.kategoriTransaksi}',
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isDebit ? '+' : '-'}${_fmt.format(isDebit ? e.debit : e.kredit)}',
+                style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13),
+              ),
+              Text(
+                'Saldo: ${_fmt.format(e.saldo)}',
+                style: TextStyle(
+                    fontSize: 10, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+          onLongPress: () => _deleteEntry(e),
+        ),
+      ),
     );
   }
 }

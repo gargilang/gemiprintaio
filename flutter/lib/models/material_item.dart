@@ -34,7 +34,7 @@ class MaterialItem {
   });
 
   factory MaterialItem.fromJson(Map<String, dynamic> json) {
-    final hargaList = json['harga_barang_satuan'];
+    final hargaList = json['unit_prices'] ?? json['harga_barang_satuan'];
     return MaterialItem(
       id: json['id'] as String,
       nama: (json['nama'] ?? '') as String,
@@ -75,6 +75,7 @@ class MaterialPrice {
   final double hargaJual;
   final double hargaMember;
   final double faktorKonversi;
+  final bool isDefault;
 
   const MaterialPrice({
     required this.id,
@@ -84,17 +85,25 @@ class MaterialPrice {
     this.hargaJual = 0,
     this.hargaMember = 0,
     this.faktorKonversi = 1,
+    this.isDefault = false,
   });
 
+  double hargaUntuk({bool isMember = false}) {
+    if (isMember && hargaMember > 0) return hargaMember;
+    return hargaJual;
+  }
+
   factory MaterialPrice.fromJson(Map<String, dynamic> json) {
+    final rawDefault = json['default_status'];
     return MaterialPrice(
       id: json['id'] as String,
       barangId: (json['barang_id'] ?? '') as String,
-      label: (json['label'] ?? '') as String,
+      label: (json['nama_satuan'] ?? json['label'] ?? '') as String,
       hargaBeli: (json['harga_beli'] as num?)?.toDouble() ?? 0,
       hargaJual: (json['harga_jual'] as num?)?.toDouble() ?? 0,
       hargaMember: (json['harga_member'] as num?)?.toDouble() ?? 0,
       faktorKonversi: (json['faktor_konversi'] as num?)?.toDouble() ?? 1,
+      isDefault: rawDefault == true || rawDefault == 1,
     );
   }
 

@@ -13,7 +13,11 @@ class ProductionService {
     await _api.put('/api/production/$id', body: {'status': status});
   }
 
-  Future<void> updateItemStatus(String itemId, Map<String, dynamic> body) async {
-    await _api.put('/api/production/items/$itemId', body: body);
+  Future<void> updateItemStatus(String orderId, String itemId, Map<String, dynamic> body) async {
+    await _api.put('/api/production/$orderId/items/$itemId', body: body);
+  }
+
+  Future<Map<String, dynamic>> createOrderFromSale(Map<String, dynamic> body) async {
+    return await _api.post('/api/production', body: body) as Map<String, dynamic>;
   }
 }

@@ -8,6 +8,7 @@ import 'package:gemiprint/widgets/confirm_dialog.dart';
 import 'package:gemiprint/widgets/empty_state.dart';
 import 'package:gemiprint/widgets/search_field.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
+import 'package:gemiprint/features/materials/material_form_dialog.dart';
 import 'package:intl/intl.dart';
 
 class MaterialsPage extends ConsumerStatefulWidget {
@@ -52,6 +53,15 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
     ).toList();
   }
 
+  Future<void> _showForm({MaterialItem? existing}) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MaterialFormDialog(existing: existing),
+      ),
+    );
+    if (result == true) _loadData();
+  }
+
   Future<void> _handleDelete(MaterialItem m) async {
     final ok = await showConfirmDialog(context,
       title: 'Hapus Barang',
@@ -71,44 +81,66 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
-    return Column(
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Expanded(child: SearchField(hintText: 'Cari barang...', onChanged: (v) => setState(() => _search = v))),
-              const SizedBox(width: 8),
-              Text('${filtered.length} data', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-            ],
-          ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(child: SearchField(hintText: 'Cari barang...', onChanged: (v) => setState(() => _search = v))),
+                  const SizedBox(width: 8),
+                  Text('${filtered.length} data', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
+                      ? EmptyState(
+                          icon: Icons.category_rounded,
+                          title: _search.isEmpty ? 'Belum ada barang' : 'Tidak ditemukan',
+                          action: _search.isEmpty ? ElevatedButton.icon(
+                            onPressed: () => _showForm(),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Tambah Barang'),
+                          ) : null,
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadData,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 8),
+                            itemBuilder: (_, i) => _buildCard(filtered[i]),
+                          ),
+                        ),
+            ),
+          ],
         ),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
-                  ? EmptyState(
-                      icon: Icons.category_rounded,
-                      title: _search.isEmpty ? 'Belum ada barang' : 'Tidak ditemukan',
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _loadData,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _buildCard(filtered[i]),
-                      ),
-                    ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showForm(),
+            child: const Icon(Icons.add_rounded),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildCard(MaterialItem m) {
-    final defaultPrice = m.harga.isNotEmpty ? m.harga.first : null;
+    final defaultPrice = m.harga.isNotEmpty
+        ? m.harga.firstWhere((p) => p.isDefault, orElse: () => m.harga.first)
+        : null;
     return Card(
-      child: Padding(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showForm(existing: m),
+        child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,6 +192,7 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
               Text('Stok: ${m.stok.toStringAsFixed(0)} ${m.satuanNama ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ],
           ],
+        ),
         ),
       ),
     );

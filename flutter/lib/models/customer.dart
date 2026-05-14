@@ -35,7 +35,7 @@ class Customer {
       email: json['email'] as String?,
       telepon: json['telepon'] as String?,
       alamat: json['alamat'] as String?,
-      isMember: (json['is_member'] ?? false) as bool,
+      isMember: json['is_member'] == true || json['member_status'] == 1 || json['member_status'] == true,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
     );
