@@ -3,6 +3,12 @@ import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "gp_session";
 
+function extractBearerToken(header: string | null): string | undefined {
+  if (!header) return undefined;
+  const match = header.match(/^Bearer\s+(\S+)$/i);
+  return match?.[1];
+}
+
 const PUBLIC_PREFIXES = [
   "/auth/login",
   "/api/auth/login",
@@ -54,7 +60,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const token =
+    request.cookies.get(SESSION_COOKIE)?.value ??
+    extractBearerToken(request.headers.get("authorization"));
   if (!token) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -81,3 +81,15 @@ database/gemiprint.db
 
 # Windows accidental redirection artifacts (e.g. `cmd 2>nul`)
 nul
+
+# Flutter
+flutter/.dart_tool/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/build/
+flutter/.packages
+flutter/pubspec.lock
+flutter/android/.gradle/
+flutter/android/app/build/
+flutter/android/local.properties
+flutter/web/favicon.png

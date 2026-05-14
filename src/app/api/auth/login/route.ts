@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: loginStatus(msg) });
     }
 
-    await createSessionWithUser({
+    const token = await createSessionWithUser({
       uid: result.user.id,
       role: result.user.role,
       nama_pengguna: result.user.nama_pengguna,
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: result.user,
+      token,
     });
   } catch (error) {
     return apiError("Terjadi kesalahan saat login", 500, error);

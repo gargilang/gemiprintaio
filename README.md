@@ -2,29 +2,62 @@
 
 A full-featured business management application for printing companies — covering POS (Point of Sale), material inventory, customer & vendor management, production & finishing, purchasing, accounts payable/receivable, cashbook (income/expenses), and reporting with PDF export.
 
-Available on two platforms:
+Available on four platforms:
 
-| Platform | Stack | Storage |
-|----------|-------|---------|
-| **Web** | Next.js on Vercel | Supabase (cloud Postgres) |
-| **Desktop** | Tauri + Next.js standalone | Local SQLite + sync to Supabase |
+| Platform | Stack | Storage | URL / Distribution |
+|----------|-------|---------|--------------------|
+| **Web** | Next.js on Vercel | Supabase (cloud Postgres) | [app.gemiprint.com](https://app.gemiprint.com) |
+| **Desktop** | Tauri + Next.js standalone | Local SQLite + sync to Supabase | [GitHub Releases](https://github.com/gargilang/gemiprintaio/releases) |
+| **Mobile** | Flutter (Android) | Online-only via Next.js API | Google Play (coming soon) |
+| **Mobile Web** | Flutter Web | Online-only via Next.js API | [m.gemiprint.com](https://m.gemiprint.com) (coming soon) |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Supabase (Postgres)                        │
+│                    Cloud database + Row Level Security              │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+          ┌─────────▼─────────┐ ┌─────────▼─────────┐
+          │   Next.js API     │ │   Supabase Direct  │
+          │ app.gemiprint.com │ │   (service-role)   │
+          │  (Vercel)         │ │                    │
+          └──┬──────┬──────┬──┘ └─────────┬──────────┘
+             │      │      │              │
+     ┌───────▼┐ ┌───▼────┐ ┌──▼──────┐ ┌──▼──────────────┐
+     │  Web   │ │Flutter │ │Flutter  │ │  Tauri Desktop  │
+     │  App   │ │Android │ │  Web    │ │  (Windows)      │
+     │(React) │ │  App   │ │  App    │ │                 │
+     └────────┘ └────────┘ └─────────┘ │ Next.js embedded│
+                                       │ + SQLite local  │
+                                       │ + sync engine   │
+                                       └─────────────────┘
+```
+
+**How each platform connects:**
+
+- **Web App** — React SPA served by Next.js; API routes on the same server talk to Supabase using the service-role key. Users never touch Supabase directly.
+- **Desktop App** — Tauri bundles a standalone Next.js server and a local SQLite database. It works offline-first and syncs to Supabase when connectivity is available.
+- **Flutter Mobile & Mobile Web** — Connects exclusively through the Next.js API at `app.gemiprint.com`. This ensures the app works even on networks where `supabase.com` is blocked. Authentication uses JWT Bearer tokens.
 
 ## About This Project
 
 This repository was built entirely using AI coding agents — [GitHub Copilot](https://github.com/features/copilot) in the early stages and [Cursor](https://www.cursor.com/) in the later stages. I am not a programmer. I conceived, directed, and managed the entire product, using modern AI-assisted development tools to turn my vision into a fully working, production-grade application. This project serves as a demonstration of what is possible when domain expertise meets the right tools — no traditional coding background required.
 
-## Download Desktop App
+## Download
 
-> **Windows (64-bit):** [gemiprint_0.1.0_x64_en-US.msi](https://github.com/gargilang/gemiprintaio/releases/latest)
+> **Desktop (Windows 64-bit):** [gemiprint_0.1.0_x64_en-US.msi](https://github.com/gargilang/gemiprintaio/releases/latest)
 
-Visit the [Releases](https://github.com/gargilang/gemiprintaio/releases) page for all versions.
-
-The desktop app automatically notifies users when a new version is available.
+Visit the [Releases](https://github.com/gargilang/gemiprintaio/releases) page for all versions. The desktop app automatically notifies users when a new version is available.
 
 ## Development Prerequisites
 
 - [Node.js](https://nodejs.org/) v22+
 - [Rust](https://rustup.rs/) (for desktop builds)
+- [Flutter](https://flutter.dev/) 3.x+ (for mobile/mobile-web builds)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (for database migrations)
 - [GitHub CLI](https://cli.github.com/) (for publishing releases)
 
@@ -35,10 +68,13 @@ The desktop app automatically notifies users when a new version is available.
 git clone https://github.com/gargilang/gemiprintaio.git
 cd gemiprintaio
 
-# 2. Install dependencies
+# 2. Install web/desktop dependencies
 npm install
 
-# 3. Create environment file
+# 3. Install Flutter dependencies
+cd flutter && flutter pub get && cd ..
+
+# 4. Create environment file
 cp .env.example .env.local   # then fill in the values
 ```
 
@@ -79,6 +115,12 @@ npm run tauri:dev
 
 # Both simultaneously
 npm run dev:all
+
+# Flutter mobile (requires a connected device or emulator)
+cd flutter && flutter run
+
+# Flutter mobile pointed at production API
+cd flutter && flutter run --dart-define=API_BASE_URL=https://app.gemiprint.com
 ```
 
 ## Build
@@ -96,6 +138,24 @@ npm run tauri:build
 Output:
 - `src-tauri/target/release/bundle/msi/gemiprint_x.x.x_x64_en-US.msi`
 - `src-tauri/target/release/bundle/nsis/gemiprint_x.x.x_x64-setup.exe`
+
+### Flutter Mobile (Android APK)
+
+```bash
+cd flutter
+flutter build apk --release --dart-define=API_BASE_URL=https://app.gemiprint.com
+```
+
+Output: `flutter/build/app/outputs/flutter-apk/app-release.apk`
+
+### Flutter Web
+
+```bash
+cd flutter
+flutter build web --dart-define=API_BASE_URL=https://app.gemiprint.com
+```
+
+Output: `flutter/build/web/`
 
 ## Releasing a Desktop Update
 
@@ -140,6 +200,15 @@ gemiprintaio/
 │   ├── src/main.rs         # Entry point, server lifecycle, sync
 │   ├── src/sync.rs         # Offline-first sync engine
 │   └── tauri.conf.json     # Tauri configuration
+├── flutter/                # Flutter mobile & mobile-web app
+│   ├── lib/
+│   │   ├── core/           # Config, theme, router, constants
+│   │   ├── features/       # Feature pages (auth, pos, etc.)
+│   │   ├── models/         # Dart data models
+│   │   ├── providers/      # Riverpod state management
+│   │   ├── services/       # API client & feature services
+│   │   └── widgets/        # Shared UI components
+│   └── pubspec.yaml        # Flutter dependencies
 ├── database/               # SQLite template database
 ├── supabase/               # Supabase migrations
 ├── scripts/                # Build & release scripts
@@ -151,6 +220,7 @@ gemiprintaio/
 
 - **Frontend:** Next.js 16, React 19, Tailwind CSS 4
 - **Desktop:** Tauri 2, Rust
+- **Mobile:** Flutter, Riverpod, GoRouter, Material 3
 - **Database:** SQLite (desktop, via better-sqlite3), Supabase Postgres (web + cloud sync)
 - **Auth:** JWT sessions with bcrypt password hashing
 - **PDF:** jsPDF + jspdf-autotable for report printing

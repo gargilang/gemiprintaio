@@ -41,7 +41,10 @@ export async function createSession(userId: string, role: string) {
  * Create session JWT with full user info embedded.
  * Lets /api/auth/me return user data without hitting the DB.
  */
-export async function createSessionWithUser(user: SessionUserClaims) {
+export async function createSessionWithUser(
+  user: SessionUserClaims,
+  options?: { skipCookie?: boolean }
+): Promise<string> {
   const jwt = await new SignJWT({
     uid: user.uid,
     role: user.role,
@@ -54,14 +57,18 @@ export async function createSessionWithUser(user: SessionUserClaims) {
     .setExpirationTime("7d")
     .sign(getEncodedSecret());
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, jwt, {
-    httpOnly: true,
-    secure: cookieSecure(),
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/",
-  });
+  if (!options?.skipCookie) {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, jwt, {
+      httpOnly: true,
+      secure: cookieSecure(),
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+  }
+
+  return jwt;
 }
 
 export type SessionPayload = {
