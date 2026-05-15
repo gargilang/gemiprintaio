@@ -9,6 +9,48 @@ function extractBearerToken(header: string | null): string | undefined {
   return match?.[1];
 }
 
+/** Origins allowed to call the API from a browser (Flutter web, etc.). */
+function isAllowedCorsOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  const extras =
+    process.env.FLUTTER_WEB_ORIGINS?.split(/[\s,]+/).filter(Boolean) ?? [];
+  if (extras.includes(origin)) return true;
+  if (origin === "https://m.gemiprint.com") return true;
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const u = new URL(origin);
+      if (
+        u.protocol === "http:" &&
+        (u.hostname === "localhost" || u.hostname === "127.0.0.1")
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function applyApiCors(request: NextRequest, response: NextResponse): NextResponse {
+  if (!request.nextUrl.pathname.startsWith("/api/")) return response;
+  const origin = request.headers.get("origin");
+  if (origin && isAllowedCorsOrigin(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Vary", "Origin");
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Type, Accept"
+    );
+    response.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    );
+    response.headers.set("Access-Control-Max-Age", "86400");
+  }
+  return response;
+}
+
 const PUBLIC_PREFIXES = [
   "/auth/login",
   "/api/auth/login",
@@ -46,6 +88,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // CORS preflight for Flutter web and other browser clients on another origin.
+  if (
+    request.method === "OPTIONS" &&
+    pathname.startsWith("/api/") &&
+    isAllowedCorsOrigin(request.headers.get("origin"))
+  ) {
+    return applyApiCors(
+      request,
+      new NextResponse(null, { status: 204 })
+    );
+  }
+
   if (
     host.startsWith("app.gemiprint.com") &&
     !pathname.startsWith("/api/") &&
@@ -55,7 +109,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return applyApiCors(request, NextResponse.next());
   }
 
   const secret = getSecret();
@@ -67,7 +121,10 @@ export async function middleware(request: NextRequest) {
       );
     }
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Server misconfigured" }, { status: 503 });
+      return applyApiCors(
+        request,
+        NextResponse.json({ error: "Server misconfigured" }, { status: 503 })
+      );
     }
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
@@ -77,7 +134,10 @@ export async function middleware(request: NextRequest) {
     extractBearerToken(request.headers.get("authorization"));
   if (!token) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return applyApiCors(
+        request,
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
     }
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
@@ -94,12 +154,18 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-session-uid", uid);
     requestHeaders.set("x-session-role", role);
 
-    return NextResponse.next({
-      request: { headers: requestHeaders },
-    });
+    return applyApiCors(
+      request,
+      NextResponse.next({
+        request: { headers: requestHeaders },
+      })
+    );
   } catch {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Session invalid" }, { status: 401 });
+      return applyApiCors(
+        request,
+        NextResponse.json({ error: "Session invalid" }, { status: 401 })
+      );
     }
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }

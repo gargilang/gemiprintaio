@@ -23,11 +23,15 @@ export default function Home() {
     };
   }, [router]);
 
+  /* Full viewport: not inside MainShell (see layout). Spinner matches dashboard-style loaders. */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a1b3d] via-[#2266ff] to-[#00afef]">
+    <div className="min-h-[100dvh] flex items-center justify-center px-4">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
-        <p className="mt-4 text-white font-semibold">Loading...</p>
+        <div
+          className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-[#00afef] border-t-transparent"
+          aria-hidden
+        />
+        <p className="mt-4 text-[#0a1b3d] font-semibold font-twcenmt">Memuat…</p>
       </div>
     </div>
   );

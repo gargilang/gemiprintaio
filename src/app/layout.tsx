@@ -28,8 +28,9 @@ export default function RootLayout({
   useAutoSync();
   useAppUpdater();
 
-  // Don't wrap login/auth pages with MainShell
+  // Full-viewport routes: no sidebar (auth, and "/" which only redirects).
   const isAuthPage = pathname?.startsWith("/auth/");
+  const isRootRedirect = pathname === "/" || pathname === "";
 
   return (
     <html lang="id" suppressHydrationWarning>
@@ -44,7 +45,11 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <IndonesianNativeValidity />
         <SwrProvider>
-          {isAuthPage ? children : <MainShell>{children}</MainShell>}
+          {isAuthPage || isRootRedirect ? (
+            children
+          ) : (
+            <MainShell>{children}</MainShell>
+          )}
         </SwrProvider>
       </body>
     </html>

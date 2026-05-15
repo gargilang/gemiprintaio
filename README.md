@@ -121,7 +121,28 @@ cd flutter && flutter run
 
 # Flutter mobile pointed at production API
 cd flutter && flutter run --dart-define=API_BASE_URL=https://app.gemiprint.com
+
+# Flutter web — local dev (opens Microsoft Edge on http://localhost:8080 by default).
+# Requires Chrome? No — use `-d edge`. Install Chrome only if you prefer `-d chrome`.
+# Device toolbar in Edge: F12 → Toggle device emulation.
+npm run dev:flutter-web
+
+# Same from Git Bash / MinGW64 / WSL (repo root):
+bash scripts/flutter-web-dev.sh
+
+# Web server only (no auto-open browser); open http://localhost:8080/login in Cursor / Edge yourself.
+cd flutter && flutter run -d web-server --web-port=8080
+
+# If a browser shows a blank page (some embedded WebViews), try HTML renderer:
+cd flutter && flutter run -d edge --web-port=8080 --web-renderer html
+
+# Optional: local Next.js API (may need CORS if browser blocks cross-origin)
+cd flutter && flutter run -d edge --web-port=8080 --dart-define=API_BASE_URL=http://localhost:3000
 ```
+
+**Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka **`http://localhost:8080/login`** atau **`http://localhost:8080/`** (akan redirect). URL `/#/login` bisa memunculkan layar putih.
+
+Login ke API production dari `localhost` membutuhkan header **CORS** di server Next.js — sudah ditambahkan di `src/middleware.ts`; deploy ke Vercel supaya `app.gemiprint.com` mengizinkan origin `http://localhost:8080`.
 
 ## Build
 

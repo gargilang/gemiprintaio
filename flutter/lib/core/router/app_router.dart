@@ -33,6 +33,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Path-based URLs on web (not #/...). "/" alone must redirect or new tabs show a blank screen.
+      GoRoute(
+        path: '/',
+        redirect: (context, state) => '/dashboard',
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
