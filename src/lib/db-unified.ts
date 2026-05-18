@@ -1000,7 +1000,9 @@ class UnifiedDatabase {
     }
     const placeholders = columns.map(() => "?").join(", ");
 
-    const sql = `INSERT INTO ${table} (${columns.join(
+    // OR IGNORE: if Supabase failed and fell back here, a prior attempt may have
+    // already written the row — silently skip the duplicate rather than crashing.
+    const sql = `INSERT OR IGNORE INTO ${table} (${columns.join(
       ", "
     )}) VALUES (${placeholders})`;
 
