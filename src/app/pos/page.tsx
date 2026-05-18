@@ -174,7 +174,8 @@ export default function POSPage() {
   const customers = safePos.customers;
   const materials = safePos.materials;
   const sales = safePos.sales;
-  const [loading, setLoading] = useState(posInitLoading);
+  const [refreshing, setRefreshing] = useState(false);
+  const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
     (partial: Partial<POSInitData>) => {
       void mutatePosInit(
@@ -303,14 +304,15 @@ export default function POSPage() {
   }, [selectedMaterial]);
 
   const loadAllData = async () => {
-    setLoading(true);
+    setRefreshing(true);
     try {
       await mutatePosInit();
     } catch (error) {
       console.error("Error loading all data:", error);
       showMsg("error", "Gagal memuat data POS");
+    } finally {
+      setRefreshing(false);
     }
-    setLoading(false);
   };
 
   const showMsg = (type: "success" | "error", message: string) => {
@@ -607,7 +609,7 @@ export default function POSPage() {
     bayar: number,
     kembalian: number
   ) => {
-    setLoading(true);
+    setRefreshing(true);
     try {
       const result = await createSaleAction({
         pelanggan_id: selectedCustomer?.id,
@@ -678,8 +680,9 @@ export default function POSPage() {
     } catch (error: any) {
       console.error("Error processing checkout:", error);
       showMsg("error", "Terjadi kesalahan saat memproses transaksi");
+    } finally {
+      setRefreshing(false);
     }
-    setLoading(false);
   };
 
   if (!currentUser) {
@@ -1203,7 +1206,7 @@ export default function POSPage() {
           </div>
           <SalesHistoryTable
             sales={sales}
-            loading={loading}
+            loading={historyLoading}
             onDelete={handleDeleteSale}
             onRevert={handleRevertSale}
           />
