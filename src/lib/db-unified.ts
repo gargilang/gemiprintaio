@@ -214,6 +214,11 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       role_type TEXT NOT NULL DEFAULT 'other',
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
+      profit_formula TEXT,
+      share_divisor INTEGER DEFAULT 3,
+      bagi_hasil_column TEXT,
+      kasbon_column TEXT,
+      pribadi_kategori TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       sync_status TEXT DEFAULT 'pending',
@@ -238,6 +243,61 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL
     );
   `);
+
+  const fpCols = (
+    db.prepare("PRAGMA table_info(finance_participants)").all() as Array<{
+      name: string;
+    }>
+  ).map((c) => c.name);
+  if (fpCols.length > 0) {
+    if (!fpCols.includes("profit_formula")) {
+      db.exec(`ALTER TABLE finance_participants ADD COLUMN profit_formula TEXT`);
+    }
+    if (!fpCols.includes("share_divisor")) {
+      db.exec(
+        `ALTER TABLE finance_participants ADD COLUMN share_divisor INTEGER DEFAULT 3`
+      );
+    }
+    if (!fpCols.includes("bagi_hasil_column")) {
+      db.exec(
+        `ALTER TABLE finance_participants ADD COLUMN bagi_hasil_column TEXT`
+      );
+    }
+    if (!fpCols.includes("kasbon_column")) {
+      db.exec(`ALTER TABLE finance_participants ADD COLUMN kasbon_column TEXT`);
+    }
+    if (!fpCols.includes("pribadi_kategori")) {
+      db.exec(
+        `ALTER TABLE finance_participants ADD COLUMN pribadi_kategori TEXT`
+      );
+    }
+    db.exec(`
+      UPDATE finance_participants SET
+        profit_formula = 'third_minus_kasbon', share_divisor = 3,
+        bagi_hasil_column = 'bagi_hasil_anwar', kasbon_column = 'kasbon_anwar',
+        pribadi_kategori = 'PRIBADI-A'
+      WHERE id = 'fin-participant-anwar' AND profit_formula IS NULL;
+      UPDATE finance_participants SET
+        profit_formula = 'third_minus_kasbon', share_divisor = 3,
+        bagi_hasil_column = 'bagi_hasil_suri', kasbon_column = 'kasbon_suri',
+        pribadi_kategori = 'PRIBADI-S'
+      WHERE id = 'fin-participant-suri' AND profit_formula IS NULL;
+      UPDATE finance_participants SET
+        profit_formula = 'incremental_investor', share_divisor = 3,
+        bagi_hasil_column = 'bagi_hasil_gemi'
+      WHERE id = 'fin-participant-gemi' AND profit_formula IS NULL;
+      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 1'
+      WHERE id = 'fin-participant-anwar' AND display_name IN ('Anwar', 'anwar', 'ANWAR');
+      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 2'
+      WHERE id = 'fin-participant-suri' AND display_name IN ('Suri', 'suri', 'SURI');
+      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 3'
+      WHERE id = 'fin-participant-gemi' AND display_name IN ('Gemi', 'gemi', 'GEMI');
+      UPDATE finance_participants SET display_name = 'Karyawan kasbon 1'
+      WHERE id = 'fin-participant-cahaya' AND display_name IN ('Cahaya', 'cahaya', 'CAHAYA');
+      UPDATE finance_participants SET display_name = 'Karyawan kasbon 2'
+      WHERE id = 'fin-participant-dinil' AND display_name IN ('Dinil', 'dinil', 'DINIL');
+    `);
+  }
 
   for (const tableName of SYNC_V2_TABLES) {
     const tableExists = db

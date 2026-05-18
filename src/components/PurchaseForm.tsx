@@ -480,8 +480,18 @@ export default function PurchaseForm({
                             parseFloat(e.target.value) || 0
                           )
                         }
-                        min="0.01"
-                        step="0.01"
+                        onKeyDown={(e) => {
+                          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
+                            return;
+                          }
+                          e.preventDefault();
+                          const delta = e.key === "ArrowUp" ? 1 : -1;
+                          const next = Math.max(0, (item.jumlah || 0) + delta);
+                          handleItemChange(index, "jumlah", next);
+                        }}
+                        min="0"
+                        step="any"
+                        inputMode="decimal"
                         className="w-full px-2 py-1 text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         required
                       />

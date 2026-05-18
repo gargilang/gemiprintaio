@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import POSCart from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
@@ -141,13 +141,21 @@ const EMPTY_POS_INIT: POSInitData = {
   sales: [],
 };
 
+/** Urutan tampilan kategori (selaras dengan kategori_barang default). */
+const KATEGORI_ORDER = [
+  "Media Cetak",
+  "Kertas",
+  "Kertas Foto",
+  "Merchandise",
+  "Substrat UV",
+  "Tinta & Consumables",
+  "Finishing",
+  "Lain-lain",
+];
+
 export default function POSPage() {
   const router = useRouter();
-  const initialUser =
-    typeof window !== "undefined"
-      ? (getCachedSessionUser() as User | null)
-      : null;
-  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Data — cached via SWR so it shows up instantly on re-visit.
   const {
@@ -246,6 +254,7 @@ export default function POSPage() {
   // Search states
   const [customerSearch, setCustomerSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
+  const [materialCategoryFilter, setMaterialCategoryFilter] = useState("ALL");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerIndex, setSelectedCustomerIndex] = useState(-1);
 
@@ -253,6 +262,9 @@ export default function POSPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const cached = getCachedSessionUser();
+    if (cached) setCurrentUser(cached as User);
+
     (async () => {
       const user = await fetchSessionUser();
       if (cancelled) return;
@@ -260,7 +272,7 @@ export default function POSPage() {
         router.push("/auth/login");
         return;
       }
-      setCurrentUser(user);
+      setCurrentUser(user as User);
     })();
     return () => {
       cancelled = true;
@@ -310,9 +322,38 @@ export default function POSPage() {
     c.nama.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
-  const filteredMaterials = materials.filter((m) =>
-    m.nama.toLowerCase().includes(materialSearch.toLowerCase())
-  );
+  const materialCategories = useMemo(() => {
+    const names = new Set<string>();
+    for (const m of materials) {
+      if (m.kategori_nama) names.add(m.kategori_nama);
+    }
+    return [...names].sort((a, b) => {
+      const ia = KATEGORI_ORDER.indexOf(a);
+      const ib = KATEGORI_ORDER.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b, "id");
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }, [materials]);
+
+  const filteredMaterials = useMemo(() => {
+    const q = materialSearch.trim().toLowerCase();
+    return materials.filter((m) => {
+      if (
+        materialCategoryFilter !== "ALL" &&
+        m.kategori_nama !== materialCategoryFilter
+      ) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        m.nama.toLowerCase().includes(q) ||
+        m.kategori_nama?.toLowerCase().includes(q) ||
+        false
+      );
+    });
+  }, [materials, materialSearch, materialCategoryFilter]);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -655,27 +696,28 @@ export default function POSPage() {
         {/* POS Interface */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Product Selection */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Customer Selection */}
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-6 border border-[#00afef]/30">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <svg
-                  className="w-5 h-5 text-[#00afef]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-                Pelanggan
-              </h3>
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
+              <div className="flex items-center gap-3">
+                <h3 className="shrink-0 text-base font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap">
+                  <svg
+                    className="w-5 h-5 text-[#00afef]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  Pelanggan
+                </h3>
 
-              <div className="relative" ref={customerDropdownRef}>
+                <div className="relative flex-1 min-w-0" ref={customerDropdownRef}>
                 <input
                   type="text"
                   value={customerSearch}
@@ -687,7 +729,7 @@ export default function POSPage() {
                   onFocus={() => setShowCustomerDropdown(true)}
                   onKeyDown={handleCustomerKeyDown}
                   placeholder="Cari atau Walk-in Customer..."
-                  className="w-full px-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
 
                 {showCustomerDropdown && filteredCustomers.length > 0 && (
@@ -729,10 +771,11 @@ export default function POSPage() {
 
                 <button
                   onClick={() => setShowCustomerModal(true)}
-                  className="absolute right-2 top-2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
                 >
                   + Pelanggan Baru
                 </button>
+                </div>
               </div>
 
               {selectedCustomer && (
@@ -775,9 +818,9 @@ export default function POSPage() {
             </div>
 
             {/* Material Selection */}
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-6 border border-[#00afef]/30">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
+              <div className="flex items-center gap-3 mb-3">
+                <h3 className="shrink-0 text-base font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap">
                   <svg
                     className="w-5 h-5 text-[#00afef]"
                     fill="none"
@@ -793,23 +836,10 @@ export default function POSPage() {
                   </svg>
                   Pilih Barang
                 </h3>
-                <div className="text-xs text-gray-500 bg-cyan-50 px-3 py-1 rounded-full">
-                  <svg
-                    className="w-3 h-3 inline mr-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  Populer
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                {/* Search Filter */}
-                <div className="relative">
+                <div className="relative flex-1 min-w-0">
                   <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -826,15 +856,16 @@ export default function POSPage() {
                     value={materialSearch}
                     onChange={(e) => setMaterialSearch(e.target.value)}
                     placeholder="Filter barang..."
-                    className="w-full pl-10 pr-4 py-3 border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                    className="w-full pl-9 pr-8 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
                   />
                   {materialSearch && (
                     <button
+                      type="button"
                       onClick={() => setMaterialSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="w-4 h-4"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -850,8 +881,62 @@ export default function POSPage() {
                   )}
                 </div>
 
-                {/* Material Grid */}
-                <div className="max-h-[400px] overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2">
+                <div className="shrink-0 text-xs text-gray-500 bg-cyan-50 px-3 py-1 rounded-full whitespace-nowrap">
+                  <svg
+                    className="w-3 h-3 inline mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Populer
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Quick filter kategori — horizontal scroll saat kategori banyak */}
+                {materialCategories.length > 0 && (
+                  <div
+                    className="overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#00afef]/40"
+                    role="group"
+                    aria-label="Filter kategori barang"
+                  >
+                    <div className="flex flex-nowrap gap-2 w-max">
+                    <button
+                      type="button"
+                      onClick={() => setMaterialCategoryFilter("ALL")}
+                      className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                        materialCategoryFilter === "ALL"
+                          ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-[#00afef]/50 hover:bg-cyan-50/80"
+                      }`}
+                    >
+                      Semua
+                    </button>
+                    {materialCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setMaterialCategoryFilter(cat)}
+                        className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                          materialCategoryFilter === cat
+                            ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-[#00afef]/50 hover:bg-cyan-50/80"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Material Grid — tinggi dibatasi; lebih kecil saat barang dipilih agar form edit terlihat */}
+                <div
+                  className={`overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 transition-[max-height] duration-200 ${
+                    selectedMaterial ? "max-h-[160px]" : "max-h-[240px]"
+                  }`}
+                >
                   <div className="grid grid-cols-2 gap-2">
                     {filteredMaterials.map((material) => (
                       <button
@@ -900,18 +985,20 @@ export default function POSPage() {
                         />
                       </svg>
                       <p className="font-semibold">Tidak ada barang</p>
-                      <p className="text-sm">Coba ubah kata kunci pencarian</p>
+                      <p className="text-sm">
+                        Coba ubah pencarian atau pilih kategori lain
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {selectedMaterial && (
-                  <div className="p-4 bg-white rounded-lg border-2 border-[#00afef]/30 shadow-sm">
-                    <div className="font-bold text-gray-800 mb-4">
+                  <div className="p-3 bg-white rounded-lg border-2 border-[#00afef]/30 shadow-sm">
+                    <div className="font-bold text-gray-800 text-sm mb-3">
                       {selectedMaterial.nama}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       {/* Left: Material Details & Unit */}
                       <div className="space-y-3">
                         <div>

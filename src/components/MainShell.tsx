@@ -34,9 +34,9 @@ const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const initialUser = typeof window !== "undefined" ? getCachedSessionUser() : null;
-  const [user, setUser] = useState<SessionUser | null>(initialUser);
-  const [loading, setLoading] = useState(initialUser === null);
+  // Jangan baca sessionStorage di useState — SSR dan client harus render sama (null) dulu.
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {}
   );
@@ -76,18 +76,26 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+
+    const cached = getCachedSessionUser();
+    if (cached?.aktif_status) {
+      setUser(cached);
+      setAuthReady(true);
+    }
+
     (async () => {
       const userData = await fetchSessionUser();
       if (cancelled) return;
       if (!userData || !userData.aktif_status) {
         setUser(null);
-        setLoading(false);
+        setAuthReady(true);
         router.push("/auth/login");
         return;
       }
       setUser(userData);
-      setLoading(false);
+      setAuthReady(true);
     })();
+
     return () => {
       cancelled = true;
     };
@@ -176,8 +184,8 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [router]);
 
-  // Don't render anything while checking auth to prevent flicker
-  if (loading || !user) {
+  // Samakan output SSR & hydration pertama; tampilkan shell setelah mount + auth.
+  if (!authReady || !user) {
     return null;
   }
 

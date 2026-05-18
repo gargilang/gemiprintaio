@@ -6,8 +6,13 @@ import {
   deleteFinanceCategory,
   deleteFinanceMetricMapping,
   deleteFinanceParticipant,
+  removeBagiHasilPartner,
+  setupBagiHasilPartner,
   updateFinanceMetricMapping,
+  updateProfitShareParticipant,
 } from "@/lib/services/finance-config-service";
+import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import type { ProfitFormula } from "@/lib/profit-share-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,12 +82,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (action === "setup_bagi_hasil_partner") {
+      const result = await setupBagiHasilPartner({
+        display_name: body.display_name,
+        profit_formula: body.profit_formula as ProfitFormula | undefined,
+        share_divisor: body.share_divisor,
+        source_column: body.source_column,
+      });
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true, data: result.data });
+    }
+
+    if (action === "update_profit_share_partner") {
+      const result = await updateProfitShareParticipant(body.id, {
+        profit_formula: body.profit_formula as ProfitFormula,
+        share_divisor: Number(body.share_divisor) || 3,
+      });
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "remove_bagi_hasil_partner") {
+      const result = await removeBagiHasilPartner(body.participant_id);
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: "Action tidak dikenali" }, { status: 400 });
   } catch (error) {
     console.error("POST /api/finance/config/manage error:", error);
-    return NextResponse.json(
-      { error: "Gagal memproses perubahan konfigurasi" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Gagal memproses perubahan konfigurasi";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

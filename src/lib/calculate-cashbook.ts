@@ -12,6 +12,7 @@ import {
   computeCashbookRecalculationUpdates,
   sortCashbookRowsForRecalc,
 } from "./cashbook-recalc-logic";
+import { getProfitSharePartnersForRecalc } from "./services/finance-config-service";
 
 interface CashBookEntry extends CashbookRecalcInputRow {}
 
@@ -33,7 +34,8 @@ export async function recalculateCashbook(
   }
 
   const sorted = sortCashbookRowsForRecalc(rows);
-  const batch = computeCashbookRecalculationUpdates(sorted);
+  const profitPartners = await getProfitSharePartnersForRecalc();
+  const batch = computeCashbookRecalculationUpdates(sorted, profitPartners);
 
   for (const { id, updates } of batch) {
     const keys = Object.keys(updates);

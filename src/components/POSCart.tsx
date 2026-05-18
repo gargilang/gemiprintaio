@@ -51,7 +51,6 @@ interface POSCartProps {
   onGetFinishingOptions: () => Promise<FinishingOption[]>;
 }
 
-// Pecahan uang Indonesia
 const denominations = [
   { value: 100000, label: "100rb" },
   { value: 50000, label: "50rb" },
@@ -105,6 +104,7 @@ export default function POSCart({
   const kurang = Math.max(0, total - bayar);
   const changeBreakdown = calculateChange(kembalian);
   const [showChangeDetail, setShowChangeDetail] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [editingFinishingIndex, setEditingFinishingIndex] = useState<
     number | null
   >(null);
@@ -113,36 +113,37 @@ export default function POSCart({
     {
       value: "CASH",
       label: "Cash",
-      icon: <CashIcon size={18} className="text-black" />,
+      icon: <CashIcon size={16} className="text-black" />,
     },
     {
       value: "TRANSFER",
       label: "Transfer",
-      icon: <TransferIcon size={18} className="text-black" />,
+      icon: <TransferIcon size={16} className="text-black" />,
     },
     {
       value: "QRIS",
       label: "QRIS",
-      icon: <QRISIcon size={18} className="text-black" />,
+      icon: <QRISIcon size={16} className="text-black" />,
     },
     {
       value: "DEBIT",
-      label: "Debit/Kredit",
-      icon: <CardIcon size={18} className="text-black" />,
+      label: "Debit",
+      icon: <CardIcon size={16} className="text-black" />,
     },
     {
       value: "NET30",
-      label: "NET 30",
-      icon: <CalendarIcon size={18} className="text-black" />,
+      label: "NET30",
+      icon: <CalendarIcon size={16} className="text-black" />,
     },
   ];
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl shadow-2xl p-6 border-2 border-gray-200 sticky top-6">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gray-300">
-        <div className="bg-gradient-to-br from-[#00afef] to-[#0088cc] p-3 rounded-lg shadow-md">
+    <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl shadow-2xl border-2 border-gray-200 sticky top-6 flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden">
+      {/* Header — satu baris ringkas */}
+      <div className="shrink-0 flex items-center gap-2 px-4 pt-4 pb-3 border-b border-gray-200">
+        <div className="bg-gradient-to-br from-[#00afef] to-[#0088cc] p-2 rounded-lg shadow-sm">
           <svg
-            className="w-8 h-8 text-white"
+            className="w-5 h-5 text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -155,18 +156,28 @@ export default function POSCart({
             />
           </svg>
         </div>
-        <div>
-          <h3 className="text-2xl font-bold text-gray-800">Keranjang</h3>
-          <p className="text-sm text-gray-600">{cart.length} item</p>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold text-gray-800 leading-tight">
+            Keranjang
+          </h3>
+          <p className="text-xs text-gray-500">{cart.length} item</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+            Total
+          </p>
+          <p className="text-lg font-bold text-[#00afef] leading-tight">
+            Rp {total.toLocaleString("id-ID")}
+          </p>
         </div>
       </div>
 
-      {/* Cart Items */}
-      <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto">
+      {/* Daftar item — satu-satunya area yang scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2">
         {cart.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-8 text-gray-500">
             <svg
-              className="w-16 h-16 mx-auto mb-3 opacity-50"
+              className="w-12 h-12 mx-auto mb-2 opacity-50"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -178,23 +189,21 @@ export default function POSCart({
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
               />
             </svg>
-            <p className="font-semibold">Keranjang Kosong</p>
-            <p className="text-sm mt-1">
-              Tambahkan barang untuk memulai transaksi
-            </p>
+            <p className="font-semibold text-sm">Keranjang Kosong</p>
+            <p className="text-xs mt-1">Tambahkan barang untuk memulai</p>
           </div>
         ) : (
           cart.map((item, index) => (
             <div
               key={index}
-              className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-[#00afef]/50 hover:shadow-md transition-all"
+              className="bg-white rounded-lg p-3 border border-gray-200 hover:border-[#00afef]/50 transition-all"
             >
-              <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-800 truncate">
+                  <div className="font-semibold text-sm text-gray-800 truncate">
                     {item.barang_nama}
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-xs text-gray-600 mt-0.5">
                     {item.butuh_dimensi && item.panjang && item.lebar ? (
                       <span>
                         {item.panjang} × {item.lebar} m
@@ -207,21 +216,21 @@ export default function POSCart({
                         {item.jumlah} {item.nama_satuan}
                       </span>
                     )}
-                    {" @ "}
-                    <span className="font-semibold">
-                      Rp {item.harga_satuan.toLocaleString("id-ID")}
-                    </span>
+                    {" @ Rp "}
+                    {item.harga_satuan.toLocaleString("id-ID")}
                   </div>
-                  <div className="text-lg font-bold text-[#00afef] mt-2">
+                  <div className="text-sm font-bold text-[#00afef] mt-1">
                     Rp {item.subtotal.toLocaleString("id-ID")}
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => onRemoveItem(index)}
-                  className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg transition-all flex-shrink-0 text-white"
+                  className="bg-red-500/80 hover:bg-red-500 p-1.5 rounded-md transition-all shrink-0 text-white"
+                  aria-label="Hapus item"
                 >
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -236,17 +245,13 @@ export default function POSCart({
                 </button>
               </div>
 
-              {/* Finishing Section */}
               {item.finishing && item.finishing.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className="text-xs font-semibold text-orange-700 mb-1">
-                    Finishing:
-                  </div>
+                <div className="mt-2 pt-2 border-t border-gray-100">
                   <div className="flex flex-wrap gap-1">
                     {item.finishing.map((fin, finIndex) => (
                       <span
                         key={finIndex}
-                        className="inline-block text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded"
+                        className="inline-block text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded"
                       >
                         {fin.jenis_finishing}
                         {fin.keterangan && ` (${fin.keterangan})`}
@@ -256,28 +261,15 @@ export default function POSCart({
                 </div>
               )}
 
-              {/* Add Finishing Button */}
               {onEditFinishing && (
                 <button
+                  type="button"
                   onClick={() => setEditingFinishingIndex(index)}
-                  className="w-full mt-2 px-3 py-1.5 bg-gradient-to-r from-amber-700/10 to-amber-900/10 border border-amber-700/30 text-amber-800 rounded-lg hover:from-amber-700/20 hover:to-amber-900/20 transition-all text-xs font-semibold flex items-center justify-center gap-1"
+                  className="w-full mt-2 px-2 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded text-[10px] font-semibold hover:bg-amber-100 transition-all"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                    />
-                  </svg>
                   {item.finishing && item.finishing.length > 0
                     ? "Edit Finishing"
-                    : "Tambah Finishing"}
+                    : "+ Finishing"}
                 </button>
               )}
             </div>
@@ -285,192 +277,208 @@ export default function POSCart({
         )}
       </div>
 
-      {/* Total */}
-      <div className="bg-gradient-to-br from-[#00afef] to-[#0088cc] rounded-lg p-4 mb-6 border-2 border-[#00afef] shadow-lg">
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-white">TOTAL</span>
-          <span className="text-3xl font-bold text-white">
-            Rp {total.toLocaleString("id-ID")}
-          </span>
-        </div>
-      </div>
-
-      {/* Payment Method */}
-      <div className="mb-4">
-        <label className="block text-sm font-bold mb-2 text-gray-700">
-          Metode Pembayaran
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {paymentMethods.map((method) => (
-            <button
-              key={method.value}
-              onClick={() => onPaymentMethodChange(method.value)}
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold transition-all border-2 ${
-                paymentMethod === method.value
-                  ? "bg-[#00afef] text-white border-[#00afef] shadow-lg scale-105"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-[#00afef]/50"
-              }`}
-            >
-              <div
-                className={
-                  paymentMethod === method.value ? "brightness-0 invert" : ""
-                }
+      {/* Pembayaran + checkout — selalu terlihat di bawah */}
+      <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-200 bg-gradient-to-br from-slate-50 to-gray-100 space-y-2.5">
+        {/* Metode pembayaran — scroll horizontal */}
+        <div>
+          <label className="block text-xs font-bold text-gray-600 mb-1.5">
+            Metode Pembayaran
+          </label>
+          <div
+            className="flex gap-1.5 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin]"
+            role="group"
+            aria-label="Metode pembayaran"
+          >
+            {paymentMethods.map((method) => (
+              <button
+                key={method.value}
+                type="button"
+                onClick={() => onPaymentMethodChange(method.value)}
+                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border-2 ${
+                  paymentMethod === method.value
+                    ? "bg-[#00afef] text-white border-[#00afef] shadow-sm"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-[#00afef]/50"
+                }`}
               >
-                {method.icon}
-              </div>
-              <span className="text-sm">{method.label}</span>
-            </button>
-          ))}
+                <div
+                  className={
+                    paymentMethod === method.value ? "brightness-0 invert" : ""
+                  }
+                >
+                  {method.icon}
+                </div>
+                {method.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Priority Selection */}
-      <div className="mb-4">
-        <label className="flex items-center gap-2 cursor-pointer p-3 bg-gray-50 rounded-lg border-2 border-gray-300 hover:border-amber-700 transition-all">
-          <input
-            type="checkbox"
-            checked={prioritas === "KILAT"}
-            onChange={(e) =>
-              onPrioritasChange(e.target.checked ? "KILAT" : "NORMAL")
-            }
-            className="w-5 h-5 text-amber-700 rounded focus:ring-amber-700 focus:ring-2 cursor-pointer"
-          />
-          <span className="text-sm font-bold text-gray-700">Orderan Kilat</span>
-        </label>
-      </div>
+        {/* Jumlah bayar + kilat — satu baris */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <label className="block text-xs font-bold text-gray-600 mb-1">
+              Jumlah Dibayar (Rp)
+            </label>
+            <input
+              type="number"
+              step="1000"
+              value={jumlahBayar}
+              onChange={(e) => onJumlahBayarChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onCheckout();
+                }
+              }}
+              placeholder="0"
+              className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
+            />
+          </div>
+          <label className="shrink-0 flex items-center gap-1.5 cursor-pointer px-2 py-2 bg-white rounded-lg border-2 border-gray-200 hover:border-amber-600 transition-all h-[42px]">
+            <input
+              type="checkbox"
+              checked={prioritas === "KILAT"}
+              onChange={(e) =>
+                onPrioritasChange(e.target.checked ? "KILAT" : "NORMAL")
+              }
+              className="w-4 h-4 text-amber-700 rounded focus:ring-amber-700 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-gray-700 whitespace-nowrap">
+              Kilat
+            </span>
+          </label>
+        </div>
 
-      {/* Amount Paid Input */}
-      <div className="mb-4">
-        <label className="block text-sm font-bold mb-2 text-gray-700">
-          Jumlah Dibayar (Rp)
-        </label>
-        <input
-          type="number"
-          step="1000"
-          value={jumlahBayar}
-          onChange={(e) => onJumlahBayarChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onCheckout();
-            }
-          }}
-          placeholder="0"
-          className="w-full px-4 py-3 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-xl"
-        />
-        {/* Quick Amount Buttons */}
-        <div className="grid grid-cols-4 gap-2 mt-2">
+        {/* Tombol nominal cepat */}
+        <div className="grid grid-cols-4 gap-1.5">
           {[10000, 20000, 50000, 100000].map((amount) => (
             <button
               key={amount}
+              type="button"
               onClick={() =>
                 onJumlahBayarChange(String(Math.ceil(total / amount) * amount))
               }
-              className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-semibold transition-all"
+              className="px-1 py-1 bg-white hover:bg-gray-100 text-gray-700 rounded border border-gray-200 text-[10px] font-semibold transition-all"
             >
               {amount >= 1000 ? `${amount / 1000}rb` : amount}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Change/Kurang Display */}
-      {bayar > 0 && (
-        <div className="mb-4">
-          {kembalian > 0 ? (
-            <div className="bg-green-500/20 border-2 border-green-400 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-green-800">KEMBALIAN</span>
-                <span className="text-2xl font-bold text-green-800">
-                  Rp {kembalian.toLocaleString("id-ID")}
-                </span>
-              </div>
-              {changeBreakdown.length > 0 && (
-                <div>
-                  <button
-                    onClick={() => setShowChangeDetail(!showChangeDetail)}
-                    className="text-xs hover:text-green-700 underline mb-2"
+        {/* Kembalian / kurang — hanya relevan untuk pembayaran tunai */}
+        {paymentMethod === "CASH" && bayar > 0 && (
+          <div
+            className={`rounded-lg px-3 py-2 text-sm border-2 ${
+              kembalian > 0
+                ? "bg-green-50 border-green-300"
+                : kurang > 0
+                  ? "bg-yellow-50 border-yellow-300"
+                  : "bg-green-50 border-green-300"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={`text-xs font-bold ${
+                  kembalian > 0
+                    ? "text-green-800"
+                    : kurang > 0
+                      ? "text-yellow-800"
+                      : "text-green-800"
+                }`}
+              >
+                {kembalian > 0
+                  ? "KEMBALIAN"
+                  : kurang > 0
+                    ? "KURANG"
+                    : "PAS / LUNAS"}
+              </span>
+              <span
+                className={`font-bold ${
+                  kembalian > 0
+                    ? "text-green-700"
+                    : kurang > 0
+                      ? "text-yellow-700"
+                      : "text-green-700"
+                }`}
+              >
+                {kembalian > 0 || kurang > 0
+                  ? `Rp ${(kembalian || kurang).toLocaleString("id-ID")}`
+                  : "✓"}
+              </span>
+            </div>
+            {kembalian > 0 && changeBreakdown.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowChangeDetail(!showChangeDetail)}
+                className="text-[10px] text-green-700 underline mt-1"
+              >
+                {showChangeDetail ? "Sembunyikan pecahan" : "Lihat pecahan"}
+              </button>
+            )}
+            {showChangeDetail && kembalian > 0 && (
+              <div className="grid grid-cols-2 gap-1 mt-2 text-[10px]">
+                {changeBreakdown.map(({ denom, label, count }) => (
+                  <div
+                    key={denom}
+                    className="flex justify-between bg-green-100/80 rounded px-1.5 py-0.5"
                   >
-                    {showChangeDetail ? "Sembunyikan" : "Lihat"} Pecahan
-                  </button>
-                  {showChangeDetail && (
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {changeBreakdown.map(({ denom, label, count }) => (
-                        <div
-                          key={denom}
-                          className="flex justify-between bg-green-600/30 rounded px-2 py-1"
-                        >
-                          <span>{label}:</span>
-                          <span className="font-bold">{count}x</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : kurang > 0 ? (
-            <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-yellow-800">KURANG</span>
-                <span className="text-2xl font-bold text-yellow-600">
-                  Rp {kurang.toLocaleString("id-ID")}
-                </span>
+                    <span>{label}</span>
+                    <span className="font-bold">{count}×</span>
+                  </div>
+                ))}
               </div>
-              <p className="text-xs text-yellow-700 mt-2">
-                Kekurangan akan masuk ke Tagihan
+            )}
+            {kurang > 0 && (
+              <p className="text-[10px] text-yellow-700 mt-1">
+                Kekurangan masuk tagihan
               </p>
-            </div>
-          ) : (
-            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-green-800">STATUS</span>
-                <span className="text-lg font-bold text-green-600">
-                  PAS / LUNAS
-                </span>
-              </div>
-            </div>
+            )}
+          </div>
+        )}
+
+        {/* Catatan — collapsible */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowNotes(!showNotes)}
+            className="text-xs font-semibold text-gray-500 hover:text-[#00afef] transition-colors"
+          >
+            {showNotes ? "− Sembunyikan catatan" : "+ Catatan (opsional)"}
+          </button>
+          {showNotes && (
+            <input
+              type="text"
+              value={catatan}
+              onChange={(e) => onCatatanChange(e.target.value)}
+              placeholder="Catatan transaksi..."
+              className="mt-1.5 w-full px-3 py-2 text-sm bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+            />
           )}
         </div>
-      )}
 
-      {/* Notes */}
-      <div className="mb-6">
-        <label className="block text-sm font-bold mb-2 text-gray-700">
-          Catatan (Opsional)
-        </label>
-        <textarea
-          value={catatan}
-          onChange={(e) => onCatatanChange(e.target.value)}
-          placeholder="Tambahkan catatan..."
-          rows={2}
-          className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] text-gray-700 placeholder-gray-400"
-        />
+        <button
+          type="button"
+          onClick={onCheckout}
+          disabled={cart.length === 0}
+          className="w-full py-3 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-bold text-base hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Proses Pembayaran
+        </button>
       </div>
 
-      {/* Checkout Button */}
-      <button
-        onClick={onCheckout}
-        disabled={cart.length === 0}
-        className="w-full py-4 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-bold text-lg hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        Proses Pembayaran
-      </button>
-
-      {/* Finishing Modal */}
       {editingFinishingIndex !== null && onEditFinishing && (
         <AddFinishingModal
           onClose={() => setEditingFinishingIndex(null)}

@@ -88,7 +88,7 @@ export default function DashboardPage() {
   }, []);
 
   const { data: stats, isLoading } = useCachedData<DashboardStats>(
-    "dashboard-stats",
+    "dashboard-stats-v2",
     getDashboardStatsAction
   );
 
@@ -186,7 +186,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <SalesTrendChart
-              data={stats.dailySalesTrend.slice(-trendDays)}
+              data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
               days={trendDays}
             />
           </div>

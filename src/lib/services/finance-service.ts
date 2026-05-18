@@ -394,10 +394,14 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
     return false;
   }
 
+  const { getProfitSharePartnersForRecalc } = await import(
+    "./finance-config-service"
+  );
   const sorted = sortCashbookRowsForRecalc(
     (rows || []) as CashbookRecalcInputRow[]
   );
-  const batch = computeCashbookRecalculationUpdates(sorted);
+  const profitPartners = await getProfitSharePartnersForRecalc();
+  const batch = computeCashbookRecalculationUpdates(sorted, profitPartners);
 
   for (const { id, updates } of batch) {
     if (Object.keys(updates).length === 0) continue;

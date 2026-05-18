@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import NotificationToast, {
   NotificationToastProps,
@@ -28,6 +28,8 @@ interface User {
   role: string;
 }
 
+const EMPTY_ORDERS: ProductionOrder[] = [];
+
 export default function ProductionPage() {
   const router = useRouter();
   const initialUser =
@@ -43,9 +45,8 @@ export default function ProductionPage() {
     const list = await getProductionOrdersAction();
     return (list as ProductionOrder[]) || [];
   });
-  const orders = ordersData ?? [];
+  const orders = ordersData ?? EMPTY_ORDERS;
   const loading = currentUser === null && ordersLoading;
-  const [filteredOrders, setFilteredOrders] = useState<ProductionOrder[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterPriority, setFilterPriority] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,33 +72,17 @@ export default function ProductionPage() {
     };
   }, [router]);
 
-  useEffect(() => {
-    applyFilters();
-  }, [orders, filterStatus, filterPriority, searchQuery]);
-
-  const loadOrders = async () => {
-    try {
-      await mutateOrders();
-    } catch (error) {
-      console.error("Error loading production orders:", error);
-      showMsg("error", "Gagal memuat data produksi");
-    }
-  };
-
-  const applyFilters = () => {
+  const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
-    // Filter by status
     if (filterStatus !== "ALL") {
       filtered = filtered.filter((order) => order.status === filterStatus);
     }
 
-    // Filter by priority
     if (filterPriority !== "ALL") {
       filtered = filtered.filter((order) => order.prioritas === filterPriority);
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -108,7 +93,16 @@ export default function ProductionPage() {
       );
     }
 
-    setFilteredOrders(filtered);
+    return filtered;
+  }, [orders, filterStatus, filterPriority, searchQuery]);
+
+  const loadOrders = async () => {
+    try {
+      await mutateOrders();
+    } catch (error) {
+      console.error("Error loading production orders:", error);
+      showMsg("error", "Gagal memuat data produksi");
+    }
   };
 
   const showMsg = (type: "success" | "error", message: string) => {

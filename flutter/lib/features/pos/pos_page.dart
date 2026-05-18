@@ -44,6 +44,18 @@ class _CartItem {
       jumlah * hargaSatuan(isMember: isMember);
 }
 
+/// Urutan tampilan kategori (selaras dengan web / kategori_barang default).
+const _kategoriOrder = [
+  'Media Cetak',
+  'Kertas',
+  'Kertas Foto',
+  'Merchandise',
+  'Substrat UV',
+  'Tinta & Consumables',
+  'Finishing',
+  'Lain-lain',
+];
+
 // ---------------------------------------------------------------------------
 // Halaman POS
 // ---------------------------------------------------------------------------
@@ -66,6 +78,7 @@ class _PosPageState extends ConsumerState<PosPage>
 
   bool _isLoading = true;
   String _materialSearch = '';
+  String _materialCategoryFilter = 'ALL';
   String _salesSearch = '';
 
   Customer? _selectedCustomer;
@@ -128,14 +141,67 @@ class _PosPageState extends ConsumerState<PosPage>
     }
   }
 
+  List<String> get _materialCategories {
+    final names = <String>{};
+    for (final m in _materials) {
+      final k = m.kategoriNama;
+      if (k != null && k.isNotEmpty) names.add(k);
+    }
+    final list = names.toList();
+    list.sort((a, b) {
+      final ia = _kategoriOrder.indexOf(a);
+      final ib = _kategoriOrder.indexOf(b);
+      if (ia == -1 && ib == -1) return a.compareTo(b);
+      if (ia == -1) return 1;
+      if (ib == -1) return -1;
+      return ia.compareTo(ib);
+    });
+    return list;
+  }
+
   List<MaterialItem> get _filteredMaterials {
-    if (_materialSearch.isEmpty) return _materials;
-    final q = _materialSearch.toLowerCase();
-    return _materials
+    var list = _materials;
+    if (_materialCategoryFilter != 'ALL') {
+      list = list
+          .where((m) => m.kategoriNama == _materialCategoryFilter)
+          .toList();
+    }
+    final q = _materialSearch.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list
         .where((m) =>
             m.nama.toLowerCase().contains(q) ||
             (m.kategoriNama?.toLowerCase().contains(q) ?? false))
         .toList();
+  }
+
+  Widget _categoryChip(String label, String value) {
+    final selected = _materialCategoryFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.primaryDark,
+          ),
+        ),
+        selected: selected,
+        onSelected: (_) => setState(() => _materialCategoryFilter = value),
+        selectedColor: AppColors.primary,
+        backgroundColor: Colors.white,
+        showCheckmark: false,
+        side: BorderSide(
+          color: selected ? AppColors.primary : Colors.grey.shade300,
+          width: 1.5,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
   }
 
   bool get _isMemberSelected => _selectedCustomer?.isMember ?? false;
@@ -675,6 +741,20 @@ class _PosPageState extends ConsumerState<PosPage>
                             setState(() => _materialSearch = v),
                       ),
                     ),
+                    if (_materialCategories.isNotEmpty)
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                          children: [
+                            _categoryChip('Semua', 'ALL'),
+                            ..._materialCategories.map(
+                              (cat) => _categoryChip(cat, cat),
+                            ),
+                          ],
+                        ),
+                      ),
                     Expanded(
                       child: _filteredMaterials.isEmpty
                           ? const Center(

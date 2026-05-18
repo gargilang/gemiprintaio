@@ -8,6 +8,7 @@ import 'package:gemiprint/widgets/confirm_dialog.dart';
 import 'package:gemiprint/widgets/empty_state.dart';
 import 'package:gemiprint/widgets/search_field.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
+import 'package:gemiprint/features/purchases/purchase_form_page.dart';
 import 'package:intl/intl.dart';
 
 class PurchasesPage extends ConsumerStatefulWidget {
@@ -100,51 +101,103 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
     );
   }
 
+  Future<void> _openPurchaseForm() async {
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const PurchaseFormPage()),
+    );
+    if (ok == true) _loadData();
+  }
+
   Widget _buildPurchasesList() {
     final filtered = _filtered;
-    return Column(
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Row(
-            children: [
-              Expanded(child: SearchField(hintText: 'Cari pembelian...', onChanged: (v) => setState(() => _search = v))),
-              const SizedBox(width: 8),
-              Text('${filtered.length} data', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-            ],
-          ),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? const EmptyState(icon: Icons.shopping_bag_rounded, title: 'Belum ada pembelian')
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 6),
-                    itemBuilder: (_, i) {
-                      final p = filtered[i];
-                      final color = _paymentStatusColor(p.statusPembayaran);
-                      return Card(
-                        child: ListTile(
-                          title: Row(
-                            children: [
-                              Expanded(child: Text(p.nomorPembelian, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                                child: Text(p.statusPembayaran, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: SearchField(
+                          hintText: 'Cari pembelian...',
+                          onChanged: (v) => setState(() => _search = v))),
+                  const SizedBox(width: 8),
+                  Text('${filtered.length} data',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: filtered.isEmpty
+                  ? EmptyState(
+                      icon: Icons.shopping_bag_rounded,
+                      title: _search.isEmpty
+                          ? 'Belum ada pembelian'
+                          : 'Tidak ditemukan',
+                      action: _search.isEmpty
+                          ? ElevatedButton.icon(
+                              onPressed: _openPurchaseForm,
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Tambah Pembelian'),
+                            )
+                          : null,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadData,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 6),
+                        itemBuilder: (_, i) {
+                          final p = filtered[i];
+                          final color = _paymentStatusColor(p.statusPembayaran);
+                          return Card(
+                            child: ListTile(
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                      child: Text(p.nomorPembelian,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14))),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                        color: color.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4)),
+                                    child: Text(p.statusPembayaran,
+                                        style: TextStyle(
+                                            color: color,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          subtitle: Text('${p.vendorNama ?? '-'} · ${_fmt.format(p.totalHarga)}', style: const TextStyle(fontSize: 12)),
-                          trailing: IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.grey.shade400, size: 20), onPressed: () => _handleDelete(p)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                              subtitle: Text(
+                                  '${p.vendorNama ?? '-'} · ${_fmt.format(p.totalHarga)}',
+                                  style: const TextStyle(fontSize: 12)),
+                              trailing: IconButton(
+                                  icon: Icon(Icons.delete_outline_rounded,
+                                      color: Colors.grey.shade400, size: 20),
+                                  onPressed: () => _handleDelete(p)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.extended(
+            onPressed: _openPurchaseForm,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Beli'),
+          ),
         ),
       ],
     );

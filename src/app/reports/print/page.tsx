@@ -313,10 +313,10 @@ export default function FinancialReportPrint() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[
-                ["Kasbon Anwar", data.summary.kasbonAnwar],
-                ["Kasbon Suri", data.summary.kasbonSuri],
-                ["Kasbon Cahaya", data.summary.kasbonCahaya],
-                ["Kasbon Dinil", data.summary.kasbonDinil],
+                ["Kasbon mitra 1", data.summary.kasbonAnwar],
+                ["Kasbon mitra 2", data.summary.kasbonSuri],
+                ["Kasbon karyawan 1", data.summary.kasbonCahaya],
+                ["Kasbon karyawan 2", data.summary.kasbonDinil],
               ].map(([name, value], i) => (
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-3">{name}</td>
@@ -343,9 +343,9 @@ export default function FinancialReportPrint() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[
-                ["Anwar", data.summary.bagiHasilAnwar],
-                ["Suri", data.summary.bagiHasilSuri],
-                ["Gemi", data.summary.bagiHasilGemi],
+                ["Mitra bagi hasil 1", data.summary.bagiHasilAnwar],
+                ["Mitra bagi hasil 2", data.summary.bagiHasilSuri],
+                ["Mitra bagi hasil 3", data.summary.bagiHasilGemi],
               ].map(([name, value], i) => (
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-3">{name}</td>

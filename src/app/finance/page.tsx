@@ -13,10 +13,10 @@ import EditManualModal from "@/components/EditManualModal";
 import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
 import ModalFormShell from "@/components/ModalFormShell";
+import BagiHasilManageModal from "@/components/BagiHasilManageModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import {
-  BriefcaseIcon,
   PersonIcon,
   CoinIcon,
   BoxIcon,
@@ -38,6 +38,11 @@ import {
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useSWRConfig } from "swr";
+import {
+  participantNameMatches,
+  resolveMetricParticipantName,
+} from "@/lib/finance-metric-utils";
+import { FINANCE_SLOT_LABELS, lookupFinanceSlotLabel } from "@/lib/finance-slot-labels";
 
 // Helper function to strip [REF:xxx] from display while keeping it in database
 const stripReferenceId = (text: string | null | undefined): string => {
@@ -63,37 +68,37 @@ const FINANCE_DATA_SLOTS: Array<{
   {
     source_column: "bagi_hasil_anwar",
     metric_group: "profit_share",
-    label: "Bagian laba — Anwar",
+    label: FINANCE_SLOT_LABELS.bagi_hasil_anwar,
   },
   {
     source_column: "bagi_hasil_suri",
     metric_group: "profit_share",
-    label: "Bagian laba — Suri",
+    label: FINANCE_SLOT_LABELS.bagi_hasil_suri,
   },
   {
     source_column: "bagi_hasil_gemi",
     metric_group: "profit_share",
-    label: "Bagian laba — Gemi",
+    label: FINANCE_SLOT_LABELS.bagi_hasil_gemi,
   },
   {
     source_column: "kasbon_anwar",
     metric_group: "cash_advance",
-    label: "Kasbon — Anwar",
+    label: FINANCE_SLOT_LABELS.kasbon_anwar,
   },
   {
     source_column: "kasbon_suri",
     metric_group: "cash_advance",
-    label: "Kasbon — Suri",
+    label: FINANCE_SLOT_LABELS.kasbon_suri,
   },
   {
     source_column: "kasbon_cahaya",
     metric_group: "cash_advance",
-    label: "Kasbon — Cahaya",
+    label: FINANCE_SLOT_LABELS.kasbon_cahaya,
   },
   {
     source_column: "kasbon_dinil",
     metric_group: "cash_advance",
-    label: "Kasbon — Dinil",
+    label: FINANCE_SLOT_LABELS.kasbon_dinil,
   },
 ];
 
@@ -106,10 +111,6 @@ const METRIC_GROUP_LABELS: Record<
   cash_advance: "Kasbon",
 };
 
-function lookupFinanceSlotLabel(sourceColumn: string): string {
-  const hit = FINANCE_DATA_SLOTS.find((s) => s.source_column === sourceColumn);
-  return hit?.label ?? sourceColumn.replace(/_/g, " ");
-}
 
 function slugifyParticipantCode(name: string): string {
   const base = name
@@ -145,6 +146,145 @@ function roleTypeLabelIndo(
       return "Lainnya";
   }
 }
+
+function metricBelongsToActiveParticipant(
+  metric: FinanceMetricConfig,
+  participants: FinanceParticipantConfig[]
+): boolean {
+  if (
+    metric.participant_id &&
+    participants.some((p) => p.id === metric.participant_id)
+  ) {
+    return true;
+  }
+  const name = resolveMetricParticipantName(metric);
+  if (!name) return false;
+  return participants.some((p) => participantNameMatches(p.display_name, name));
+}
+
+function resolveMetricParticipantId(
+  metric: FinanceMetricConfig,
+  participants: FinanceParticipantConfig[]
+): string | null {
+  if (
+    metric.participant_id &&
+    participants.some((p) => p.id === metric.participant_id)
+  ) {
+    return metric.participant_id;
+  }
+  const name = resolveMetricParticipantName(metric);
+  if (!name) return null;
+  const match = participants.find((p) =>
+    participantNameMatches(p.display_name, name)
+  );
+  return match?.id ?? null;
+}
+
+type ParticipantFinanceRow = {
+  participantId: string;
+  name: string;
+  profitShareMetric: FinanceMetricConfig | null;
+  cashAdvanceMetric: FinanceMetricConfig | null;
+};
+
+function buildParticipantMetricRows(
+  participants: FinanceParticipantConfig[],
+  metrics: FinanceMetricConfig[]
+): ParticipantFinanceRow[] {
+  const rows: ParticipantFinanceRow[] = [];
+
+  for (const metric of metrics) {
+    const pid = resolveMetricParticipantId(metric, participants);
+    if (!pid) continue;
+    const participant = participants.find((p) => p.id === pid);
+    rows.push({
+      participantId: pid,
+      name:
+        participant?.display_name ||
+        resolveMetricParticipantName(metric) ||
+        metric.metric_label,
+      profitShareMetric: metric.metric_group === "profit_share" ? metric : null,
+      cashAdvanceMetric: metric.metric_group === "cash_advance" ? metric : null,
+    });
+  }
+
+  return rows.sort((a, b) => a.name.localeCompare(b.name, "id"));
+}
+
+const FinanceParticipantSummaryTable = memo(function FinanceParticipantSummaryTable({
+  rows,
+  variant,
+  formatRupiah,
+  getValue,
+  labaBersih,
+}: {
+  rows: ParticipantFinanceRow[];
+  variant: "profit_share" | "cash_advance";
+  formatRupiah: (n: number) => string;
+  getValue: (sourceColumn: string) => number;
+  labaBersih?: number;
+}) {
+  const isProfitShare = variant === "profit_share";
+  const valueLabel = isProfitShare ? "Bagi hasil" : "Kasbon";
+  const borderClass = isProfitShare ? "border-amber-200" : "border-violet-200";
+  const headerBg = isProfitShare ? "bg-amber-50/80" : "bg-violet-50/80";
+  const valueClass = isProfitShare ? "text-amber-800" : "text-violet-800";
+  const footerBg = isProfitShare
+    ? "bg-amber-50/60 border-amber-100 text-amber-900"
+    : "bg-violet-50/60 border-violet-100 text-violet-900";
+
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 py-6 text-center border border-dashed border-gray-200 rounded-xl mt-4 bg-gray-50/80">
+        {isProfitShare
+          ? "Belum ada bagi hasil untuk ditampilkan. Tambahkan orang dan kartu bagi hasil di Pengaturan."
+          : "Belum ada kasbon untuk ditampilkan. Tambahkan orang dan kartu kasbon di Pengaturan."}
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className={`mt-4 rounded-xl border-2 ${borderClass} overflow-hidden bg-white shadow-sm`}
+    >
+      <div
+        className={`hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 border-b ${headerBg}`}
+      >
+        <span>Nama</span>
+        <span className="text-right">{valueLabel}</span>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {rows.map((row) => {
+          const metric = isProfitShare
+            ? row.profitShareMetric
+            : row.cashAdvanceMetric;
+          return (
+            <li
+              key={`${variant}-${row.participantId}`}
+              className="px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] sm:gap-3 sm:items-center hover:bg-gray-50/80 transition-colors"
+            >
+              <div className="font-semibold text-gray-900 truncate">{row.name}</div>
+              <div className="mt-2 sm:mt-0 flex items-center justify-between sm:justify-end gap-2">
+                <span className="text-xs text-gray-500 sm:hidden">{valueLabel}</span>
+                <span className={`font-bold tabular-nums ${valueClass}`}>
+                  {metric ? formatRupiah(getValue(metric.source_column)) : "—"}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {isProfitShare && labaBersih !== undefined && (
+        <div
+          className={`px-4 py-2.5 border-t text-xs flex flex-wrap justify-between gap-2 ${footerBg}`}
+        >
+          <span className="font-semibold">Laba bersih perusahaan (periode ini)</span>
+          <span className="font-bold tabular-nums">{formatRupiah(labaBersih)}</span>
+        </div>
+      )}
+    </div>
+  );
+});
 
 // Memoized CashBook Row Component - mencegah re-render yang tidak perlu
 const CashBookRow = memo(
@@ -315,6 +455,9 @@ interface FinanceParticipantConfig {
   participant_code: string;
   display_name: string;
   role_type: "profit_share" | "cash_advance" | "other";
+  profit_formula?: "third_minus_kasbon" | "incremental_investor" | null;
+  share_divisor?: number | null;
+  bagi_hasil_column?: string | null;
 }
 
 const CASHBOOKS_CACHE_KEY = "cashbooks-active";
@@ -379,8 +522,8 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
-  const [showBagiHasilSection, setShowBagiHasilSection] = useState(false);
-  const [showKasbonSection, setShowKasbonSection] = useState(false);
+  const [showBagiHasilSection, setShowBagiHasilSection] = useState(true);
+  const [showKasbonSection, setShowKasbonSection] = useState(true);
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
   >([]);
@@ -391,6 +534,7 @@ export default function FinancePage() {
     FinanceParticipantConfig[]
   >([]);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showBagiHasilManageModal, setShowBagiHasilManageModal] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [participantForm, setParticipantForm] = useState({
     display_name: "",
@@ -576,12 +720,46 @@ export default function FinancePage() {
   );
 
   const profitShareMetrics = useMemo(
-    () => financeMetrics.filter((item) => item.metric_group === "profit_share"),
-    [financeMetrics]
+    () =>
+      financeMetrics
+        .filter((item) => item.metric_group === "profit_share")
+        .filter((item) =>
+          metricBelongsToActiveParticipant(item, financeParticipants)
+        )
+        .sort(
+          (a, b) =>
+            (a.participant_name || a.metric_label).localeCompare(
+              b.participant_name || b.metric_label,
+              "id"
+            )
+        ),
+    [financeMetrics, financeParticipants]
   );
   const cashAdvanceMetrics = useMemo(
-    () => financeMetrics.filter((item) => item.metric_group === "cash_advance"),
-    [financeMetrics]
+    () =>
+      financeMetrics
+        .filter((item) => item.metric_group === "cash_advance")
+        .filter((item) =>
+          metricBelongsToActiveParticipant(item, financeParticipants)
+        )
+        .sort(
+          (a, b) =>
+            (a.participant_name || a.metric_label).localeCompare(
+              b.participant_name || b.metric_label,
+              "id"
+            )
+        ),
+    [financeMetrics, financeParticipants]
+  );
+
+  const profitShareRows = useMemo(
+    () => buildParticipantMetricRows(financeParticipants, profitShareMetrics),
+    [financeParticipants, profitShareMetrics]
+  );
+
+  const cashAdvanceRows = useMemo(
+    () => buildParticipantMetricRows(financeParticipants, cashAdvanceMetrics),
+    [financeParticipants, cashAdvanceMetrics]
   );
 
   const financeSlotsAvailableForNewMapping = useMemo(() => {
@@ -626,21 +804,50 @@ export default function FinancePage() {
     );
   }, [financeCategories, financeCfgCategoryQuery]);
 
-  const financeCfgMetricsFiltered = useMemo(() => {
-    const q = financeCfgMetricQuery.trim().toLowerCase();
-    if (!q) return financeMetrics;
-    return financeMetrics.filter((m) => {
-      const hay = [
-        m.metric_label,
-        lookupFinanceSlotLabel(m.source_column),
-        m.participant_name || "",
-        METRIC_GROUP_LABELS[m.metric_group],
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [financeMetrics, financeCfgMetricQuery]);
+  const financeCfgMetricsActive = useMemo(
+    () =>
+      financeMetrics.filter((m) =>
+        metricBelongsToActiveParticipant(m, financeParticipants)
+      ),
+    [financeMetrics, financeParticipants]
+  );
+
+  const financeCfgMetricsOrphaned = useMemo(
+    () =>
+      financeMetrics.filter(
+        (m) => !metricBelongsToActiveParticipant(m, financeParticipants)
+      ),
+    [financeMetrics, financeParticipants]
+  );
+
+  const filterMetricsByQuery = useCallback(
+    (list: FinanceMetricConfig[]) => {
+      const q = financeCfgMetricQuery.trim().toLowerCase();
+      if (!q) return list;
+      return list.filter((m) => {
+        const hay = [
+          m.metric_label,
+          lookupFinanceSlotLabel(m.source_column),
+          m.participant_name || "",
+          METRIC_GROUP_LABELS[m.metric_group],
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    },
+    [financeCfgMetricQuery]
+  );
+
+  const financeCfgMetricsFiltered = useMemo(
+    () => filterMetricsByQuery(financeCfgMetricsActive),
+    [financeCfgMetricsActive, filterMetricsByQuery]
+  );
+
+  const financeCfgMetricsOrphanedFiltered = useMemo(
+    () => filterMetricsByQuery(financeCfgMetricsOrphaned),
+    [financeCfgMetricsOrphaned, filterMetricsByQuery]
+  );
 
   const financeCfgParticipantNameInput = participantForm.display_name.trim();
   const financeCfgProposedParticipantCode =
@@ -817,6 +1024,7 @@ export default function FinancePage() {
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [
+    showBagiHasilManageModal,
     showConfigModal,
     showModal,
     confirmDialog,
@@ -869,10 +1077,12 @@ export default function FinancePage() {
           metric_group: metric.metric_group,
           source_column: metric.source_column,
           participant_id:
+            metric.participant_id ??
             (data.participants || []).find(
               (participant: FinanceParticipantConfig) =>
                 participant.display_name === metric.participant_name
-            )?.id || "",
+            )?.id ??
+            "",
         };
       }
       setMappingEdits(edits);
@@ -881,8 +1091,41 @@ export default function FinancePage() {
     }
   };
 
+  const requestDeleteParticipant = (participant: FinanceParticipantConfig) => {
+    const linkedCards = financeMetrics.filter(
+      (m) => m.participant_id === participant.id
+    );
+    if (linkedCards.length > 0) {
+      showMsg(
+        "error",
+        `${participant.display_name} masih dipakai di ${linkedCards.length} hubungan angka. Putuskan atau hapus di tab Hubungkan angka terlebih dahulu.`
+      );
+      setFinanceConfigTab("metrics");
+      return;
+    }
+    void submitConfigAction({
+      action: "delete_participant",
+      id: participant.id,
+    });
+  };
+
   const submitConfigAction = async (payload: Record<string, any>) => {
     setConfigSaving(true);
+    const triggersRecalc =
+      payload.action === "setup_bagi_hasil_partner" ||
+      payload.action === "update_profit_share_partner" ||
+      payload.action === "remove_bagi_hasil_partner";
+    const deletedParticipantId =
+      payload.action === "delete_participant" && typeof payload.id === "string"
+        ? payload.id
+        : null;
+    const deletedMappingId =
+      payload.action === "delete_mapping" && typeof payload.id === "string"
+        ? payload.id
+        : null;
+    if (deletedMappingId) {
+      setFinanceMetrics((prev) => prev.filter((m) => m.id !== deletedMappingId));
+    }
     try {
       const res = await fetch("/api/finance/config/manage", {
         method: "POST",
@@ -891,9 +1134,33 @@ export default function FinancePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal menyimpan");
+      if (deletedParticipantId) {
+        setFinanceParticipants((prev) =>
+          prev.filter((p) => p.id !== deletedParticipantId)
+        );
+      }
       await loadFinanceConfig();
-      showMsg("success", "Konfigurasi keuangan berhasil diperbarui");
+      if (triggersRecalc) {
+        await loadCashBooks();
+      }
+      showMsg(
+        "success",
+        triggersRecalc
+          ? "Bagi hasil diperbarui dan buku kas dihitung ulang"
+          : "Konfigurasi keuangan berhasil diperbarui"
+      );
     } catch (error) {
+      if (deletedParticipantId || deletedMappingId) {
+        await loadFinanceConfig();
+      }
+      const message =
+        error instanceof Error ? error.message : "Unknown";
+      if (
+        deletedParticipantId &&
+        message.includes("kartu ringkasan")
+      ) {
+        setFinanceConfigTab("metrics");
+      }
       showMsg(
         "error",
         `Gagal menyimpan konfigurasi: ${
@@ -1691,72 +1958,79 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Dynamic Profit Share */}
+      {/* Bagi Hasil — baris vertikal */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
-          currentUser.role === "staff") &&
-        profitShareMetrics.length > 0 && (
+          currentUser.role === "staff") && (
           <div className="mb-6">
-            <button
-              onClick={() => setShowBagiHasilSection(!showBagiHasilSection)}
-              className="w-full bg-gradient-to-r from-amber-50 via-pink-50 to-cyan-50 rounded-xl shadow-md p-4 border-2 border-purple-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
-            >
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <BriefcaseIcon size={18} className="text-purple-600" />
-                Bagi Hasil
-              </span>
-              <svg
-                className={`w-5 h-5 transform transition-transform ${
-                  showBagiHasilSection ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="flex gap-2 items-stretch">
+              <button
+                type="button"
+                onClick={() => setShowBagiHasilSection(!showBagiHasilSection)}
+                className="flex-1 min-w-0 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl shadow-md p-4 border-2 border-amber-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
+                <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <CoinIcon size={18} className="text-amber-600" />
+                  Bagi Hasil
+                  <span className="text-xs font-normal text-gray-500">
+                    ({profitShareRows.length} orang)
+                  </span>
+                </span>
+                <svg
+                  className={`w-5 h-5 shrink-0 transform transition-transform ${
+                    showBagiHasilSection ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              {(currentUser.role === "admin" ||
+                currentUser.role === "manager") && (
+                <button
+                  type="button"
+                  onClick={() => setShowBagiHasilManageModal(true)}
+                  className="shrink-0 px-4 rounded-xl border-2 border-amber-300 bg-white hover:bg-amber-50 text-amber-900 text-sm font-semibold shadow-sm transition-colors"
+                  title="Kelola mitra dan rumus bagi hasil"
+                >
+                  Kelola
+                </button>
+              )}
+            </div>
             {showBagiHasilSection && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                {profitShareMetrics.map((metric) => (
-                  <div
-                    key={metric.metric_key}
-                    className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-4 border-2 border-amber-200"
-                  >
-                    <p className="text-sm font-bold text-amber-800 mb-2 flex items-center gap-2">
-                      <BriefcaseIcon size={16} className="text-amber-700" />
-                      {metric.metric_label} {metric.participant_name || ""}
-                    </p>
-                    <p className="text-2xl font-bold text-amber-900">
-                      {formatRupiah(dynamicMetricValue(metric.source_column))}
-                    </p>
-                    <p className="text-xs text-amber-700 mt-2">
-                      Laba Bersih: {formatRupiah(summaryData.labaBersih)}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <FinanceParticipantSummaryTable
+                rows={profitShareRows}
+                variant="profit_share"
+                formatRupiah={formatRupiah}
+                getValue={dynamicMetricValue}
+                labaBersih={summaryData.labaBersih}
+              />
             )}
           </div>
         )}
-      {/* Dynamic Cash Advance */}
+      {/* Kasbon Karyawan — baris vertikal */}
       {currentUser &&
-        (currentUser.role === "admin" || currentUser.role === "manager") &&
-        cashAdvanceMetrics.length > 0 && (
+        (currentUser.role === "admin" || currentUser.role === "manager") && (
           <div className="mb-6">
             <button
+              type="button"
               onClick={() => setShowKasbonSection(!showKasbonSection)}
-              className="w-full bg-gradient-to-r from-violet-50 to-emerald-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
+              className="w-full bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
             >
               <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
                 <PersonIcon size={18} className="text-violet-600" />
                 Kasbon Karyawan
+                <span className="text-xs font-normal text-gray-500">
+                  ({cashAdvanceRows.length} orang)
+                </span>
               </span>
               <svg
                 className={`w-5 h-5 transform transition-transform ${
@@ -1775,22 +2049,12 @@ export default function FinancePage() {
               </svg>
             </button>
             {showKasbonSection && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                {cashAdvanceMetrics.map((metric) => (
-                  <div
-                    key={metric.metric_key}
-                    className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl shadow-md p-4 border-2 border-violet-200"
-                  >
-                    <p className="text-sm font-bold text-violet-800 mb-2 flex items-center gap-2">
-                      <PersonIcon size={16} className="text-violet-700" />
-                      {metric.metric_label} {metric.participant_name || ""}
-                    </p>
-                    <p className="text-2xl font-bold text-violet-900">
-                      {formatRupiah(dynamicMetricValue(metric.source_column))}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <FinanceParticipantSummaryTable
+                rows={cashAdvanceRows}
+                variant="cash_advance"
+                formatRupiah={formatRupiah}
+                getValue={dynamicMetricValue}
+              />
             )}
           </div>
         )}{" "}
@@ -2341,6 +2605,17 @@ export default function FinancePage() {
 
             </form>
       </ModalFormShell>
+      <BagiHasilManageModal
+        open={showBagiHasilManageModal}
+        onClose={() => setShowBagiHasilManageModal(false)}
+        participants={financeParticipants}
+        metricMappings={financeMetrics}
+        saving={configSaving}
+        canEdit={
+          currentUser?.role === "admin" || currentUser?.role === "manager"
+        }
+        onSubmit={submitConfigAction}
+      />
       <ModalFormShell
         open={showConfigModal}
         onClose={() => setShowConfigModal(false)}
@@ -2406,7 +2681,7 @@ export default function FinancePage() {
                   [
                     { id: "people" as const, label: "Orang" },
                     { id: "categories" as const, label: "Kategori" },
-                    { id: "metrics" as const, label: "Kartu ringkasan" },
+                    { id: "metrics" as const, label: "Hubungkan angka" },
                   ] as const
                 ).map(({ id, label }) => (
                   <button
@@ -2438,8 +2713,10 @@ export default function FinancePage() {
                       Tambah orang baru
                     </p>
                     <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                      Nama bisa muncul di kartu bagi hasil atau kasbon. Cukup isi
-                      nama biasa; sistem membuat kode singkat sendiri.
+                      Nama muncul di baris Bagi Hasil atau Kasbon di halaman
+                      Keuangan. Cukup isi nama biasa; sistem membuat kode
+                      singkat sendiri. Untuk menghapus orang, putuskan dulu
+                      hubungan angka di tab Hubungkan angka.
                     </p>
                     <div className="space-y-2 max-w-lg">
                       <input
@@ -2552,12 +2829,7 @@ export default function FinancePage() {
                             <button
                               type="button"
                               disabled={configSaving}
-                              onClick={() =>
-                                submitConfigAction({
-                                  action: "delete_participant",
-                                  id: participant.id,
-                                })
-                              }
+                              onClick={() => requestDeleteParticipant(participant)}
                               className="text-red-600 hover:text-red-800 shrink-0 text-sm"
                             >
                               Hapus
@@ -2688,11 +2960,12 @@ export default function FinancePage() {
                 <div className="space-y-5 min-h-[340px]">
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <p className="font-bold text-gray-800 mb-1">
-                      Hubungkan angka ke kartu
+                      Hubungkan angka ke baris ringkasan
                     </p>
                     <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                      Satu angka di laporan hanya untuk satu kartu. Judul bisa
-                      disesuaikan supaya mudah dibaca tim.
+                      Mengatur siapa muncul di bagian Bagi Hasil / Kasbon
+                      Karyawan (bukan kartu terpisah lagi). Satu kolom angka di
+                      buku kas hanya untuk satu orang. Judul bisa disesuaikan.
                     </p>
                     <div className="space-y-2 max-w-xl">
                       <select
@@ -2730,8 +3003,8 @@ export default function FinancePage() {
                           }))
                         }
                         className="w-full px-3 py-2 border rounded-lg"
-                        placeholder="Judul di kartu, kosongkan jika sudah jelas"
-                        aria-label="Judul di kartu"
+                        placeholder="Judul di ringkasan, kosongkan jika sudah jelas"
+                        aria-label="Judul di ringkasan"
                       />
                       <select
                         value={mappingForm.participant_id}
@@ -2781,14 +3054,14 @@ export default function FinancePage() {
                         }}
                         className="w-full max-w-xl px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50"
                       >
-                        Tambah ke kartu ringkasan
+                        Tambah hubungan angka
                       </button>
                     </div>
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold text-gray-600">
-                      Cari di daftar kartu
+                      Cari di daftar hubungan
                     </label>
                     <input
                       type="search"
@@ -2797,16 +3070,16 @@ export default function FinancePage() {
                         setFinanceCfgMetricQuery(e.target.value)
                       }
                       className="w-full mt-1 max-w-xl px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      placeholder="Ketik judul kartu, nama orang, atau bagian ringkasan…"
-                      aria-label="Cari kartu ringkasan"
+                      placeholder="Ketik judul, nama orang, atau bagian ringkasan…"
+                      aria-label="Cari hubungan angka"
                     />
                   </div>
 
                   {financeCfgDuplicatedMappingSources.size > 0 && (
                     <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                      Ada lebih dari satu kartu yang memakai sumber angka yang
+                      Ada lebih dari satu baris yang memakai sumber angka yang
                       sama. Sesuaikan pilihan hingga tidak ada pesan ini, lalu
-                      simpan tiap kartu.
+                      simpan tiap baris.
                     </p>
                   )}
 
@@ -3053,11 +3326,60 @@ export default function FinancePage() {
                       );
                     })}
                     {financeMetrics.length > 0 &&
-                      financeCfgMetricsFiltered.length === 0 && (
+                      financeCfgMetricsFiltered.length === 0 &&
+                      financeCfgMetricsOrphanedFiltered.length === 0 && (
                         <p className="text-sm text-gray-500 py-10 text-center">
                           Tidak ada kartu yang cocok dengan pencarian.
                         </p>
                       )}
+
+                    {financeCfgMetricsOrphanedFiltered.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-amber-200 space-y-2">
+                        <p className="text-xs font-semibold text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                          Hubungan terputus — orang sudah dihapus dari tab Orang
+                          atau belum dipilih. Baris ini tidak tampil di Bagi
+                          Hasil / Kasbon. Tambahkan orang di tab Orang, pilih
+                          nama di baris di bawah lalu simpan, atau hapus baris
+                          yang tidak dipakai.
+                        </p>
+                        {financeCfgMetricsOrphanedFiltered.map((metric) => (
+                          <div
+                            key={metric.id || metric.metric_key}
+                            className="flex items-start justify-between gap-3 text-sm bg-amber-50/80 rounded-lg p-3 border border-amber-200"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900">
+                                {metric.metric_label}
+                              </p>
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                {METRIC_GROUP_LABELS[metric.metric_group]}
+                                {" · "}
+                                {lookupFinanceSlotLabel(metric.source_column)}
+                              </p>
+                            </div>
+                            {metric.id ? (
+                              <button
+                                type="button"
+                                disabled={configSaving}
+                                onClick={() =>
+                                  submitConfigAction({
+                                    action: "delete_mapping",
+                                    id: metric.id,
+                                  })
+                                }
+                                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-red-700 bg-white border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Hapus kartu
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-gray-500 shrink-0 max-w-[8rem] text-right">
+                                Kartu bawaan — tambah kartu baru lalu abaikan
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

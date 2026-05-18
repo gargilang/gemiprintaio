@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import ModalFormShell from "@/components/ModalFormShell";
 import { CashBook } from "@/types/database";
 import { formatRupiah } from "@/lib/indonesian-helpers";
+import { lookupFinanceSlotLabel } from "@/lib/finance-slot-labels";
 
 interface EditManualModalProps {
   show: boolean;
@@ -18,13 +19,13 @@ const EDITABLE_FIELDS = [
   { key: "biaya_operasional", label: "Biaya Operasional" },
   { key: "biaya_bahan", label: "Biaya Bahan" },
   { key: "laba_bersih", label: "Laba Bersih" },
-  { key: "kasbon_anwar", label: "Kasbon Anwar" },
-  { key: "kasbon_suri", label: "Kasbon Suri" },
-  { key: "kasbon_cahaya", label: "Kasbon Cahaya" },
-  { key: "kasbon_dinil", label: "Kasbon Dinil" },
-  { key: "bagi_hasil_anwar", label: "Bagi Hasil Anwar" },
-  { key: "bagi_hasil_suri", label: "Bagi Hasil Suri" },
-  { key: "bagi_hasil_gemi", label: "Bagi Hasil Gemi" },
+  { key: "kasbon_anwar", label: lookupFinanceSlotLabel("kasbon_anwar") },
+  { key: "kasbon_suri", label: lookupFinanceSlotLabel("kasbon_suri") },
+  { key: "kasbon_cahaya", label: lookupFinanceSlotLabel("kasbon_cahaya") },
+  { key: "kasbon_dinil", label: lookupFinanceSlotLabel("kasbon_dinil") },
+  { key: "bagi_hasil_anwar", label: lookupFinanceSlotLabel("bagi_hasil_anwar") },
+  { key: "bagi_hasil_suri", label: lookupFinanceSlotLabel("bagi_hasil_suri") },
+  { key: "bagi_hasil_gemi", label: lookupFinanceSlotLabel("bagi_hasil_gemi") },
 ];
 
 export default function EditManualModal({
