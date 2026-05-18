@@ -4,6 +4,12 @@ import { getPOSInitData } from "@/lib/services/pos-service";
 import { getProductionOrders } from "@/lib/services/production-service";
 import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
 
+export interface DailySalesTrend {
+  date: string; // "DD/MM"
+  omzet: number;
+  transaksi: number;
+}
+
 export interface DashboardStats {
   todaySalesCount: number;
   todayRevenue: number;
@@ -13,6 +19,7 @@ export interface DashboardStats {
   saldo: number;
   activePiutang: number;
   totalPiutang: number;
+  dailySalesTrend: DailySalesTrend[];
   recentSales: Array<{
     id: string;
     pelangganNama: string;
@@ -76,6 +83,28 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
     }
   }
 
+  // Build last-30-days daily trend
+  const trendMap = new Map<string, { omzet: number; transaksi: number }>();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    trendMap.set(key, { omzet: 0, transaksi: 0 });
+  }
+  for (const s of sales) {
+    const raw = (s as any).dibuat_pada || (s as any).created_at || "";
+    const dateKey = raw.slice(0, 10);
+    if (trendMap.has(dateKey)) {
+      const entry = trendMap.get(dateKey)!;
+      entry.omzet += Number((s as any).total_jumlah ?? 0);
+      entry.transaksi += 1;
+    }
+  }
+  const dailySalesTrend = Array.from(trendMap.entries()).map(([key, val]) => {
+    const [, mm, dd] = key.split("-");
+    return { date: `${dd}/${mm}`, omzet: val.omzet, transaksi: val.transaksi };
+  });
+
   const recentSales = todaySales
     .slice(-5)
     .reverse()
@@ -107,6 +136,7 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
     saldo,
     activePiutang,
     totalPiutang,
+    dailySalesTrend,
     recentSales,
     recentOrders,
   };

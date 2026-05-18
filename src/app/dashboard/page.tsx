@@ -4,11 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import {
   fetchSessionUser,
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
-import { getDashboardStatsAction, type DashboardStats } from "./actions";
+import { getDashboardStatsAction, type DashboardStats, type DailySalesTrend } from "./actions";
 
 interface User {
   id: string;
@@ -65,6 +74,7 @@ export default function DashboardPage() {
       ? (getCachedSessionUser() as User | null)
       : null;
   const [user, setUser] = useState<User | null>(initialUser);
+  const [trendDays, setTrendDays] = useState<7 | 14 | 30>(30);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +161,34 @@ export default function DashboardPage() {
                 color="amber"
               />
             </div>
+          </div>
+
+          {/* Sales Trend Chart */}
+          <div className="bg-white/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800 font-twcenmt">
+                Tren Penjualan
+              </h3>
+              <div className="flex gap-1">
+                {([7, 14, 30] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setTrendDays(d)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      trendDays === d
+                        ? "bg-[#00afef] text-white shadow"
+                        : "bg-white/60 text-gray-500 hover:bg-white/80"
+                    }`}
+                  >
+                    {d} hari
+                  </button>
+                ))}
+              </div>
+            </div>
+            <SalesTrendChart
+              data={stats.dailySalesTrend.slice(-trendDays)}
+              days={trendDays}
+            />
           </div>
 
           {/* Stats Row: Produksi */}
@@ -274,50 +312,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Access */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-3 font-twcenmt">
-              Akses Cepat
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <QuickLink
-                href="/pos"
-                label="POS"
-                icon="💳"
-                color="from-[#00afef] to-[#2fd3ff]"
-              />
-              <QuickLink
-                href="/production"
-                label="Produksi"
-                icon="🖨️"
-                color="from-amber-500 to-amber-700"
-              />
-              <QuickLink
-                href="/finance"
-                label="Keuangan"
-                icon="💰"
-                color="from-emerald-500 to-emerald-700"
-              />
-              <QuickLink
-                href="/materials"
-                label="Barang"
-                icon="📦"
-                color="from-blue-500 to-blue-700"
-              />
-              <QuickLink
-                href="/customers"
-                label="Pelanggan"
-                icon="👥"
-                color="from-purple-500 to-purple-700"
-              />
-              <QuickLink
-                href="/reports"
-                label="Laporan"
-                icon="📊"
-                color="from-pink-500 to-pink-700"
-              />
-            </div>
-          </div>
         </>
       ) : null}
 
@@ -332,6 +326,77 @@ export default function DashboardPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+const fmtCurrencyShort = (n: number) => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}jt`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}rb`;
+  return String(n);
+};
+
+function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14 | 30 }) {
+  // Show every 2nd label for 7d, every 3rd for 14d, every 5th for 30d
+  const step = days === 7 ? 2 : days === 14 ? 3 : 5;
+  const tickFormatter = (_: string, index: number) =>
+    index % step === 0 ? data[index]?.date ?? "" : "";
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="omzetGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#00afef" stopOpacity={0.25} />
+            <stop offset="95%" stopColor="#00afef" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tickFormatter={tickFormatter}
+          interval={0}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          tickFormatter={fmtCurrencyShort}
+          tick={{ fontSize: 11, fill: "#6b7280" }}
+          axisLine={false}
+          tickLine={false}
+          width={48}
+        />
+        <Tooltip
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          formatter={((value: number | string) => {
+            const n = Number(value);
+            return [
+              new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                minimumFractionDigits: 0,
+              }).format(n),
+              "Omzet",
+            ];
+          }) as any}
+          labelStyle={{ fontWeight: 600, color: "#111827" }}
+          contentStyle={{
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            fontSize: 12,
+          }}
+        />
+        <Area
+          type="monotone"
+          dataKey="omzet"
+          stroke="#00afef"
+          strokeWidth={2}
+          fill="url(#omzetGrad)"
+          dot={false}
+          activeDot={{ r: 4 }}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -395,27 +460,5 @@ function StatCard({
         )}
       </div>
     </div>
-  );
-}
-
-function QuickLink({
-  href,
-  label,
-  icon,
-  color,
-}: {
-  href: string;
-  label: string;
-  icon: string;
-  color: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`bg-gradient-to-br ${color} text-white rounded-xl p-4 text-center hover:shadow-lg transition-all hover:scale-[1.03] active:scale-95`}
-    >
-      <span className="text-2xl block mb-1">{icon}</span>
-      <span className="font-semibold text-sm font-twcenmt">{label}</span>
-    </Link>
   );
 }
