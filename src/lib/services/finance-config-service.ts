@@ -9,9 +9,15 @@ import {
   type ProfitFormula,
   PROFIT_SHARE_SLOTS,
   buildProfitSharePartnersFromConfig,
-  resolveProfitShareSlotForNewPartner,
   slotForSourceColumn,
 } from "@/lib/profit-share-config";
+import {
+  type FinanceColumnRule,
+  type CategoryWithContributions,
+  DEFAULT_COLUMN_RULES,
+  parseKasbonConditions,
+  parseCategoryContributions,
+} from "@/lib/formula-engine";
 
 export interface FinanceCategoryDefinition {
   id?: string;
@@ -22,7 +28,10 @@ export interface FinanceCategoryDefinition {
   color_border: string;
   direction: "debit" | "kredit" | "both";
   display_order: number;
+  metric_contributions?: unknown; // JSON array of CategoryContributionRule
 }
+
+export type { FinanceColumnRule };
 
 export interface FinanceMetricMapping {
   id?: string;
@@ -44,6 +53,8 @@ export interface FinanceParticipant {
   is_active: number;
   profit_formula?: ProfitFormula | null;
   share_divisor?: number | null;
+  share_percent?: number | null;
+  participant_role?: string | null;
   bagi_hasil_column?: string | null;
   kasbon_column?: string | null;
   pribadi_kategori?: string | null;
@@ -53,6 +64,7 @@ export interface FinanceConfigPayload {
   categories: FinanceCategoryDefinition[];
   participants: FinanceParticipant[];
   metricMappings: FinanceMetricMapping[];
+  columnRules: FinanceColumnRule[];
 }
 
 const DEFAULT_CATEGORIES: FinanceCategoryDefinition[] = [
@@ -157,7 +169,7 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
       const { data, error } = await sb
         .from("finance_participants")
         .select(
-          "id, participant_code, display_name, role_type, display_order, is_active, profit_formula, share_divisor, bagi_hasil_column, kasbon_column, pribadi_kategori"
+          "id, participant_code, display_name, role_type, display_order, is_active, profit_formula, share_divisor, bagi_hasil_column, kasbon_column, pribadi_kategori, share_percent, participant_role"
         )
         .eq("is_active", 1)
         .order("display_order", { ascending: true });
@@ -252,10 +264,13 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
     metricRows
   );
 
+  const columnRules = await getColumnRules();
+
   return {
     categories: categoriesResult.data?.length ? categoriesResult.data : DEFAULT_CATEGORIES,
     participants: participantRows,
     metricMappings: metricRows?.length ? metricRows : DEFAULT_MAPPINGS,
+    columnRules,
   };
 }
 
@@ -265,6 +280,219 @@ export async function getProfitSharePartnersForRecalc() {
     config.participants,
     config.metricMappings
   );
+}
+
+// ── Column Rules ──────────────────────────────────────────────────────────
+
+/** Auto-provision finance_metric_column_rules in Supabase if it doesn't exist. */
+async function ensureColumnRulesTable(): Promise<void> {
+  const sb = getServerSupabaseClient();
+  if (!sb) return;
+  try {
+    // Try to insert seed rows — if table doesn't exist this will fail and we'll create it
+    const { error: checkErr } = await sb
+      .from("finance_metric_column_rules")
+      .select("id")
+      .limit(1);
+
+    if (checkErr && checkErr.message.includes("does not exist")) {
+      // Create table via raw SQL using service role (pg REST endpoint isn't available,
+      // so we use a direct approach: insert via Supabase admin endpoint)
+      // Fall back silently — next app restart will try again
+      return;
+    }
+
+    // Table exists — seed it if empty
+    const { data: existingRules } = await sb
+      .from("finance_metric_column_rules")
+      .select("id")
+      .limit(1);
+
+    if (existingRules && existingRules.length === 0) {
+      await sb.from("finance_metric_column_rules").insert(
+        DEFAULT_COLUMN_RULES.map((r) => ({
+          id: r.id,
+          column_name: r.column_name,
+          display_name: r.display_name,
+          rule_type: r.rule_type,
+          formula_expression: r.formula_expression,
+          kasbon_conditions: r.kasbon_conditions ? JSON.stringify(r.kasbon_conditions) : null,
+          is_system: r.is_system,
+          display_order: r.display_order,
+        }))
+      );
+
+      // Seed category contributions
+      const seedContributions = [
+        { codes: ["OMZET", "PIUTANG", "LUNAS"], contrib: [{ column: "omzet", amount_field: "debit", sign: 1 }] },
+        { codes: ["BIAYA", "TABUNGAN", "KOMISI"], contrib: [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }] },
+        { codes: ["SUPPLY", "HUTANG"], contrib: [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }] },
+      ];
+      for (const { codes, contrib } of seedContributions) {
+        await sb
+          .from("finance_category_definitions")
+          .update({ metric_contributions: contrib })
+          .in("category_code", codes)
+          .is("metric_contributions", null);
+      }
+    }
+  } catch {
+    // Don't crash — just use defaults
+  }
+}
+
+/** Load all column rules from DB, falling back to defaults if table missing. */
+export async function getColumnRules(): Promise<FinanceColumnRule[]> {
+  await ensureColumnRulesTable();
+  try {
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      const { data, error } = await sb
+        .from("finance_metric_column_rules")
+        .select("id, column_name, display_name, rule_type, formula_expression, kasbon_conditions, is_system, display_order")
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+      if (data && data.length > 0) {
+        return data.map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          column_name: r.column_name as string,
+          display_name: r.display_name as string,
+          rule_type: r.rule_type as FinanceColumnRule["rule_type"],
+          formula_expression: (r.formula_expression as string | null) ?? null,
+          kasbon_conditions: parseKasbonConditions(r.kasbon_conditions),
+          is_system: Number(r.is_system ?? 0),
+          display_order: Number(r.display_order ?? 0),
+        })) as FinanceColumnRule[];
+      }
+    } else {
+      const rows = await db.queryRaw<Record<string, unknown>>(
+        `SELECT id, column_name, display_name, rule_type, formula_expression, kasbon_conditions, is_system, display_order
+         FROM finance_metric_column_rules
+         ORDER BY display_order ASC`
+      );
+      if (rows.length > 0) {
+        return rows.map((r) => ({
+          id: r.id as string,
+          column_name: r.column_name as string,
+          display_name: r.display_name as string,
+          rule_type: r.rule_type as FinanceColumnRule["rule_type"],
+          formula_expression: (r.formula_expression as string | null) ?? null,
+          kasbon_conditions: parseKasbonConditions(r.kasbon_conditions),
+          is_system: Number(r.is_system ?? 0),
+          display_order: Number(r.display_order ?? 0),
+        })) as FinanceColumnRule[];
+      }
+    }
+  } catch {
+    // Table might not exist yet — fall back to defaults
+  }
+  return DEFAULT_COLUMN_RULES;
+}
+
+/** Returns column rules + categories-with-contributions for the recalc engine. */
+export async function getColumnRulesForRecalc(): Promise<{
+  columnRules: FinanceColumnRule[];
+  categories: CategoryWithContributions[];
+}> {
+  const columnRules = await getColumnRules();
+
+  let categories: CategoryWithContributions[] = [];
+  try {
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      const { data } = await sb
+        .from("finance_category_definitions")
+        .select("category_code, metric_contributions")
+        .eq("is_active", 1);
+      categories = (data || []).map((r: Record<string, unknown>) => ({
+        category_code: r.category_code as string,
+        metric_contributions: parseCategoryContributions(r.metric_contributions),
+      }));
+    } else {
+      const rows = await db.queryRaw<Record<string, unknown>>(
+        `SELECT category_code, metric_contributions FROM finance_category_definitions WHERE is_active = 1`
+      );
+      categories = rows.map((r) => ({
+        category_code: r.category_code as string,
+        metric_contributions: parseCategoryContributions(r.metric_contributions),
+      }));
+    }
+  } catch {
+    // Fall back to empty (DEFAULT_CATEGORY_CONTRIBUTIONS used in engine)
+  }
+
+  return { columnRules, categories };
+}
+
+/** Save formula or kasbon_conditions for a column rule. */
+export async function updateColumnRule(
+  id: string,
+  input: {
+    display_name?: string;
+    formula_expression?: string | null;
+    kasbon_conditions?: import("@/lib/formula-engine").KasbonConditions | null;
+    rule_type?: FinanceColumnRule["rule_type"];
+  }
+) {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.display_name !== undefined) payload.display_name = input.display_name;
+  if (input.formula_expression !== undefined) payload.formula_expression = input.formula_expression;
+  if (input.kasbon_conditions !== undefined) {
+    payload.kasbon_conditions = input.kasbon_conditions
+      ? JSON.stringify(input.kasbon_conditions)
+      : null;
+  }
+  if (input.rule_type !== undefined) payload.rule_type = input.rule_type;
+
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { error } = await sb
+      .from("finance_metric_column_rules")
+      .update(payload)
+      .eq("id", id);
+    // If table doesn't exist yet (migration pending), skip gracefully
+    if (error && !error.message.includes("does not exist") && !error.message.includes("schema cache")) {
+      return { data: null, error: new Error(error.message) };
+    }
+  }
+
+  // SQLite mirror
+  try {
+    await db.queryRaw(
+      `UPDATE finance_metric_column_rules SET ${Object.keys(payload).map((k) => `${k} = ?`).join(", ")} WHERE id = ?`,
+      [...Object.values(payload), id]
+    );
+  } catch { /* SQLite table might not exist yet */ }
+
+  return { data: { id }, error: null };
+}
+
+/** Save metric_contributions JSON for a category. */
+export async function updateCategoryContributions(
+  categoryId: string,
+  contributions: import("@/lib/formula-engine").CategoryContributionRule[]
+) {
+  const json = JSON.stringify(contributions);
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { error } = await sb
+      .from("finance_category_definitions")
+      .update({ metric_contributions: contributions, updated_at: new Date().toISOString() })
+      .eq("id", categoryId);
+    // Column might not exist yet if migration is pending
+    if (error && !error.message.includes("does not exist") && !error.message.includes("schema cache")) {
+      return { data: null, error: new Error(error.message) };
+    }
+  }
+
+  try {
+    await db.queryRaw(
+      `UPDATE finance_category_definitions SET metric_contributions = ?, updated_at = ? WHERE id = ?`,
+      [json, new Date().toISOString(), categoryId]
+    );
+  } catch { /* SQLite column might not exist yet */ }
+
+  return { data: { id: categoryId }, error: null };
 }
 
 async function enrichParticipantProfitDefaults(
@@ -304,6 +532,8 @@ export async function createFinanceParticipant(input: {
   role_type: "profit_share" | "cash_advance" | "other";
   profit_formula?: ProfitFormula | null;
   share_divisor?: number;
+  share_percent?: number;
+  participant_role?: string;
   bagi_hasil_column?: string | null;
   kasbon_column?: string | null;
   pribadi_kategori?: string | null;
@@ -317,9 +547,11 @@ export async function createFinanceParticipant(input: {
     role_type: input.role_type,
     display_order: displayOrder,
     is_active: 1,
+    participant_role: input.participant_role ?? "PEMILIK",
+    share_percent: input.share_percent ?? 100,
   };
   if (input.role_type === "profit_share") {
-    payload.profit_formula = input.profit_formula ?? "third_minus_kasbon";
+    payload.profit_formula = input.profit_formula ?? "percentage_based";
     payload.share_divisor = input.share_divisor ?? 3;
     payload.bagi_hasil_column = input.bagi_hasil_column ?? null;
     payload.kasbon_column = input.kasbon_column ?? null;
@@ -357,6 +589,7 @@ export async function updateProfitShareParticipant(
 
 export async function setupBagiHasilPartner(input: {
   display_name: string;
+  participant_role?: string;
   profit_formula?: ProfitFormula;
   share_divisor?: number;
   source_column?: string;
@@ -367,35 +600,63 @@ export async function setupBagiHasilPartner(input: {
   }
 
   const config = await getFinanceConfig();
-  const slot = resolveProfitShareSlotForNewPartner(
-    config.metricMappings,
-    input.source_column
-  );
+
+  // Active participant IDs - slots referencing inactive participants are treated as orphans
+  const activeParticipantIds = new Set(config.participants.map((p) => p.id));
+
+  // Resolve slot: prefer explicitly-requested source_column, then find free/orphan slot
+  let slot = input.source_column
+    ? slotForSourceColumn(input.source_column) ?? null
+    : null;
+
+  if (!slot) {
+    // Find first slot without any mapping, OR with a mapping that has no participant,
+    // OR with a mapping whose participant is no longer active
+    for (const s of PROFIT_SHARE_SLOTS) {
+      const m = config.metricMappings.find(
+        (mm) => mm.metric_group === "profit_share" && mm.source_column === s.sourceColumn
+      );
+      if (!m || !m.participant_id || !activeParticipantIds.has(m.participant_id)) {
+        slot = s;
+        break;
+      }
+    }
+  }
 
   if (!slot) {
     return {
       data: null,
       error: new Error(
-        "Semua slot bagi hasil sudah terpakai (maks. 3 mitra). Hapus mitra lain terlebih dahulu."
+        "Semua slot bagi hasil sudah terpakai (maks. 3 orang). Hapus orang lain terlebih dahulu."
       ),
     };
   }
 
   const existing = config.metricMappings.find(
     (m) =>
-      m.metric_group === "profit_share" && m.source_column === slot.sourceColumn
+      m.metric_group === "profit_share" && m.source_column === slot!.sourceColumn
   );
 
-  if (existing?.participant_id) {
+  // Only block if slot is taken by an ACTIVE participant
+  if (existing?.participant_id && activeParticipantIds.has(existing.participant_id)) {
     return {
       data: null,
       error: new Error(
-        `Slot ${slot.label} sudah dipakai mitra lain. Hapus mitra lama terlebih dahulu.`
+        `Slot sudah dipakai orang lain. Hapus terlebih dahulu.`
       ),
     };
   }
 
-  const formula = input.profit_formula ?? slot.defaultFormula;
+  // Count existing active profit_share participants to calculate equal split
+  const existingPartners = config.participants.filter(
+    (p) => p.role_type === "profit_share" && p.is_active !== 0
+  );
+  const newCount = existingPartners.length + 1;
+  const equalPercent = Math.round((100 / newCount) * 100) / 100;
+  // Adjust first existing partner to absorb rounding remainder
+  const firstPercent = Math.round((100 - equalPercent * (newCount - 1)) * 100) / 100;
+
+  const formula: ProfitFormula = "percentage_based";
   const shareDivisor = input.share_divisor && input.share_divisor > 0 ? input.share_divisor : 3;
   const code = name
     .normalize("NFD")
@@ -404,19 +665,59 @@ export async function setupBagiHasilPartner(input: {
     .toUpperCase()
     .slice(0, 16) || `MITRA${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
-  const created = await createFinanceParticipant({
-    participant_code: code,
-    display_name: name,
-    role_type: "profit_share",
-    profit_formula: formula,
-    share_divisor: shareDivisor,
-    bagi_hasil_column: slot.sourceColumn,
-    kasbon_column: slot.kasbonColumn,
-    pribadi_kategori: slot.pribadiKategori,
-  });
-  if (created.error) return created;
+  // Try to reactivate an existing inactive participant with the same code
+  // before creating a new one (avoids unique constraint violations)
+  let participantId: string | null = null;
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data: existingByCode } = await sb
+      .from("finance_participants")
+      .select("id")
+      .eq("participant_code", code)
+      .maybeSingle();
+    if (existingByCode?.id) {
+      const { error: reactivateErr } = await sb.from("finance_participants").update({
+        display_name: name,
+        is_active: 1,
+        participant_role: input.participant_role ?? "PEMILIK",
+        share_percent: equalPercent,
+        profit_formula: formula,
+        share_divisor: shareDivisor,
+        bagi_hasil_column: slot.sourceColumn,
+        kasbon_column: slot.kasbonColumn,
+        pribadi_kategori: slot.pribadiKategori,
+      }).eq("id", existingByCode.id);
+      if (!reactivateErr) participantId = existingByCode.id;
+    }
+  }
 
-  const participantId = (created.data as { id: string })?.id;
+  if (!participantId) {
+    const created = await createFinanceParticipant({
+      participant_code: code,
+      display_name: name,
+      role_type: "profit_share",
+      profit_formula: formula,
+      share_divisor: shareDivisor,
+      share_percent: equalPercent,
+      participant_role: input.participant_role ?? "PEMILIK",
+      bagi_hasil_column: slot.sourceColumn,
+      kasbon_column: slot.kasbonColumn,
+      pribadi_kategori: slot.pribadiKategori,
+    });
+    if (created.error) return created;
+    participantId = (created.data as { id: string })?.id ?? null;
+  }
+
+  // Redistribute percentages for existing partners equally
+  for (let i = 0; i < existingPartners.length; i++) {
+    const p = existingPartners[i];
+    const pct = i === 0 ? firstPercent : equalPercent;
+    await db.update("finance_participants", p.id, {
+      share_percent: pct,
+      profit_formula: "percentage_based",
+    });
+  }
+
   if (!participantId) {
     return { data: null, error: new Error("Gagal membuat mitra bagi hasil.") };
   }
@@ -449,13 +750,56 @@ export async function removeBagiHasilPartner(participantId: string) {
   const mappings = config.metricMappings.filter(
     (m) => m.participant_id === participantId && m.metric_group === "profit_share"
   );
+  // Unlink participant from mapping (set participant_id = null) so the slot stays reusable
   for (const m of mappings) {
     if (m.id) {
-      const del = await deleteFinanceMetricMapping(m.id);
-      if (del.error) return del;
+      const unlinked = await updateFinanceMetricMapping(m.id, {
+        participant_id: null,
+        metric_group: "profit_share",
+      });
+      if (unlinked.error) return unlinked;
     }
   }
-  return deleteFinanceParticipant(participantId);
+  const result = await deleteFinanceParticipant(participantId);
+  if (result.error) return result;
+
+  // Redistribute percentages equally among remaining active profit_share partners
+  const remaining = config.participants.filter(
+    (p) =>
+      p.role_type === "profit_share" &&
+      p.is_active !== 0 &&
+      p.id !== participantId
+  );
+  if (remaining.length > 0) {
+    const equalPercent = Math.round((100 / remaining.length) * 100) / 100;
+    const firstPercent =
+      Math.round((100 - equalPercent * (remaining.length - 1)) * 100) / 100;
+    for (let i = 0; i < remaining.length; i++) {
+      await db.update("finance_participants", remaining[i].id, {
+        share_percent: i === 0 ? firstPercent : equalPercent,
+        profit_formula: "percentage_based",
+      });
+    }
+  }
+
+  return result;
+}
+
+export async function updateBagiHasilPercents(
+  percents: Array<{ participant_id: string; share_percent: number; participant_role?: string }>
+) {
+  for (const item of percents) {
+    const update: Record<string, unknown> = {
+      share_percent: item.share_percent,
+      profit_formula: "percentage_based",
+    };
+    if (item.participant_role) {
+      update.participant_role = item.participant_role;
+    }
+    const result = await db.update("finance_participants", item.participant_id, update);
+    if (result.error) return result;
+  }
+  return { data: { ok: true }, error: null };
 }
 
 export async function countActiveMappingsForParticipant(

@@ -8,8 +8,11 @@ import {
   deleteFinanceParticipant,
   removeBagiHasilPartner,
   setupBagiHasilPartner,
+  updateBagiHasilPercents,
   updateFinanceMetricMapping,
   updateProfitShareParticipant,
+  updateColumnRule,
+  updateCategoryContributions,
 } from "@/lib/services/finance-config-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import type { ProfitFormula } from "@/lib/profit-share-config";
@@ -85,6 +88,7 @@ export async function POST(request: NextRequest) {
     if (action === "setup_bagi_hasil_partner") {
       const result = await setupBagiHasilPartner({
         display_name: body.display_name,
+        participant_role: body.participant_role,
         profit_formula: body.profit_formula as ProfitFormula | undefined,
         share_divisor: body.share_divisor,
         source_column: body.source_column,
@@ -92,6 +96,14 @@ export async function POST(request: NextRequest) {
       if (result.error) throw result.error;
       await recalculateCashbookIfAvailable();
       return NextResponse.json({ ok: true, data: result.data });
+    }
+
+    if (action === "update_bagi_hasil_percents") {
+      const percents = Array.isArray(body.percents) ? body.percents : [];
+      const result = await updateBagiHasilPercents(percents);
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true });
     }
 
     if (action === "update_profit_share_partner") {
@@ -106,6 +118,28 @@ export async function POST(request: NextRequest) {
 
     if (action === "remove_bagi_hasil_partner") {
       const result = await removeBagiHasilPartner(body.participant_id);
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "update_column_rule") {
+      const result = await updateColumnRule(body.id, {
+        display_name: body.display_name,
+        formula_expression: body.formula_expression ?? null,
+        kasbon_conditions: body.kasbon_conditions ?? null,
+        rule_type: body.rule_type,
+      });
+      if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "update_category_contributions") {
+      const result = await updateCategoryContributions(
+        body.category_id,
+        body.contributions ?? []
+      );
       if (result.error) throw result.error;
       await recalculateCashbookIfAvailable();
       return NextResponse.json({ ok: true });

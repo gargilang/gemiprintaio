@@ -151,12 +151,17 @@ function metricBelongsToActiveParticipant(
   metric: FinanceMetricConfig,
   participants: FinanceParticipantConfig[]
 ): boolean {
+  // Primary: match by explicit participant_id
   if (
     metric.participant_id &&
     participants.some((p) => p.id === metric.participant_id)
   ) {
     return true;
   }
+  // For profit_share metrics without participant_id (orphan slots), never infer by name.
+  // Name-matching would incorrectly tie orphan slots to active participants.
+  if (!metric.participant_id && metric.metric_group === "profit_share") return false;
+  // For other metric groups, fall back to name matching for legacy data
   const name = resolveMetricParticipantName(metric);
   if (!name) return false;
   return participants.some((p) => participantNameMatches(p.display_name, name));
@@ -438,6 +443,22 @@ interface FinanceCategoryConfig {
   color_bg: string;
   color_text: string;
   color_border: string;
+  metric_contributions?: unknown;
+}
+
+interface FinanceColumnRuleConfig {
+  id: string;
+  column_name: string;
+  display_name: string;
+  rule_type: "saldo" | "accumulator" | "formula" | "kasbon_conditional" | "profit_share";
+  formula_expression: string | null;
+  kasbon_conditions: {
+    categories: string[];
+    keperluan_contains: string | null;
+    amount: "kredit_minus_debit" | "debit_minus_kredit";
+  } | null;
+  is_system: number;
+  display_order: number;
 }
 
 interface FinanceMetricConfig {
@@ -455,9 +476,11 @@ interface FinanceParticipantConfig {
   participant_code: string;
   display_name: string;
   role_type: "profit_share" | "cash_advance" | "other";
-  profit_formula?: "third_minus_kasbon" | "incremental_investor" | null;
+  profit_formula?: "third_minus_kasbon" | "incremental_investor" | "percentage_based" | null;
   share_divisor?: number | null;
   bagi_hasil_column?: string | null;
+  share_percent?: number | null;
+  participant_role?: string | null;
 }
 
 const CASHBOOKS_CACHE_KEY = "cashbooks-active";
@@ -559,7 +582,21 @@ export default function FinancePage() {
       }
     >
   >({});
-  type FinanceConfigTabId = "people" | "categories" | "metrics";
+  const [financeColumnRules, setFinanceColumnRules] = useState<FinanceColumnRuleConfig[]>([]);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  // Draft for category contribution editing: column, amount_field
+  const [catContribDraft, setCatContribDraft] = useState<{
+    column: string;
+    amount_field: "debit" | "kredit";
+  } | null>(null);
+  // Draft for column rule formula editing
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleDraftFormula, setRuleDraftFormula] = useState("");
+  const [ruleDraftKasbonCats, setRuleDraftKasbonCats] = useState<string[]>([]);
+  const [ruleDraftKasbonKeyword, setRuleDraftKasbonKeyword] = useState("");
+  const [ruleDraftKasbonAmount, setRuleDraftKasbonAmount] = useState<"kredit_minus_debit" | "debit_minus_kredit">("kredit_minus_debit");
+  const [ruleFormulaError, setRuleFormulaError] = useState<string | null>(null);
+  type FinanceConfigTabId = "people" | "categories" | "metrics" | "formulas";
   const [financeConfigTab, setFinanceConfigTab] =
     useState<FinanceConfigTabId>("people");
   const [financeCfgPeopleQuery, setFinanceCfgPeopleQuery] = useState("");
@@ -1069,6 +1106,7 @@ export default function FinancePage() {
       setFinanceCategories(data.categories || []);
       setFinanceParticipants(data.participants || []);
       setFinanceMetrics(data.metricMappings || []);
+      setFinanceColumnRules(data.columnRules || []);
       const edits: Record<string, any> = {};
       for (const metric of data.metricMappings || []) {
         if (!metric.id) continue;
@@ -1114,7 +1152,9 @@ export default function FinancePage() {
     const triggersRecalc =
       payload.action === "setup_bagi_hasil_partner" ||
       payload.action === "update_profit_share_partner" ||
-      payload.action === "remove_bagi_hasil_partner";
+      payload.action === "remove_bagi_hasil_partner" ||
+      payload.action === "update_column_rule" ||
+      payload.action === "update_category_contributions";
     const deletedParticipantId =
       payload.action === "delete_participant" && typeof payload.id === "string"
         ? payload.id
@@ -2682,6 +2722,7 @@ export default function FinancePage() {
                     { id: "people" as const, label: "Orang" },
                     { id: "categories" as const, label: "Kategori" },
                     { id: "metrics" as const, label: "Hubungkan angka" },
+                    { id: "formulas" as const, label: "Formula" },
                   ] as const
                 ).map(({ id, label }) => (
                   <button
@@ -2689,7 +2730,11 @@ export default function FinancePage() {
                     type="button"
                     role="tab"
                     aria-selected={financeConfigTab === id}
-                    onClick={() => setFinanceConfigTab(id)}
+                    onClick={() => {
+                      setFinanceConfigTab(id);
+                      setEditingCategoryId(null);
+                      setEditingRuleId(null);
+                    }}
                     className={`px-4 py-2.5 text-sm font-semibold rounded-t-lg border-b-2 transition -mb-px ${
                       financeConfigTab === id
                         ? "border-slate-700 text-slate-900 bg-slate-50"
@@ -2701,6 +2746,7 @@ export default function FinancePage() {
                       {id === "people" && `(${financeParticipants.length})`}
                       {id === "categories" && `(${financeCategories.length})`}
                       {id === "metrics" && `(${financeMetrics.length})`}
+                      {id === "formulas" && `(${financeColumnRules.length})`}
                     </span>
                   </button>
                 ))}
@@ -2916,7 +2962,7 @@ export default function FinancePage() {
                     />
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white p-3 max-h-72 overflow-y-auto">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 max-h-96 overflow-y-auto">
                     {financeCfgCategoriesFiltered.length === 0 ? (
                       <p className="text-sm text-gray-500 py-6 text-center">
                         {financeCategories.length === 0
@@ -2925,31 +2971,135 @@ export default function FinancePage() {
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {financeCfgCategoriesFiltered.map((category) => (
-                          <div
-                            key={category.id || category.category_code}
-                            className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg p-3"
-                          >
-                            <span className="font-medium text-gray-800 truncate min-w-0">
-                              {category.display_name}
-                            </span>
-                            {category.id && (
-                              <button
-                                type="button"
-                                disabled={configSaving}
-                                onClick={() =>
-                                  submitConfigAction({
-                                    action: "delete_category",
-                                    id: category.id,
-                                  })
-                                }
-                                className="text-red-600 hover:text-red-800 shrink-0 text-sm"
-                              >
-                                Hapus
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                        {financeCfgCategoriesFiltered.map((category) => {
+                          const isExpanded = editingCategoryId === (category.id || category.category_code);
+                          // Parse current contribution
+                          let currentContrib: { column: string; amount_field: "debit" | "kredit" } | null = null;
+                          try {
+                            const raw = typeof category.metric_contributions === "string"
+                              ? JSON.parse(category.metric_contributions)
+                              : (category.metric_contributions as unknown[]);
+                            if (Array.isArray(raw) && raw.length > 0) {
+                              const first = raw[0] as { column: string; amount_field: "debit" | "kredit" };
+                              currentContrib = { column: first.column, amount_field: first.amount_field };
+                            }
+                          } catch { /* ignore */ }
+
+                          const accumulatorColumns = financeColumnRules
+                            .filter((r) => r.rule_type === "accumulator")
+                            .map((r) => ({ value: r.column_name, label: r.display_name }));
+
+                          return (
+                            <div key={category.id || category.category_code} className="rounded-lg border border-gray-100 overflow-hidden">
+                              <div className="flex items-center justify-between gap-2 text-sm bg-gray-50 p-3">
+                                <span className="font-medium text-gray-800 truncate min-w-0">
+                                  {category.display_name}
+                                  {currentContrib && (
+                                    <span className="ml-2 text-xs text-slate-500 font-normal">
+                                      → {financeColumnRules.find((r) => r.column_name === currentContrib!.column)?.display_name ?? currentContrib.column}
+                                      {" "}({currentContrib.amount_field === "debit" ? "debit" : "kredit"})
+                                    </span>
+                                  )}
+                                </span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isExpanded) {
+                                        setEditingCategoryId(null);
+                                      } else {
+                                        setEditingCategoryId(category.id || category.category_code);
+                                        setCatContribDraft(currentContrib ?? { column: accumulatorColumns[0]?.value ?? "omzet", amount_field: "debit" });
+                                      }
+                                    }}
+                                    className="text-slate-600 hover:text-slate-800 text-xs border border-slate-300 rounded px-2 py-1"
+                                  >
+                                    {isExpanded ? "Tutup" : "Edit Kalkulasi"}
+                                  </button>
+                                  {category.id && (
+                                    <button
+                                      type="button"
+                                      disabled={configSaving}
+                                      onClick={() =>
+                                        submitConfigAction({
+                                          action: "delete_category",
+                                          id: category.id,
+                                        })
+                                      }
+                                      className="text-red-600 hover:text-red-800 text-sm"
+                                    >
+                                      Hapus
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {isExpanded && category.id && (
+                                <div className="bg-blue-50 border-t border-blue-100 p-3 space-y-3">
+                                  <p className="text-xs text-blue-800 font-medium">
+                                    Ketika kategori <strong>{category.display_name}</strong> dipakai dalam transaksi, nilai apa yang ditambahkan ke metrik mana?
+                                  </p>
+                                  <div className="flex flex-wrap gap-3 items-end">
+                                    <div className="space-y-1">
+                                      <label className="text-xs font-semibold text-gray-600">Tambahkan ke metrik</label>
+                                      <select
+                                        value={catContribDraft?.column ?? ""}
+                                        onChange={(e) => setCatContribDraft((prev) => prev ? { ...prev, column: e.target.value } : { column: e.target.value, amount_field: "debit" })}
+                                        className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white"
+                                      >
+                                        <option value="">— Tidak ada —</option>
+                                        {accumulatorColumns.map((col) => (
+                                          <option key={col.value} value={col.value}>{col.label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    {catContribDraft?.column && (
+                                      <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-gray-600">Menggunakan nilai</label>
+                                        <select
+                                          value={catContribDraft?.amount_field ?? "debit"}
+                                          onChange={(e) => setCatContribDraft((prev) => prev ? { ...prev, amount_field: e.target.value as "debit" | "kredit" } : null)}
+                                          className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white"
+                                        >
+                                          <option value="debit">Debit (uang masuk)</option>
+                                          <option value="kredit">Kredit (uang keluar)</option>
+                                        </select>
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      disabled={configSaving}
+                                      onClick={async () => {
+                                        const contributions = catContribDraft?.column
+                                          ? [{ column: catContribDraft.column, amount_field: catContribDraft.amount_field, sign: 1 }]
+                                          : [];
+                                        await submitConfigAction({
+                                          action: "update_category_contributions",
+                                          category_id: category.id,
+                                          contributions,
+                                        });
+                                        setEditingCategoryId(null);
+                                      }}
+                                      className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50"
+                                    >
+                                      Simpan
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingCategoryId(null)}
+                                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    Perubahan ini akan langsung memicu perhitungan ulang semua data buku kas.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -3380,6 +3530,202 @@ export default function FinancePage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {financeConfigTab === "formulas" && (
+                <div className="space-y-4 min-h-[340px]">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <p className="font-bold text-gray-800 mb-1">Formula Kalkulasi</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Atur bagaimana setiap kolom dihitung di buku kas. Kolom bertipe <strong>Formula</strong> menggunakan nama kolom lain sebagai variabel.
+                      Kolom <strong>Kasbon Conditional</strong> dihitung berdasarkan kategori dan kata kunci di keperluan.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {financeColumnRules.map((rule) => {
+                      const isEditing = editingRuleId === rule.id;
+                      const canEdit = rule.rule_type === "formula" || rule.rule_type === "kasbon_conditional";
+                      const ruleTypeBadge: Record<string, string> = {
+                        saldo: "bg-blue-100 text-blue-800",
+                        accumulator: "bg-green-100 text-green-800",
+                        formula: "bg-purple-100 text-purple-800",
+                        kasbon_conditional: "bg-orange-100 text-orange-800",
+                        profit_share: "bg-amber-100 text-amber-800",
+                      };
+                      const ruleTypeLabel: Record<string, string> = {
+                        saldo: "Saldo",
+                        accumulator: "Akumulator",
+                        formula: "Formula",
+                        kasbon_conditional: "Kasbon",
+                        profit_share: "Bagi Hasil",
+                      };
+
+                      return (
+                        <div key={rule.id} className="rounded-lg border border-gray-200 overflow-hidden">
+                          <div className="flex items-center justify-between gap-2 p-3 bg-white text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${ruleTypeBadge[rule.rule_type] ?? "bg-gray-100 text-gray-600"}`}>
+                                {ruleTypeLabel[rule.rule_type] ?? rule.rule_type}
+                              </span>
+                              <span className="font-medium text-gray-800 truncate">{rule.display_name}</span>
+                              <span className="text-xs text-gray-400 font-mono truncate hidden sm:inline">{rule.column_name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {rule.rule_type === "formula" && rule.formula_expression && !isEditing && (
+                                <span className="text-xs text-purple-700 font-mono bg-purple-50 px-2 py-0.5 rounded hidden md:inline truncate max-w-[200px]">
+                                  = {rule.formula_expression}
+                                </span>
+                              )}
+                              {rule.rule_type === "kasbon_conditional" && rule.kasbon_conditions && !isEditing && (
+                                <span className="text-xs text-orange-700 bg-orange-50 px-2 py-0.5 rounded hidden md:inline truncate max-w-[200px]">
+                                  {rule.kasbon_conditions.categories.join(", ")}
+                                  {rule.kasbon_conditions.keperluan_contains ? ` + "${rule.kasbon_conditions.keperluan_contains}"` : ""}
+                                </span>
+                              )}
+                              {canEdit && !rule.is_system && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingRuleId(null);
+                                      setRuleFormulaError(null);
+                                    } else {
+                                      setEditingRuleId(rule.id);
+                                      setRuleDraftFormula(rule.formula_expression ?? "");
+                                      setRuleDraftKasbonCats(rule.kasbon_conditions?.categories ?? []);
+                                      setRuleDraftKasbonKeyword(rule.kasbon_conditions?.keperluan_contains ?? "");
+                                      setRuleDraftKasbonAmount(rule.kasbon_conditions?.amount ?? "kredit_minus_debit");
+                                      setRuleFormulaError(null);
+                                    }
+                                  }}
+                                  className="text-slate-600 hover:text-slate-800 text-xs border border-slate-300 rounded px-2 py-1"
+                                >
+                                  {isEditing ? "Tutup" : "Edit"}
+                                </button>
+                              )}
+                              {rule.rule_type === "accumulator" && (
+                                <span className="text-xs text-gray-400">Lihat tab Kategori</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {isEditing && rule.rule_type === "formula" && (
+                            <div className="bg-purple-50 border-t border-purple-100 p-3 space-y-3">
+                              <p className="text-xs text-purple-800">
+                                Tulis formula menggunakan nama kolom sebagai variabel. Contoh: <code className="bg-white px-1 rounded">omzet - biaya_operasional - biaya_bahan</code>
+                              </p>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-700">Formula untuk {rule.display_name}</label>
+                                <input
+                                  type="text"
+                                  value={ruleDraftFormula}
+                                  onChange={(e) => { setRuleDraftFormula(e.target.value); setRuleFormulaError(null); }}
+                                  placeholder="omzet - biaya_operasional - biaya_bahan"
+                                  className={`w-full font-mono text-sm px-3 py-2 border rounded-lg ${ruleFormulaError ? "border-red-400" : "border-gray-300"}`}
+                                />
+                                {ruleFormulaError && <p className="text-xs text-red-600">{ruleFormulaError}</p>}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Kolom tersedia:{" "}
+                                {financeColumnRules
+                                  .filter((r) => r.column_name !== rule.column_name && r.rule_type !== "profit_share")
+                                  .map((r) => (
+                                    <button key={r.column_name} type="button" onClick={() => setRuleDraftFormula((prev) => prev ? `${prev} - ${r.column_name}` : r.column_name)} className="font-mono bg-white border border-gray-200 rounded px-1 mr-1 hover:bg-purple-50">{r.column_name}</button>
+                                  ))}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={configSaving}
+                                  onClick={async () => {
+                                    // Client-side validation
+                                    const trimmed = ruleDraftFormula.trim();
+                                    if (!trimmed) { setRuleFormulaError("Formula tidak boleh kosong."); return; }
+                                    await submitConfigAction({
+                                      action: "update_column_rule",
+                                      id: rule.id,
+                                      formula_expression: trimmed,
+                                    });
+                                    setEditingRuleId(null);
+                                  }}
+                                  className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50"
+                                >
+                                  Simpan &amp; Hitung Ulang
+                                </button>
+                                <button type="button" onClick={() => { setEditingRuleId(null); setRuleFormulaError(null); }} className="px-3 py-1.5 text-sm text-gray-600">Batal</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {isEditing && rule.rule_type === "kasbon_conditional" && (
+                            <div className="bg-orange-50 border-t border-orange-100 p-3 space-y-3">
+                              <p className="text-xs text-orange-800">
+                                Kolom ini bertambah ketika transaksi cocok dengan kondisi di bawah.
+                                Nilai yang ditambahkan adalah kredit dikurangi debit (atau sebaliknya).
+                              </p>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Kategori transaksi (pisah koma, contoh: PRIBADI-A)</label>
+                                  <input
+                                    type="text"
+                                    value={ruleDraftKasbonCats.join(", ")}
+                                    onChange={(e) => setRuleDraftKasbonCats(e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))}
+                                    placeholder="PRIBADI-A"
+                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Kata kunci di kolom &quot;keperluan&quot; (opsional, kosongkan jika tidak perlu)</label>
+                                  <input
+                                    type="text"
+                                    value={ruleDraftKasbonKeyword}
+                                    onChange={(e) => setRuleDraftKasbonKeyword(e.target.value.toLowerCase())}
+                                    placeholder="cahaya"
+                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Nilai yang ditambahkan</label>
+                                  <select
+                                    value={ruleDraftKasbonAmount}
+                                    onChange={(e) => setRuleDraftKasbonAmount(e.target.value as "kredit_minus_debit" | "debit_minus_kredit")}
+                                    className="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                                  >
+                                    <option value="kredit_minus_debit">Kredit − Debit (umumnya untuk kasbon)</option>
+                                    <option value="debit_minus_kredit">Debit − Kredit</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={configSaving || ruleDraftKasbonCats.length === 0}
+                                  onClick={async () => {
+                                    await submitConfigAction({
+                                      action: "update_column_rule",
+                                      id: rule.id,
+                                      kasbon_conditions: {
+                                        categories: ruleDraftKasbonCats,
+                                        keperluan_contains: ruleDraftKasbonKeyword || null,
+                                        amount: ruleDraftKasbonAmount,
+                                      },
+                                    });
+                                    setEditingRuleId(null);
+                                  }}
+                                  className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50"
+                                >
+                                  Simpan &amp; Hitung Ulang
+                                </button>
+                                <button type="button" onClick={() => setEditingRuleId(null)} className="px-3 py-1.5 text-sm text-gray-600">Batal</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

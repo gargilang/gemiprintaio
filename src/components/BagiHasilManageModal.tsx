@@ -3,11 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import ModalFormShell from "@/components/ModalFormShell";
 import {
-  PROFIT_FORMULA_LABELS,
   PROFIT_SHARE_SLOTS,
-  type ProfitFormula,
-  findAvailableProfitShareSlot,
-  findOrphanProfitShareSlot,
+  PARTICIPANT_ROLE_LABELS,
   slotForSourceColumn,
 } from "@/lib/profit-share-config";
 
@@ -15,8 +12,8 @@ type Participant = {
   id: string;
   display_name: string;
   role_type: string;
-  profit_formula?: ProfitFormula | null;
-  share_divisor?: number | null;
+  participant_role?: string | null;
+  share_percent?: number | null;
 };
 
 type MetricMapping = {
@@ -26,13 +23,18 @@ type MetricMapping = {
   participant_id?: string | null;
 };
 
-type PartnerRow = {
+type DraftRow = {
   participantId: string;
   name: string;
-  slotLabel: string;
-  formula: ProfitFormula;
-  shareDivisor: number;
+  role: string;
+  percent: number;
 };
+
+const ROLES = ["PEMILIK", "MANAGER", "INVESTOR"] as const;
+
+function roundTo2(n: number) {
+  return Math.round(n * 100) / 100;
+}
 
 export default function BagiHasilManageModal({
   open,
@@ -51,16 +53,15 @@ export default function BagiHasilManageModal({
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
   canEdit: boolean;
 }) {
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newFormula, setNewFormula] =
-    useState<ProfitFormula>("third_minus_kasbon");
-  const [newDivisor, setNewDivisor] = useState(3);
-  const [edits, setEdits] = useState<
-    Record<string, { formula: ProfitFormula; shareDivisor: number }>
-  >({});
+  const [newRole, setNewRole] = useState<string>("PEMILIK");
+  const [percentError, setPercentError] = useState<string | null>(null);
 
-  const partnerRows: PartnerRow[] = useMemo(() => {
-    const rows: PartnerRow[] = [];
+  // Build active partner rows from metric mappings
+  const partnerRows: DraftRow[] = useMemo(() => {
+    const rows: DraftRow[] = [];
     for (const m of metricMappings) {
       if (m.metric_group !== "profit_share") continue;
       const slot = slotForSourceColumn(m.source_column);
@@ -72,56 +73,75 @@ export default function BagiHasilManageModal({
       rows.push({
         participantId: p.id,
         name: p.display_name,
-        slotLabel: slot.label,
-        formula:
-          (p.profit_formula as ProfitFormula) || slot.defaultFormula,
-        shareDivisor:
-          p.share_divisor && p.share_divisor > 0 ? p.share_divisor : 3,
+        role: p.participant_role ?? "PEMILIK",
+        percent: p.share_percent != null ? Number(p.share_percent) : 100,
       });
     }
     return rows.sort((a, b) => a.name.localeCompare(b.name, "id"));
   }, [metricMappings, participants]);
 
-  const availableSlot = useMemo(
-    () =>
-      findAvailableProfitShareSlot(metricMappings) ??
-      findOrphanProfitShareSlot(metricMappings),
-    [metricMappings]
-  );
+  const canAddMore = useMemo(() => {
+    if (partnerRows.length >= PROFIT_SHARE_SLOTS.length) return false;
+    const activeIds = new Set(participants.map((p) => p.id));
+    for (const slot of PROFIT_SHARE_SLOTS) {
+      const mapping = metricMappings.find(
+        (m) => m.metric_group === "profit_share" && m.source_column === slot.sourceColumn
+      );
+      // Slot is available if: no mapping, OR mapping has no participant_id,
+      // OR mapping references a participant not in the active list
+      if (!mapping || !mapping.participant_id || !activeIds.has(mapping.participant_id)) {
+        return true;
+      }
+    }
+    return false;
+  }, [metricMappings, participants, partnerRows.length]);
 
-  const orphanedSlots = useMemo(() => {
-    const used = new Set(
-      metricMappings
-        .filter((m) => m.metric_group === "profit_share")
-        .map((m) => m.source_column)
-    );
-    return PROFIT_SHARE_SLOTS.filter((s) => !used.has(s.sourceColumn));
-  }, [metricMappings]);
-
+  // Sync drafts when modal opens or partner data changes
   useEffect(() => {
     if (!open) return;
-    const next: Record<string, { formula: ProfitFormula; shareDivisor: number }> =
-      {};
-    for (const row of partnerRows) {
-      next[row.participantId] = {
-        formula: row.formula,
-        shareDivisor: row.shareDivisor,
-      };
-    }
-    setEdits(next);
+    setDrafts(partnerRows);
+    setShowAddForm(false);
     setNewName("");
-    setNewFormula(availableSlot?.defaultFormula ?? "third_minus_kasbon");
-    setNewDivisor(3);
-  }, [open, partnerRows, availableSlot?.defaultFormula]);
+    setNewRole("PEMILIK");
+    setPercentError(null);
+  // partnerRows identity changes when data reloads; using JSON key to detect real changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, partnerRows.map((r) => `${r.participantId}:${r.percent}:${r.role}`).join("|")]);
 
-  const savePartner = async (participantId: string) => {
-    const edit = edits[participantId];
-    if (!edit) return;
+  const totalPercent = drafts.reduce((s, d) => s + (d.percent || 0), 0);
+  const isPercentValid = Math.abs(totalPercent - 100) < 0.1 || drafts.length === 0;
+
+  const updateDraft = (id: string, field: "percent" | "role", value: number | string) => {
+    setDrafts((prev) =>
+      prev.map((d) =>
+        d.participantId === id ? { ...d, [field]: value } : d
+      )
+    );
+    setPercentError(null);
+  };
+
+  const autoDistribute = () => {
+    if (drafts.length === 0) return;
+    const equal = roundTo2(100 / drafts.length);
+    const first = roundTo2(100 - equal * (drafts.length - 1));
+    setDrafts((prev) =>
+      prev.map((d, i) => ({ ...d, percent: i === 0 ? first : equal }))
+    );
+    setPercentError(null);
+  };
+
+  const savePercents = async () => {
+    if (!isPercentValid) {
+      setPercentError(`Total persentase harus 100%. Sekarang: ${roundTo2(totalPercent)}%`);
+      return;
+    }
     await onSubmit({
-      action: "update_profit_share_partner",
-      id: participantId,
-      profit_formula: edit.formula,
-      share_divisor: edit.shareDivisor,
+      action: "update_bagi_hasil_percents",
+      percents: drafts.map((d) => ({
+        participant_id: d.participantId,
+        share_percent: d.percent,
+        participant_role: d.role,
+      })),
     });
   };
 
@@ -131,10 +151,11 @@ export default function BagiHasilManageModal({
     await onSubmit({
       action: "setup_bagi_hasil_partner",
       display_name: name,
-      profit_formula: newFormula,
-      share_divisor: newDivisor,
-      source_column: availableSlot?.sourceColumn,
+      participant_role: newRole,
     });
+    setShowAddForm(false);
+    setNewName("");
+    setNewRole("PEMILIK");
   };
 
   const removePartner = async (participantId: string) => {
@@ -148,13 +169,13 @@ export default function BagiHasilManageModal({
     <ModalFormShell
       open={open}
       onClose={onClose}
-      maxWidthClass="max-w-2xl"
+      maxWidthClass="max-w-xl"
       header={
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-white">Kelola bagi hasil</h2>
+            <h2 className="text-lg font-bold text-white">Kelola Bagi Hasil</h2>
             <p className="text-amber-100 text-xs mt-0.5">
-              Tambah mitra, atur rumus, lalu hitung ulang buku kas
+              Atur peserta dan persentase pembagian laba bersih
             </p>
           </div>
           <button
@@ -163,18 +184,8 @@ export default function BagiHasilManageModal({
             className="text-white/90 hover:text-white p-1 rounded-lg"
             aria-label="Tutup"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -192,187 +203,198 @@ export default function BagiHasilManageModal({
       }
     >
       <div className="p-6 space-y-5">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Maksimal <strong>3 mitra bagi hasil</strong> per perusahaan. Setelah
-          mengubah daftar atau rumus pembagian, buku kas dihitung ulang
-          otomatis.
-        </p>
 
-        {partnerRows.length === 0 ? (
-          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Belum ada mitra bagi hasil aktif. Tambahkan nama mitra di form di
-            bawah.
+        {/* Participants list */}
+        {drafts.length === 0 ? (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">
+            Belum ada peserta bagi hasil. Tambahkan orang pertama di bawah.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {partnerRows.map((row) => {
-              const edit = edits[row.participantId] ?? {
-                formula: row.formula,
-                shareDivisor: row.shareDivisor,
-              };
-              return (
-                <li
-                  key={row.participantId}
-                  className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-gray-900">{row.name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {row.slotLabel}
-                      </p>
-                    </div>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => removePartner(row.participantId)}
-                        className="text-red-600 text-sm hover:text-red-800 shrink-0"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
-                  {canEdit ? (
-                    <>
-                      <div className="grid sm:grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs font-semibold text-gray-600">
-                            Cara hitung
-                          </label>
-                          <select
-                            value={edit.formula}
-                            onChange={(e) =>
-                              setEdits((prev) => ({
-                                ...prev,
-                                [row.participantId]: {
-                                  ...edit,
-                                  formula: e.target.value as ProfitFormula,
-                                },
-                              }))
-                            }
-                            className="w-full mt-1 px-2 py-1.5 border rounded-lg text-sm"
-                          >
-                            {(
-                              Object.keys(
-                                PROFIT_FORMULA_LABELS
-                              ) as ProfitFormula[]
-                            ).map((key) => (
-                              <option key={key} value={key}>
-                                {PROFIT_FORMULA_LABELS[key]}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-gray-600">
-                            Pembagi (3 = sepertiga)
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={12}
-                            value={edit.shareDivisor}
-                            onChange={(e) =>
-                              setEdits((prev) => ({
-                                ...prev,
-                                [row.participantId]: {
-                                  ...edit,
-                                  shareDivisor: Math.max(
-                                    1,
-                                    Number(e.target.value) || 3
-                                  ),
-                                },
-                              }))
-                            }
-                            className="w-full mt-1 px-2 py-1.5 border rounded-lg text-sm"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => savePartner(row.participantId)}
-                        className="text-sm px-3 py-1.5 bg-slate-700 text-white rounded-lg disabled:opacity-50"
-                      >
-                        Simpan & hitung ulang
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-xs text-gray-600">
-                      {PROFIT_FORMULA_LABELS[row.formula]} · pembagi{" "}
-                      {row.shareDivisor}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {orphanedSlots.length > 0 && (
-          <p className="text-xs text-gray-500">
-            Slot tersedia: {orphanedSlots.map((s) => s.label).join(", ")}
-          </p>
-        )}
-
-        {canEdit && availableSlot && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-            <p className="font-semibold text-gray-800 text-sm">Tambah mitra</p>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Nama mitra atau pemilik"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
-            <div className="grid sm:grid-cols-2 gap-2">
-              <select
-                value={newFormula}
-                onChange={(e) =>
-                  setNewFormula(e.target.value as ProfitFormula)
-                }
-                className="w-full px-2 py-1.5 border rounded-lg text-sm"
-              >
-                {(
-                  Object.keys(PROFIT_FORMULA_LABELS) as ProfitFormula[]
-                ).map((key) => (
-                  <option key={key} value={key}>
-                    {PROFIT_FORMULA_LABELS[key]}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={newDivisor}
-                onChange={(e) =>
-                  setNewDivisor(Math.max(1, Number(e.target.value) || 3))
-                }
-                className="w-full px-2 py-1.5 border rounded-lg text-sm"
-                aria-label="Pembagi"
-              />
+          <div className="space-y-3">
+            {/* Header row */}
+            <div className="grid grid-cols-[1fr_140px_80px_32px] gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <span>Nama</span>
+              <span>Peran</span>
+              <span className="text-right">Bagian</span>
+              <span />
             </div>
-            <p className="text-xs text-gray-500">
-              Akan memakai slot: {availableSlot.label}
-            </p>
-            <button
-              type="button"
-              disabled={saving || !newName.trim()}
-              onClick={addPartner}
-              className="w-full px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              Tambah mitra & hitung ulang
-            </button>
+
+            {drafts.map((d) => (
+              <div
+                key={d.participantId}
+                className="grid grid-cols-[1fr_140px_80px_32px] gap-2 items-center rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5"
+              >
+                <span className="font-semibold text-gray-900 text-sm truncate">
+                  {d.name}
+                </span>
+
+                {canEdit ? (
+                  <select
+                    value={d.role}
+                    onChange={(e) => updateDraft(d.participantId, "role", e.target.value)}
+                    className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {PARTICIPANT_ROLE_LABELS[r]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-gray-600">
+                    {PARTICIPANT_ROLE_LABELS[d.role] ?? d.role}
+                  </span>
+                )}
+
+                {canEdit ? (
+                  <div className="flex items-center gap-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      value={d.percent}
+                      onChange={(e) =>
+                        updateDraft(
+                          d.participantId,
+                          "percent",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      className="w-full text-right text-sm px-2 py-1 border border-gray-200 rounded-lg"
+                    />
+                    <span className="text-xs text-gray-500 shrink-0">%</span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold text-right text-amber-700">
+                    {d.percent}%
+                  </span>
+                )}
+
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => removePartner(d.participantId)}
+                    className="text-red-400 hover:text-red-600 disabled:opacity-50 flex items-center justify-center"
+                    title="Hapus"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                ) : <span />}
+              </div>
+            ))}
+
+            {/* Total row */}
+            <div className="flex items-center justify-between pt-1 px-1">
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={autoDistribute}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Rata otomatis
+                  </button>
+                )}
+                {percentError && (
+                  <span className="text-xs text-red-600">{percentError}</span>
+                )}
+              </div>
+              <span
+                className={`text-sm font-bold tabular-nums ${
+                  isPercentValid ? "text-emerald-700" : "text-red-600"
+                }`}
+              >
+                Total: {roundTo2(totalPercent)}%
+              </span>
+            </div>
+
+            {canEdit && (
+              <button
+                type="button"
+                disabled={saving || !isPercentValid}
+                onClick={savePercents}
+                className="w-full py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Menyimpan..." : "Simpan & Hitung Ulang"}
+              </button>
+            )}
           </div>
         )}
 
-        {canEdit && !availableSlot && partnerRows.length >= 3 && (
+        {/* Add new partner */}
+        {canEdit && canAddMore && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+            {!showAddForm ? (
+              <button
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="w-full py-2 border-2 border-dashed border-amber-300 text-amber-700 rounded-lg text-sm font-semibold hover:bg-amber-50 transition-colors"
+              >
+                + Tambah Orang
+              </button>
+            ) : (
+              <>
+                <p className="font-semibold text-gray-800 text-sm">Tambah orang baru</p>
+                <p className="text-xs text-gray-500">
+                  Persentase akan dibagi rata otomatis. Bisa diubah setelah ditambah.
+                </p>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addPartner()}
+                  placeholder="Nama..."
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  autoFocus
+                />
+                <div>
+                  <label className="text-xs font-semibold text-gray-600">Peran</label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {PARTICIPANT_ROLE_LABELS[r]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={saving || !newName.trim()}
+                    onClick={addPartner}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                  >
+                    {saving ? "Menambahkan..." : "Tambah"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddForm(false); setNewName(""); }}
+                    className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {canEdit && !canAddMore && partnerRows.length >= PROFIT_SHARE_SLOTS.length && (
           <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Semua slot terpakai. Hapus mitra yang tidak dipakai untuk menambah
-            nama lain.
+            Kapasitas penuh ({PROFIT_SHARE_SLOTS.length} orang). Hapus salah satu untuk menambah yang baru.
           </p>
         )}
+
+        <p className="text-xs text-gray-400">
+          Bagi hasil dihitung dari <strong>laba bersih</strong> sesuai persentase masing-masing. Perubahan akan menghitung ulang seluruh buku kas secara otomatis.
+        </p>
       </div>
     </ModalFormShell>
   );

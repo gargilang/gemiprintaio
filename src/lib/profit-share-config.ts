@@ -4,7 +4,7 @@
 
 import { lookupFinanceSlotLabel } from "@/lib/finance-slot-labels";
 
-export type ProfitFormula = "third_minus_kasbon" | "incremental_investor";
+export type ProfitFormula = "third_minus_kasbon" | "incremental_investor" | "percentage_based";
 
 export type ProfitShareSlotDef = {
   sourceColumn: string;
@@ -44,13 +44,22 @@ export type ProfitSharePartnerRuntime = {
   sourceColumn: string;
   formula: ProfitFormula;
   shareDivisor: number;
+  sharePercent: number;
+  participantRole: string;
   kasbonColumn: string | null;
   pribadiKategori: string | null;
 };
 
 export const PROFIT_FORMULA_LABELS: Record<ProfitFormula, string> = {
+  percentage_based: "Persentase dari laba bersih",
   third_minus_kasbon: "Bagian laba ÷ pembagian − kasbon",
   incremental_investor: "Akumulasi kenaikan laba ÷ pembagian + transaksi investor",
+};
+
+export const PARTICIPANT_ROLE_LABELS: Record<string, string> = {
+  PEMILIK: "Pemilik",
+  MANAGER: "Manager",
+  INVESTOR: "Investor",
 };
 
 export function slotForSourceColumn(
@@ -66,6 +75,8 @@ export function defaultProfitSharePartners(): ProfitSharePartnerRuntime[] {
     sourceColumn: slot.sourceColumn,
     formula: slot.defaultFormula,
     shareDivisor: 3,
+    sharePercent: 100,
+    participantRole: "PEMILIK",
     kasbonColumn: slot.kasbonColumn,
     pribadiKategori: slot.pribadiKategori,
   }));
@@ -77,6 +88,8 @@ export type ProfitShareParticipantRow = {
   role_type: string;
   profit_formula?: ProfitFormula | null;
   share_divisor?: number | null;
+  share_percent?: number | null;
+  participant_role?: string | null;
   bagi_hasil_column?: string | null;
   kasbon_column?: string | null;
   pribadi_kategori?: string | null;
@@ -124,6 +137,9 @@ export function buildProfitSharePartnersFromConfig(
       sourceColumn: slot.sourceColumn,
       formula,
       shareDivisor,
+      sharePercent:
+        participant.share_percent != null ? Number(participant.share_percent) : 100,
+      participantRole: participant.participant_role ?? "PEMILIK",
       kasbonColumn:
         participant.kasbon_column ?? slot.kasbonColumn,
       pribadiKategori:
