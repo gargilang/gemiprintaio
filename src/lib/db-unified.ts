@@ -1008,7 +1008,26 @@ class UnifiedDatabase {
 
     try {
       const stmt = db.prepare(sql);
-      stmt.run(...values);
+      const info = stmt.run(...values);
+      if (info.changes === 0) {
+        // Row was ignored due to a UNIQUE/PK conflict. Find and return the
+        // existing row's ID so downstream foreign-key references stay valid.
+        try {
+          const existing = db
+            .prepare(`SELECT id FROM ${table} WHERE id = ?`)
+            .get(data.id);
+          if (existing) return { data: { id: (existing as any).id }, error: null };
+          // id not found — try by participant_code if available (finance_participants)
+          if (data.participant_code) {
+            const byCode = db
+              .prepare(`SELECT id FROM ${table} WHERE participant_code = ?`)
+              .get(data.participant_code);
+            if (byCode) return { data: { id: (byCode as any).id }, error: null };
+          }
+        } catch {
+          // best-effort lookup; fall through to return original id
+        }
+      }
       return { data: { id: data.id }, error: null };
     } catch (error: any) {
       console.error("Server SQLite insert error:", error);
