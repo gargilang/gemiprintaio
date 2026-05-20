@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         role_type: body.role_type || "other",
       });
       if (result.error) throw result.error;
+      await recalculateCashbookIfAvailable();
       return NextResponse.json({ ok: true });
     }
 

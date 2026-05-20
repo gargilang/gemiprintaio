@@ -407,11 +407,70 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
   ]);
   const batch = computeCashbookRecalculationUpdates(sorted, formulas, partners);
 
-  for (const { id, updates } of batch) {
-    if (Object.keys(updates).length === 0) continue;
-    const res = await db.update("keuangan", id, updates);
-    if (res.error) {
-      console.warn("recalculateCashbookViaSupabase update:", res.error);
+  // Load v2 overrides so we honour them when writing transaction_computed.
+  const overrideMap = new Map<string, Map<string, number>>();
+  try {
+    const { data: ovs } = await sb
+      .from("transaction_overrides")
+      .select("transaction_id, formula_key, override_value");
+    for (const r of (ovs ?? []) as Array<{
+      transaction_id: string;
+      formula_key: string;
+      override_value: number;
+    }>) {
+      let inner = overrideMap.get(r.transaction_id);
+      if (!inner) {
+        inner = new Map();
+        overrideMap.set(r.transaction_id, inner);
+      }
+      inner.set(r.formula_key, Number(r.override_value));
+    }
+  } catch {
+    // table might not exist yet on installs that haven't run the migration
+  }
+
+  // Collect all v2 rows so we can upsert in one batch.
+  const computedRows: Array<{
+    transaction_id: string;
+    formula_key: string;
+    value: number;
+    computed_at: string;
+  }> = [];
+  const nowIso = new Date().toISOString();
+
+  for (const { id, updates, computed } of batch) {
+    if (Object.keys(updates).length > 0) {
+      const res = await db.update("keuangan", id, updates);
+      if (res.error) {
+        console.warn("recalculateCashbookViaSupabase update:", res.error);
+      }
+    }
+
+    const rowOverrides = overrideMap.get(id);
+    for (const [formulaKey, value] of Object.entries(computed)) {
+      const ov = rowOverrides?.get(formulaKey);
+      computedRows.push({
+        transaction_id: id,
+        formula_key: formulaKey,
+        value: ov ?? value,
+        computed_at: nowIso,
+      });
+    }
+  }
+
+  // Best-effort dual-write to transaction_computed; tolerate missing table.
+  if (computedRows.length > 0) {
+    try {
+      const { error: tcErr } = await sb
+        .from("transaction_computed")
+        .upsert(computedRows, {
+          onConflict: "transaction_id,formula_key",
+        });
+      if (tcErr && !tcErr.message.includes("does not exist") && !tcErr.message.includes("schema cache")) {
+        console.warn("transaction_computed upsert:", tcErr.message);
+      }
+    } catch (e) {
+      console.warn("transaction_computed upsert exception:", e);
     }
   }
 

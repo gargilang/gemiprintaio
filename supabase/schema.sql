@@ -599,6 +599,71 @@ CREATE TABLE IF NOT EXISTS finance_metric_mappings (
 );
 
 -- ============================================================================
+-- BUSINESS ACTORS V2 (generic, name-free architecture)
+-- ============================================================================
+-- See migration 20260521090000_business_actors_v2.sql for full context.
+-- These tables coexist with finance_participants / cashbook_partner during
+-- the migration window. After validation, the legacy tables + the hardcoded
+-- kasbon_*/bagi_hasil_* columns on `keuangan` will be dropped.
+
+-- role_group is a display category for job titles (not a formula type).
+CREATE TABLE IF NOT EXISTS actor_roles (
+  id            TEXT PRIMARY KEY,
+  role_code     TEXT NOT NULL UNIQUE,
+  role_label    TEXT NOT NULL,
+  role_group    TEXT NOT NULL DEFAULT 'other'
+                 CHECK (role_group IN ('owner', 'management', 'sales', 'staff', 'other')),
+  description   TEXT,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
+CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+
+CREATE TABLE IF NOT EXISTS business_actors (
+  id                       TEXT PRIMARY KEY,
+  display_name             TEXT NOT NULL,
+  role_code                TEXT NOT NULL REFERENCES actor_roles(role_code) ON UPDATE CASCADE,
+  is_active                INTEGER NOT NULL DEFAULT 1,
+  display_order            INTEGER NOT NULL DEFAULT 0,
+  notes                    TEXT,
+  profit_share_percent     REAL,
+  cash_advance_categories  JSONB,
+  keperluan_keyword        TEXT,
+  bonus_percent            REAL,
+  bonus_source_formula_key TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_actors_role   ON business_actors(role_code);
+CREATE INDEX IF NOT EXISTS idx_business_actors_active ON business_actors(is_active);
+CREATE INDEX IF NOT EXISTS idx_business_actors_order  ON business_actors(display_order);
+
+CREATE TABLE IF NOT EXISTS transaction_computed (
+  transaction_id TEXT NOT NULL REFERENCES keuangan(id) ON DELETE CASCADE,
+  formula_key    TEXT NOT NULL,
+  value          REAL NOT NULL DEFAULT 0,
+  computed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (transaction_id, formula_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tc_formula_key ON transaction_computed(formula_key);
+CREATE INDEX IF NOT EXISTS idx_tc_transaction ON transaction_computed(transaction_id);
+
+CREATE TABLE IF NOT EXISTS transaction_overrides (
+  transaction_id  TEXT NOT NULL REFERENCES keuangan(id) ON DELETE CASCADE,
+  formula_key     TEXT NOT NULL,
+  override_value  REAL NOT NULL,
+  overridden_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (transaction_id, formula_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_to_formula_key ON transaction_overrides(formula_key);
+
+-- ============================================================================
 -- TRIGGERS FOR UPDATED_AT
 -- ============================================================================
 

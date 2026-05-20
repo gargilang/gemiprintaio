@@ -45,22 +45,54 @@ export type ASTNode =
   | { type: "if"; cond: ASTNode; then: ASTNode; else: ASTNode }
   | { type: "binaryOp"; op: BinaryOp; left: ASTNode; right: ASTNode };
 
-/** Logical column key produced by a formula (G, H, I, ...). */
+/** Logical column key produced by a formula (G, H, I, ... or semantic like "omzet"). */
 export type OutputColumn = string;
 
-/** Persisted formula definition. */
+/**
+ * Group a formula belongs to. Used by the UI to render formulas in separate
+ * bars (Ringkasan, Bagi Hasil, Kasbon, Bonus, Kustom). `summary` formulas
+ * are system-wide (omzet, laba, etc.); the others are typically attached to
+ * a `business_actor` and auto-generated.
+ */
+export type FormulaGroup =
+  | "summary"
+  | "profit_share"
+  | "cash_advance"
+  | "bonus"
+  | "custom";
+
+/**
+ * Persisted formula definition.
+ *
+ * Legacy fields (`column`, `dbColumn`) remain populated for backward
+ * compatibility with the spreadsheet-style letter system. New code should
+ * prefer the semantic `formulaKey` (e.g. "omzet", "laba_bersih",
+ * "kasbon_andi") and use `actorId` + `formulaGroup` for actor-driven
+ * formulas managed via the "Kelola Orang" UI.
+ */
 export interface FormulaDefinition {
   id: string;
   name: string;
-  /** Logical output column (e.g. "G") + DB column it maps to (e.g. "omzet"). */
+  /** Logical output column (e.g. "G"); kept for legacy graph + UI code. */
   column: OutputColumn;
-  /** keuangan DB column to write into; may equal column for technical setups. */
+  /** keuangan DB column to write into (legacy hardcoded columns). */
   dbColumn: string;
+  /** Semantic identifier ("omzet", "kasbon_andi"). Falls back to `dbColumn`. */
+  formulaKey?: string;
+  /** Linked business_actor when the formula was auto-generated for a person. */
+  actorId?: string | null;
+  /** Visual grouping (drives which bar this formula appears in). */
+  formulaGroup?: FormulaGroup;
   ast: ASTNode;
   enabled: boolean;
   isSystem: boolean;
   displayOrder: number;
   description?: string | null;
+}
+
+/** Resolve the semantic key for a formula, falling back to the legacy DB column. */
+export function resolveFormulaKey(f: Pick<FormulaDefinition, "formulaKey" | "dbColumn" | "column">): string {
+  return f.formulaKey || f.dbColumn || f.column;
 }
 
 /** Persisted partner record. */

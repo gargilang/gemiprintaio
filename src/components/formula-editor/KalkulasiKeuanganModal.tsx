@@ -25,11 +25,13 @@ interface PartnerApi {
   displayOrder: number;
 }
 
-type TabId = "formulas" | "partners" | "test";
+type TabId = "formulas" | "test";
 
 export interface KalkulasiKeuanganModalProps {
   open: boolean;
   onClose: () => void;
+  /** Buka modal kelola kategori transaksi (orang/kategori di luar rumus). */
+  onManageCategories?: () => void;
 }
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
@@ -48,6 +50,7 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
 export default function KalkulasiKeuanganModal({
   open,
   onClose,
+  onManageCategories,
 }: KalkulasiKeuanganModalProps) {
   const [tab, setTab] = useState<TabId>("formulas");
   const [formulas, setFormulas] = useState<FormulaApi[]>([]);
@@ -215,69 +218,6 @@ export default function KalkulasiKeuanganModal({
     }
   };
 
-  // ── Partner CRUD ─────────────────────────────────────────────────────────
-
-  const [partnerDraft, setPartnerDraft] = useState<{
-    name: string;
-    category: string;
-  }>({ name: "", category: "" });
-
-  const handleAddPartner = async () => {
-    if (!partnerDraft.name.trim()) return;
-    setSaving(true);
-    try {
-      await fetchJSON("/api/cashbook-partner", {
-        method: "POST",
-        body: JSON.stringify({
-          action: "upsert",
-          partner: {
-            name: partnerDraft.name.trim(),
-            category: partnerDraft.category.trim() || null,
-            displayOrder: partners.length * 10 + 10,
-          },
-        }),
-      });
-      setPartnerDraft({ name: "", category: "" });
-      await refresh();
-    } catch (e) {
-      alert(`Gagal menambah mitra: ${(e as Error).message}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRenamePartner = async (p: PartnerApi) => {
-    const newName = prompt("Nama baru:", p.name);
-    if (!newName || newName === p.name) return;
-    setSaving(true);
-    try {
-      await fetchJSON("/api/cashbook-partner", {
-        method: "POST",
-        body: JSON.stringify({
-          action: "upsert",
-          partner: { ...p, name: newName },
-        }),
-      });
-      await refresh();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeletePartner = async (p: PartnerApi) => {
-    if (!confirm(`Hapus mitra "${p.name}"?`)) return;
-    setSaving(true);
-    try {
-      await fetchJSON("/api/cashbook-partner", {
-        method: "POST",
-        body: JSON.stringify({ action: "delete", id: p.id }),
-      });
-      await refresh();
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // ── Test runner ──────────────────────────────────────────────────────────
 
   const parseTestRows = useCallback(() => {
@@ -322,7 +262,8 @@ export default function KalkulasiKeuanganModal({
         <div className="bg-gradient-to-r from-indigo-700 to-blue-700 px-6 py-4 border-b border-indigo-900">
           <h3 className="text-xl font-bold text-white">Kalkulasi Keuangan</h3>
           <p className="text-indigo-100 text-sm mt-1">
-            Atur rumus kolom G–O dan daftar mitra. Perubahan langsung
+            Atur rumus perhitungan buku kas (omzet, laba, bagi hasil, kasbon).
+            Kelola nama orang di bar Bagi Hasil / Kasbon. Perubahan langsung
             menghitung ulang buku kas.
           </p>
         </div>
@@ -330,7 +271,19 @@ export default function KalkulasiKeuanganModal({
       footer={
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="text-xs text-slate-500">
-            {formulas.length} rumus · {partners.length} mitra
+            {formulas.length} rumus
+            {onManageCategories && (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={onManageCategories}
+                  className="text-blue-700 hover:underline"
+                >
+                  Kelola kategori transaksi
+                </button>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -356,7 +309,6 @@ export default function KalkulasiKeuanganModal({
         {(
           [
             { id: "formulas", label: "Rumus" },
-            { id: "partners", label: "Mitra" },
             { id: "test", label: "Uji coba" },
           ] as Array<{ id: TabId; label: string }>
         ).map((t) => (
@@ -389,7 +341,7 @@ export default function KalkulasiKeuanganModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-slate-700">
-                Daftar rumus (kolom G–O)
+                Daftar rumus perhitungan
               </h4>
               <button
                 type="button"
@@ -403,7 +355,6 @@ export default function KalkulasiKeuanganModal({
               <table className="w-full text-sm">
                 <thead className="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="px-3 py-2 text-left">Kolom</th>
                     <th className="px-3 py-2 text-left">Nama</th>
                     <th className="px-3 py-2 text-left">Kolom DB</th>
                     <th className="px-3 py-2 text-left">Ringkasan</th>
@@ -414,10 +365,9 @@ export default function KalkulasiKeuanganModal({
                 <tbody className="bg-white divide-y divide-slate-100">
                   {formulas.map((f) => (
                     <tr key={f.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 font-mono font-semibold text-blue-700">
-                        {f.column}
+                      <td className="px-3 py-2 font-medium text-slate-800">
+                        {f.name}
                       </td>
-                      <td className="px-3 py-2">{f.name}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs font-mono">
                         {f.dbColumn}
                       </td>
@@ -452,7 +402,7 @@ export default function KalkulasiKeuanganModal({
                   {formulas.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-3 py-6 text-center text-slate-500 text-sm"
                       >
                         Belum ada rumus. Tekan &quot;Kembalikan ke bawaan&quot;
@@ -472,7 +422,7 @@ export default function KalkulasiKeuanganModal({
               <div>
                 <div className="text-sm text-slate-500">Mengedit</div>
                 <h4 className="text-lg font-semibold text-slate-800">
-                  {editingFormula.column} · {editingFormula.name}
+                  {editingFormula.name}
                 </h4>
                 <p className="text-xs text-slate-500">
                   Menulis ke kolom DB:{" "}
@@ -496,84 +446,6 @@ export default function KalkulasiKeuanganModal({
                 onSave={handleSaveFormula}
                 saving={saving}
               />
-            </div>
-          </div>
-        )}
-
-        {tab === "partners" && (
-          <div className="space-y-3 max-w-2xl">
-            <h4 className="text-sm font-semibold text-slate-700">
-              Daftar mitra
-            </h4>
-            <div className="overflow-hidden rounded border border-slate-200">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Nama</th>
-                    <th className="px-3 py-2 text-left">Kategori terkait</th>
-                    <th className="px-3 py-2 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
-                  {partners.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2 text-slate-500 text-xs">
-                        {p.category ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right space-x-1">
-                        <button
-                          type="button"
-                          onClick={() => handleRenamePartner(p)}
-                          className="px-2 py-1 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50"
-                        >
-                          Ubah nama
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePartner(p)}
-                          className="px-2 py-1 text-xs rounded border border-rose-300 text-rose-700 hover:bg-rose-50"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="border border-slate-200 rounded p-3 bg-slate-50">
-              <h5 className="text-sm font-semibold text-slate-700 mb-2">
-                Tambah mitra
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input
-                  className="border border-slate-300 rounded px-2 py-1.5 text-sm"
-                  placeholder="Nama"
-                  value={partnerDraft.name}
-                  onChange={(e) =>
-                    setPartnerDraft({ ...partnerDraft, name: e.target.value })
-                  }
-                />
-                <input
-                  className="border border-slate-300 rounded px-2 py-1.5 text-sm"
-                  placeholder="Kategori (opsional, mis. PRIBADI-S)"
-                  value={partnerDraft.category}
-                  onChange={(e) =>
-                    setPartnerDraft({
-                      ...partnerDraft,
-                      category: e.target.value,
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={handleAddPartner}
-                  className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  Tambah
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -613,7 +485,7 @@ export default function KalkulasiKeuanganModal({
                       <th className="px-2 py-1 text-left">#</th>
                       {formulas.map((f) => (
                         <th key={f.column} className="px-2 py-1 text-right">
-                          {f.column} ({f.name})
+                          {f.name}
                         </th>
                       ))}
                     </tr>

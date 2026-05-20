@@ -3,15 +3,135 @@ import {
   evaluateDataset,
   sortFormulasByDependency,
 } from "../evaluator";
-import {
-  DEFAULT_FORMULAS,
-  DEFAULT_PARTNERS,
-} from "../defaults";
+import { DEFAULT_FORMULAS } from "../defaults";
 import {
   type ASTNode,
   type InputRow,
   type PartnerDefinition,
 } from "../types";
+
+// ── Legacy person formula fixtures ──────────────────────────────────────────
+// These reproduce the original Google Sheets behaviour for columns L (Kasbon
+// Suri), M (Bagi Hasil Suri), N (Bagi Hasil Gemi), O (Kasbon Cahaya). They
+// are NOT seeded in production any more — the same shapes are now generated
+// dynamically from `business_actors` via `formula-service.ts`. They live
+// here purely so the engine's behaviour stays verifiable end-to-end.
+
+const lit = (value: string | number | boolean): ASTNode => ({
+  type: "literal",
+  value,
+});
+const colRef = (c: "C" | "D" | "E" | "F"): ASTNode => ({
+  type: "columnRef",
+  column: c,
+});
+const prevOut = (c: string): ASTNode => ({ type: "prevOutput", column: c });
+const curOut = (c: string): ASTNode => ({ type: "outputRef", column: c });
+const rowFn = (): ASTNode => ({ type: "row" });
+const partnerRef = (id: string): ASTNode => ({
+  type: "partnerRef",
+  partnerId: id,
+});
+const srch = (find: ASTNode, within: ASTNode): ASTNode => ({
+  type: "search",
+  find,
+  within,
+});
+const isErrFn = (arg: ASTNode): ASTNode => ({ type: "iserror", arg });
+const notFn = (arg: ASTNode): ASTNode => ({ type: "not", arg });
+const negFn = (arg: ASTNode): ASTNode => ({ type: "negate", arg });
+const andFn = (left: ASTNode, right: ASTNode): ASTNode => ({
+  type: "and",
+  left,
+  right,
+});
+const orFn = (left: ASTNode, right: ASTNode): ASTNode => ({
+  type: "or",
+  left,
+  right,
+});
+const ifFn = (cond: ASTNode, t: ASTNode, e: ASTNode): ASTNode => ({
+  type: "if",
+  cond,
+  then: t,
+  else: e,
+});
+const opFn = (
+  o: "+" | "-" | "*" | "/" | "=" | "<>" | ">" | "<" | ">=" | "<=",
+  l: ASTNode,
+  r: ASTNode
+): ASTNode => ({ type: "binaryOp", op: o, left: l, right: r });
+
+const isFirstRow = (): ASTNode => opFn("=", rowFn(), lit(2));
+
+const astKasbonSuri: ASTNode = ifFn(
+  opFn("=", colRef("C"), lit("PRIBADI-S")),
+  ifFn(
+    isFirstRow(),
+    ifFn(colRef("D"), negFn(colRef("D")), colRef("E")),
+    ifFn(
+      colRef("D"),
+      opFn("-", prevOut("L"), colRef("D")),
+      opFn("+", prevOut("L"), colRef("E"))
+    )
+  ),
+  ifFn(isFirstRow(), lit(0), prevOut("L"))
+);
+
+const astBagiHasilSuri: ASTNode = opFn(
+  "-",
+  opFn("/", curOut("K"), lit(2)),
+  curOut("L")
+);
+
+const astBagiHasilGemi: ASTNode = opFn(
+  "-",
+  opFn(
+    "+",
+    opFn(
+      "+",
+      opFn(
+        "/",
+        opFn("-", curOut("K"), ifFn(isFirstRow(), lit(0), prevOut("K"))),
+        lit(2)
+      ),
+      ifFn(isFirstRow(), lit(0), prevOut("N"))
+    ),
+    ifFn(opFn("=", colRef("C"), lit("INVESTOR")), colRef("D"), lit(0))
+  ),
+  ifFn(opFn("=", colRef("C"), lit("INVESTOR")), colRef("E"), lit(0))
+);
+
+const astKasbonCahaya: ASTNode = ifFn(
+  andFn(
+    notFn(isErrFn(srch(partnerRef("partner-cahaya"), colRef("F")))),
+    orFn(
+      opFn("=", colRef("C"), lit("INVESTOR")),
+      opFn("=", colRef("C"), lit("BIAYA"))
+    )
+  ),
+  ifFn(
+    isFirstRow(),
+    ifFn(colRef("D"), negFn(colRef("D")), colRef("E")),
+    ifFn(
+      colRef("D"),
+      opFn("-", prevOut("O"), colRef("D")),
+      opFn("+", prevOut("O"), colRef("E"))
+    )
+  ),
+  ifFn(isFirstRow(), lit(0), prevOut("O"))
+);
+
+const LEGACY_PERSON_FORMULAS = [
+  { column: "L", ast: astKasbonSuri },
+  { column: "M", ast: astBagiHasilSuri },
+  { column: "N", ast: astBagiHasilGemi },
+  { column: "O", ast: astKasbonCahaya },
+] as const;
+
+const LEGACY_TEST_PARTNERS: PartnerDefinition[] = [
+  { id: "partner-cahaya", name: "Cahaya", category: null, displayOrder: 10 },
+];
 
 function emptyCtx(input: Partial<InputRow> = {}) {
   return {
@@ -275,11 +395,11 @@ describe("Default formula dataset — reproduces original Sheets logic", () => {
 
   test("evaluateDataset matches hand-rolled reference for every row", () => {
     const expected = reference();
-    const formulas = DEFAULT_FORMULAS.map((f) => ({
-      column: f.column,
-      ast: f.ast,
-    }));
-    const actual = evaluateDataset(rows, formulas, DEFAULT_PARTNERS);
+    const formulas = [
+      ...DEFAULT_FORMULAS.map((f) => ({ column: f.column, ast: f.ast })),
+      ...LEGACY_PERSON_FORMULAS,
+    ];
+    const actual = evaluateDataset(rows, formulas, LEGACY_TEST_PARTNERS);
 
     for (let i = 0; i < rows.length; i++) {
       for (const col of ["G", "H", "I", "J", "K", "L", "M", "N", "O"]) {

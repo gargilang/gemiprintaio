@@ -197,6 +197,74 @@ async function getServerSQLite(): Promise<any> {
   return serverSqliteDb;
 }
 
+/**
+ * SQLite cannot ALTER a CHECK constraint. Older installs created actor_roles
+ * with role_group IN ('profit_share','cash_advance','bonus','other').
+ * Recreate the table without that constraint and map legacy values to the
+ * new display categories (owner / management / sales / staff / other).
+ */
+function migrateActorRolesLegacyCheckConstraint(db: {
+  prepare: (sql: string) => { get: () => { sql?: string } | undefined };
+  pragma: (s: string) => void;
+  exec: (sql: string) => void;
+}): void {
+  const row = db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actor_roles'"
+    )
+    .get();
+  if (!row?.sql?.includes("profit_share")) return;
+
+  db.pragma("foreign_keys = OFF");
+  db.exec(`
+    CREATE TABLE actor_roles_v2 (
+      id            TEXT PRIMARY KEY,
+      role_code     TEXT NOT NULL UNIQUE,
+      role_label    TEXT NOT NULL,
+      role_group    TEXT NOT NULL DEFAULT 'other',
+      description   TEXT,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    INSERT INTO actor_roles_v2
+      (id, role_code, role_label, role_group, description, display_order, created_at, updated_at)
+    SELECT
+      id,
+      role_code,
+      role_label,
+      CASE role_group
+        WHEN 'profit_share' THEN 'owner'
+        WHEN 'cash_advance' THEN 'staff'
+        WHEN 'bonus' THEN
+          CASE role_code
+            WHEN 'SALES' THEN 'sales'
+            WHEN 'MANAGER' THEN 'management'
+            WHEN 'SUPERVISOR' THEN 'management'
+            ELSE 'management'
+          END
+        ELSE 'other'
+      END,
+      description,
+      display_order,
+      created_at,
+      updated_at
+    FROM actor_roles;
+
+    DROP TABLE actor_roles;
+    ALTER TABLE actor_roles_v2 RENAME TO actor_roles;
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
+    CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+  `);
+  db.pragma("foreign_keys = ON");
+  console.log(
+    "✅ Migrated actor_roles: role_group is now owner/management/sales/staff/other"
+  );
+}
+
 function ensureServerSQLiteSyncV2Schema(db: any) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS finance_category_definitions (
@@ -294,7 +362,134 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
 
     CREATE INDEX IF NOT EXISTS idx_cashbook_partner_order
       ON cashbook_partner(display_order);
+
+    -- ── business_actors v2 (generic, name-free architecture) ─────────────
+    -- Coexists with finance_participants + cashbook_partner during the
+    -- migration window. See supabase/migrations/20260521090000_business_actors_v2.sql
+    -- role_group is a display category for organising job titles in the UI.
+    -- It does NOT restrict formula types — any actor can have profit share,
+    -- kasbon, and bonus simultaneously regardless of their role.
+    CREATE TABLE IF NOT EXISTS actor_roles (
+      id            TEXT PRIMARY KEY,
+      role_code     TEXT NOT NULL UNIQUE,
+      role_label    TEXT NOT NULL,
+      role_group    TEXT NOT NULL DEFAULT 'other',
+      description   TEXT,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
+    CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+
+    CREATE TABLE IF NOT EXISTS business_actors (
+      id                       TEXT PRIMARY KEY,
+      display_name             TEXT NOT NULL,
+      role_code                TEXT NOT NULL,
+      is_active                INTEGER NOT NULL DEFAULT 1,
+      display_order            INTEGER NOT NULL DEFAULT 0,
+      notes                    TEXT,
+      profit_share_percent     REAL,
+      cash_advance_categories  TEXT,
+      keperluan_keyword        TEXT,
+      bonus_percent            REAL,
+      bonus_source_formula_key TEXT,
+      created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at               TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (role_code) REFERENCES actor_roles(role_code) ON UPDATE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_business_actors_role   ON business_actors(role_code);
+    CREATE INDEX IF NOT EXISTS idx_business_actors_active ON business_actors(is_active);
+    CREATE INDEX IF NOT EXISTS idx_business_actors_order  ON business_actors(display_order);
+
+    CREATE TABLE IF NOT EXISTS transaction_computed (
+      transaction_id TEXT NOT NULL,
+      formula_key    TEXT NOT NULL,
+      value          REAL NOT NULL DEFAULT 0,
+      computed_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (transaction_id, formula_key),
+      FOREIGN KEY (transaction_id) REFERENCES keuangan(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tc_formula_key ON transaction_computed(formula_key);
+    CREATE INDEX IF NOT EXISTS idx_tc_transaction ON transaction_computed(transaction_id);
+
+    CREATE TABLE IF NOT EXISTS transaction_overrides (
+      transaction_id  TEXT NOT NULL,
+      formula_key     TEXT NOT NULL,
+      override_value  REAL NOT NULL,
+      overridden_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (transaction_id, formula_key),
+      FOREIGN KEY (transaction_id) REFERENCES keuangan(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_to_formula_key ON transaction_overrides(formula_key);
   `);
+
+  // Recreate actor_roles when an older CHECK constraint blocks new group values.
+  migrateActorRolesLegacyCheckConstraint(db);
+
+  // Upsert seed roles so existing installs get updated role_group values.
+  // role_group is a display-only category; it does not restrict formula types.
+  db.exec(`
+    INSERT INTO actor_roles
+      (id, role_code, role_label, role_group, description, display_order) VALUES
+      ('role-pemilik',    'PEMILIK',    'Pemilik / Investor',   'owner',      'Pemilik atau investor usaha',                10),
+      ('role-direktur',   'DIREKTUR',   'Direktur',             'owner',      'Direksi / direktur',                         20),
+      ('role-komisaris',  'KOMISARIS',  'Komisaris',            'owner',      'Komisaris / pengawas',                       30),
+      ('role-manager',    'MANAGER',    'Manager',              'management', 'Manajer cabang / divisi',                    40),
+      ('role-supervisor', 'SUPERVISOR', 'Supervisor',           'management', 'Pengawas operasional',                       50),
+      ('role-sales',      'SALES',      'Sales / Marketing',    'sales',      'Tenaga penjual / pemasaran',                 60),
+      ('role-karyawan',   'KARYAWAN',   'Karyawan tetap',       'staff',      'Karyawan tetap',                             70),
+      ('role-designer',   'DESIGNER',   'Designer / Operator',  'staff',      'Tenaga kreatif / operator cetak',            80),
+      ('role-kasir',      'KASIR',      'Kasir / Front office', 'staff',      'Petugas kasir / front office',               90),
+      ('role-kurir',      'KURIR',      'Kurir / Driver',       'staff',      'Pengantar / driver',                        100),
+      ('role-lainnya',    'LAINNYA',    'Lainnya',              'other',      'Peran lain yang tidak tercakup di atas',    110)
+    ON CONFLICT(role_code) DO UPDATE SET
+      role_group  = excluded.role_group,
+      description = excluded.description;
+  `);
+
+  // ── Backfill new columns on cashbook_formula (mirror Supabase migration) ─
+  // Adds formula_key / actor_id / formula_group additively so the legacy
+  // letter-keyed system keeps working while the new semantic system rolls in.
+  const cashbookFormulaCols = (
+    db.prepare("PRAGMA table_info(cashbook_formula)").all() as Array<{
+      name: string;
+    }>
+  ).map((c) => c.name);
+
+  if (cashbookFormulaCols.length > 0) {
+    if (!cashbookFormulaCols.includes("formula_key")) {
+      db.exec(`ALTER TABLE cashbook_formula ADD COLUMN formula_key TEXT`);
+      db.exec(`UPDATE cashbook_formula SET formula_key = db_column WHERE formula_key IS NULL`);
+    }
+    if (!cashbookFormulaCols.includes("actor_id")) {
+      db.exec(`ALTER TABLE cashbook_formula ADD COLUMN actor_id TEXT`);
+    }
+    if (!cashbookFormulaCols.includes("formula_group")) {
+      db.exec(
+        `ALTER TABLE cashbook_formula ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+      );
+      db.exec(`UPDATE cashbook_formula
+                 SET formula_group = 'summary'
+                 WHERE db_column IN ('omzet', 'biaya_operasional', 'biaya_bahan', 'saldo', 'laba_bersih')
+                   AND formula_group = 'custom'`);
+      db.exec(`UPDATE cashbook_formula
+                 SET formula_group = 'profit_share'
+                 WHERE db_column LIKE 'bagi_hasil_%'
+                   AND formula_group = 'custom'`);
+      db.exec(`UPDATE cashbook_formula
+                 SET formula_group = 'cash_advance'
+                 WHERE db_column LIKE 'kasbon_%'
+                   AND formula_group = 'custom'`);
+    }
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key   ON cashbook_formula(formula_key);
+             CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);
+             CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`);
+  }
 
   // Default formula + partner seeding happens lazily from
   // `cashbook-formula-service.seedDefaultsIfEmpty()` (called from the API

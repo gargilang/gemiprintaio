@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ import SelectMonthModal from "@/components/SelectMonthModal";
 import ModalFormShell from "@/components/ModalFormShell";
 import BagiHasilManageModal from "@/components/BagiHasilManageModal";
 import KalkulasiKeuanganModal from "@/components/formula-editor/KalkulasiKeuanganModal";
+import DynamicActorSummary from "@/components/finance/DynamicActorSummary";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import {
@@ -609,6 +610,8 @@ export default function FinancePage() {
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
   const [showBagiHasilSection, setShowBagiHasilSection] = useState(false);
   const [showKasbonSection, setShowKasbonSection] = useState(false);
+  // Legacy bars are hidden once DynamicActorSummary reports zero orphan formulas.
+  const [legacyOrphanCount, setLegacyOrphanCount] = useState<number>(1);
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
   >(initialFinanceConfig?.categories ?? []);
@@ -676,7 +679,7 @@ export default function FinancePage() {
   const [ruleDraftKasbonKeyword, setRuleDraftKasbonKeyword] = useState("");
   const [ruleDraftKasbonAmount, setRuleDraftKasbonAmount] = useState<"kredit_minus_debit" | "debit_minus_kredit">("kredit_minus_debit");
   const [ruleFormulaError, setRuleFormulaError] = useState<string | null>(null);
-  type FinanceConfigTabId = "people" | "categories" | "metrics" | "formulas";
+  type FinanceConfigTabId = "people" | "categories" | "metrics";
   const [financeConfigTab, setFinanceConfigTab] =
     useState<FinanceConfigTabId>("people");
   const [financeCfgPeopleQuery, setFinanceCfgPeopleQuery] = useState("");
@@ -2046,8 +2049,22 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Bagi Hasil — baris vertikal */}
+      {/* Dynamic v2 summary — reads from transaction_computed via /api/finance/summary-v2.
+          Lives alongside the legacy bars below during the migration window. */}
       {currentUser &&
+        (currentUser.role === "admin" ||
+          currentUser.role === "manager" ||
+          currentUser.role === "staff") && (
+          <DynamicActorSummary
+            formatRupiah={formatRupiah}
+            month={viewingArchive ?? undefined}
+            refreshKey={cashBooks.length}
+            onLegacyCount={setLegacyOrphanCount}
+          />
+        )}
+      {/* Legacy Bagi Hasil bar — hidden once all formulas are linked to business_actors */}
+      {legacyOrphanCount > 0 &&
+        currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
           currentUser.role === "staff") && (
@@ -2063,6 +2080,9 @@ export default function FinancePage() {
                   Bagi Hasil
                   <span className="text-xs font-normal text-gray-500">
                     ({profitShareRows.length} orang)
+                  </span>
+                  <span className="text-[10px] font-normal text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+                    data lama
                   </span>
                 </span>
                 <svg
@@ -2083,14 +2103,13 @@ export default function FinancePage() {
               </button>
               {(currentUser.role === "admin" ||
                 currentUser.role === "manager") && (
-                <button
-                  type="button"
-                  onClick={() => setShowBagiHasilManageModal(true)}
-                  className="shrink-0 px-4 rounded-xl border-2 border-amber-300 bg-white hover:bg-amber-50 text-amber-900 text-sm font-semibold shadow-sm transition-colors"
-                  title="Kelola mitra dan rumus bagi hasil"
+                <a
+                  href="/kelola-orang"
+                  className="shrink-0 px-4 rounded-xl border-2 border-amber-300 bg-white hover:bg-amber-50 text-amber-900 text-sm font-semibold shadow-sm transition-colors flex items-center"
+                  title="Pindah ke Kelola Orang untuk mengganti data lama ini"
                 >
                   Kelola
-                </button>
+                </a>
               )}
             </div>
             {showBagiHasilSection && (
@@ -2104,38 +2123,51 @@ export default function FinancePage() {
             )}
           </div>
         )}
-      {/* Kasbon Karyawan — baris vertikal */}
-      {currentUser &&
+      {/* Legacy Kasbon bar — hidden once all formulas are linked to business_actors */}
+      {legacyOrphanCount > 0 &&
+        currentUser &&
         (currentUser.role === "admin" || currentUser.role === "manager") && (
           <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => setShowKasbonSection(!showKasbonSection)}
-              className="w-full bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
-            >
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <PersonIcon size={18} className="text-violet-600" />
-                Kasbon Karyawan
-                <span className="text-xs font-normal text-gray-500">
-                  ({cashAdvanceRows.length} orang)
-                </span>
-              </span>
-              <svg
-                className={`w-5 h-5 transform transition-transform ${
-                  showKasbonSection ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="flex gap-2 items-stretch">
+              <button
+                type="button"
+                onClick={() => setShowKasbonSection(!showKasbonSection)}
+                className="flex-1 min-w-0 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
+                <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <PersonIcon size={18} className="text-violet-600" />
+                  Kasbon Karyawan
+                  <span className="text-xs font-normal text-gray-500">
+                    ({cashAdvanceRows.length} orang)
+                  </span>
+                  <span className="text-[10px] font-normal text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
+                    data lama
+                  </span>
+                </span>
+                <svg
+                  className={`w-5 h-5 shrink-0 transform transition-transform ${
+                    showKasbonSection ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              <a
+                href="/kelola-orang"
+                className="shrink-0 px-4 rounded-xl border-2 border-violet-300 bg-white hover:bg-violet-50 text-violet-900 text-sm font-semibold shadow-sm transition-colors flex items-center"
+                title="Pindah ke Kelola Orang untuk mengganti data lama ini"
+              >
+                Kelola
+              </a>
+            </div>
             {showKasbonSection && (
               <FinanceParticipantSummaryTable
                 rows={cashAdvanceRows}
@@ -2249,6 +2281,26 @@ export default function FinancePage() {
                 currentUser?.role === "manager" ||
                 currentUser?.role === "staff") && (
                 <>
+                  <a
+                    href="/kelola-orang"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+                    title="Tambah / ubah orang yang muncul di bar bagi hasil, kasbon, bonus"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    Kelola Orang
+                  </a>
                   <button
                     onClick={() => setShowKalkulasiModal(true)}
                     className="bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
@@ -2267,31 +2319,6 @@ export default function FinancePage() {
                       />
                     </svg>
                     Kalkulasi Keuangan
-                  </button>
-                  <button
-                    onClick={() => setShowConfigModal(true)}
-                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10.325 4.317a1 1 0 011.35-.936l.82.307a1 1 0 00.962-.123l.73-.53a1 1 0 011.437.123l.52.67a1 1 0 00.916.375l.848-.06a1 1 0 011.054.999l.02.848a1 1 0 00.47.795l.72.45a1 1 0 01.287 1.438l-.48.7a1 1 0 00-.07.947l.34.777a1 1 0 01-.65 1.313l-.82.24a1 1 0 00-.68.69l-.24.82a1 1 0 01-1.312.65l-.778-.34a1 1 0 00-.947.07l-.7.48a1 1 0 01-1.438-.287l-.45-.72a1 1 0 00-.795-.47l-.848-.02a1 1 0 01-.999-1.054l.06-.848a1 1 0 00-.375-.916l-.67-.52a1 1 0 01-.123-1.437l.53-.73a1 1 0 00.123-.962l-.307-.82z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    Pengaturan tampilan
                   </button>
                 </>
               )}
@@ -2739,11 +2766,12 @@ export default function FinancePage() {
                 id="finance-config-title"
                 className="text-xl font-bold text-white"
               >
-                Pengaturan tampilan ringkasan
+                Kelola orang & kategori
               </h3>
               <p className="text-slate-200 text-sm mt-2 leading-relaxed">
-                Sesuaikan nama dan kartu di halaman ini. Tidak perlu memahami
-                istilah teknis; cukup ikuti petunjuk di setiap kotak.
+                Tambah orang (bagi hasil / kasbon), kategori transaksi, dan
+                hubungkan kartu ringkasan. Rumus perhitungan buku kas ada di
+                Kalkulasi Keuangan.
               </p>
             </div>
             <button
@@ -2791,7 +2819,6 @@ export default function FinancePage() {
                     { id: "people" as const, label: "Orang" },
                     { id: "categories" as const, label: "Kategori" },
                     { id: "metrics" as const, label: "Hubungkan angka" },
-                    { id: "formulas" as const, label: "Formula" },
                   ] as const
                 ).map(({ id, label }) => (
                   <button
@@ -2815,7 +2842,6 @@ export default function FinancePage() {
                       {id === "people" && `(${financeParticipants.length})`}
                       {id === "categories" && `(${financeCategories.length})`}
                       {id === "metrics" && `(${financeMetrics.length})`}
-                      {id === "formulas" && `(${financeColumnRules.length})`}
                     </span>
                   </button>
                 ))}
@@ -3602,202 +3628,6 @@ export default function FinancePage() {
                   </div>
                 </div>
               )}
-
-              {financeConfigTab === "formulas" && (
-                <div className="space-y-4 min-h-[340px]">
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <p className="font-bold text-gray-800 mb-1">Formula Kalkulasi</p>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Atur bagaimana setiap kolom dihitung di buku kas. Kolom bertipe <strong>Formula</strong> menggunakan nama kolom lain sebagai variabel.
-                      Kolom <strong>Kasbon Conditional</strong> dihitung berdasarkan kategori dan kata kunci di keperluan.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    {financeColumnRules.map((rule) => {
-                      const isEditing = editingRuleId === rule.id;
-                      const canEdit = rule.rule_type === "formula" || rule.rule_type === "kasbon_conditional";
-                      const ruleTypeBadge: Record<string, string> = {
-                        saldo: "bg-blue-100 text-blue-800",
-                        accumulator: "bg-green-100 text-green-800",
-                        formula: "bg-purple-100 text-purple-800",
-                        kasbon_conditional: "bg-orange-100 text-orange-800",
-                        profit_share: "bg-amber-100 text-amber-800",
-                      };
-                      const ruleTypeLabel: Record<string, string> = {
-                        saldo: "Saldo",
-                        accumulator: "Akumulator",
-                        formula: "Formula",
-                        kasbon_conditional: "Kasbon",
-                        profit_share: "Bagi Hasil",
-                      };
-
-                      return (
-                        <div key={rule.id} className="rounded-lg border border-gray-200 overflow-hidden">
-                          <div className="flex items-center justify-between gap-2 p-3 bg-white text-sm">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${ruleTypeBadge[rule.rule_type] ?? "bg-gray-100 text-gray-600"}`}>
-                                {ruleTypeLabel[rule.rule_type] ?? rule.rule_type}
-                              </span>
-                              <span className="font-medium text-gray-800 truncate">{rule.display_name}</span>
-                              <span className="text-xs text-gray-400 font-mono truncate hidden sm:inline">{rule.column_name}</span>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {rule.rule_type === "formula" && rule.formula_expression && !isEditing && (
-                                <span className="text-xs text-purple-700 font-mono bg-purple-50 px-2 py-0.5 rounded hidden md:inline truncate max-w-[200px]">
-                                  = {rule.formula_expression}
-                                </span>
-                              )}
-                              {rule.rule_type === "kasbon_conditional" && rule.kasbon_conditions && !isEditing && (
-                                <span className="text-xs text-orange-700 bg-orange-50 px-2 py-0.5 rounded hidden md:inline truncate max-w-[200px]">
-                                  {rule.kasbon_conditions.categories.join(", ")}
-                                  {rule.kasbon_conditions.keperluan_contains ? ` + "${rule.kasbon_conditions.keperluan_contains}"` : ""}
-                                </span>
-                              )}
-                              {canEdit && !rule.is_system && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (isEditing) {
-                                      setEditingRuleId(null);
-                                      setRuleFormulaError(null);
-                                    } else {
-                                      setEditingRuleId(rule.id);
-                                      setRuleDraftFormula(rule.formula_expression ?? "");
-                                      setRuleDraftKasbonCats(rule.kasbon_conditions?.categories ?? []);
-                                      setRuleDraftKasbonKeyword(rule.kasbon_conditions?.keperluan_contains ?? "");
-                                      setRuleDraftKasbonAmount(rule.kasbon_conditions?.amount ?? "kredit_minus_debit");
-                                      setRuleFormulaError(null);
-                                    }
-                                  }}
-                                  className="text-slate-600 hover:text-slate-800 text-xs border border-slate-300 rounded px-2 py-1"
-                                >
-                                  {isEditing ? "Tutup" : "Edit"}
-                                </button>
-                              )}
-                              {rule.rule_type === "accumulator" && (
-                                <span className="text-xs text-gray-400">Lihat tab Kategori</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {isEditing && rule.rule_type === "formula" && (
-                            <div className="bg-purple-50 border-t border-purple-100 p-3 space-y-3">
-                              <p className="text-xs text-purple-800">
-                                Tulis formula menggunakan nama kolom sebagai variabel. Contoh: <code className="bg-white px-1 rounded">omzet - biaya_operasional - biaya_bahan</code>
-                              </p>
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-700">Formula untuk {rule.display_name}</label>
-                                <input
-                                  type="text"
-                                  value={ruleDraftFormula}
-                                  onChange={(e) => { setRuleDraftFormula(e.target.value); setRuleFormulaError(null); }}
-                                  placeholder="omzet - biaya_operasional - biaya_bahan"
-                                  className={`w-full font-mono text-sm px-3 py-2 border rounded-lg ${ruleFormulaError ? "border-red-400" : "border-gray-300"}`}
-                                />
-                                {ruleFormulaError && <p className="text-xs text-red-600">{ruleFormulaError}</p>}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                Kolom tersedia:{" "}
-                                {financeColumnRules
-                                  .filter((r) => r.column_name !== rule.column_name && r.rule_type !== "profit_share")
-                                  .map((r) => (
-                                    <button key={r.column_name} type="button" onClick={() => setRuleDraftFormula((prev) => prev ? `${prev} - ${r.column_name}` : r.column_name)} className="font-mono bg-white border border-gray-200 rounded px-1 mr-1 hover:bg-purple-50">{r.column_name}</button>
-                                  ))}
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={configSaving}
-                                  onClick={async () => {
-                                    // Client-side validation
-                                    const trimmed = ruleDraftFormula.trim();
-                                    if (!trimmed) { setRuleFormulaError("Formula tidak boleh kosong."); return; }
-                                    await submitConfigAction({
-                                      action: "update_column_rule",
-                                      id: rule.id,
-                                      formula_expression: trimmed,
-                                    });
-                                    setEditingRuleId(null);
-                                  }}
-                                  className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50"
-                                >
-                                  Simpan &amp; Hitung Ulang
-                                </button>
-                                <button type="button" onClick={() => { setEditingRuleId(null); setRuleFormulaError(null); }} className="px-3 py-1.5 text-sm text-gray-600">Batal</button>
-                              </div>
-                            </div>
-                          )}
-
-                          {isEditing && rule.rule_type === "kasbon_conditional" && (
-                            <div className="bg-orange-50 border-t border-orange-100 p-3 space-y-3">
-                              <p className="text-xs text-orange-800">
-                                Kolom ini bertambah ketika transaksi cocok dengan kondisi di bawah.
-                                Nilai yang ditambahkan adalah kredit dikurangi debit (atau sebaliknya).
-                              </p>
-                              <div className="space-y-2">
-                                <div>
-                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Kategori transaksi (pisah koma, contoh: PRIBADI-A)</label>
-                                  <input
-                                    type="text"
-                                    value={ruleDraftKasbonCats.join(", ")}
-                                    onChange={(e) => setRuleDraftKasbonCats(e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))}
-                                    placeholder="PRIBADI-A"
-                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Kata kunci di kolom &quot;keperluan&quot; (opsional, kosongkan jika tidak perlu)</label>
-                                  <input
-                                    type="text"
-                                    value={ruleDraftKasbonKeyword}
-                                    onChange={(e) => setRuleDraftKasbonKeyword(e.target.value.toLowerCase())}
-                                    placeholder="cahaya"
-                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-semibold text-gray-700 block mb-1">Nilai yang ditambahkan</label>
-                                  <select
-                                    value={ruleDraftKasbonAmount}
-                                    onChange={(e) => setRuleDraftKasbonAmount(e.target.value as "kredit_minus_debit" | "debit_minus_kredit")}
-                                    className="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                                  >
-                                    <option value="kredit_minus_debit">Kredit − Debit (umumnya untuk kasbon)</option>
-                                    <option value="debit_minus_kredit">Debit − Kredit</option>
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={configSaving || ruleDraftKasbonCats.length === 0}
-                                  onClick={async () => {
-                                    await submitConfigAction({
-                                      action: "update_column_rule",
-                                      id: rule.id,
-                                      kasbon_conditions: {
-                                        categories: ruleDraftKasbonCats,
-                                        keperluan_contains: ruleDraftKasbonKeyword || null,
-                                        amount: ruleDraftKasbonAmount,
-                                      },
-                                    });
-                                    setEditingRuleId(null);
-                                  }}
-                                  className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50"
-                                >
-                                  Simpan &amp; Hitung Ulang
-                                </button>
-                                <button type="button" onClick={() => setEditingRuleId(null)} className="px-3 py-1.5 text-sm text-gray-600">Batal</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
       </ModalFormShell>
       {/* Confirm Dialog */}
@@ -3856,6 +3686,11 @@ export default function FinancePage() {
       <KalkulasiKeuanganModal
         open={showKalkulasiModal}
         onClose={() => setShowKalkulasiModal(false)}
+        onManageCategories={() => {
+          setShowKalkulasiModal(false);
+          setFinanceConfigTab("categories");
+          setShowConfigModal(true);
+        }}
       />
       {/* Notification Toast */}
       {notice && (

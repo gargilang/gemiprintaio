@@ -1,0 +1,441 @@
+/**
+ * business-actor-service
+ *
+ * CRUD for the generic, name-free people/roles tables:
+ *   • actor_roles      — job-title catalogue (Pemilik, Manager, Sales, …)
+ *   • business_actors  — every real person / entity that appears in finance
+ *
+ * Role is a display label only. Which formula types an actor receives
+ * (profit share, kasbon, bonus) is determined independently by which calc
+ * fields are non-null on the actor row — any combination is valid.
+ */
+
+import "server-only";
+
+import {
+  db,
+  generateId,
+  getCurrentTimestamp,
+  getServerSupabaseClient,
+} from "@/lib/db-unified";
+
+/** Display category for organising job titles in the UI — not a formula type. */
+export type RoleGroup = "owner" | "management" | "sales" | "staff" | "other";
+
+export interface ActorRole {
+  id: string;
+  role_code: string;
+  role_label: string;
+  /** Display category (owner / management / sales / staff / other). */
+  role_group: RoleGroup;
+  description: string | null;
+  display_order: number;
+}
+
+export interface BusinessActor {
+  id: string;
+  display_name: string;
+  role_code: string;
+  is_active: number;
+  display_order: number;
+  notes: string | null;
+  /** Non-null → generates a "bagi_hasil_<slug>" formula. */
+  profit_share_percent: number | null;
+  /** Non-empty → generates a "kasbon_<slug>" formula. */
+  cash_advance_categories: string[] | null;
+  /** Narrow kasbon to rows where `keperluan` contains this substring. */
+  keperluan_keyword: string | null;
+  /** Non-null → generates a "bonus_<slug>" formula. */
+  bonus_percent: number | null;
+  /** Formula key that bonus_percent is applied to (default "omzet"). */
+  bonus_source_formula_key: string | null;
+  /** ISO timestamp. */
+  created_at: string;
+  /** ISO timestamp. */
+  updated_at: string;
+}
+
+export type BusinessActorInput = Omit<
+  BusinessActor,
+  "id" | "is_active" | "display_order" | "created_at" | "updated_at"
+> & {
+  is_active?: number;
+  display_order?: number;
+};
+
+interface RawBusinessActorRow {
+  id: string;
+  display_name: string;
+  role_code: string;
+  is_active: number;
+  display_order: number;
+  notes: string | null;
+  profit_share_percent: number | null;
+  cash_advance_categories: unknown;
+  keperluan_keyword: string | null;
+  bonus_percent: number | null;
+  bonus_source_formula_key: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function parseCategoriesField(raw: unknown): string[] | null {
+  if (raw === null || raw === undefined) return null;
+  if (Array.isArray(raw)) {
+    return raw.map((s) => String(s)).filter(Boolean);
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map((s) => String(s)).filter(Boolean);
+    } catch {
+      // Treat as comma-separated string.
+      return trimmed
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+  return null;
+}
+
+function normalizeActorRow(raw: RawBusinessActorRow): BusinessActor {
+  return {
+    id: raw.id,
+    display_name: raw.display_name,
+    role_code: raw.role_code,
+    is_active: Number(raw.is_active ?? 1),
+    display_order: Number(raw.display_order ?? 0),
+    notes: raw.notes ?? null,
+    profit_share_percent:
+      raw.profit_share_percent === null || raw.profit_share_percent === undefined
+        ? null
+        : Number(raw.profit_share_percent),
+    cash_advance_categories: parseCategoriesField(raw.cash_advance_categories),
+    keperluan_keyword: raw.keperluan_keyword ?? null,
+    bonus_percent:
+      raw.bonus_percent === null || raw.bonus_percent === undefined
+        ? null
+        : Number(raw.bonus_percent),
+    bonus_source_formula_key: raw.bonus_source_formula_key ?? null,
+    created_at: raw.created_at,
+    updated_at: raw.updated_at,
+  };
+}
+
+// ── actor_roles ─────────────────────────────────────────────────────────────
+
+export async function listActorRoles(): Promise<ActorRole[]> {
+  const result = await db.query<ActorRole>("actor_roles", {
+    orderBy: { column: "display_order", ascending: true },
+  });
+  if (result.error || !result.data) return [];
+  return result.data.map((r) => ({
+    id: r.id,
+    role_code: r.role_code,
+    role_label: r.role_label,
+    role_group: (r.role_group as RoleGroup) || "other",
+    description: r.description ?? null,
+    display_order: Number(r.display_order ?? 0),
+  }));
+}
+
+export async function getActorRoleByCode(
+  roleCode: string
+): Promise<ActorRole | null> {
+  const result = await db.queryOne<ActorRole>("actor_roles", {
+    where: { role_code: roleCode },
+  });
+  if (result.error || !result.data) return null;
+  return {
+    id: result.data.id,
+    role_code: result.data.role_code,
+    role_label: result.data.role_label,
+    role_group: (result.data.role_group as RoleGroup) || "other",
+    description: result.data.description ?? null,
+    display_order: Number(result.data.display_order ?? 0),
+  };
+}
+
+export async function createActorRole(input: {
+  role_code: string;
+  role_label: string;
+  role_group: RoleGroup;
+  description?: string | null;
+}): Promise<{ id: string; error: Error | null }> {
+  const id = `role-${input.role_code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const code = input.role_code.toUpperCase().trim();
+  if (!code) {
+    return { id: "", error: new Error("Kode peran wajib diisi") };
+  }
+  const existing = await getActorRoleByCode(code);
+  if (existing) {
+    return { id: existing.id, error: new Error("Kode peran sudah dipakai") };
+  }
+  const nextOrder = await nextRoleDisplayOrder();
+  const res = await db.insert("actor_roles", {
+    id,
+    role_code: code,
+    role_label: input.role_label.trim() || code,
+    role_group: input.role_group,
+    description: input.description?.trim() || null,
+    display_order: nextOrder,
+  });
+  return { id, error: res.error };
+}
+
+async function nextRoleDisplayOrder(): Promise<number> {
+  const rows = await db.queryRaw<{ m: number }>(
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM actor_roles"
+  );
+  return (rows[0]?.m ?? 0) + 10;
+}
+
+// ── business_actors ─────────────────────────────────────────────────────────
+
+export async function listBusinessActors(opts: {
+  includeInactive?: boolean;
+} = {}): Promise<BusinessActor[]> {
+  const where: Record<string, unknown> = {};
+  if (!opts.includeInactive) where.is_active = 1;
+  const result = await db.query<RawBusinessActorRow>("business_actors", {
+    where,
+    orderBy: { column: "display_order", ascending: true },
+  });
+  if (result.error || !result.data) return [];
+  return result.data.map(normalizeActorRow);
+}
+
+export async function getBusinessActor(
+  id: string
+): Promise<BusinessActor | null> {
+  const result = await db.queryOne<RawBusinessActorRow>("business_actors", {
+    where: { id },
+  });
+  if (result.error || !result.data) return null;
+  return normalizeActorRow(result.data);
+}
+
+async function nextActorDisplayOrder(): Promise<number> {
+  const rows = await db.queryRaw<{ m: number }>(
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM business_actors"
+  );
+  return (rows[0]?.m ?? 0) + 10;
+}
+
+function serializeCategories(
+  cats: string[] | null | undefined
+): string | null {
+  if (!cats || cats.length === 0) return null;
+  return JSON.stringify(cats.map((c) => c.toUpperCase().trim()).filter(Boolean));
+}
+
+/**
+ * Slugify a display name into a stable formula_key suffix.
+ * "Andi Sales" → "andi_sales"
+ */
+export function slugifyActorName(name: string): string {
+  return (
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || `actor_${Date.now().toString(36)}`
+  );
+}
+
+export async function createBusinessActor(
+  input: BusinessActorInput
+): Promise<{ data: BusinessActor | null; error: Error | null }> {
+  const name = input.display_name.trim();
+  if (!name) {
+    return { data: null, error: new Error("Nama orang wajib diisi") };
+  }
+  const id = `actor-${slugifyActorName(name)}-${Date.now().toString(36)}`;
+  const order = input.display_order ?? (await nextActorDisplayOrder());
+  const now = getCurrentTimestamp();
+
+  const payload = {
+    id,
+    display_name: name,
+    role_code: input.role_code,
+    is_active: input.is_active ?? 1,
+    display_order: order,
+    notes: input.notes?.trim() || null,
+    profit_share_percent:
+      input.profit_share_percent !== null && input.profit_share_percent !== undefined
+        ? Number(input.profit_share_percent)
+        : null,
+    cash_advance_categories: serializeCategories(input.cash_advance_categories ?? null),
+    keperluan_keyword: input.keperluan_keyword?.trim() || null,
+    bonus_percent:
+      input.bonus_percent !== null && input.bonus_percent !== undefined
+        ? Number(input.bonus_percent)
+        : null,
+    bonus_source_formula_key: input.bonus_source_formula_key?.trim() || null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    // Supabase expects JSONB array, not a serialized string.
+    const supaPayload = {
+      ...payload,
+      cash_advance_categories: input.cash_advance_categories ?? null,
+    };
+    const { error } = await sb.from("business_actors").insert(supaPayload);
+    if (error && !error.message.includes("does not exist")) {
+      return { data: null, error: new Error(error.message) };
+    }
+  }
+
+  const localRes = await db.insert("business_actors", payload);
+  if (localRes.error) return { data: null, error: localRes.error };
+
+  const created = await getBusinessActor(id);
+  return { data: created, error: null };
+}
+
+export async function updateBusinessActor(
+  id: string,
+  patch: Partial<BusinessActorInput>
+): Promise<{ data: BusinessActor | null; error: Error | null }> {
+  const fields: Record<string, unknown> = {
+    updated_at: getCurrentTimestamp(),
+  };
+  if (patch.display_name !== undefined) fields.display_name = patch.display_name.trim();
+  if (patch.role_code !== undefined) fields.role_code = patch.role_code;
+  if (patch.notes !== undefined) fields.notes = patch.notes?.trim() || null;
+  if (patch.is_active !== undefined) fields.is_active = patch.is_active;
+  if (patch.display_order !== undefined) fields.display_order = patch.display_order;
+  if (patch.profit_share_percent !== undefined) {
+    fields.profit_share_percent =
+      patch.profit_share_percent === null
+        ? null
+        : Number(patch.profit_share_percent);
+  }
+  if (patch.cash_advance_categories !== undefined) {
+    fields.cash_advance_categories = serializeCategories(
+      patch.cash_advance_categories ?? null
+    );
+  }
+  if (patch.keperluan_keyword !== undefined) {
+    fields.keperluan_keyword = patch.keperluan_keyword?.trim() || null;
+  }
+  if (patch.bonus_percent !== undefined) {
+    fields.bonus_percent =
+      patch.bonus_percent === null ? null : Number(patch.bonus_percent);
+  }
+  if (patch.bonus_source_formula_key !== undefined) {
+    fields.bonus_source_formula_key =
+      patch.bonus_source_formula_key?.trim() || null;
+  }
+
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const supaFields = { ...fields };
+    // Supabase wants JSONB array, not the serialized string.
+    if (patch.cash_advance_categories !== undefined) {
+      supaFields.cash_advance_categories =
+        patch.cash_advance_categories ?? null;
+    }
+    const { error } = await sb
+      .from("business_actors")
+      .update(supaFields)
+      .eq("id", id);
+    if (error && !error.message.includes("does not exist")) {
+      return { data: null, error: new Error(error.message) };
+    }
+  }
+
+  const localRes = await db.update("business_actors", id, fields);
+  if (localRes.error) return { data: null, error: localRes.error };
+
+  const updated = await getBusinessActor(id);
+  return { data: updated, error: null };
+}
+
+/**
+ * Soft delete (nonaktifkan): preserves all historical computed values.
+ * Hard delete is only allowed when no transaction_computed row references
+ * any formula owned by this actor.
+ */
+export async function deactivateBusinessActor(
+  id: string
+): Promise<{ error: Error | null }> {
+  const res = await updateBusinessActor(id, { is_active: 0 });
+  if (res.error) return { error: res.error };
+  return { error: null };
+}
+
+export async function reactivateBusinessActor(
+  id: string
+): Promise<{ error: Error | null }> {
+  const res = await updateBusinessActor(id, { is_active: 1 });
+  if (res.error) return { error: res.error };
+  return { error: null };
+}
+
+/**
+ * Permanent delete. Refuses when historical computed values exist so we
+ * never quietly lose audit data.
+ */
+export async function deleteBusinessActor(
+  id: string
+): Promise<{ error: Error | null }> {
+  // Look up linked formula keys.
+  let linkedKeys: string[] = [];
+  try {
+    const rows = await db.queryRaw<{ formula_key: string }>(
+      "SELECT DISTINCT formula_key FROM cashbook_formula WHERE actor_id = ?",
+      [id]
+    );
+    linkedKeys = rows.map((r) => r.formula_key).filter(Boolean);
+  } catch {
+    // Old install without actor_id column — treat as no linked rows.
+  }
+
+  if (linkedKeys.length > 0) {
+    const placeholders = linkedKeys.map(() => "?").join(",");
+    try {
+      const hits = await db.queryRaw<{ c: number }>(
+        `SELECT COUNT(*) AS c FROM transaction_computed WHERE formula_key IN (${placeholders})`,
+        linkedKeys
+      );
+      if ((hits[0]?.c ?? 0) > 0) {
+        return {
+          error: new Error(
+            "Orang ini sudah punya catatan transaksi tersimpan. Pakai tombol Nonaktifkan untuk menyembunyikan tanpa kehilangan data."
+          ),
+        };
+      }
+    } catch {
+      // transaction_computed missing — proceed with delete.
+    }
+  }
+
+  // Delete linked formulas first so the FK constraint doesn't block.
+  try {
+    const sb = getServerSupabaseClient();
+    if (sb) {
+      await sb.from("cashbook_formula").delete().eq("actor_id", id);
+    }
+    await db.executeRaw("DELETE FROM cashbook_formula WHERE actor_id = ?", [id]);
+  } catch {
+    // Best-effort; will be caught by the actor delete below if it really fails.
+  }
+
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { error } = await sb.from("business_actors").delete().eq("id", id);
+    if (error && !error.message.includes("does not exist")) {
+      return { error: new Error(error.message) };
+    }
+  }
+  const res = await db.delete("business_actors", id);
+  return { error: res.error };
+}

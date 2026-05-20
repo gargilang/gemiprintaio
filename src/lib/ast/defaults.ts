@@ -1,21 +1,27 @@
 /**
- * Default seed formulas + partners.
+ * Default seed formulas for the cashbook AST engine.
  *
- * Each AST below is the literal translation of the corresponding Google
- * Sheets formula listed in the project brief. Restoring a fresh database
- * with these defaults reproduces the exact behaviour of the old hardcoded
- * calculation engine.
+ * Only the 5 system-wide formulas (Omzet, Biaya Operasional, Biaya Bahan,
+ * Saldo, Laba Bersih) ship as defaults. Per-person formulas (kasbon,
+ * bagi hasil, bonus) are created dynamically from the "Kelola Orang" UI,
+ * so a fresh install starts with no real names anywhere.
  *
- * Mapping (logical output column → keuangan DB column):
- *   G → omzet
- *   H → biaya_operasional
- *   I → biaya_bahan
- *   J → saldo
- *   K → laba_bersih
- *   L → kasbon_suri
- *   M → bagi_hasil_suri
- *   N → bagi_hasil_gemi
- *   O → kasbon_cahaya
+ * Legacy fields `column` (G/H/I/J/K) and `dbColumn` remain populated so
+ * existing UI/recalc code keeps working during the migration window. New
+ * code should reference formulas by `formulaKey` (semantic).
+ *
+ * Mapping legacy letter → formulaKey → keuangan DB column:
+ *   G → omzet              → omzet
+ *   H → biaya_operasional  → biaya_operasional
+ *   I → biaya_bahan        → biaya_bahan
+ *   J → saldo              → saldo
+ *   K → laba_bersih        → laba_bersih
+ *
+ * Legacy person-specific formulas (Kasbon Suri, Bagi Hasil Suri, Bagi
+ * Hasil Gemi, Kasbon Cahaya) used to be seeded here as well. They were
+ * removed as part of the finance scalability refactor — the same shapes
+ * are now generated on-demand by `formula-service.ts` when a user adds
+ * a business_actor with the corresponding role.
  */
 
 import type {
@@ -35,7 +41,6 @@ const col = (c: "C" | "D" | "E" | "F"): ASTNode => ({
 const prev = (c: string): ASTNode => ({ type: "prevOutput", column: c });
 const cur = (c: string): ASTNode => ({ type: "outputRef", column: c });
 const row = (): ASTNode => ({ type: "row" });
-const partner = (id: string): ASTNode => ({ type: "partnerRef", partnerId: id });
 const search = (find: ASTNode, within: ASTNode): ASTNode => ({
   type: "search",
   find,
@@ -43,12 +48,6 @@ const search = (find: ASTNode, within: ASTNode): ASTNode => ({
 });
 const iserror = (arg: ASTNode): ASTNode => ({ type: "iserror", arg });
 const not = (arg: ASTNode): ASTNode => ({ type: "not", arg });
-const negate = (arg: ASTNode): ASTNode => ({ type: "negate", arg });
-const and = (left: ASTNode, right: ASTNode): ASTNode => ({
-  type: "and",
-  left,
-  right,
-});
 const or = (left: ASTNode, right: ASTNode): ASTNode => ({
   type: "or",
   left,
@@ -68,12 +67,12 @@ const op = (
 
 const isFirstRow = (): ASTNode => op("=", row(), lit(2));
 
-/** Default partner records. Cahaya/Suri/Gemi only (Anwar + Dinil removed). */
-export const DEFAULT_PARTNERS: PartnerDefinition[] = [
-  { id: "partner-cahaya", name: "Cahaya", category: null, displayOrder: 10 },
-  { id: "partner-suri", name: "Suri", category: "PRIBADI-S", displayOrder: 20 },
-  { id: "partner-gemi", name: "Gemi", category: null, displayOrder: 30 },
-];
+/**
+ * Default partners. Intentionally empty — partners (real people) are added
+ * by the user through the "Kelola Orang" UI, never seeded by code. The
+ * export is kept so callers that still import it stay compile-safe.
+ */
+export const DEFAULT_PARTNERS: PartnerDefinition[] = [];
 
 /**
  * G: OMZET
@@ -146,88 +145,18 @@ const astLabaBersih: ASTNode = op(
   op("+", cur("H"), cur("I"))
 );
 
-/**
- * L: KASBON SURI
- *   =IF(C="PRIBADI-S",
- *        IF(ROW()=2, IF(D, -D, E), IF(D, L_prev - D, L_prev + E)),
- *        IF(ROW()=2, 0, L_prev))
- */
-const astKasbonSuri: ASTNode = iff(
-  op("=", col("C"), lit("PRIBADI-S")),
-  iff(
-    isFirstRow(),
-    iff(col("D"), negate(col("D")), col("E")),
-    iff(col("D"), op("-", prev("L"), col("D")), op("+", prev("L"), col("E")))
-  ),
-  iff(isFirstRow(), lit(0), prev("L"))
-);
-
-/**
- * M: BAGI HASIL SURI
- *   = (K / 2) - L
- */
-const astBagiHasilSuri: ASTNode = op(
-  "-",
-  op("/", cur("K"), lit(2)),
-  cur("L")
-);
-
-/**
- * N: BAGI HASIL GEMI
- *   = ((K - IF(ROW()=2, 0, K_prev)) / 2)
- *     + IF(ROW()=2, 0, N_prev)
- *     + IF(C="INVESTOR", D, 0)
- *     - IF(C="INVESTOR", E, 0)
- */
-const astBagiHasilGemi: ASTNode = op(
-  "-",
-  op(
-    "+",
-    op(
-      "+",
-      op(
-        "/",
-        op("-", cur("K"), iff(isFirstRow(), lit(0), prev("K"))),
-        lit(2)
-      ),
-      iff(isFirstRow(), lit(0), prev("N"))
-    ),
-    iff(op("=", col("C"), lit("INVESTOR")), col("D"), lit(0))
-  ),
-  iff(op("=", col("C"), lit("INVESTOR")), col("E"), lit(0))
-);
-
-/**
- * O: KASBON CAHAYA
- *   =IF(AND(NOT(ISERROR(SEARCH("Cahaya", F))), OR(C="INVESTOR", C="BIAYA")),
- *        IF(ROW()=2, IF(D, -D, E), IF(D, O_prev - D, O_prev + E)),
- *        IF(ROW()=2, 0, O_prev))
- *
- * The literal "Cahaya" is replaced with `partnerRef("partner-cahaya")` so
- * renaming the partner record automatically updates this formula.
- */
-const astKasbonCahaya: ASTNode = iff(
-  and(
-    not(iserror(search(partner("partner-cahaya"), col("F")))),
-    or(op("=", col("C"), lit("INVESTOR")), op("=", col("C"), lit("BIAYA")))
-  ),
-  iff(
-    isFirstRow(),
-    iff(col("D"), negate(col("D")), col("E")),
-    iff(col("D"), op("-", prev("O"), col("D")), op("+", prev("O"), col("E")))
-  ),
-  iff(isFirstRow(), lit(0), prev("O"))
-);
-
 export const DEFAULT_FORMULAS: FormulaDefinition[] = [
   {
     id: "formula-g-omzet",
     name: "Omzet",
     column: "G",
     dbColumn: "omzet",
+    formulaKey: "omzet",
+    formulaGroup: "summary",
+    actorId: null,
     ast: astOmzet,
     enabled: true,
-    isSystem: false,
+    isSystem: true,
     displayOrder: 10,
     description: "Akumulasi penjualan + piutang.",
   },
@@ -236,9 +165,12 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     name: "Biaya Operasional",
     column: "H",
     dbColumn: "biaya_operasional",
+    formulaKey: "biaya_operasional",
+    formulaGroup: "summary",
+    actorId: null,
     ast: astBiayaOps,
     enabled: true,
-    isSystem: false,
+    isSystem: true,
     displayOrder: 20,
     description: "Akumulasi BIAYA + TABUNGAN.",
   },
@@ -247,9 +179,12 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     name: "Biaya Bahan",
     column: "I",
     dbColumn: "biaya_bahan",
+    formulaKey: "biaya_bahan",
+    formulaGroup: "summary",
+    actorId: null,
     ast: astBiayaBahan,
     enabled: true,
-    isSystem: false,
+    isSystem: true,
     displayOrder: 30,
     description: "Akumulasi SUPPLY + HUTANG.",
   },
@@ -258,9 +193,12 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     name: "Saldo",
     column: "J",
     dbColumn: "saldo",
+    formulaKey: "saldo",
+    formulaGroup: "summary",
+    actorId: null,
     ast: astSaldo,
     enabled: true,
-    isSystem: false,
+    isSystem: true,
     displayOrder: 40,
     description: "Saldo kas berjalan (debit − kredit).",
   },
@@ -269,55 +207,14 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     name: "Laba Bersih",
     column: "K",
     dbColumn: "laba_bersih",
+    formulaKey: "laba_bersih",
+    formulaGroup: "summary",
+    actorId: null,
     ast: astLabaBersih,
     enabled: true,
-    isSystem: false,
+    isSystem: true,
     displayOrder: 50,
     description: "Omzet − (Biaya Operasional + Biaya Bahan).",
-  },
-  {
-    id: "formula-l-kasbon-suri",
-    name: "Kasbon Suri",
-    column: "L",
-    dbColumn: "kasbon_suri",
-    ast: astKasbonSuri,
-    enabled: true,
-    isSystem: false,
-    displayOrder: 60,
-    description: "Saldo kasbon Suri (kategori PRIBADI-S).",
-  },
-  {
-    id: "formula-m-bagi-hasil-suri",
-    name: "Bagi Hasil Suri",
-    column: "M",
-    dbColumn: "bagi_hasil_suri",
-    ast: astBagiHasilSuri,
-    enabled: true,
-    isSystem: false,
-    displayOrder: 70,
-    description: "Setengah laba bersih dikurangi kasbon Suri.",
-  },
-  {
-    id: "formula-n-bagi-hasil-gemi",
-    name: "Bagi Hasil Gemi",
-    column: "N",
-    dbColumn: "bagi_hasil_gemi",
-    ast: astBagiHasilGemi,
-    enabled: true,
-    isSystem: false,
-    displayOrder: 80,
-    description: "Akumulasi kenaikan laba ÷ 2 + transaksi investor.",
-  },
-  {
-    id: "formula-o-kasbon-cahaya",
-    name: "Kasbon Cahaya",
-    column: "O",
-    dbColumn: "kasbon_cahaya",
-    ast: astKasbonCahaya,
-    enabled: true,
-    isSystem: false,
-    displayOrder: 90,
-    description: "Saldo kasbon Cahaya (transaksi INVESTOR/BIAYA dengan keperluan Cahaya).",
   },
 ];
 

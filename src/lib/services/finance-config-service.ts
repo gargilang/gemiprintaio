@@ -12,6 +12,11 @@ import {
   slotForSourceColumn,
 } from "@/lib/profit-share-config";
 import {
+  syncProfitShareFormulas,
+  syncCashbookPartnerFromParticipant,
+  removeCashbookPartnerByDisplayName,
+} from "@/lib/services/cashbook-config-sync";
+import {
   type FinanceColumnRule,
   type CategoryWithContributions,
   DEFAULT_COLUMN_RULES,
@@ -272,6 +277,35 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
     metricMappings: metricRows?.length ? metricRows : DEFAULT_MAPPINGS,
     columnRules,
   };
+}
+
+/** Active transaction categories for dropdowns (Kelola Orang kasbon picker, etc.). */
+export async function listFinanceCategories(): Promise<
+  Pick<FinanceCategoryDefinition, "category_code" | "display_name" | "direction">[]
+> {
+  try {
+    const result = await db.query<FinanceCategoryDefinition>(
+      "finance_category_definitions",
+      {
+        where: { is_active: 1 },
+        orderBy: { column: "display_order", ascending: true },
+      }
+    );
+    if (result.data?.length) {
+      return result.data.map((c) => ({
+        category_code: c.category_code,
+        display_name: c.display_name,
+        direction: c.direction,
+      }));
+    }
+  } catch {
+    // Table missing on very old installs — fall through to defaults.
+  }
+  return DEFAULT_CATEGORIES.map((c) => ({
+    category_code: c.category_code,
+    display_name: c.display_name,
+    direction: c.direction,
+  }));
 }
 
 export async function getProfitSharePartnersForRecalc() {
@@ -557,7 +591,16 @@ export async function createFinanceParticipant(input: {
     payload.kasbon_column = input.kasbon_column ?? null;
     payload.pribadi_kategori = input.pribadi_kategori ?? null;
   }
-  return db.insert("finance_participants", payload);
+  const result = await db.insert("finance_participants", payload);
+  if (!result.error) {
+    await syncCashbookPartnerFromParticipant({
+      display_name: input.display_name,
+      role_type: input.role_type,
+      pribadi_kategori: input.pribadi_kategori ?? null,
+      display_order: displayOrder,
+    });
+  }
+  return result;
 }
 
 export async function updateProfitShareParticipant(
@@ -728,6 +771,17 @@ export async function setupBagiHasilPartner(input: {
       metric_group: "profit_share",
     });
     if (updated.error) return updated;
+    await syncCashbookPartnerFromParticipant({
+      display_name: name,
+      role_type: "profit_share",
+      pribadi_kategori: slot.pribadiKategori,
+      display_order: 0,
+    });
+    const configAfterLink = await getFinanceConfig();
+    await syncProfitShareFormulas(
+      configAfterLink.participants,
+      configAfterLink.metricMappings
+    );
     return { data: { participantId, mappingId: existing.id }, error: null };
   }
 
@@ -739,6 +793,19 @@ export async function setupBagiHasilPartner(input: {
     participant_id: participantId,
   });
   if (mapped.error) return mapped;
+
+  await syncCashbookPartnerFromParticipant({
+    display_name: name,
+    role_type: "profit_share",
+    pribadi_kategori: slot.pribadiKategori,
+    display_order: 0,
+  });
+  const configAfter = await getFinanceConfig();
+  await syncProfitShareFormulas(
+    configAfter.participants,
+    configAfter.metricMappings
+  );
+
   return {
     data: { participantId, mappingId: (mapped.data as { id: string })?.id },
     error: null,
@@ -747,6 +814,7 @@ export async function setupBagiHasilPartner(input: {
 
 export async function removeBagiHasilPartner(participantId: string) {
   const config = await getFinanceConfig();
+  const removed = config.participants.find((p) => p.id === participantId);
   const mappings = config.metricMappings.filter(
     (m) => m.participant_id === participantId && m.metric_group === "profit_share"
   );
@@ -782,6 +850,15 @@ export async function removeBagiHasilPartner(participantId: string) {
     }
   }
 
+  if (removed?.display_name) {
+    await removeCashbookPartnerByDisplayName(removed.display_name);
+  }
+  const configAfter = await getFinanceConfig();
+  await syncProfitShareFormulas(
+    configAfter.participants,
+    configAfter.metricMappings
+  );
+
   return result;
 }
 
@@ -799,6 +876,8 @@ export async function updateBagiHasilPercents(
     const result = await db.update("finance_participants", item.participant_id, update);
     if (result.error) return result;
   }
+  const config = await getFinanceConfig();
+  await syncProfitShareFormulas(config.participants, config.metricMappings);
   return { data: { ok: true }, error: null };
 }
 
@@ -824,6 +903,9 @@ export async function countActiveMappingsForParticipant(
 }
 
 export async function deleteFinanceParticipant(id: string) {
+  const config = await getFinanceConfig();
+  const participant = config.participants.find((p) => p.id === id);
+
   const linked = await countActiveMappingsForParticipant(id);
   if (linked > 0) {
     return {
@@ -845,10 +927,17 @@ export async function deleteFinanceParticipant(id: string) {
     }
 
     await db.update("finance_participants", id, { is_active: 0 });
+    if (participant?.display_name) {
+      await removeCashbookPartnerByDisplayName(participant.display_name);
+    }
     return { data: { id }, error: null };
   }
 
-  return db.update("finance_participants", id, { is_active: 0 });
+  const result = await db.update("finance_participants", id, { is_active: 0 });
+  if (!result.error && participant?.display_name) {
+    await removeCashbookPartnerByDisplayName(participant.display_name);
+  }
+  return result;
 }
 
 export async function createFinanceCategory(input: {

@@ -35,6 +35,7 @@ import {
 import {
   FormulaEvalError,
   SearchNotFoundError,
+  resolveFormulaKey,
   type FormulaDefinition,
   type InputRow,
   type OutputRow,
@@ -113,12 +114,24 @@ function inputForRow(row: CashbookRecalcInputRow): InputRow {
 /**
  * Pure computation of per-row updates. Exposed so unit tests + the
  * `/api/evaluate` endpoint can run the same engine without DB access.
+ *
+ * The result includes both:
+ *   • `updates`: legacy keuangan column patch (omzet, biaya_*, kasbon_*, etc.)
+ *   • `computed`: semantic (formulaKey → value) pairs destined for
+ *     `transaction_computed` in the v2 architecture
+ *
+ * Both are emitted so callers can dual-write during the migration window.
  */
 export function computeCashbookRecalculationUpdates(
   sortedRows: CashbookRecalcInputRow[],
   formulas: FormulaDefinition[] = cloneDefaults(DEFAULT_FORMULAS),
   partners: PartnerDefinition[] = cloneDefaults(DEFAULT_PARTNERS)
-): Array<{ id: string; updates: Record<string, number>; outputs: OutputRow }> {
+): Array<{
+  id: string;
+  updates: Record<string, number>;
+  computed: Record<string, number>;
+  outputs: OutputRow;
+}> {
   const active = formulas.filter((f) => f.enabled);
   const ordered = sortFormulasByDependency(active);
 
@@ -128,6 +141,7 @@ export function computeCashbookRecalculationUpdates(
   const out: Array<{
     id: string;
     updates: Record<string, number>;
+    computed: Record<string, number>;
     outputs: OutputRow;
   }> = [];
 
@@ -158,10 +172,10 @@ export function computeCashbookRecalculationUpdates(
     }
 
     const updates: Record<string, number> = {};
+    const computed: Record<string, number> = {};
     for (const formula of ordered) {
       const dbCol = formula.dbColumn;
-      if (!dbCol) continue;
-      if (truthyOverride(row[`override_${dbCol}`])) continue;
+      const formulaKey = resolveFormulaKey(formula);
       const value = currentOutputs[formula.column];
       const numeric =
         typeof value === "number"
@@ -171,10 +185,18 @@ export function computeCashbookRecalculationUpdates(
               ? 1
               : 0
             : Number(value) || 0;
-      updates[dbCol] = numeric;
+
+      // Always populate the semantic (transaction_computed) map.
+      if (formulaKey) computed[formulaKey] = numeric;
+
+      // Legacy keuangan column update — skip when an explicit override exists.
+      if (dbCol) {
+        if (truthyOverride(row[`override_${dbCol}`])) continue;
+        updates[dbCol] = numeric;
+      }
     }
 
-    out.push({ id: row.id, updates, outputs: currentOutputs });
+    out.push({ id: row.id, updates, computed, outputs: currentOutputs });
     prevOutputs = currentOutputs;
   }
 
@@ -203,16 +225,85 @@ export async function recalculateCashbook(
   const partners = loadPartnersFromSqlite(db);
   const batch = computeCashbookRecalculationUpdates(sorted, formulas, partners);
 
-  for (const { id, updates } of batch) {
+  // Detect whether the v2 mirror tables exist locally so we can dual-write
+  // without crashing on installs that haven't run the migration yet.
+  const hasComputedTable = tableExists(db, "transaction_computed");
+  const hasOverridesTable = tableExists(db, "transaction_overrides");
+
+  const overrideMap = hasOverridesTable
+    ? loadOverrideMap(db)
+    : new Map<string, Map<string, number>>();
+
+  const tcInsert = hasComputedTable
+    ? db.prepare(
+        `INSERT INTO transaction_computed (transaction_id, formula_key, value, computed_at)
+         VALUES (?, ?, ?, datetime('now'))
+         ON CONFLICT(transaction_id, formula_key) DO UPDATE SET
+           value = excluded.value,
+           computed_at = excluded.computed_at`
+      )
+    : null;
+
+  for (const { id, updates, computed } of batch) {
+    // Legacy column update (only for keys not manually overridden).
     const keys = Object.keys(updates);
-    if (keys.length === 0) continue;
-    const sets = keys.map((k) => `${k} = ?`);
-    const vals = keys.map((k) => updates[k]);
-    const sql = `UPDATE keuangan SET ${sets.join(", ")} WHERE id = ?`;
-    db.prepare(sql).run(...vals, id);
+    if (keys.length > 0) {
+      const sets = keys.map((k) => `${k} = ?`);
+      const vals = keys.map((k) => updates[k]);
+      const sql = `UPDATE keuangan SET ${sets.join(", ")} WHERE id = ?`;
+      db.prepare(sql).run(...vals, id);
+    }
+
+    // v2 dual-write: transaction_computed, honouring transaction_overrides.
+    if (tcInsert) {
+      const rowOverrides = overrideMap.get(id);
+      for (const [formulaKey, value] of Object.entries(computed)) {
+        const ov = rowOverrides?.get(formulaKey);
+        tcInsert.run(id, formulaKey, ov ?? value);
+      }
+    }
   }
 
   return rows.length;
+}
+
+function tableExists(db: Database.Database, name: string): boolean {
+  try {
+    const row = db
+      .prepare(
+        "SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
+      )
+      .get(name) as { ok?: number } | undefined;
+    return Boolean(row?.ok);
+  } catch {
+    return false;
+  }
+}
+
+function loadOverrideMap(db: Database.Database): Map<string, Map<string, number>> {
+  const map = new Map<string, Map<string, number>>();
+  try {
+    const rows = db
+      .prepare(
+        "SELECT transaction_id, formula_key, override_value FROM transaction_overrides"
+      )
+      .all() as Array<{
+      transaction_id: string;
+      formula_key: string;
+      override_value: number;
+    }>;
+    for (const r of rows) {
+      let inner = map.get(r.transaction_id);
+      if (!inner) {
+        inner = new Map();
+        map.set(r.transaction_id, inner);
+      }
+      inner.set(r.formula_key, Number(r.override_value));
+    }
+  } catch {
+    // table missing — nothing to override
+  }
+  return map;
 }
 
 // ── SQLite I/O helpers ─────────────────────────────────────────────────────
