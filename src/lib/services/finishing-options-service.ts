@@ -1,6 +1,6 @@
 /**
  * Finishing Options Service
- * Universal API untuk Finishing Options yang bekerja di Tauri dan Web
+ * Universal API for Finishing Options on Tauri and Web
  */
 
 import "server-only";

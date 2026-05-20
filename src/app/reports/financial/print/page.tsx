@@ -62,7 +62,7 @@ export default function PrintFinancialReport() {
         setReportData(data);
         setLoading(false);
 
-        // REMOVED: Auto-trigger print dialog - biarkan user yang memilih
+        // REMOVED: Auto-trigger print dialog — let the user choose
       } catch (err) {
         setError(err instanceof Error ? err.message : "Terjadi kesalahan");
         setLoading(false);
@@ -118,7 +118,7 @@ export default function PrintFinancialReport() {
   };
 
   const getCategoryColor = (category: string) => {
-    // Match colors dari BUKU KEUANGAN page
+    // Match colors from the BUKU KEUANGAN page
     const colors: { [key: string]: string } = {
       KAS: "#3b82f6", // blue-500
       BIAYA: "#ef4444", // red-500
@@ -186,7 +186,7 @@ export default function PrintFinancialReport() {
         }
       `}</style>
 
-      {/* Print/Close Buttons - hanya muncul di screen */}
+      {/* Print/Close buttons — screen only */}
       <div className="no-print fixed top-4 right-4 flex gap-2 z-50">
         <button
           onClick={() => window.print()}
@@ -216,7 +216,7 @@ export default function PrintFinancialReport() {
       </div>
 
       <div className="print-container">
-        {/* Header dengan Gradient */}
+        {/* Header with gradient */}
         <div className="bg-gradient-to-r from-[#0a1b3d] to-[#00afef] text-white p-8 rounded-t-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

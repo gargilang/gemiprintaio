@@ -110,7 +110,7 @@ export default function ReportsPage() {
 
     setGeneratingPDF(true);
     try {
-      // Buka print-friendly page dengan archived label & timestamp
+      // Open print-friendly page with archived label & timestamp
       const printUrl = `/reports/financial/print?label=${encodeURIComponent(
         selectedArchive.archived_label
       )}&at=${encodeURIComponent(selectedArchive.archived_at)}`;

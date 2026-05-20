@@ -2,6 +2,21 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import {
+  getBillableDimensionsForRoll,
+  getRoundedDimensions,
+  getStoredRollSizes,
+  isRollSizeValidForDimensions,
+  suggestCheapestRollSize,
+} from "@/lib/roll-size-utils";
+import {
+  formatPosUnitPrice,
+  formatRollCartDetailLine,
+  allocateCartLineCharges,
+  getCartChargeTotal,
+  getRollPrintLength,
+  roundUpToThousand,
+} from "@/lib/money-rounding";
 import POSCart from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
 import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
@@ -74,59 +89,11 @@ interface CartItem {
   lebar?: number;
   butuh_dimensi?: boolean;
   useRounding?: boolean;
-  subtotal: number;
+  selectedRollSize?: number;
+  billedPanjang?: number;
+  billedLebar?: number;
+  subtotalRaw: number;
   finishing?: FinishingItem[];
-}
-
-// Helper function to round dimension to nearest roll size
-function getRoundedDimensions(
-  panjang: number,
-  lebar: number,
-  useRounding: boolean
-): { panjang: number; lebar: number } {
-  if (!useRounding) {
-    return { panjang, lebar };
-  }
-
-  // Get roll sizes from localStorage
-  let rollSizes: number[] = [];
-  try {
-    const stored = localStorage.getItem("rollSizes");
-    rollSizes = stored ? JSON.parse(stored) : [0.5, 1, 1.5, 2, 2.5, 3];
-  } catch {
-    rollSizes = [0.5, 1, 1.5, 2, 2.5, 3];
-  }
-
-  // Sort to ensure ascending order
-  rollSizes.sort((a, b) => a - b);
-
-  // Determine smaller dimension
-  const smallerDim = Math.min(panjang, lebar);
-  const largerDim = Math.max(panjang, lebar);
-
-  // Find the nearest roll size (round up)
-  let roundedSmaller = smallerDim;
-  for (const size of rollSizes) {
-    if (size >= smallerDim) {
-      roundedSmaller = size;
-      break;
-    }
-  }
-
-  // If smallerDim is larger than the largest roll size, use the largest
-  if (
-    roundedSmaller === smallerDim &&
-    smallerDim > rollSizes[rollSizes.length - 1]
-  ) {
-    roundedSmaller = rollSizes[rollSizes.length - 1];
-  }
-
-  // Return with the same order (panjang, lebar)
-  if (panjang < lebar) {
-    return { panjang: roundedSmaller, lebar: largerDim };
-  } else {
-    return { panjang: largerDim, lebar: roundedSmaller };
-  }
 }
 
 type POSInitData = {
@@ -141,7 +108,7 @@ const EMPTY_POS_INIT: POSInitData = {
   sales: [],
 };
 
-/** Urutan tampilan kategori (selaras dengan kategori_barang default). */
+/** Category display order (aligned with default kategori_barang). */
 const KATEGORI_ORDER = [
   "Media Cetak",
   "Kertas",
@@ -225,6 +192,7 @@ export default function POSPage() {
 
   // Cart & Transaction State
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [roundCartPrices, setRoundCartPrices] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
@@ -236,6 +204,9 @@ export default function POSPage() {
   const [panjang, setPanjang] = useState("");
   const [lebar, setLebar] = useState("");
   const [useRounding, setUseRounding] = useState(false);
+  const [selectedRollSize, setSelectedRollSize] = useState<number | null>(null);
+  const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+  const [rollSizes, setRollSizes] = useState<number[]>(() => getStoredRollSizes());
   const [catatan, setCatatan] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
@@ -260,6 +231,7 @@ export default function POSPage() {
   const [selectedCustomerIndex, setSelectedCustomerIndex] = useState(-1);
 
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const productFormRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -295,13 +267,78 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedMaterial && selectedMaterial.unit_prices.length > 0) {
-      const defaultUnit = selectedMaterial.unit_prices.find(
-        (u) => u.default_status === 1
-      );
-      setSelectedUnit(defaultUnit || selectedMaterial.unit_prices[0]);
+    if (
+      !selectedMaterial ||
+      editingCartIndex !== null ||
+      selectedMaterial.unit_prices.length === 0
+    ) {
+      return;
     }
-  }, [selectedMaterial]);
+    const defaultUnit = selectedMaterial.unit_prices.find(
+      (u) => u.default_status === 1
+    );
+    setSelectedUnit(defaultUnit || selectedMaterial.unit_prices[0]);
+  }, [selectedMaterial, editingCartIndex]);
+
+  useEffect(() => {
+    setRollSizes(getStoredRollSizes());
+  }, []);
+
+  const parsedPanjang = parseFloat(panjang);
+  const parsedLebar = parseFloat(lebar);
+  const hasValidDimensions =
+    !isNaN(parsedPanjang) &&
+    !isNaN(parsedLebar) &&
+    parsedPanjang > 0 &&
+    parsedLebar > 0;
+
+  useEffect(() => {
+    if (!useRounding || !hasValidDimensions) {
+      setSelectedRollSize(null);
+      return;
+    }
+    setSelectedRollSize(
+      suggestCheapestRollSize(parsedPanjang, parsedLebar, rollSizes)
+    );
+  }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
+
+  const rollBillingPreview = useMemo(() => {
+    if (
+      !useRounding ||
+      !hasValidDimensions ||
+      selectedRollSize == null ||
+      !selectedUnit
+    ) {
+      return null;
+    }
+    const billed = getBillableDimensionsForRoll(
+      parsedPanjang,
+      parsedLebar,
+      selectedRollSize
+    );
+    if (!billed) return null;
+    const area = billed.panjang * billed.lebar;
+    const hargaPerSatuan = selectedCustomer?.member_status
+      ? selectedUnit.harga_member || selectedUnit.harga_jual
+      : selectedUnit.harga_jual;
+    const subtotalRaw = billed.area * hargaPerSatuan;
+    return {
+      panjang: billed.panjang,
+      lebar: billed.lebar,
+      area: billed.area,
+      usesRotation: billed.usesRotation,
+      subtotalRaw,
+      hargaPerSatuan,
+    };
+  }, [
+    useRounding,
+    hasValidDimensions,
+    selectedRollSize,
+    parsedPanjang,
+    parsedLebar,
+    selectedUnit,
+    selectedCustomer,
+  ]);
 
   const loadAllData = async () => {
     setRefreshing(true);
@@ -391,21 +428,115 @@ export default function POSPage() {
     }
   };
 
+  const resetProductForm = () => {
+    setEditingCartIndex(null);
+    setSelectedMaterial(null);
+    setSelectedUnit(null);
+    setMaterialSearch("");
+    setQuantity("1");
+    setPanjang("");
+    setLebar("");
+    setUseRounding(false);
+    setSelectedRollSize(null);
+  };
+
+  const handleCancelEdit = () => {
+    resetProductForm();
+  };
+
+  const buildCartItemFromForm = (): CartItem | null => {
+    if (!selectedMaterial || !selectedUnit) {
+      showMsg("error", "Pilih barang dan satuan terlebih dahulu");
+      return null;
+    }
+
+    let finalQuantity = parseFloat(quantity);
+    let originalPanjang: number | undefined;
+    let originalLebar: number | undefined;
+    let rollUsed: number | undefined;
+    let billedPanjang: number | undefined;
+    let billedLebar: number | undefined;
+
+    if (selectedMaterial.butuh_dimensi_status === 1) {
+      const p = parseFloat(panjang);
+      const l = parseFloat(lebar);
+      if (isNaN(p) || isNaN(l) || p <= 0 || l <= 0) {
+        showMsg("error", "Masukkan panjang dan lebar yang valid");
+        return null;
+      }
+
+      originalPanjang = p;
+      originalLebar = l;
+
+      let billedP = p;
+      let billedL = l;
+
+      if (useRounding) {
+        if (selectedRollSize == null) {
+          showMsg("error", "Pilih ukuran roll yang dipakai");
+          return null;
+        }
+        if (!isRollSizeValidForDimensions(p, l, selectedRollSize)) {
+          showMsg(
+            "error",
+            "Roll terlalu kecil untuk ukuran cut ini (coba roll lebih besar atau putar orientasi)"
+          );
+          return null;
+        }
+        const rounded = getRoundedDimensions(p, l, true, selectedRollSize);
+        billedP = rounded.panjang;
+        billedL = rounded.lebar;
+        rollUsed = rounded.rollSize ?? selectedRollSize;
+      }
+
+      billedPanjang = billedP;
+      billedLebar = billedL;
+      finalQuantity = billedP * billedL;
+    } else {
+      if (isNaN(finalQuantity) || finalQuantity <= 0) {
+        showMsg("error", "Masukkan jumlah yang valid");
+        return null;
+      }
+    }
+
+    const hargaPerSatuan = selectedCustomer?.member_status
+      ? selectedUnit.harga_member || selectedUnit.harga_jual
+      : selectedUnit.harga_jual;
+
+    const subtotalRaw = finalQuantity * hargaPerSatuan;
+
+    return {
+      barang_id: selectedMaterial.id,
+      barang_nama: selectedMaterial.nama,
+      harga_satuan_id: selectedUnit.id,
+      nama_satuan: selectedUnit.nama_satuan,
+      faktor_konversi: selectedUnit.faktor_konversi,
+      harga_satuan: hargaPerSatuan,
+      jumlah: finalQuantity,
+      subtotalRaw,
+      butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
+      panjang: originalPanjang,
+      lebar: originalLebar,
+      useRounding: selectedMaterial.butuh_dimensi_status === 1 && useRounding,
+      selectedRollSize: rollUsed,
+      billedPanjang: useRounding ? billedPanjang : undefined,
+      billedLebar: useRounding ? billedLebar : undefined,
+    };
+  };
+
   const handleMaterialGridClick = (material: Material) => {
     if (selectedMaterial?.id === material.id) {
-      setSelectedMaterial(null);
-      setSelectedUnit(null);
-      setPanjang("");
-      setLebar("");
-      setQuantity("1");
-      setUseRounding(false);
+      resetProductForm();
       return;
     }
 
+    setEditingCartIndex(null);
     setSelectedMaterial(material);
     setPanjang("");
     setLebar("");
     setQuantity("1");
+    setUseRounding(material.butuh_dimensi_status === 1);
+    setSelectedRollSize(null);
 
     const defaultUnit = material.unit_prices.find(
       (u) => u.default_status === 1
@@ -417,79 +548,78 @@ export default function POSPage() {
     }
   };
 
-  const handleAddToCart = () => {
-    if (!selectedMaterial || !selectedUnit) {
-      showMsg("error", "Pilih barang dan satuan terlebih dahulu");
+  const handleEditCartItem = (index: number) => {
+    const item = cart[index];
+    if (!item) return;
+
+    const material = materials.find((m) => m.id === item.barang_id);
+    if (!material) {
+      showMsg("error", "Barang tidak ditemukan di katalog");
       return;
     }
 
-    let finalQuantity = parseFloat(quantity);
-    let originalPanjang: number | undefined;
-    let originalLebar: number | undefined;
+    const unit =
+      material.unit_prices.find((u) => u.id === item.harga_satuan_id) ??
+      material.unit_prices.find((u) => u.default_status === 1) ??
+      material.unit_prices[0] ??
+      null;
 
-    if (selectedMaterial.butuh_dimensi_status === 1) {
-      const p = parseFloat(panjang);
-      const l = parseFloat(lebar);
-      if (isNaN(p) || isNaN(l) || p <= 0 || l <= 0) {
-        showMsg("error", "Masukkan panjang dan lebar yang valid");
-        return;
-      }
+    setEditingCartIndex(index);
+    setSelectedMaterial(material);
+    setSelectedUnit(unit);
+    setMaterialSearch(material.nama);
 
-      // Store original dimensions
-      originalPanjang = p;
-      originalLebar = l;
-
-      // Apply rounding if enabled
-      const { panjang: roundedP, lebar: roundedL } = getRoundedDimensions(
-        p,
-        l,
-        useRounding
+    if (item.butuh_dimensi && item.panjang != null && item.lebar != null) {
+      setPanjang(String(item.panjang));
+      setLebar(String(item.lebar));
+      setUseRounding(item.useRounding ?? false);
+      setSelectedRollSize(
+        item.useRounding ? (item.selectedRollSize ?? null) : null
       );
-
-      // Calculate quantity using rounded dimensions for pricing
-      finalQuantity = roundedP * roundedL;
+      setQuantity("1");
     } else {
-      if (isNaN(finalQuantity) || finalQuantity <= 0) {
-        showMsg("error", "Masukkan jumlah yang valid");
-        return;
-      }
+      setPanjang("");
+      setLebar("");
+      setUseRounding(false);
+      setSelectedRollSize(null);
+      setQuantity(String(item.jumlah));
     }
 
-    const hargaPerSatuan = selectedCustomer?.member_status
-      ? selectedUnit.harga_member || selectedUnit.harga_jual
-      : selectedUnit.harga_jual;
+    requestAnimationFrame(() => {
+      productFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  };
 
-    const subtotal = finalQuantity * hargaPerSatuan;
+  const handleAddToCart = () => {
+    const newItem = buildCartItemFromForm();
+    if (!newItem) return;
 
-    const newItem: CartItem = {
-      barang_id: selectedMaterial.id,
-      barang_nama: selectedMaterial.nama,
-      harga_satuan_id: selectedUnit.id,
-      nama_satuan: selectedUnit.nama_satuan,
-      faktor_konversi: selectedUnit.faktor_konversi,
-      harga_satuan: hargaPerSatuan,
-      jumlah: finalQuantity,
-      subtotal,
-      butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
-      panjang: originalPanjang,
-      lebar: originalLebar,
-      useRounding: selectedMaterial.butuh_dimensi_status === 1 && useRounding,
-    };
+    if (editingCartIndex !== null) {
+      setCart((prev) => {
+        const next = [...prev];
+        next[editingCartIndex] = {
+          ...newItem,
+          finishing: prev[editingCartIndex]?.finishing,
+        };
+        return next;
+      });
+    } else {
+      setCart((prev) => [...prev, newItem]);
+    }
 
-    setCart([...cart, newItem]);
-
-    // Reset form
-    setSelectedMaterial(null);
-    setSelectedUnit(null);
-    setMaterialSearch("");
-    setQuantity("1");
-    setPanjang("");
-    setLebar("");
-    setUseRounding(false);
+    resetProductForm();
   };
 
   const handleRemoveFromCart = (index: number) => {
-    setCart(cart.filter((_, i) => i !== index));
+    setCart((prev) => prev.filter((_, i) => i !== index));
+    if (editingCartIndex === index) {
+      resetProductForm();
+    } else if (editingCartIndex !== null && index < editingCartIndex) {
+      setEditingCartIndex(editingCartIndex - 1);
+    }
   };
 
   const handleEditFinishing = (index: number, finishing: FinishingItem[]) => {
@@ -563,7 +693,7 @@ export default function POSPage() {
       return;
     }
 
-    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const total = getCartChargeTotal(cart, roundCartPrices);
     const bayar = parseFloat(jumlahBayar) || 0;
 
     // Validation for payment methods that require full payment
@@ -611,9 +741,26 @@ export default function POSPage() {
   ) => {
     setRefreshing(true);
     try {
+      const lineCharges = allocateCartLineCharges(cart, roundCartPrices);
+      const saleItems = cart.map((item, index) => ({
+        barang_id: item.barang_id,
+        harga_satuan_id: item.harga_satuan_id,
+        jumlah: item.jumlah,
+        nama_satuan: item.nama_satuan,
+        faktor_konversi: item.faktor_konversi,
+        harga_satuan:
+          item.jumlah > 0
+            ? lineCharges[index] / item.jumlah
+            : item.harga_satuan,
+        subtotal: lineCharges[index],
+        panjang: item.panjang,
+        lebar: item.lebar,
+        finishing: item.finishing,
+      }));
+
       const result = await createSaleAction({
         pelanggan_id: selectedCustomer?.id,
-        items: cart,
+        items: saleItems,
         total_jumlah: total,
         jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
         jumlah_kembalian: kembalian,
@@ -638,21 +785,29 @@ export default function POSPage() {
       try {
         const { printThermalInvoice } = await import("@/lib/thermal-print");
 
-        printThermalInvoice({
+        const printed = printThermalInvoice({
           nomor_invoice: result.nomor_invoice,
           tanggal: new Date().toISOString(),
           pelanggan_nama: selectedCustomer?.nama,
           pelanggan_telepon: selectedCustomer?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
-          items: cart.map((item) => ({
+          items: cart.map((item, index) => ({
             nama: item.barang_nama,
             jumlah: item.jumlah,
             satuan: item.nama_satuan,
-            harga: item.harga_satuan,
-            subtotal: item.subtotal,
+            harga:
+              item.jumlah > 0
+                ? lineCharges[index] / item.jumlah
+                : item.harga_satuan,
+            subtotal: lineCharges[index],
             dimensi:
-              item.panjang && item.lebar
-                ? `${item.panjang} x ${item.lebar} cm`
+              item.butuh_dimensi && item.panjang && item.lebar
+                ? item.useRounding &&
+                  item.selectedRollSize != null &&
+                  item.billedPanjang != null &&
+                  item.billedLebar != null
+                  ? formatRollCartDetailLine(item)
+                  : `${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m = ${item.jumlah.toFixed(2)} m²`
                 : undefined,
           })),
           total: total,
@@ -661,8 +816,18 @@ export default function POSPage() {
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || undefined,
         });
+        if (!printed) {
+          showMsg(
+            "error",
+            "Transaksi tersimpan, tetapi struk tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+          );
+        }
       } catch (printError) {
         console.error("Error printing invoice:", printError);
+        showMsg(
+          "error",
+          "Transaksi tersimpan, tetapi gagal menyiapkan struk untuk dicetak."
+        );
       }
 
       // Reset form
@@ -674,6 +839,8 @@ export default function POSPage() {
       setJumlahBayar("");
       setPrioritas("NORMAL");
       setUseRounding(false);
+      setSelectedRollSize(null);
+      setRoundCartPrices(true);
 
       // Reload data
       await loadAllData();
@@ -897,7 +1064,7 @@ export default function POSPage() {
               </div>
 
               <div className="space-y-3">
-                {/* Quick filter kategori — horizontal scroll saat kategori banyak */}
+                {/* Quick category filter — horizontal scroll when many categories */}
                 {materialCategories.length > 0 && (
                   <div
                     className="overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#00afef]/40"
@@ -934,7 +1101,7 @@ export default function POSPage() {
                   </div>
                 )}
 
-                {/* Material Grid — tinggi dibatasi; lebih kecil saat barang dipilih agar form edit terlihat */}
+                {/* Material grid — limited height; shrinks when item selected so edit form stays visible */}
                 <div
                   className={`overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 transition-[max-height] duration-200 ${
                     selectedMaterial ? "max-h-[160px]" : "max-h-[240px]"
@@ -996,7 +1163,28 @@ export default function POSPage() {
                 </div>
 
                 {selectedMaterial && (
-                  <div className="p-3 bg-white rounded-lg border-2 border-[#00afef]/30 shadow-sm">
+                  <div
+                    ref={productFormRef}
+                    className={`p-3 bg-white rounded-lg border-2 shadow-sm ${
+                      editingCartIndex !== null
+                        ? "border-amber-400 ring-2 ring-amber-200/60"
+                        : "border-[#00afef]/30"
+                    }`}
+                  >
+                    {editingCartIndex !== null && (
+                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-amber-200">
+                        <p className="text-xs font-semibold text-amber-800">
+                          Mengedit item keranjang
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    )}
                     <div className="font-bold text-gray-800 text-sm mb-3">
                       {selectedMaterial.nama}
                     </div>
@@ -1071,27 +1259,29 @@ export default function POSPage() {
                               </div>
                             </div>
 
-                            {/* Rounding Checkbox - show only when both dimensions have values */}
+                            {/* Roll billing — show when both dimensions have values */}
                             {panjang && lebar && (
-                              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={useRounding}
-                                  onChange={(e) =>
-                                    setUseRounding(e.target.checked)
-                                  }
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <span className="font-medium">
-                                  Gunakan Pembulatan Ukuran Roll
-                                </span>
-                              </label>
+                              <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={useRounding}
+                                    onChange={(e) =>
+                                      setUseRounding(e.target.checked)
+                                    }
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="font-medium">
+                                    Gunakan Pembulatan Ukuran Roll
+                                  </span>
+                                </label>
+                              </div>
                             )}
                           </div>
                         )}
                       </div>
 
-                      {/* Right: Quantity Controls */}
+                      {/* Right: quantity, roll, add button */}
                       <div className="space-y-3">
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">
@@ -1139,11 +1329,85 @@ export default function POSPage() {
                           </div>
                         </div>
 
+                        {selectedMaterial.butuh_dimensi_status === 1 &&
+                          useRounding &&
+                          hasValidDimensions && (
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-gray-600">
+                                Roll yang dipakai
+                              </label>
+                              <select
+                                value={selectedRollSize ?? ""}
+                                onChange={(e) =>
+                                  setSelectedRollSize(parseFloat(e.target.value))
+                                }
+                                className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white"
+                              >
+                                {rollSizes
+                                  .filter((size) =>
+                                    isRollSizeValidForDimensions(
+                                      parsedPanjang,
+                                      parsedLebar,
+                                      size
+                                    )
+                                  )
+                                  .map((size) => {
+                                    const billed = getBillableDimensionsForRoll(
+                                      parsedPanjang,
+                                      parsedLebar,
+                                      size
+                                    );
+                                    if (!billed) return null;
+                                    const area = billed.area;
+                                    const harga = selectedCustomer?.member_status
+                                      ? selectedUnit?.harga_member ||
+                                        selectedUnit?.harga_jual ||
+                                        0
+                                      : selectedUnit?.harga_jual || 0;
+                                    const subRaw = area * harga;
+                                    const printLen = getRollPrintLength(
+                                      billed.panjang,
+                                      billed.lebar,
+                                      size
+                                    );
+                                    return (
+                                      <option key={size} value={size}>
+                                        {size} m
+                                        {billed.usesRotation ? " ↻" : ""}
+                                        {" — "}
+                                        {printLen.toFixed(2)} × Roll{" "}
+                                        {size.toFixed(2)} m = {area.toFixed(2)}{" "}
+                                        m² @ Rp {formatPosUnitPrice(harga)} · Rp{" "}
+                                        {subRaw.toLocaleString("id-ID")}
+                                      </option>
+                                    );
+                                  })}
+                              </select>
+                              {rollBillingPreview && selectedRollSize != null && (
+                                <p className="text-xs text-gray-500 leading-snug">
+                                  Tagih:{" "}
+                                  <span className="font-semibold text-[#00afef]">
+                                    Rp{" "}
+                                    {roundUpToThousand(
+                                      rollBillingPreview.subtotalRaw
+                                    ).toLocaleString("id-ID")}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                         <button
                           onClick={handleAddToCart}
-                          className="w-full py-2.5 bg-gradient-to-r from-[#00afef] to-[#0088cc] text-white rounded-lg font-bold hover:from-[#0099dd] hover:to-[#0077bb] transition-all shadow-md text-sm"
+                          className={`w-full py-2.5 text-white rounded-lg font-bold transition-all shadow-md text-sm ${
+                            editingCartIndex !== null
+                              ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
+                              : "bg-gradient-to-r from-[#00afef] to-[#0088cc] hover:from-[#0099dd] hover:to-[#0077bb]"
+                          }`}
                         >
-                          Tambah ke Keranjang
+                          {editingCartIndex !== null
+                            ? "Simpan perubahan"
+                            : "Tambah ke Keranjang"}
                         </button>
                       </div>
                     </div>
@@ -1157,11 +1421,15 @@ export default function POSPage() {
           <div className="lg:col-span-1">
             <POSCart
               cart={cart}
+              roundCartPrices={roundCartPrices}
+              onRoundCartPricesChange={setRoundCartPrices}
               paymentMethod={paymentMethod}
               jumlahBayar={jumlahBayar}
               catatan={catatan}
               prioritas={prioritas}
               onRemoveItem={handleRemoveFromCart}
+              editingCartIndex={editingCartIndex}
+              onEditItem={handleEditCartItem}
               onPaymentMethodChange={setPaymentMethod}
               onJumlahBayarChange={setJumlahBayar}
               onCatatanChange={setCatatan}

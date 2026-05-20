@@ -1,0 +1,87 @@
+# gemiprint — Cursor Agent Rules
+
+## Project owner context
+
+- The project owner is **not a programmer**. Do not rely on them to choose technical patterns, architecture, or complex trade-offs.
+- **Trust technical decisions to the agent**; explain in simple language what changed and why (briefly).
+- The app is used **internally only (~2–5 people)**. Priorities: **fast, stable, fits business needs**, with **reasonable security** (not enterprise hardening).
+- **Long-term goal:** the codebase must remain readable by **other programmers** after the owner stops maintaining it. Prefer clear English in source comments; keep the product UI in Indonesian for end users.
+
+## Work goals
+
+- Fix bugs, add features, and refactor so the app stays **responsive** and **easy to use**.
+- Maintain basic security: do not leak secrets, validate API input, do not commit `.env` / keys, avoid auth/session regressions.
+- For a small internal context, avoid over-engineering (excessive abstraction, new infra without clear benefit).
+
+## Tools and access
+
+The agent **may and should** use without repeatedly asking permission:
+
+- **Cursor built-in browser** — GitHub, Supabase, Vercel, GoDaddy (accounts already logged in).
+- **Terminal / CLI** — Next.js, Flutter, GitHub (`gh`), Supabase CLI, Vercel CLI, SQLite when needed.
+- **Independent investigation** — read code, run commands, check deploy/logs, test in the browser when relevant.
+
+## Code and repo hygiene
+
+When **scanning, analyzing, or implementing**:
+
+- Remove or tidy **dead code**, unused files, temporary debug comments, and obvious junk data no longer in use.
+- Do not delete anything still referenced (Tauri bundle, Supabase migrations, release scripts, etc.) without verifying.
+- Cleanup changes must be **minimal and focused** — no large refactors unrelated to the current task.
+
+## Code comments (ongoing — required)
+
+**Every time** you open or edit a source file (`src/`, `src-tauri/`, `flutter/lib/`, etc.):
+
+1. **Write new comments in English only** — no new Indonesian in `//`, `/* */`, JSDoc, or `{/* dev notes */}`.
+2. **If you see existing Indonesian comments**, translate them to English in the **same change** (same PR/commit scope as your task). Do not leave them for “later” and do not ask the owner for permission to translate comments.
+3. **Do not translate** user-facing UI strings, API error messages for end users, or database/API identifiers — see Language below.
+
+Most of `src/` was already migrated; **some files may still have Indonesian comments**. Treat any you find as technical debt to fix immediately, not optional cleanup.
+
+## Verification before done
+
+After changes are considered ready:
+
+- **Run yourself** `npm run dev`, `npm run build`, `npm test`, or relevant commands (Flutter/Tauri) to ensure there are no obvious errors.
+- Fix issues that appear before closing the task.
+- Report briefly: what was tested and the result.
+
+## Git, commits, and deploy
+
+The owner **trusts** the agent to:
+
+- **Commit** verified changes.
+- **Push to `main`** — Vercel **auto-deploys** on every `main` update.
+
+Guidelines:
+
+- Clear commit messages (Indonesian or English, consistent with repo history).
+- **Do not** commit secret files (`.env.local`, keys, certificates).
+- **Do not** `git push --force` to `main`.
+- **Do not** amend commits already pushed unless explicitly requested.
+- After push, briefly state what went into deploy (main feature/fix).
+
+## Project stack (summary)
+
+- **Web:** Next.js 16 on Vercel, Supabase (Postgres), ~58 API routes.
+- **Desktop:** Tauri + Next standalone + local SQLite (`better-sqlite3`).
+- **Mobile:** Flutter → Next.js API at `app.gemiprint.com`.
+- **Runtime:** stay on **Node.js 22 + npm** (do not migrate to Bun unless asked).
+
+## Language
+
+- **Communication with the owner:** **Bahasa Indonesia**, clear and not overly technical.
+- **Code comments and JSDoc:** **English only** (see “Code comments (ongoing — required)” above).
+- **User-facing UI** (labels, buttons, placeholders, toasts, dialogs, validation messages shown in the app, and API error messages intended for end users): **Bahasa Indonesia** — all users are Indonesian; do **not** anglicize the interface unless explicitly requested.
+- **Commits:** clear messages; Indonesian or English, consistent with repo history.
+- Database column names, enums, and domain terms in Indonesian (e.g. `dibuat_pada`, `kategori_transaksi`) stay as-is; only **comments** are translated, not identifiers or UI strings.
+
+## When to confirm with the owner
+
+Ask first only if:
+
+- Deleting production data / wiping the database.
+- Changing domain, DNS (GoDaddy), or billing.
+- Ambiguous business rules (pricing, access for new users, etc.).
+- Large changes that cannot be rolled back easily.

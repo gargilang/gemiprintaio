@@ -1,6 +1,6 @@
 /**
  * Customers Service
- * Universal API untuk Customers yang bekerja di Tauri dan Web
+ * Universal API for Customers on Tauri and Web
  */
 
 import "server-only";

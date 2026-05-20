@@ -1,6 +1,6 @@
 /**
- * Label tampilan untuk kolom buku kas — tanpa nama orang tertentu (white-label).
- * Nama kolom teknis (bagi_hasil_anwar, dll.) tetap untuk kompatibilitas data.
+ * Display labels for cash book columns — no specific person names (white-label).
+ * Technical column names (bagi_hasil_anwar, etc.) unchanged for data compatibility.
  */
 
 export const FINANCE_SLOT_LABELS: Record<string, string> = {

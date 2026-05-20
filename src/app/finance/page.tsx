@@ -38,6 +38,7 @@ import {
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useSWRConfig } from "swr";
+import { useCachedData } from "@/lib/use-cached-data";
 import {
   participantNameMatches,
   resolveMetricParticipantName,
@@ -50,7 +51,7 @@ const stripReferenceId = (text: string | null | undefined): string => {
   return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
 };
 
-/** Kolom angka di baris buku kas — label Indonesia untuk pengguna non-teknis */
+/** Numeric columns on cash book rows — Indonesian labels for non-technical users */
 const FINANCE_DATA_SLOTS: Array<{
   source_column: string;
   metric_group: "summary" | "profit_share" | "cash_advance";
@@ -291,7 +292,7 @@ const FinanceParticipantSummaryTable = memo(function FinanceParticipantSummaryTa
   );
 });
 
-// Memoized CashBook Row Component - mencegah re-render yang tidak perlu
+// Memoized CashBook Row Component — avoids unnecessary re-renders
 const CashBookRow = memo(
   ({
     cashBook,
@@ -484,6 +485,58 @@ interface FinanceParticipantConfig {
 }
 
 const CASHBOOKS_CACHE_KEY = "cashbooks-active";
+const FINANCE_CONFIG_CACHE_KEY = "finance-config";
+
+type FinanceConfigPayload = {
+  categories: FinanceCategoryConfig[];
+  participants: FinanceParticipantConfig[];
+  metricMappings: FinanceMetricConfig[];
+  columnRules: FinanceColumnRuleConfig[];
+};
+
+type MappingEditsState = Record<
+  string,
+  {
+    metric_label: string;
+    metric_group: "summary" | "profit_share" | "cash_advance";
+    source_column: string;
+    participant_id: string;
+  }
+>;
+
+async function fetchFinanceConfig(): Promise<FinanceConfigPayload> {
+  const res = await fetch("/api/finance/config", { cache: "no-store" });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Gagal memuat konfigurasi");
+  return {
+    categories: data.categories || [],
+    participants: data.participants || [],
+    metricMappings: data.metricMappings || [],
+    columnRules: data.columnRules || [],
+  };
+}
+
+function buildMappingEdits(
+  metricMappings: FinanceMetricConfig[],
+  participants: FinanceParticipantConfig[]
+): MappingEditsState {
+  const edits: MappingEditsState = {};
+  for (const metric of metricMappings) {
+    if (!metric.id) continue;
+    edits[metric.id] = {
+      metric_label: metric.metric_label,
+      metric_group: metric.metric_group,
+      source_column: metric.source_column,
+      participant_id:
+        metric.participant_id ??
+        participants.find(
+          (participant) => participant.display_name === metric.participant_name
+        )?.id ??
+        "",
+    };
+  }
+  return edits;
+}
 
 export default function FinancePage() {
   const router = useRouter();
@@ -497,6 +550,14 @@ export default function FinancePage() {
       ? (((swr.cache.get(CASHBOOKS_CACHE_KEY) as { data?: CashBook[] } | undefined)
           ?.data ?? []) as CashBook[])
       : [];
+  const initialFinanceConfig =
+    typeof window !== "undefined"
+      ? (
+          swr.cache.get(FINANCE_CONFIG_CACHE_KEY) as
+            | { data?: FinanceConfigPayload }
+            | undefined
+        )?.data
+      : undefined;
   const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
   const [loading, setLoading] = useState(initialUser === null);
   const [cashBooks, setCashBooksState] =
@@ -545,17 +606,17 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
-  const [showBagiHasilSection, setShowBagiHasilSection] = useState(true);
-  const [showKasbonSection, setShowKasbonSection] = useState(true);
+  const [showBagiHasilSection, setShowBagiHasilSection] = useState(false);
+  const [showKasbonSection, setShowKasbonSection] = useState(false);
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
-  >([]);
+  >(initialFinanceConfig?.categories ?? []);
   const [financeMetrics, setFinanceMetrics] = useState<FinanceMetricConfig[]>(
-    []
+    initialFinanceConfig?.metricMappings ?? []
   );
   const [financeParticipants, setFinanceParticipants] = useState<
     FinanceParticipantConfig[]
-  >([]);
+  >(initialFinanceConfig?.participants ?? []);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showBagiHasilManageModal, setShowBagiHasilManageModal] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
@@ -571,18 +632,35 @@ export default function FinancePage() {
     metric_label: "",
     participant_id: "",
   });
-  const [mappingEdits, setMappingEdits] = useState<
-    Record<
-      string,
-      {
-        metric_label: string;
-        metric_group: "summary" | "profit_share" | "cash_advance";
-        source_column: string;
-        participant_id: string;
-      }
-    >
-  >({});
-  const [financeColumnRules, setFinanceColumnRules] = useState<FinanceColumnRuleConfig[]>([]);
+  const [mappingEdits, setMappingEdits] = useState<MappingEditsState>(() =>
+    initialFinanceConfig
+      ? buildMappingEdits(
+          initialFinanceConfig.metricMappings,
+          initialFinanceConfig.participants
+        )
+      : {}
+  );
+  const [financeColumnRules, setFinanceColumnRules] = useState<
+    FinanceColumnRuleConfig[]
+  >(initialFinanceConfig?.columnRules ?? []);
+
+  const applyFinanceConfig = useCallback(
+    (data: FinanceConfigPayload) => {
+      setFinanceCategories(data.categories);
+      setFinanceParticipants(data.participants);
+      setFinanceMetrics(data.metricMappings);
+      setFinanceColumnRules(data.columnRules);
+      setMappingEdits(buildMappingEdits(data.metricMappings, data.participants));
+      swr.mutate(FINANCE_CONFIG_CACHE_KEY, data, { revalidate: false });
+    },
+    [swr]
+  );
+
+  const { refresh: refreshFinanceConfig } = useCachedData<FinanceConfigPayload>(
+    FINANCE_CONFIG_CACHE_KEY,
+    fetchFinanceConfig,
+    { onSuccess: applyFinanceConfig }
+  );
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   // Draft for category contribution editing: column, amount_field
   const [catContribDraft, setCatContribDraft] = useState<{
@@ -635,13 +713,13 @@ export default function FinancePage() {
     );
   }
 
-  // Filter state - multi-select dengan checkbox
+  // Filter state — multi-select with checkboxes
   const [selectedKategoriFilters, setSelectedKategoriFilters] = useState<
     Set<string>
   >(new Set());
   const [showKategoriDropdown, setShowKategoriDropdown] = useState(false);
 
-  // Virtualization state - untuk performance dengan banyak rows
+  // Virtualization state — for performance with many rows
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -678,14 +756,14 @@ export default function FinancePage() {
     );
   }, [cashBooks, selectedKategoriFilters]);
 
-  // Visible cashbooks - hanya render yang terlihat (virtualization)
+  // Visible cashbooks — only render visible rows (virtualization)
   const visibleCashBooks = useMemo(() => {
     // Disable virtualization for lists with <= 100 items to avoid scrollbar issues
     if (filteredCashBooks.length <= 100) return filteredCashBooks;
     return filteredCashBooks.slice(visibleRange.start, visibleRange.end);
   }, [filteredCashBooks, visibleRange]);
 
-  // Memoized summary values - hanya hitung sekali per perubahan cashBooks
+  // Memoized summary values — recalculate once per cashBooks change
   const summaryData = useMemo(() => {
     if (cashBooks.length === 0) {
       return {
@@ -709,9 +787,9 @@ export default function FinancePage() {
       };
     }
 
-    // Untuk data aktif: ambil index 0 (display_order tertinggi = transaksi terbaru)
-    // Untuk arsip: ambil index terakhir (display_order terkecil = transaksi terakhir periode)
-    // Karena display_order DESC: nilai tertinggi = transaksi paling lama di CSV
+    // Active data: use index 0 (highest display_order = newest transaction)
+    // Archive: use last index (lowest display_order = last transaction in period)
+    // display_order DESC: highest value = oldest transaction in CSV
     const latest = viewingArchive
       ? cashBooks[cashBooks.length - 1]
       : cashBooks[0];
@@ -996,7 +1074,6 @@ export default function FinancePage() {
         aktif_status: user.aktif_status,
       });
       setLoading(false);
-      loadFinanceConfig();
       // Always refresh active cashbooks on mount. The cached snapshot is shown
       // instantly while this network refresh fills in any new transactions.
       loadCashBooks();
@@ -1006,7 +1083,7 @@ export default function FinancePage() {
     };
   }, [router]);
 
-  // Scroll handler untuk lazy loading rows (virtualization)
+  // Scroll handler for lazy-loading rows (virtualization)
   useEffect(() => {
     const handleScroll = () => {
       if (!tableContainerRef.current) return;
@@ -1098,37 +1175,6 @@ export default function FinancePage() {
     }
   }, [showConfigModal]);
 
-  const loadFinanceConfig = async () => {
-    try {
-      const res = await fetch("/api/finance/config", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Gagal memuat konfigurasi");
-      setFinanceCategories(data.categories || []);
-      setFinanceParticipants(data.participants || []);
-      setFinanceMetrics(data.metricMappings || []);
-      setFinanceColumnRules(data.columnRules || []);
-      const edits: Record<string, any> = {};
-      for (const metric of data.metricMappings || []) {
-        if (!metric.id) continue;
-        edits[metric.id] = {
-          metric_label: metric.metric_label,
-          metric_group: metric.metric_group,
-          source_column: metric.source_column,
-          participant_id:
-            metric.participant_id ??
-            (data.participants || []).find(
-              (participant: FinanceParticipantConfig) =>
-                participant.display_name === metric.participant_name
-            )?.id ??
-            "",
-        };
-      }
-      setMappingEdits(edits);
-    } catch (err) {
-      console.error("Gagal memuat konfigurasi finance:", err);
-    }
-  };
-
   const requestDeleteParticipant = (participant: FinanceParticipantConfig) => {
     const linkedCards = financeMetrics.filter(
       (m) => m.participant_id === participant.id
@@ -1179,7 +1225,7 @@ export default function FinancePage() {
           prev.filter((p) => p.id !== deletedParticipantId)
         );
       }
-      await loadFinanceConfig();
+      await refreshFinanceConfig();
       if (triggersRecalc) {
         await loadCashBooks();
       }
@@ -1191,7 +1237,7 @@ export default function FinancePage() {
       );
     } catch (error) {
       if (deletedParticipantId || deletedMappingId) {
-        await loadFinanceConfig();
+        await refreshFinanceConfig();
       }
       const message =
         error instanceof Error ? error.message : "Unknown";
@@ -1840,7 +1886,7 @@ export default function FinancePage() {
             `Transaksi berhasil dikembalikan dari "${currentArchiveInfo.label}"`
           );
 
-          // Kembali ke tabel aktif dan reload
+          // Return to active table and reload
           setViewingArchive(null);
           setCurrentArchiveInfo(null);
           await loadCashBooks();
@@ -1968,7 +2014,7 @@ export default function FinancePage() {
           )}
         </div>
 
-        {/* Card 4: Tagihan (NEW) */}
+        {/* Card 4: Payables (NEW) */}
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500">
           <p className="text-sm text-gray-500 font-semibold mb-1">
             Tagihan Vendor
@@ -1983,7 +2029,7 @@ export default function FinancePage() {
           )}
         </div>
 
-        {/* Card 5: Piutang */}
+        {/* Card 5: Receivables */}
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
           <p className="text-sm text-gray-500 font-semibold mb-1">
             Piutang Pelanggan
@@ -2101,7 +2147,7 @@ export default function FinancePage() {
       {/* Toolbar for Cash Book Management - Moved here */}
       <div className="mb-6 bg-white rounded-xl shadow-md p-4 border border-gray-200">
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Filter Kategori Dropdown with Checkbox */}
+          {/* Category filter dropdown with checkbox */}
           <div className="relative">
             <button
               onClick={() => setShowKategoriDropdown(!showKategoriDropdown)}
@@ -2410,7 +2456,7 @@ export default function FinancePage() {
                 </tr>
               ) : (
                 <>
-                  {/* Spacer untuk rows sebelum visible range - hanya untuk data > 100 */}
+                  {/* Spacer before visible range — only when data > 100 */}
                   {filteredCashBooks.length > 100 && visibleRange.start > 0 && (
                     <tr
                       style={{
@@ -2444,7 +2490,7 @@ export default function FinancePage() {
                       />
                     );
                   })}
-                  {/* Spacer untuk rows setelah visible range - hanya untuk data > 100 */}
+                  {/* Spacer after visible range — only when data > 100 */}
                   {filteredCashBooks.length > 100 &&
                     visibleRange.end < filteredCashBooks.length && (
                       <tr

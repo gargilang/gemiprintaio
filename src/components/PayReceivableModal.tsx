@@ -225,7 +225,7 @@ export default function PayReceivableModal({
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Daftar Piutang */}
+              {/* Receivable list */}
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
                   Daftar Penjualan Berpiutang
@@ -311,7 +311,7 @@ export default function PayReceivableModal({
                 )}
               </div>
 
-              {/* Form Pembayaran */}
+              {/* Payment form */}
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
                   Form Pembayaran

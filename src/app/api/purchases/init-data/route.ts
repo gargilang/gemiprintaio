@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Aggregate endpoint untuk purchases page (satu request).
+ * Aggregate endpoint for the purchases page (single request).
  */
 export async function GET() {
   try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CashIcon,
   TransferIcon,
@@ -9,6 +9,12 @@ import {
   CalendarIcon,
 } from "./icons/ContentIcons";
 import AddFinishingModal from "./AddFinishingModal";
+import {
+  allocateCartLineCharges,
+  formatPosUnitPrice,
+  formatRollCartDetailLine,
+  roundUpToThousand,
+} from "@/lib/money-rounding";
 
 interface FinishingItem {
   jenis_finishing: string;
@@ -25,7 +31,10 @@ interface CartItem {
   lebar?: number;
   butuh_dimensi?: boolean;
   useRounding?: boolean;
-  subtotal: number;
+  selectedRollSize?: number;
+  billedPanjang?: number;
+  billedLebar?: number;
+  subtotalRaw: number;
   finishing?: FinishingItem[];
 }
 
@@ -37,11 +46,15 @@ interface FinishingOption {
 
 interface POSCartProps {
   cart: CartItem[];
+  roundCartPrices: boolean;
+  onRoundCartPricesChange: (value: boolean) => void;
   paymentMethod: string;
   jumlahBayar: string;
   catatan: string;
   prioritas: "NORMAL" | "KILAT";
   onRemoveItem: (index: number) => void;
+  editingCartIndex?: number | null;
+  onEditItem?: (index: number) => void;
   onPaymentMethodChange: (method: string) => void;
   onJumlahBayarChange: (jumlah: string) => void;
   onCatatanChange: (catatan: string) => void;
@@ -85,11 +98,15 @@ function calculateChange(
 
 export default function POSCart({
   cart,
+  roundCartPrices,
+  onRoundCartPricesChange,
   paymentMethod,
   jumlahBayar,
   catatan,
   prioritas,
   onRemoveItem,
+  editingCartIndex = null,
+  onEditItem,
   onPaymentMethodChange,
   onJumlahBayarChange,
   onCatatanChange,
@@ -98,7 +115,13 @@ export default function POSCart({
   onEditFinishing,
   onGetFinishingOptions,
 }: POSCartProps) {
-  const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+  const totalRaw = cart.reduce((sum, item) => sum + item.subtotalRaw, 0);
+  const lineCharges = useMemo(
+    () => allocateCartLineCharges(cart, roundCartPrices),
+    [cart, roundCartPrices]
+  );
+  const total = lineCharges.reduce((sum, n) => sum + n, 0);
+  const hasRoundingChoice = totalRaw !== roundUpToThousand(totalRaw);
   const bayar = parseFloat(jumlahBayar) || 0;
   const kembalian = Math.max(0, bayar - total);
   const kurang = Math.max(0, total - bayar);
@@ -172,7 +195,21 @@ export default function POSCart({
         </div>
       </div>
 
-      {/* Daftar item — satu-satunya area yang scroll */}
+      {cart.length > 0 && hasRoundingChoice && (
+        <div className="shrink-0 px-4 py-2.5 border-b border-gray-200/80 bg-white/60">
+          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={roundCartPrices}
+              onChange={(e) => onRoundCartPricesChange(e.target.checked)}
+              className="w-3.5 h-3.5 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
+            />
+            Bulatkan kelipatan Rp 1.000
+          </label>
+        </div>
+      )}
+
+      {/* Item list — only scrollable area */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2">
         {cart.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -196,7 +233,11 @@ export default function POSCart({
           cart.map((item, index) => (
             <div
               key={index}
-              className="bg-white rounded-lg p-3 border border-gray-200 hover:border-[#00afef]/50 transition-all"
+              className={`bg-white rounded-lg p-3 border transition-all ${
+                editingCartIndex === index
+                  ? "border-amber-400 ring-2 ring-amber-200/50 shadow-sm"
+                  : "border-gray-200 hover:border-[#00afef]/50"
+              }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -206,43 +247,77 @@ export default function POSCart({
                   <div className="text-xs text-gray-600 mt-0.5">
                     {item.butuh_dimensi && item.panjang && item.lebar ? (
                       <span>
-                        {item.panjang} × {item.lebar} m
-                        {!item.useRounding && (
-                          <> = {item.jumlah.toFixed(2)} m²</>
+                        {item.useRounding &&
+                        item.selectedRollSize != null &&
+                        item.billedPanjang != null &&
+                        item.billedLebar != null ? (
+                          formatRollCartDetailLine(item)
+                        ) : (
+                          <>
+                            {item.panjang.toFixed(2)} × {item.lebar.toFixed(2)}{" "}
+                            m = {item.jumlah.toFixed(2)} m² @ Rp{" "}
+                            {formatPosUnitPrice(item.harga_satuan)}
+                          </>
                         )}
                       </span>
                     ) : (
                       <span>
-                        {item.jumlah} {item.nama_satuan}
+                        {item.jumlah} {item.nama_satuan} @ Rp{" "}
+                        {formatPosUnitPrice(item.harga_satuan)}
                       </span>
                     )}
-                    {" @ Rp "}
-                    {item.harga_satuan.toLocaleString("id-ID")}
                   </div>
                   <div className="text-sm font-bold text-[#00afef] mt-1">
-                    Rp {item.subtotal.toLocaleString("id-ID")}
+                    Rp{" "}
+                    {lineCharges[index].toLocaleString("id-ID")}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onRemoveItem(index)}
-                  className="bg-red-500/80 hover:bg-red-500 p-1.5 rounded-md transition-all shrink-0 text-white"
-                  aria-label="Hapus item"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex items-center gap-1 shrink-0">
+                  {onEditItem && (
+                    <button
+                      type="button"
+                      onClick={() => onEditItem(index)}
+                      className="bg-[#00afef]/90 hover:bg-[#00afef] p-1.5 rounded-md transition-all text-white"
+                      aria-label="Ubah item"
+                      title="Ubah item"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(index)}
+                    className="bg-red-500/80 hover:bg-red-500 p-1.5 rounded-md transition-all text-white"
+                    aria-label="Hapus item"
+                    title="Hapus item"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {item.finishing && item.finishing.length > 0 && (
@@ -277,9 +352,9 @@ export default function POSCart({
         )}
       </div>
 
-      {/* Pembayaran + checkout — selalu terlihat di bawah */}
+      {/* Payment + checkout — always visible at bottom */}
       <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-200 bg-gradient-to-br from-slate-50 to-gray-100 space-y-2.5">
-        {/* Metode pembayaran — scroll horizontal */}
+        {/* Payment method — horizontal scroll */}
         <div>
           <label className="block text-xs font-bold text-gray-600 mb-1.5">
             Metode Pembayaran
@@ -349,15 +424,16 @@ export default function POSCart({
           </label>
         </div>
 
-        {/* Tombol nominal cepat */}
+        {/* Quick denomination buttons — add bill value to amount paid */}
         <div className="grid grid-cols-4 gap-1.5">
           {[10000, 20000, 50000, 100000].map((amount) => (
             <button
               key={amount}
               type="button"
-              onClick={() =>
-                onJumlahBayarChange(String(Math.ceil(total / amount) * amount))
-              }
+              onClick={() => {
+                const current = parseFloat(jumlahBayar) || 0;
+                onJumlahBayarChange(String(current + amount));
+              }}
               className="px-1 py-1 bg-white hover:bg-gray-100 text-gray-700 rounded border border-gray-200 text-[10px] font-semibold transition-all"
             >
               {amount >= 1000 ? `${amount / 1000}rb` : amount}
@@ -365,7 +441,7 @@ export default function POSCart({
           ))}
         </div>
 
-        {/* Kembalian / kurang — hanya relevan untuk pembayaran tunai */}
+        {/* Change / shortfall — only relevant for cash payment */}
         {paymentMethod === "CASH" && bayar > 0 && (
           <div
             className={`rounded-lg px-3 py-2 text-sm border-2 ${

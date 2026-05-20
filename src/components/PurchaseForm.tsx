@@ -93,10 +93,10 @@ export default function PurchaseForm({
 
   const [saving, setSaving] = useState(false);
 
-  // Keyboard shortcuts untuk tambah dan hapus item
+  // Keyboard shortcuts to add and remove items
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Hanya jalankan jika Ctrl/Cmd ditekan
+      // Only run when Ctrl/Cmd is pressed
       const isModifierPressed = e.ctrlKey || e.metaKey;
 
       if (!saving && isModifierPressed) {

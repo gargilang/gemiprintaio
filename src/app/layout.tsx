@@ -12,7 +12,7 @@ import { SwrProvider } from "@/lib/swr-provider";
 // export const metadata: Metadata = {
 //   title: "app gemiprint",
 //   description:
-//     "Aplikasi manajemen untuk bisnis percetakan dengan POS, inventori, dan laporan keuangan",
+//     "Print shop management app with POS, inventory, and financial reports",
 //   icons: {
 //     icon: "/assets/images/logo-gemiprint-default.svg",
 //   },

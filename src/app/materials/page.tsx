@@ -20,7 +20,7 @@ import {
 } from "./actions";
 import { useCachedData } from "@/lib/use-cached-data";
 
-// Memoized Material Row Component - mencegah re-render yang tidak perlu
+// Memoized Material Row Component — avoids unnecessary re-renders
 const MaterialRow = memo(
   ({
     material,
@@ -226,7 +226,7 @@ export default function MaterialsPage() {
     onConfirm: () => void;
   } | null>(null);
 
-  // Virtualization state - untuk performance dengan banyak rows
+  // Virtualization state — for performance with many rows
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -284,7 +284,7 @@ export default function MaterialsPage() {
     return filtered;
   }, [materials, searchQuery, showLowStockOnly, sortBy, sortOrder]);
 
-  // Visible materials - hanya render yang terlihat (virtualization)
+  // Visible materials — only render visible rows (virtualization)
   const visibleMaterials = useMemo(() => {
     // Disable virtualization for lists with <= 100 items to avoid scrollbar issues
     if (filteredMaterials.length <= 100) return filteredMaterials;
@@ -293,7 +293,7 @@ export default function MaterialsPage() {
 
   // SWR auto-fetches on mount via useCachedData; no manual call needed.
 
-  // Scroll handler untuk lazy loading rows (virtualization)
+  // Scroll handler for lazy-loading rows (virtualization)
   useEffect(() => {
     const handleScroll = () => {
       if (!tableContainerRef.current) return;

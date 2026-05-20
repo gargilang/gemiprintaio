@@ -1,4 +1,4 @@
-// Helper functions untuk mapping antara English dan Indonesian database values
+// Helper functions for mapping between English and Indonesian database values
 
 import { TipePelanggan, KategoriTransaksi } from "@/types/database";
 
@@ -193,7 +193,7 @@ export function getTipePelangganLabel(tipe: TipePelanggan): string {
 }
 
 // ============================================
-// Kategori Groups untuk UI
+// Category groups for UI
 // ============================================
 
 export const kategoriTransaksiGroups = {
@@ -302,10 +302,10 @@ export function formatTipePelanggan(tipe: TipePelanggan): string {
 // ============================================
 
 /**
- * Format number sebagai Rupiah (IDR)
- * @param amount - Angka yang akan diformat
- * @param includePrefix - Apakah menyertakan prefix "Rp" (default: true)
- * @returns String dengan format Rupiah, contoh: "Rp 1.234.567"
+ * Format number as Rupiah (IDR)
+ * @param amount - Number to format
+ * @param includePrefix - Whether to include "Rp" prefix (default: true)
+ * @returns Rupiah-formatted string, e.g. "Rp 1.234.567"
  */
 export function formatRupiah(
   amount: number | string,
@@ -326,9 +326,9 @@ export function formatRupiah(
 }
 
 /**
- * Parse string Rupiah menjadi number
- * @param rupiahString - String Rupiah yang akan di-parse
- * @returns Number hasil parsing
+ * Parse Rupiah string to number
+ * @param rupiahString - Rupiah string to parse
+ * @returns Parsed number
  */
 export function parseRupiah(rupiahString: string): number {
   // Remove "Rp", spaces, and dots (thousand separators)

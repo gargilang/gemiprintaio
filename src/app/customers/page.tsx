@@ -22,7 +22,7 @@ import {
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
-// Memoized Customer Row Component - mencegah re-render yang tidak perlu
+// Memoized Customer Row Component — avoids unnecessary re-renders
 const CustomerRow = memo(
   ({
     customer,
@@ -218,7 +218,7 @@ export default function CustomersPage() {
     return filtered;
   }, [customers, searchQuery, filterMember]);
 
-  // Visible customers - hanya render yang terlihat (virtualization)
+  // Visible customers — only render visible rows (virtualization)
   const visibleCustomers = useMemo(() => {
     if (filteredCustomers.length <= 100) return filteredCustomers;
     return filteredCustomers.slice(visibleRange.start, visibleRange.end);
@@ -240,7 +240,7 @@ export default function CustomersPage() {
     };
   }, [router]);
 
-  // Scroll handler untuk lazy loading rows (virtualization)
+  // Scroll handler for lazy-loading rows (virtualization)
   useEffect(() => {
     const handleScroll = () => {
       if (!tableContainerRef.current) return;

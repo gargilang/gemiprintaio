@@ -1,6 +1,6 @@
 /**
  * Materials Service
- * Universal API untuk Materials yang bekerja di Tauri dan Web
+ * Universal API for Materials on Tauri and Web
  */
 
 import "server-only";

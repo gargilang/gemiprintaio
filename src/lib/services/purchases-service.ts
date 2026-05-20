@@ -1,6 +1,6 @@
 /**
  * Purchases Service
- * Universal API untuk Purchases yang bekerja di Tauri dan Web
+ * Universal API for Purchases on Tauri and Web
  */
 
 import "server-only";

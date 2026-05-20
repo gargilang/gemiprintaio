@@ -1748,7 +1748,7 @@ function SubcategoriesView({
           )}
         </div>
       ) : (
-        /* Info jika kategori tidak memerlukan spesifikasi */
+        /* Info when category does not require specifications */
         <div className="mt-8 pt-6 border-t-2 border-gray-300">
           <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-6 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mb-4">

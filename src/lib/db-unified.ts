@@ -1,13 +1,13 @@
 /**
  * Unified Database Adapter
  *
- * Strategi:
+ * Strategy:
  * 1. Tauri App: SQLite (primary) + Supabase sync (background)
  * 2. Web App: Supabase (primary) + offline queue (fallback)
  *
- * Semua operasi database HARUS melalui adapter ini
+ * All database operations MUST go through this adapter
  *
- * KONSOLIDASI: File ini menggantikan db-adapter.ts, db.ts, dan sqlite-db.ts
+ * CONSOLIDATION: This file replaces db-adapter.ts, db.ts, and sqlite-db.ts
  */
 
 import "server-only";
@@ -21,9 +21,9 @@ import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 // ============================================================================
 
 /**
- * Normalize record untuk konsistensi antara SQLite dan Supabase
- * - Konversi boolean (SQLite 0/1 ↔ Supabase true/false)
- * - Timestamp fields sudah konsisten (dibuat_pada, diperbarui_pada)
+ * Normalize record for consistency between SQLite and Supabase
+ * - Boolean conversion (SQLite 0/1 ↔ Supabase true/false)
+ * - Timestamp fields already consistent (dibuat_pada, diperbarui_pada)
  */
 export function normalizeRecord(
   record: Record<string, any>,
@@ -31,7 +31,7 @@ export function normalizeRecord(
 ): Record<string, any> {
   const normalized: Record<string, any> = { ...record };
 
-  // Boolean normalization only (timestamps sudah konsisten)
+  // Boolean normalization only (timestamps already consistent)
   if (direction === "toSupabase" || direction === "fromSQLite") {
     // SQLite → Supabase: 0/1 → false/true
     Object.keys(normalized).forEach((key) => {
@@ -39,7 +39,7 @@ export function normalizeRecord(
         typeof normalized[key] === "number" &&
         (normalized[key] === 0 || normalized[key] === 1)
       ) {
-        // Hanya konversi field yang kemungkinan boolean
+        // Only convert fields that are likely booleans
         if (
           key.includes("aktif") ||
           key.includes("is_") ||
@@ -52,10 +52,19 @@ export function normalizeRecord(
       }
     });
   } else if (direction === "toSQLite" || direction === "fromSupabase") {
-    // Supabase → SQLite: true/false → 1/0
+    // Supabase → SQLite: true/false → 1/0; JSONB/objects → TEXT
     Object.keys(normalized).forEach((key) => {
-      if (typeof normalized[key] === "boolean") {
-        normalized[key] = normalized[key] ? 1 : 0;
+      const value = normalized[key];
+      if (typeof value === "boolean") {
+        normalized[key] = value ? 1 : 0;
+      } else if (value === undefined) {
+        normalized[key] = null;
+      } else if (value !== null && typeof value === "object") {
+        if (value instanceof Date) {
+          normalized[key] = value.toISOString();
+        } else if (!Buffer.isBuffer(value)) {
+          normalized[key] = JSON.stringify(value);
+        }
       }
     });
   }
@@ -627,7 +636,7 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
 
 /**
  * Unified queue operation structure
- * Digunakan untuk Web (localStorage) dan Tauri (sync_queue table)
+ * Used for Web (localStorage) and Tauri (sync_queue table)
  */
 export interface QueuedOperation {
   id: string;
@@ -641,7 +650,7 @@ export interface QueuedOperation {
 }
 
 /**
- * UNIFIED QUEUE KEY - satu sumber kebenaran untuk web offline queue
+ * UNIFIED QUEUE KEY - single source of truth for web offline queue
  */
 const OFFLINE_QUEUE_KEY = "offline_queue";
 
@@ -685,7 +694,7 @@ export function clearOfflineQueue() {
  */
 export function getPendingQueueCount(): number {
   if (isTauriApp()) {
-    // Untuk Tauri, akan dipanggil via Rust command
+    // For Tauri, invoked via Rust command
     return 0;
   }
   return getOfflineQueue().length;
@@ -1740,7 +1749,7 @@ class UnifiedDatabase {
 
   /**
    * Execute raw SQL (use with caution)
-   * Untuk operasi kompleks yang tidak bisa dilakukan dengan query builder
+   * For complex operations that cannot be done with the query builder
    */
   async executeRaw(sql: string, params: any[] = []): Promise<any> {
     // Tauri: Use Rust backend

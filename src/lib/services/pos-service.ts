@@ -1,6 +1,6 @@
 /**
  * POS/Sales Service
- * Universal API untuk Point of Sale yang bekerja di Tauri dan Web
+ * Universal API for Point of Sale on Tauri and Web
  *
  * Handles: Sales transactions, Receivables, Stock management, Finance entries
  */

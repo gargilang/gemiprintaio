@@ -6,8 +6,8 @@ export interface NotificationToastProps {
 }
 
 /**
- * NotificationToast - Komponen notifikasi yang konsisten di seluruh aplikasi
- * Design: Transparan dengan border, lebih soft dan modern
+ * NotificationToast - Consistent notification component across the app
+ * Design: Transparent with border, softer and more modern
  *
  * Usage:
  * ```tsx

@@ -1,5 +1,5 @@
 /**
- * Konfigurasi bagi hasil — dipakai UI Keuangan dan logika hitung ulang buku kas.
+ * Profit-share configuration — used by Finance UI and cash book recalculation logic.
  */
 
 import { lookupFinanceSlotLabel } from "@/lib/finance-slot-labels";
@@ -167,7 +167,7 @@ export function findAvailableProfitShareSlot(
   return PROFIT_SHARE_SLOTS.find((s) => !used.has(s.sourceColumn)) ?? null;
 }
 
-/** Slot yang punya baris mapping tapi belum terhubung ke orang */
+/** Slot with a mapping row but not yet linked to a person */
 export function findOrphanProfitShareSlot(
   mappings: ProfitShareMappingRow[]
 ): ProfitShareSlotDef | null {

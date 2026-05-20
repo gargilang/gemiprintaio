@@ -1,6 +1,6 @@
 /**
  * Vendors Service
- * Universal API untuk Vendors yang bekerja di Tauri dan Web
+ * Universal API for Vendors on Tauri and Web
  */
 
 import "server-only";

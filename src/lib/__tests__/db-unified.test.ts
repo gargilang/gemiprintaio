@@ -22,7 +22,7 @@ describe("normalizeRecord", () => {
 
       expect(output.aktif).toBe(true);
       expect(output.privat_status).toBe(false);
-      // Timestamps tetap sama (tidak ada konversi)
+      // Timestamps unchanged (no conversion)
       expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
       expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
@@ -67,7 +67,7 @@ describe("normalizeRecord", () => {
 
       expect(output.aktif).toBe(1);
       expect(output.privat_status).toBe(0);
-      // Timestamps tetap sama (tidak ada konversi)
+      // Timestamps unchanged (no conversion)
       expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
       expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
@@ -110,6 +110,18 @@ describe("normalizeRecord", () => {
 
       expect(output.aktif).toBe(1);
       expect(output.is_active).toBe(0);
+    });
+
+    it("should stringify JSONB fields for SQLite binding", () => {
+      const input = {
+        metric_contributions: [{ column: "omzet", amount_field: "debit", sign: 1 }],
+      };
+
+      const output = normalizeRecord(input, "fromSupabase");
+
+      expect(output.metric_contributions).toBe(
+        '[{"column":"omzet","amount_field":"debit","sign":1}]'
+      );
     });
   });
 

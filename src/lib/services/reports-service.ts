@@ -1,6 +1,6 @@
 /**
  * Reports Service
- * Universal API untuk Reports yang bekerja di Tauri dan Web
+ * Universal API for Reports on Tauri and Web
  */
 
 import "server-only";

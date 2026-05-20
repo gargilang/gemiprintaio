@@ -1,6 +1,6 @@
 /**
- * PageIcons - SVG icons untuk judul halaman dan navigasi
- * Icon yang lebih berkesan dan konsisten untuk semua device
+ * PageIcons - SVG icons for page titles and navigation
+ * Distinct, consistent icons for all devices
  */
 
 import React from "react";
@@ -465,7 +465,7 @@ export const BoxIcon = ({ className = "", size = 24 }: IconProps) => (
   </svg>
 );
 
-/** Stok, barang & pembelian (menu grup Inventori) */
+/** Stock, items & purchases (Inventori menu group) */
 export const InventoryIcon = ({ className = "", size = 24 }: IconProps) => (
   <svg
     className={className}

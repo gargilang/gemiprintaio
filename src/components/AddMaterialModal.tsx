@@ -167,7 +167,7 @@ export default function AddMaterialModal({
         stock_quantity: "0",
         min_stock_level: "0",
         track_inventory: true,
-        requires_dimension: firstCategory === "Media Cetak", // Auto-check untuk Media Cetak
+        requires_dimension: firstCategory === "Media Cetak", // Auto-check for Media Cetak
       });
 
       // Initialize with one default unit price
@@ -197,7 +197,7 @@ export default function AddMaterialModal({
       ...formData,
       category,
       subcategory: firstSubcat?.nama || "",
-      // Auto-check requires_dimension untuk Media Cetak
+      // Auto-check requires_dimension for Media Cetak
       requires_dimension: category === "Media Cetak",
     });
   };
@@ -322,7 +322,7 @@ export default function AddMaterialModal({
       setLoading(true);
 
       try {
-        // Find kategori_id - hanya set jika kategori dipilih dan valid
+        // Find kategori_id — only set when category is selected and valid
         let kategori_id = null;
         if (formData.category && formData.category.trim()) {
           const foundCategory = categoriesData.find(
@@ -333,7 +333,7 @@ export default function AddMaterialModal({
           }
         }
 
-        // Find subkategori_id - hanya set jika subkategori dipilih dan valid
+        // Find subkategori_id — only set when subcategory is selected and valid
         let subkategori_id = null;
         if (formData.subcategory && formData.subcategory.trim()) {
           const foundSubcategory = subcategoriesData.find(
@@ -519,7 +519,7 @@ export default function AddMaterialModal({
                   />
                 </div>
 
-                {/* Kategori */}
+                {/* Category */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-semibold text-gray-700">
@@ -562,7 +562,7 @@ export default function AddMaterialModal({
                   </select>
                 </div>
 
-                {/* Subkategori */}
+                {/* Subcategory */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Subkategori
@@ -882,7 +882,7 @@ export default function AddMaterialModal({
                         </p>
                       </div>
 
-                      {/* Konversi */}
+                      {/* Unit conversion */}
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Konversi <span className="text-red-500">*</span>
@@ -1005,7 +1005,7 @@ export default function AddMaterialModal({
               </div>
             </div>
 
-            {/* Section 3: Stok */}
+            {/* Section 3: Stock */}
             <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
               <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 bg-orange-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
@@ -1015,7 +1015,7 @@ export default function AddMaterialModal({
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Stok Saat Ini */}
+                {/* Current stock */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Stok Saat Ini ({formData.base_unit})

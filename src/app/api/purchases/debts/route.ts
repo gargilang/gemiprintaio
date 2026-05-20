@@ -4,7 +4,7 @@ import { getDebts } from "@/lib/services/purchases-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Pembelian dengan status HUTANG / SEBAGIAN */
+/** Purchases with HUTANG / SEBAGIAN status */
 export async function GET() {
   try {
     const debts = await getDebts();

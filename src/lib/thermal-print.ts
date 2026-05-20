@@ -345,16 +345,50 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   `;
 }
 
-export function printThermalInvoice(data: ThermalInvoiceData) {
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    throw new Error("Gagal membuka window print");
+function writeInvoiceToWindow(
+  target: Window,
+  invoiceHTML: string
+): void {
+  target.document.open();
+  target.document.write(invoiceHTML);
+  target.document.close();
+  target.focus();
+}
+
+/** Returns true if a print preview window was opened. */
+export function printThermalInvoice(data: ThermalInvoiceData): boolean {
+  const invoiceHTML = generateThermalInvoice(data);
+
+  const printWindow = window.open("", "_blank", "noopener,noreferrer");
+  if (printWindow) {
+    writeInvoiceToWindow(printWindow, invoiceHTML);
+    return true;
   }
 
-  const invoiceHTML = generateThermalInvoice(data);
-  printWindow.document.write(invoiceHTML);
-  printWindow.document.close();
-  printWindow.focus();
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("title", "Cetak struk");
+  iframe.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
+  document.body.appendChild(iframe);
 
-  // Auto-print removed - user can manually trigger print with Ctrl+P
+  const frameWindow = iframe.contentWindow;
+  if (!frameWindow) {
+    document.body.removeChild(iframe);
+    return false;
+  }
+
+  writeInvoiceToWindow(frameWindow, invoiceHTML);
+  try {
+    frameWindow.print();
+  } catch {
+    // print() may be blocked; preview is still in the iframe
+  }
+
+  window.setTimeout(() => {
+    if (iframe.parentNode) {
+      document.body.removeChild(iframe);
+    }
+  }, 120_000);
+
+  return true;
 }

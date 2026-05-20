@@ -1,6 +1,6 @@
 /**
- * ContentIcons - SVG icons untuk konten halaman
- * Icon sederhana dan konsisten untuk kategori transaksi dan content badges
+ * ContentIcons - SVG icons for page content
+ * Simple, consistent icons for transaction categories and content badges
  */
 
 import React from "react";

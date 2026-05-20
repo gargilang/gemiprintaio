@@ -23,7 +23,7 @@ import {
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
-// Memoized Vendor Row Component - mencegah re-render yang tidak perlu
+// Memoized Vendor Row Component — avoids unnecessary re-renders
 const VendorRow = memo(
   ({
     vendor,
@@ -218,7 +218,7 @@ export default function VendorsPage() {
     return filtered;
   }, [vendors, searchQuery, filterActive]);
 
-  // Visible vendors - hanya render yang terlihat (virtualization)
+  // Visible vendors — only render visible rows (virtualization)
   const visibleVendors = useMemo(() => {
     if (filteredVendors.length <= 100) return filteredVendors;
     return filteredVendors.slice(visibleRange.start, visibleRange.end);
@@ -240,7 +240,7 @@ export default function VendorsPage() {
     };
   }, [router]);
 
-  // Scroll handler untuk lazy loading rows (virtualization)
+  // Scroll handler for lazy-loading rows (virtualization)
   useEffect(() => {
     const handleScroll = () => {
       if (!tableContainerRef.current) return;

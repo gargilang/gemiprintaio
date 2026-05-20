@@ -127,7 +127,7 @@ export default function DashboardPage() {
         </div>
       ) : stats ? (
         <>
-          {/* Stats Row: Hari Ini */}
+          {/* Stats row: today */}
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-3 font-twcenmt">
               Hari Ini

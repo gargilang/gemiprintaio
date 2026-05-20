@@ -1,6 +1,6 @@
 /**
  * Production Service
- * Universal API untuk Production Orders yang bekerja di Tauri dan Web
+ * Universal API for Production Orders on Tauri and Web
  */
 
 import "server-only";

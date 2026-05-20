@@ -1,6 +1,6 @@
 /**
  * Finance Service
- * Cash book operations dengan running balance calculations
+ * Cash book operations with running balance calculations
  */
 
 import "server-only";

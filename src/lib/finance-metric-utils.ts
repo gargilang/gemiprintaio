@@ -1,4 +1,4 @@
-/** Nama dari suffix kolom buku kas (legacy), mis. bagi_hasil_suri → Suri */
+/** Name from cash book column suffix (legacy), e.g. bagi_hasil_suri → Suri */
 export function deriveParticipantNameFromSourceColumn(
   sourceColumn: string
 ): string | null {

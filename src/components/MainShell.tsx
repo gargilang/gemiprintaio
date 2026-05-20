@@ -34,7 +34,7 @@ const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  // Jangan baca sessionStorage di useState — SSR dan client harus render sama (null) dulu.
+  // Do not read sessionStorage in useState — SSR and client must render the same (null) first.
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
@@ -101,7 +101,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  // Buka grup sidebar (mis. Relasi) otomatis saat route aktif berada di anaknya
+  // Open sidebar group (e.g. Relasi) automatically when the active route is under it
   useEffect(() => {
     if (!pathname) return;
     for (const entry of MENU_ENTRIES) {
@@ -184,7 +184,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [router]);
 
-  // Samakan output SSR & hydration pertama; tampilkan shell setelah mount + auth.
+  // Match SSR and first hydration output; show shell after mount + auth.
   if (!authReady || !user) {
     return null;
   }
