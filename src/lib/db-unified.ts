@@ -264,7 +264,42 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- AST-backed user-editable formulas (new visual-builder system).
+    CREATE TABLE IF NOT EXISTS cashbook_formula (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      column_key TEXT NOT NULL UNIQUE,
+      db_column TEXT NOT NULL,
+      ast TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      is_system INTEGER NOT NULL DEFAULT 0,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cashbook_formula_order
+      ON cashbook_formula(display_order);
+
+    CREATE TABLE IF NOT EXISTS cashbook_partner (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cashbook_partner_order
+      ON cashbook_partner(display_order);
   `);
+
+  // Default formula + partner seeding happens lazily from
+  // `cashbook-formula-service.seedDefaultsIfEmpty()` (called from the API
+  // route + on first list). Keeping schema bootstrap import-free avoids a
+  // circular dependency with the AST module.
 
   // Add metric_contributions column to finance_category_definitions if missing
   const catCols = (

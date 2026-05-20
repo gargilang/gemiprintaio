@@ -12,7 +12,7 @@ async function recalculateCashbookIfAvailable(): Promise<void> {
   try {
     const sqlite = await db.getNativeSQLite();
     if (!sqlite) return;
-    const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+    const { recalculateCashbook } = await import("@/lib/ast/cashbook-recalc");
     await recalculateCashbook(sqlite);
   } catch (e) {
     console.warn("recalculateCashbook skipped:", e);

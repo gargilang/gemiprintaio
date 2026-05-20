@@ -9,7 +9,11 @@ import {
   type CashbookRecalcInputRow,
   computeCashbookRecalculationUpdates,
   sortCashbookRowsForRecalc,
-} from "../cashbook-recalc-logic";
+} from "@/lib/ast/cashbook-recalc";
+import {
+  listActiveFormulas,
+  listPartners,
+} from "@/lib/services/cashbook-formula-service";
 import {
   db,
   generateId,
@@ -255,7 +259,7 @@ async function calculateRunningTotals(
 /**
  * Create new cash book entry (aligned with legacy POST /api/finance/cash-book).
  * Inserts running totals, then runs recalculateCashbook when native SQLite is available
- * so overrides / batch rules match src/lib/calculate-cashbook.ts.
+ * so overrides / batch rules match the AST recalc engine.
  */
 export async function createCashBookEntry(data: {
   tanggal: string;
@@ -354,7 +358,7 @@ export async function recalculateCashbookIfAvailable(): Promise<boolean> {
   try {
     const sqlite = await db.getNativeSQLite();
     if (sqlite) {
-      const { recalculateCashbook } = await import("@/lib/calculate-cashbook");
+      const { recalculateCashbook } = await import("@/lib/ast/cashbook-recalc");
       await recalculateCashbook(sqlite);
       return true;
     }
@@ -394,17 +398,14 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
     return false;
   }
 
-  const { getProfitSharePartnersForRecalc, getColumnRulesForRecalc } = await import(
-    "./finance-config-service"
-  );
   const sorted = sortCashbookRowsForRecalc(
     (rows || []) as CashbookRecalcInputRow[]
   );
-  const [profitPartners, { columnRules, categories }] = await Promise.all([
-    getProfitSharePartnersForRecalc(),
-    getColumnRulesForRecalc(),
+  const [formulas, partners] = await Promise.all([
+    listActiveFormulas(),
+    listPartners(),
   ]);
-  const batch = computeCashbookRecalculationUpdates(sorted, profitPartners, columnRules, categories);
+  const batch = computeCashbookRecalculationUpdates(sorted, formulas, partners);
 
   for (const { id, updates } of batch) {
     if (Object.keys(updates).length === 0) continue;

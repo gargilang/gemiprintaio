@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
 import ModalFormShell from "@/components/ModalFormShell";
 import BagiHasilManageModal from "@/components/BagiHasilManageModal";
+import KalkulasiKeuanganModal from "@/components/formula-editor/KalkulasiKeuanganModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import {
@@ -618,6 +619,7 @@ export default function FinancePage() {
     FinanceParticipantConfig[]
   >(initialFinanceConfig?.participants ?? []);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showKalkulasiModal, setShowKalkulasiModal] = useState(false);
   const [showBagiHasilManageModal, setShowBagiHasilManageModal] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [participantForm, setParticipantForm] = useState({
@@ -2246,31 +2248,52 @@ export default function FinancePage() {
               {(currentUser?.role === "admin" ||
                 currentUser?.role === "manager" ||
                 currentUser?.role === "staff") && (
-                <button
-                  onClick={() => setShowConfigModal(true)}
-                  className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <>
+                  <button
+                    onClick={() => setShowKalkulasiModal(true)}
+                    className="bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10.325 4.317a1 1 0 011.35-.936l.82.307a1 1 0 00.962-.123l.73-.53a1 1 0 011.437.123l.52.67a1 1 0 00.916.375l.848-.06a1 1 0 011.054.999l.02.848a1 1 0 00.47.795l.72.45a1 1 0 01.287 1.438l-.48.7a1 1 0 00-.07.947l.34.777a1 1 0 01-.65 1.313l-.82.24a1 1 0 00-.68.69l-.24.82a1 1 0 01-1.312.65l-.778-.34a1 1 0 00-.947.07l-.7.48a1 1 0 01-1.438-.287l-.45-.72a1 1 0 00-.795-.47l-.848-.02a1 1 0 01-.999-1.054l.06-.848a1 1 0 00-.375-.916l-.67-.52a1 1 0 01-.123-1.437l.53-.73a1 1 0 00.123-.962l-.307-.82z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  Pengaturan tampilan
-                </button>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 7h6m-6 4h6m-6 4h6M5 5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5z"
+                      />
+                    </svg>
+                    Kalkulasi Keuangan
+                  </button>
+                  <button
+                    onClick={() => setShowConfigModal(true)}
+                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10.325 4.317a1 1 0 011.35-.936l.82.307a1 1 0 00.962-.123l.73-.53a1 1 0 011.437.123l.52.67a1 1 0 00.916.375l.848-.06a1 1 0 011.054.999l.02.848a1 1 0 00.47.795l.72.45a1 1 0 01.287 1.438l-.48.7a1 1 0 00-.07.947l.34.777a1 1 0 01-.65 1.313l-.82.24a1 1 0 00-.68.69l-.24.82a1 1 0 01-1.312.65l-.778-.34a1 1 0 00-.947.07l-.7.48a1 1 0 01-1.438-.287l-.45-.72a1 1 0 00-.795-.47l-.848-.02a1 1 0 01-.999-1.054l.06-.848a1 1 0 00-.375-.916l-.67-.52a1 1 0 01-.123-1.437l.53-.73a1 1 0 00.123-.962l-.307-.82z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    Pengaturan tampilan
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setShowDeleteAllModal(true)}
@@ -3828,6 +3851,11 @@ export default function FinancePage() {
         onClose={() => setShowSelectMonthModal(false)}
         onSelectArchive={handleSelectArchive}
         onGetArchivedPeriods={getArchivedPeriodsAction}
+      />
+      {/* Kalkulasi Keuangan (visual formula builder) */}
+      <KalkulasiKeuanganModal
+        open={showKalkulasiModal}
+        onClose={() => setShowKalkulasiModal(false)}
       />
       {/* Notification Toast */}
       {notice && (

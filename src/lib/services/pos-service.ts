@@ -8,7 +8,7 @@
 import "server-only";
 
 import { db, generateId, getCurrentTimestamp } from "../db-unified";
-import { recalculateCashbook } from "../calculate-cashbook";
+import { recalculateCashbook } from "@/lib/ast/cashbook-recalc";
 
 async function recalculateCashbookIfAvailable(): Promise<void> {
   try {

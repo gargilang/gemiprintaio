@@ -13,6 +13,31 @@
 - Maintain basic security: do not leak secrets, validate API input, do not commit `.env` / keys, avoid auth/session regressions.
 - For a small internal context, avoid over-engineering (excessive abstraction, new infra without clear benefit).
 
+## Finish the goal (default + `/goal` command)
+
+The owner usually asks for a **specific feature or outcome**, not a partial plan. Your job is to **carry it through to a working result** — not stop after analysis, a proposal, or the first file.
+
+### Default (every chat)
+
+- Treat the user’s request as a **goal to complete**, not a question to answer and leave.
+- Keep working: read code, implement, wire UI/API/DB, fix compile errors you introduce, until the described feature **works end-to-end** in code.
+- Do **not** pause for unnecessary check-ins (“should I continue?”, “want me to implement?”). Proceed unless you are **blocked** (see below).
+- Prefer **reasonable defaults** for small ambiguous details; note assumptions briefly at the end rather than blocking progress.
+- **Testing and polish** still matter, but **after** the feature exists — run `build` / `test` / smoke checks before calling the task done (see Verification).
+
+### `/goal` mode (owner types `/goal` in chat)
+
+When the message starts with **`/goal`** (e.g. `/goal add export CSV on finance page`):
+
+1. **Scope:** Everything after `/goal` is the **single goal**. Ignore side quests unless required to complete that goal.
+2. **No interruption:** Do **not** stop mid-way to ask “shall I implement?” or offer only a plan. Implement until the goal is **functionally complete** in the codebase.
+3. **Feature first:** Ship the requested behavior (UI + logic + data as needed) **before** extended testing, refactors, or optional cleanup. Quick fixes for errors **you** caused while building are in-scope; broad test passes and deep debugging come **after** the feature works.
+4. **Still allowed without asking:** read/search code, run commands, edit files, commit if the owner’s git rules apply, translate Indonesian comments in files you touch.
+5. **Stop and ask only if truly blocked:** e.g. destructive production action, billing/DNS change, or business rule that changes money/access and cannot be inferred safely. Otherwise decide and continue.
+6. **Done means:** The `/goal` outcome is implemented and demonstrable (e.g. button works, API returns expected shape). Then run verification (build/tests), fix obvious failures, and give a **short** summary: what was built, what was assumed, what to try manually.
+
+**Example:** `/goal POS cart shows roll length in meters` → implement display + any helpers, don’t stop at “here’s how you could do it.”
+
 ## Tools and access
 
 The agent **may and should** use without repeatedly asking permission:
@@ -41,11 +66,11 @@ Most of `src/` was already migrated; **some files may still have Indonesian comm
 
 ## Verification before done
 
-After changes are considered ready:
+After the **goal or feature** is implemented (especially after `/goal`):
 
-- **Run yourself** `npm run dev`, `npm run build`, `npm test`, or relevant commands (Flutter/Tauri) to ensure there are no obvious errors.
-- Fix issues that appear before closing the task.
-- Report briefly: what was tested and the result.
+- **Run yourself** `npm run build`, `npm test`, and/or a quick smoke check — not as a substitute for building the feature first.
+- Fix obvious failures you introduced before closing the task.
+- Report briefly: what was built, what was tested, and the result.
 
 ## Git, commits, and deploy
 
@@ -67,7 +92,7 @@ Guidelines:
 - **Web:** Next.js 16 on Vercel, Supabase (Postgres), ~58 API routes.
 - **Desktop:** Tauri + Next standalone + local SQLite (`better-sqlite3`).
 - **Mobile:** Flutter → Next.js API at `app.gemiprint.com`.
-- **Runtime:** stay on **Node.js 22 + npm** (do not migrate to Bun unless asked).
+- **Runtime:** stay on **Node.js 22 + npm**.
 
 ## Language
 
