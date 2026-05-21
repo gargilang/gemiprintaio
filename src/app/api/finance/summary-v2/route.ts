@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  countLegacyOrphanActorFormulas,
+  disableLegacyOrphanActorFormulas,
   getActorFinanceSummaryRows,
 } from "@/lib/services/formula-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
@@ -26,17 +26,16 @@ export async function GET(request: NextRequest) {
   try {
     const month = request.nextUrl.searchParams.get("month") || undefined;
 
+    // Old seed formulas without Kelola Orang link are disabled automatically.
+    await disableLegacyOrphanActorFormulas();
+
     const latestMap = await getLatestPerFormulaKey(month);
-    const [actorRows, legacyOrphanFormulas] = await Promise.all([
-      getActorFinanceSummaryRows(latestMap),
-      countLegacyOrphanActorFormulas(),
-    ]);
+    const actorRows = await getActorFinanceSummaryRows(latestMap);
 
     return NextResponse.json({
       month: month ?? null,
       actorRows,
-      /** Rumus lama (tanpa actor_id) masih aktif di cashbook_formula — bukan dari Kelola Orang */
-      legacyOrphanFormulas,
+      legacyOrphanFormulas: 0,
     });
   } catch (error) {
     console.error("GET /api/finance/summary-v2 error:", error);

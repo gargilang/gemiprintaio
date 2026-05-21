@@ -13,17 +13,11 @@ import EditManualModal from "@/components/EditManualModal";
 import CloseBooksModal from "@/components/CloseBooksModal";
 import SelectMonthModal from "@/components/SelectMonthModal";
 import ModalFormShell from "@/components/ModalFormShell";
-import BagiHasilManageModal from "@/components/BagiHasilManageModal";
 import KalkulasiKeuanganModal from "@/components/formula-editor/KalkulasiKeuanganModal";
 import DynamicActorSummary from "@/components/finance/DynamicActorSummary";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { MoneyIcon } from "@/components/icons/PageIcons";
-import {
-  PersonIcon,
-  CoinIcon,
-  BoxIcon,
-  CheckIcon,
-} from "@/components/icons/ContentIcons";
+import { BoxIcon, CheckIcon } from "@/components/icons/ContentIcons";
 import {
   getDebtsAction,
   getReceivablesAction,
@@ -68,41 +62,6 @@ const FINANCE_DATA_SLOTS: Array<{
   },
   { source_column: "biaya_bahan", metric_group: "summary", label: "Biaya bahan" },
   { source_column: "laba_bersih", metric_group: "summary", label: "Laba bersih" },
-  {
-    source_column: "bagi_hasil_anwar",
-    metric_group: "profit_share",
-    label: FINANCE_SLOT_LABELS.bagi_hasil_anwar,
-  },
-  {
-    source_column: "bagi_hasil_suri",
-    metric_group: "profit_share",
-    label: FINANCE_SLOT_LABELS.bagi_hasil_suri,
-  },
-  {
-    source_column: "bagi_hasil_gemi",
-    metric_group: "profit_share",
-    label: FINANCE_SLOT_LABELS.bagi_hasil_gemi,
-  },
-  {
-    source_column: "kasbon_anwar",
-    metric_group: "cash_advance",
-    label: FINANCE_SLOT_LABELS.kasbon_anwar,
-  },
-  {
-    source_column: "kasbon_suri",
-    metric_group: "cash_advance",
-    label: FINANCE_SLOT_LABELS.kasbon_suri,
-  },
-  {
-    source_column: "kasbon_cahaya",
-    metric_group: "cash_advance",
-    label: FINANCE_SLOT_LABELS.kasbon_cahaya,
-  },
-  {
-    source_column: "kasbon_dinil",
-    metric_group: "cash_advance",
-    label: FINANCE_SLOT_LABELS.kasbon_dinil,
-  },
 ];
 
 const METRIC_GROUP_LABELS: Record<
@@ -169,130 +128,6 @@ function metricBelongsToActiveParticipant(
   if (!name) return false;
   return participants.some((p) => participantNameMatches(p.display_name, name));
 }
-
-function resolveMetricParticipantId(
-  metric: FinanceMetricConfig,
-  participants: FinanceParticipantConfig[]
-): string | null {
-  if (
-    metric.participant_id &&
-    participants.some((p) => p.id === metric.participant_id)
-  ) {
-    return metric.participant_id;
-  }
-  const name = resolveMetricParticipantName(metric);
-  if (!name) return null;
-  const match = participants.find((p) =>
-    participantNameMatches(p.display_name, name)
-  );
-  return match?.id ?? null;
-}
-
-type ParticipantFinanceRow = {
-  participantId: string;
-  name: string;
-  profitShareMetric: FinanceMetricConfig | null;
-  cashAdvanceMetric: FinanceMetricConfig | null;
-};
-
-function buildParticipantMetricRows(
-  participants: FinanceParticipantConfig[],
-  metrics: FinanceMetricConfig[]
-): ParticipantFinanceRow[] {
-  const rows: ParticipantFinanceRow[] = [];
-
-  for (const metric of metrics) {
-    const pid = resolveMetricParticipantId(metric, participants);
-    if (!pid) continue;
-    const participant = participants.find((p) => p.id === pid);
-    rows.push({
-      participantId: pid,
-      name:
-        participant?.display_name ||
-        resolveMetricParticipantName(metric) ||
-        metric.metric_label,
-      profitShareMetric: metric.metric_group === "profit_share" ? metric : null,
-      cashAdvanceMetric: metric.metric_group === "cash_advance" ? metric : null,
-    });
-  }
-
-  return rows.sort((a, b) => a.name.localeCompare(b.name, "id"));
-}
-
-const FinanceParticipantSummaryTable = memo(function FinanceParticipantSummaryTable({
-  rows,
-  variant,
-  formatRupiah,
-  getValue,
-  labaBersih,
-}: {
-  rows: ParticipantFinanceRow[];
-  variant: "profit_share" | "cash_advance";
-  formatRupiah: (n: number) => string;
-  getValue: (sourceColumn: string) => number;
-  labaBersih?: number;
-}) {
-  const isProfitShare = variant === "profit_share";
-  const valueLabel = isProfitShare ? "Bagi hasil" : "Kasbon";
-  const borderClass = isProfitShare ? "border-amber-200" : "border-violet-200";
-  const headerBg = isProfitShare ? "bg-amber-50/80" : "bg-violet-50/80";
-  const valueClass = isProfitShare ? "text-amber-800" : "text-violet-800";
-  const footerBg = isProfitShare
-    ? "bg-amber-50/60 border-amber-100 text-amber-900"
-    : "bg-violet-50/60 border-violet-100 text-violet-900";
-
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 py-6 text-center border border-dashed border-gray-200 rounded-xl mt-4 bg-gray-50/80">
-        {isProfitShare
-          ? "Belum ada bagi hasil untuk ditampilkan. Tambahkan orang dan kartu bagi hasil di Pengaturan."
-          : "Belum ada kasbon untuk ditampilkan. Tambahkan orang dan kartu kasbon di Pengaturan."}
-      </p>
-    );
-  }
-
-  return (
-    <div
-      className={`mt-4 rounded-xl border-2 ${borderClass} overflow-hidden bg-white shadow-sm`}
-    >
-      <div
-        className={`hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 border-b ${headerBg}`}
-      >
-        <span>Nama</span>
-        <span className="text-right">{valueLabel}</span>
-      </div>
-      <ul className="divide-y divide-gray-100">
-        {rows.map((row) => {
-          const metric = isProfitShare
-            ? row.profitShareMetric
-            : row.cashAdvanceMetric;
-          return (
-            <li
-              key={`${variant}-${row.participantId}`}
-              className="px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] sm:gap-3 sm:items-center hover:bg-gray-50/80 transition-colors"
-            >
-              <div className="font-semibold text-gray-900 truncate">{row.name}</div>
-              <div className="mt-2 sm:mt-0 flex items-center justify-between sm:justify-end gap-2">
-                <span className="text-xs text-gray-500 sm:hidden">{valueLabel}</span>
-                <span className={`font-bold tabular-nums ${valueClass}`}>
-                  {metric ? formatRupiah(getValue(metric.source_column)) : "—"}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      {isProfitShare && labaBersih !== undefined && (
-        <div
-          className={`px-4 py-2.5 border-t text-xs flex flex-wrap justify-between gap-2 ${footerBg}`}
-        >
-          <span className="font-semibold">Laba bersih perusahaan (periode ini)</span>
-          <span className="font-bold tabular-nums">{formatRupiah(labaBersih)}</span>
-        </div>
-      )}
-    </div>
-  );
-});
 
 // Memoized CashBook Row Component — avoids unnecessary re-renders
 const CashBookRow = memo(
@@ -608,10 +443,6 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
-  const [showBagiHasilSection, setShowBagiHasilSection] = useState(false);
-  const [showKasbonSection, setShowKasbonSection] = useState(false);
-  // Legacy bars are hidden once DynamicActorSummary reports zero orphan formulas.
-  const [legacyOrphanCount, setLegacyOrphanCount] = useState<number>(1);
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
   >(initialFinanceConfig?.categories ?? []);
@@ -623,7 +454,6 @@ export default function FinancePage() {
   >(initialFinanceConfig?.participants ?? []);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showKalkulasiModal, setShowKalkulasiModal] = useState(false);
-  const [showBagiHasilManageModal, setShowBagiHasilManageModal] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [participantForm, setParticipantForm] = useState({
     display_name: "",
@@ -826,61 +656,6 @@ export default function FinancePage() {
     totalPiutang,
     piutangCount,
   ]);
-
-  const dynamicMetricValue = useCallback(
-    (sourceColumn: string): number => {
-      const latest = viewingArchive
-        ? cashBooks[cashBooks.length - 1]
-        : cashBooks[0];
-      if (!latest) return 0;
-      const value = (latest as Record<string, any>)[sourceColumn];
-      return typeof value === "number" ? value : 0;
-    },
-    [cashBooks, viewingArchive]
-  );
-
-  const profitShareMetrics = useMemo(
-    () =>
-      financeMetrics
-        .filter((item) => item.metric_group === "profit_share")
-        .filter((item) =>
-          metricBelongsToActiveParticipant(item, financeParticipants)
-        )
-        .sort(
-          (a, b) =>
-            (a.participant_name || a.metric_label).localeCompare(
-              b.participant_name || b.metric_label,
-              "id"
-            )
-        ),
-    [financeMetrics, financeParticipants]
-  );
-  const cashAdvanceMetrics = useMemo(
-    () =>
-      financeMetrics
-        .filter((item) => item.metric_group === "cash_advance")
-        .filter((item) =>
-          metricBelongsToActiveParticipant(item, financeParticipants)
-        )
-        .sort(
-          (a, b) =>
-            (a.participant_name || a.metric_label).localeCompare(
-              b.participant_name || b.metric_label,
-              "id"
-            )
-        ),
-    [financeMetrics, financeParticipants]
-  );
-
-  const profitShareRows = useMemo(
-    () => buildParticipantMetricRows(financeParticipants, profitShareMetrics),
-    [financeParticipants, profitShareMetrics]
-  );
-
-  const cashAdvanceRows = useMemo(
-    () => buildParticipantMetricRows(financeParticipants, cashAdvanceMetrics),
-    [financeParticipants, cashAdvanceMetrics]
-  );
 
   const financeSlotsAvailableForNewMapping = useMemo(() => {
     const used = new Set(financeMetrics.map((m) => m.source_column));
@@ -1143,7 +918,6 @@ export default function FinancePage() {
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
   }, [
-    showBagiHasilManageModal,
     showConfigModal,
     showModal,
     confirmDialog,
@@ -2049,8 +1823,7 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Dynamic v2 summary — reads from transaction_computed via /api/finance/summary-v2.
-          Lives alongside the legacy bars below during the migration window. */}
+      {/* Ringkasan per orang — Kelola Orang + transaction_computed */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
@@ -2059,125 +1832,8 @@ export default function FinancePage() {
             formatRupiah={formatRupiah}
             month={viewingArchive ?? undefined}
             refreshKey={cashBooks.length}
-            onLegacyCount={setLegacyOrphanCount}
           />
         )}
-      {/* Legacy Bagi Hasil bar — hidden once all formulas are linked to business_actors */}
-      {legacyOrphanCount > 0 &&
-        currentUser &&
-        (currentUser.role === "admin" ||
-          currentUser.role === "manager" ||
-          currentUser.role === "staff") && (
-          <div className="mb-6">
-            <div className="flex gap-2 items-stretch">
-              <button
-                type="button"
-                onClick={() => setShowBagiHasilSection(!showBagiHasilSection)}
-                className="flex-1 min-w-0 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl shadow-md p-4 border-2 border-amber-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
-              >
-                <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <CoinIcon size={18} className="text-amber-600" />
-                  Bagi Hasil
-                  <span className="text-xs font-normal text-gray-500">
-                    ({profitShareRows.length} orang)
-                  </span>
-                  <span className="text-[10px] font-normal text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                    data lama
-                  </span>
-                </span>
-                <svg
-                  className={`w-5 h-5 shrink-0 transform transition-transform ${
-                    showBagiHasilSection ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-              {(currentUser.role === "admin" ||
-                currentUser.role === "manager") && (
-                <a
-                  href="/kelola-orang"
-                  className="shrink-0 px-4 rounded-xl border-2 border-amber-300 bg-white hover:bg-amber-50 text-amber-900 text-sm font-semibold shadow-sm transition-colors flex items-center"
-                  title="Pindah ke Kelola Orang untuk mengganti data lama ini"
-                >
-                  Kelola
-                </a>
-              )}
-            </div>
-            {showBagiHasilSection && (
-              <FinanceParticipantSummaryTable
-                rows={profitShareRows}
-                variant="profit_share"
-                formatRupiah={formatRupiah}
-                getValue={dynamicMetricValue}
-                labaBersih={summaryData.labaBersih}
-              />
-            )}
-          </div>
-        )}
-      {/* Legacy Kasbon bar — hidden once all formulas are linked to business_actors */}
-      {legacyOrphanCount > 0 &&
-        currentUser &&
-        (currentUser.role === "admin" || currentUser.role === "manager") && (
-          <div className="mb-6">
-            <div className="flex gap-2 items-stretch">
-              <button
-                type="button"
-                onClick={() => setShowKasbonSection(!showKasbonSection)}
-                className="flex-1 min-w-0 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl shadow-md p-4 border-2 border-violet-200 hover:shadow-lg transition-all duration-200 text-left flex items-center justify-between"
-              >
-                <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <PersonIcon size={18} className="text-violet-600" />
-                  Kasbon Karyawan
-                  <span className="text-xs font-normal text-gray-500">
-                    ({cashAdvanceRows.length} orang)
-                  </span>
-                  <span className="text-[10px] font-normal text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
-                    data lama
-                  </span>
-                </span>
-                <svg
-                  className={`w-5 h-5 shrink-0 transform transition-transform ${
-                    showKasbonSection ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-              <a
-                href="/kelola-orang"
-                className="shrink-0 px-4 rounded-xl border-2 border-violet-300 bg-white hover:bg-violet-50 text-violet-900 text-sm font-semibold shadow-sm transition-colors flex items-center"
-                title="Pindah ke Kelola Orang untuk mengganti data lama ini"
-              >
-                Kelola
-              </a>
-            </div>
-            {showKasbonSection && (
-              <FinanceParticipantSummaryTable
-                rows={cashAdvanceRows}
-                variant="cash_advance"
-                formatRupiah={formatRupiah}
-                getValue={dynamicMetricValue}
-              />
-            )}
-          </div>
-        )}{" "}
       {/* Toolbar for Cash Book Management - Moved here */}
       <div className="mb-6 bg-white rounded-xl shadow-md p-4 border border-gray-200">
         <div className="flex items-center gap-3 flex-wrap">
@@ -2741,17 +2397,6 @@ export default function FinancePage() {
 
             </form>
       </ModalFormShell>
-      <BagiHasilManageModal
-        open={showBagiHasilManageModal}
-        onClose={() => setShowBagiHasilManageModal(false)}
-        participants={financeParticipants}
-        metricMappings={financeMetrics}
-        saving={configSaving}
-        canEdit={
-          currentUser?.role === "admin" || currentUser?.role === "manager"
-        }
-        onSubmit={submitConfigAction}
-      />
       <ModalFormShell
         open={showConfigModal}
         onClose={() => setShowConfigModal(false)}

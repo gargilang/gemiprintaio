@@ -505,11 +505,44 @@ async function step4_backfillOverrides() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// STEP 5 — Verify and summarise
+// STEP 5 — Disable legacy orphan formulas (no Kelola Orang link)
 // ════════════════════════════════════════════════════════════════════════════
 
-async function step5_verify() {
-  log("\n── Step 5: Verification ──");
+async function step5_disableLegacyOrphanFormulas() {
+  log("\n── Step 5: Nonaktifkan rumus lama tanpa actor_id ──");
+
+  const sql = `
+    UPDATE cashbook_formula SET enabled = 0
+    WHERE actor_id IS NULL
+      AND formula_group IN ('profit_share', 'cash_advance', 'bonus')
+      AND enabled = 1
+  `;
+
+  if (DRY_RUN) {
+    log("  [dry-run] Would disable orphan profit_share / cash_advance / bonus formulas.");
+    return;
+  }
+
+  if (sqliteDb) {
+    const r = sqliteDb.prepare(sql).run();
+    log(`  SQLite: ${r.changes} rumus lama dinonaktifkan.`);
+  }
+  if (pgClient) {
+    try {
+      const r = await pgClient.query(sql);
+      log(`  Supabase: ${r.rowCount} rumus lama dinonaktifkan.`);
+    } catch (e) {
+      warn("Supabase disable orphans failed:", e.message);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// STEP 6 — Verify and summarise
+// ════════════════════════════════════════════════════════════════════════════
+
+async function step6_verify() {
+  log("\n── Step 6: Verification ──");
 
   if (sqliteDb) {
     const actorCount = sqliteDb.prepare("SELECT COUNT(*) AS c FROM business_actors").get()?.c ?? 0;
@@ -531,11 +564,9 @@ async function step5_verify() {
     log(`    orphan actor formulas:        ${orphanCount} (target = 0)`);
 
     if (orphanCount === 0) {
-      log("  ✅ No orphan formulas — DynamicActorSummary will show full v2 data.");
+      log("  ✅ No active orphan formulas — halaman Keuangan hanya pakai Kelola Orang.");
     } else {
-      log(`  ⚠  ${orphanCount} orphan formula(s) remain. These still show in the legacy`);
-      log("      Bagi Hasil / Kasbon bars in finance/page. To hide them completely,");
-      log("      add the matching people in Kelola Orang then disable the legacy formulas.");
+      log(`  ⚠  ${orphanCount} rumus lama masih aktif — jalankan ulang step 5 atau buka halaman Keuangan.`);
     }
   }
 }
@@ -549,7 +580,8 @@ try {
   await step2_linkFormulaActors(migratedActors);
   await step3_backfillTransactionComputed();
   await step4_backfillOverrides();
-  await step5_verify();
+  await step5_disableLegacyOrphanFormulas();
+  await step6_verify();
   log("\n🎉 Migration complete.");
 } catch (e) {
   console.error("\n❌ Migration failed:", e);

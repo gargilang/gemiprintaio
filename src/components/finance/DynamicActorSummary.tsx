@@ -28,8 +28,6 @@ interface Props {
   month?: string;
   formatRupiah: (n: number) => string;
   refreshKey?: string | number;
-  /** Called after each fetch with the number of legacy orphan formulas. */
-  onLegacyCount?: (count: number) => void;
 }
 
 function CellValue({
@@ -61,7 +59,6 @@ export default function DynamicActorSummary({
   month,
   formatRupiah,
   refreshKey,
-  onLegacyCount,
 }: Props) {
   const [data, setData] = useState<SummaryV2Response | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,10 +73,7 @@ export default function DynamicActorSummary({
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body?.error || "Gagal memuat ringkasan");
-        if (!cancelled) {
-          setData(body as SummaryV2Response);
-          onLegacyCount?.((body as SummaryV2Response).legacyOrphanFormulas ?? 0);
-        }
+        if (!cancelled) setData(body as SummaryV2Response);
       })
       .catch((e) => {
         if (!cancelled) setError((e as Error).message);
@@ -129,10 +123,9 @@ export default function DynamicActorSummary({
         </div>
         {legacyCount > 0 && (
           <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Ada {legacyCount} rumus lama dari sistem sebelumnya yang masih aktif
-            di bar <strong>Bagi Hasil / Kasbon</strong> di bawah.
-            Itu bukan dari Kelola Orang — setelah Anda menambah orang di sana,
-            baris ini menggantikan tampilan terpisah per kategori.
+            Ada {legacyCount} rumus lama yang masih aktif di belakang layar.
+            Nonaktifkan di menu <strong>Kalkulasi Keuangan</strong> bila sudah
+            tidak dipakai.
           </p>
         )}
       </div>
@@ -207,14 +200,13 @@ export default function DynamicActorSummary({
         </ul>
       </div>
 
-        {legacyCount > 0 && (
+      {legacyCount > 0 && (
         <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Masih ada {legacyCount} rumus lama yang belum terhubung ke orang di Kelola Orang — tampil
-          di bar Bagi Hasil / Kasbon di bawah. Tambahkan orang di{" "}
+          {legacyCount} rumus lama masih aktif di belakang layar. Kelola orang di{" "}
           <a href="/kelola-orang" className="underline font-semibold">
             Kelola Orang
-          </a>{" "}
-          lalu nonaktifkan rumus lama di Kalkulasi Keuangan bila sudah tidak dipakai.
+          </a>
+          , lalu nonaktifkan sisa rumus lama di Kalkulasi Keuangan bila sudah tidak dipakai.
         </p>
       )}
     </div>

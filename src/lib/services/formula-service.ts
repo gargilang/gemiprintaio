@@ -480,3 +480,25 @@ export async function countLegacyOrphanActorFormulas(): Promise<number> {
         f.formulaGroup === "bonus")
   ).length;
 }
+
+/**
+ * Turn off per-person formulas from the old hardcoded schema (no actor_id).
+ * Kelola Orang is the only supported path for bagi hasil / kasbon / bonus.
+ * Idempotent — safe to call on each summary load.
+ */
+export async function disableLegacyOrphanActorFormulas(): Promise<number> {
+  const orphans = (await listFormulas()).filter(
+    (f) =>
+      f.enabled &&
+      !f.actorId &&
+      (f.formulaGroup === "profit_share" ||
+        f.formulaGroup === "cash_advance" ||
+        f.formulaGroup === "bonus")
+  );
+  if (orphans.length === 0) return 0;
+
+  for (const f of orphans) {
+    await upsertFormula({ ...f, enabled: false });
+  }
+  return orphans.length;
+}

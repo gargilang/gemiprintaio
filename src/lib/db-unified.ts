@@ -489,6 +489,14 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key   ON cashbook_formula(formula_key);
              CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);
              CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`);
+
+    // Per-person formulas without Kelola Orang (actor_id) are legacy — disable them.
+    db.exec(`
+      UPDATE cashbook_formula SET enabled = 0
+      WHERE actor_id IS NULL
+        AND formula_group IN ('profit_share', 'cash_advance', 'bonus')
+        AND enabled = 1
+    `);
   }
 
   // Default formula + partner seeding happens lazily from
