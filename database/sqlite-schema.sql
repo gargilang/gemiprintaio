@@ -99,6 +99,8 @@ CREATE TABLE item_pembelian (
       faktor_konversi REAL NOT NULL,
       harga_satuan REAL NOT NULL,
       subtotal REAL NOT NULL,
+      panjang REAL,
+      lebar REAL,
       dibuat_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (pembelian_id) REFERENCES pembelian(id) ON DELETE CASCADE,
       FOREIGN KEY (barang_id) REFERENCES "barang"(id),

@@ -115,6 +115,7 @@ INSERT INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO satuan_barang (id, nama, urutan_tampilan) VALUES
+  ('unit-m2', 'm²', 0),
   ('unit-meter', 'meter', 1),
   ('unit-roll', 'roll', 2),
   ('unit-sheet', 'sheet', 3),

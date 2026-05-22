@@ -155,7 +155,10 @@ export default function AddMaterialModal({
       const firstSubcat = subcategoriesData.find(
         (s) => s.category_name === firstCategory
       );
-      const firstUnit = unitsData[0]?.nama || "pcs";
+      const isMediaCetak = firstCategory === "Media Cetak";
+      const firstUnit = isMediaCetak
+        ? "m²"
+        : unitsData[0]?.nama || "pcs";
 
       setFormData({
         name: "",
@@ -167,7 +170,7 @@ export default function AddMaterialModal({
         stock_quantity: "0",
         min_stock_level: "0",
         track_inventory: true,
-        requires_dimension: firstCategory === "Media Cetak", // Auto-check for Media Cetak
+        requires_dimension: isMediaCetak, // Auto-check for Media Cetak
       });
 
       // Initialize with one default unit price
@@ -193,13 +196,52 @@ export default function AddMaterialModal({
       (s) => s.category_name === category
     );
 
+    const isMediaCetak = category === "Media Cetak";
     setFormData({
       ...formData,
       category,
       subcategory: firstSubcat?.nama || "",
       // Auto-check requires_dimension for Media Cetak
-      requires_dimension: category === "Media Cetak",
+      requires_dimension: isMediaCetak,
+      // Auto-set base unit to m² when dimension tracking turns on
+      base_unit: isMediaCetak ? "m²" : formData.base_unit,
     });
+
+    if (isMediaCetak) {
+      // Sync default unit price label to m² so storage stays consistent.
+      setUnitPrices((prev) =>
+        prev.length === 0
+          ? prev
+          : prev.map((up) =>
+              up.faktor_konversi === 1
+                ? { ...up, nama_satuan: "m²" }
+                : up
+            )
+      );
+    }
+  };
+
+  const handleRequiresDimensionChange = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      requires_dimension: checked,
+      // Force satuan_dasar to m² so stock units stay consistent when this
+      // flag is on. The user can pick a different unit if they uncheck.
+      base_unit: checked ? "m²" : prev.base_unit,
+    }));
+
+    if (checked) {
+      // Mirror the unit name on the default (faktor_konversi = 1) row.
+      setUnitPrices((prev) =>
+        prev.length === 0
+          ? prev
+          : prev.map((up) =>
+              up.faktor_konversi === 1
+                ? { ...up, nama_satuan: "m²" }
+                : up
+            )
+      );
+    }
   };
 
   const handleBaseUnitChange = (newBaseUnit: string) => {
@@ -344,6 +386,20 @@ export default function AddMaterialModal({
           }
         }
 
+        // When the dimension flag is freshly turned on, the unit changes from
+        // linear (e.g. meter) to area (m²). Existing stock numbers are no
+        // longer comparable, so reset to 0 and let the user re-enter via a
+        // purchase. Already-dimension materials keep their current stock.
+        const isFreshlyTurningOnDimension =
+          formData.requires_dimension &&
+          (!editData || editData.butuh_dimensi_status !== 1);
+        const stokFinal = isFreshlyTurningOnDimension
+          ? 0
+          : parseFloat(formData.stock_quantity) || 0;
+        const minStokFinal = isFreshlyTurningOnDimension
+          ? 0
+          : parseFloat(formData.min_stock_level) || 0;
+
         const payload = {
           nama: formData.name.trim(),
           deskripsi: formData.description.trim() || null,
@@ -351,8 +407,8 @@ export default function AddMaterialModal({
           subkategori_id,
           satuan_dasar: formData.base_unit.trim(),
           spesifikasi: formData.specifications.trim() || null,
-          jumlah_stok: parseFloat(formData.stock_quantity) || 0,
-          level_stok_minimum: parseFloat(formData.min_stock_level) || 0,
+          jumlah_stok: stokFinal,
+          level_stok_minimum: minStokFinal,
           lacak_inventori_status: formData.track_inventory,
           butuh_dimensi_status: formData.requires_dimension,
           unit_prices: unitPrices,
@@ -599,8 +655,8 @@ export default function AddMaterialModal({
                     required
                     value={formData.base_unit}
                     onChange={(e) => handleBaseUnitChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    disabled={loadingMaster}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    disabled={loadingMaster || formData.requires_dimension}
                   >
                     {loadingMaster ? (
                       <option value="">Memuat...</option>
@@ -615,8 +671,9 @@ export default function AddMaterialModal({
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Satuan terkecil untuk menghitung stok (contoh: pcs, meter,
-                    lembar)
+                    {formData.requires_dimension
+                      ? "Dikunci ke m² karena dimensi diaktifkan. Stok dihitung total area."
+                      : "Satuan terkecil untuk menghitung stok (contoh: pcs, meter, lembar)"}
                   </p>
                 </div>
 
@@ -647,10 +704,7 @@ export default function AddMaterialModal({
                         type="checkbox"
                         checked={formData.requires_dimension}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            requires_dimension: e.target.checked,
-                          })
+                          handleRequiresDimensionChange(e.target.checked)
                         }
                         className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
                       />
@@ -662,8 +716,9 @@ export default function AddMaterialModal({
                   <p className="text-xs text-gray-500 mt-2">
                     • Track stok: Nonaktifkan untuk barang konsumsi (lem, tinta,
                     dll)
-                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi
-                    (Kuantitas = Panjang × Lebar meter)
+                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi.
+                    Stok dihitung dalam <strong>m²</strong>; pembelian akan
+                    meminta panjang × lebar tiap roll dari faktur.
                   </p>
                 </div>
 
@@ -1013,6 +1068,20 @@ export default function AddMaterialModal({
                 </span>
                 Stok & Inventory
               </h3>
+
+              {formData.requires_dimension &&
+                editData &&
+                editData.butuh_dimensi_status !== 1 && (
+                  <div className="mb-4 p-3 bg-amber-100 border-2 border-amber-300 rounded-lg">
+                    <p className="text-sm text-amber-900">
+                      <strong>⚠ Perhatian:</strong> Mengaktifkan tracking dimensi
+                      mengubah satuan stok ke <strong>m²</strong>. Saat
+                      disimpan, stok saat ini akan{" "}
+                      <strong>direset ke 0</strong>. Catat ulang stok dari
+                      faktur terakhir lewat halaman Pembelian.
+                    </p>
+                  </div>
+                )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Current stock */}

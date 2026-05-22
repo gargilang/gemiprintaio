@@ -170,9 +170,17 @@ export async function createMaterial(
     const { unit_prices, ...materialData } = material as any;
 
     // Insert material
+    const isDimensional = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
     const materialResult = await db.insert("barang", {
       id: materialId,
       ...materialData,
+      // Force m² unit and zero stock for dimensional materials so the
+      // inventory accounting stays in square meters.
+      satuan_dasar: isDimensional ? "m²" : materialData.satuan_dasar,
+      jumlah_stok: isDimensional ? 0 : materialData.jumlah_stok ?? 0,
+      level_stok_minimum: isDimensional
+        ? 0
+        : materialData.level_stok_minimum ?? 0,
       lacak_inventori_status: toDbIntBoolean(materialData.lacak_inventori_status),
       butuh_dimensi_status: toDbIntBoolean(materialData.butuh_dimensi_status),
       dibuat_pada: new Date().toISOString(),
@@ -258,6 +266,29 @@ export async function updateMaterial(
         .map((up: UnitPrice) => up.id)
         .filter((x): x is string => Boolean(x));
       await deleteOrphanUnitPricesSafe(id, keepIds);
+    }
+
+    // Detect transition: butuh_dimensi was off, now turning on. Stock units
+    // change from linear to m² so the existing numeric stock no longer
+    // applies. Reset both jumlah_stok and level_stok_minimum to 0 unless the
+    // caller already supplied 0 explicitly.
+    if (materialData.butuh_dimensi_status !== undefined) {
+      const turningOn = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
+      if (turningOn) {
+        const before = await db.queryOne<Material>("barang", {
+          where: { id },
+        });
+        const wasOff =
+          !before.data ||
+          Number((before.data as any).butuh_dimensi_status) !== 1;
+        if (wasOff) {
+          // Force the canonical unit and zero-out stock to keep accounting
+          // consistent.
+          materialData.satuan_dasar = "m²";
+          materialData.jumlah_stok = 0;
+          materialData.level_stok_minimum = 0;
+        }
+      }
     }
 
     // Update material

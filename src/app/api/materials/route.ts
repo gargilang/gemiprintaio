@@ -81,10 +81,14 @@ export async function POST(req: NextRequest) {
       deskripsi: deskripsi?.trim() || null,
       kategori_id: kategori_id || null,
       subkategori_id: subkategori_id || null,
-      satuan_dasar: satuan_dasar.trim(),
+      // Force m² as base unit for dimensional materials so stock stays
+      // consistent across purchases and sales.
+      satuan_dasar: butuh_dimensi_status ? "m²" : satuan_dasar.trim(),
       spesifikasi: spesifikasi?.trim() || null,
-      jumlah_stok: jumlah_stok || 0,
-      level_stok_minimum: level_stok_minimum || 0,
+      // Dimensional materials always start at zero; stock is built up via
+      // purchases that record panjang × lebar.
+      jumlah_stok: butuh_dimensi_status ? 0 : jumlah_stok || 0,
+      level_stok_minimum: butuh_dimensi_status ? 0 : level_stok_minimum || 0,
       lacak_inventori_status: lacak_inventori_status !== false,
       butuh_dimensi_status: !!butuh_dimensi_status,
       unit_prices: mappedPrices,

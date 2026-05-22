@@ -188,6 +188,8 @@ export interface PurchaseItem {
   jumlah: number;
   harga_satuan: number;
   subtotal: number;
+  panjang?: number | null;
+  lebar?: number | null;
 }
 
 export interface InitData {
@@ -334,6 +336,8 @@ export async function createPurchase(data: {
     faktor_konversi: number;
     jumlah: number;
     harga_satuan: number;
+    panjang?: number | null;
+    lebar?: number | null;
   }>;
 }): Promise<{ id: string }> {
   try {
@@ -406,6 +410,8 @@ export async function createPurchase(data: {
           jumlah: item.jumlah,
           harga_satuan: item.harga_satuan,
           subtotal,
+          panjang: item.panjang ?? null,
+          lebar: item.lebar ?? null,
         };
 
         const itemResult = await db.insert("item_pembelian", purchaseItem);
@@ -629,6 +635,8 @@ export async function updatePurchase(
       faktor_konversi: number;
       jumlah: number;
       harga_satuan: number;
+      panjang?: number | null;
+      lebar?: number | null;
     }>;
   }
 ): Promise<{ id: string }> {
@@ -721,6 +729,8 @@ export async function updatePurchase(
         jumlah: item.jumlah,
         harga_satuan: item.harga_satuan,
         subtotal,
+        panjang: item.panjang ?? null,
+        lebar: item.lebar ?? null,
       };
 
       const itemResult = await db.insert("item_pembelian", purchaseItem);

@@ -684,6 +684,55 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     );
   }
 
+  // ── Dimensional inventory: panjang/lebar on item_pembelian + m² unit ─────
+  // Mirror of supabase migration 20260522093000_dimension_inventory_in_m2.sql.
+  // Materials with butuh_dimensi_status track stock in m², so purchase rows
+  // need to record the physical roll dimensions of each invoice line.
+  const itemPembelianExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_pembelian' LIMIT 1"
+    )
+    .get();
+  if (itemPembelianExists) {
+    const ipCols = (
+      db.prepare("PRAGMA table_info(item_pembelian)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (!ipCols.includes("panjang")) {
+      db.exec(`ALTER TABLE item_pembelian ADD COLUMN panjang REAL`);
+    }
+    if (!ipCols.includes("lebar")) {
+      db.exec(`ALTER TABLE item_pembelian ADD COLUMN lebar REAL`);
+    }
+  }
+
+  const satuanExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'satuan_barang' LIMIT 1"
+    )
+    .get();
+  if (satuanExists) {
+    // Check if m² already exists with a different id (user created it manually
+    // via Settings before this migration ran). If so, rename that row's id to
+    // 'unit-m2' so it matches the canonical cloud seed id and future syncs
+    // don't hit the UNIQUE(nama) constraint.
+    const existingM2 = db
+      .prepare(`SELECT id FROM satuan_barang WHERE nama = 'm²' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (existingM2 && existingM2.id !== "unit-m2") {
+      // Update all FK references first (harga_barang_satuan uses nama_satuan
+      // text, not id, so no FK to update). Then rename the id.
+      db.exec(`UPDATE satuan_barang SET id = 'unit-m2' WHERE nama = 'm²'`);
+    } else if (!existingM2) {
+      db.exec(`
+        INSERT OR IGNORE INTO satuan_barang (id, nama, urutan_tampilan)
+        VALUES ('unit-m2', 'm²', 0);
+      `);
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS sync_conflicts (
       id TEXT PRIMARY KEY,
@@ -2297,6 +2346,36 @@ class UnifiedDatabase {
                 });
                 continue;
               }
+
+              // satuan_barang has a UNIQUE constraint on `nama` in addition to
+              // the primary key. If the local DB already has a row with the same
+              // `nama` but a different `id` (e.g. user created "m²" manually via
+              // Settings before the cloud seed ran), the INSERT … ON CONFLICT(id)
+              // will hit the UNIQUE(nama) constraint. Handle it by updating the
+              // existing row's id to match the cloud record so future syncs work.
+              const isUniqueError =
+                rowError?.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+                String(rowError?.message || "").includes("UNIQUE constraint");
+              if (isUniqueError && table === "satuan_barang") {
+                try {
+                  const namaEntry = entries.find(([k]) => k === "nama");
+                  const idEntry = entries.find(([k]) => k === "id");
+                  if (namaEntry && idEntry) {
+                    const namaVal = namaEntry[1];
+                    const newId = idEntry[1];
+                    // Re-point the existing row to the cloud id, then upsert.
+                    sqlite
+                      .prepare(`UPDATE satuan_barang SET id = ? WHERE nama = ? AND id != ?`)
+                      .run(newId, namaVal, newId);
+                    sqlite.prepare(upsertSql).run(...values);
+                    if (shouldCountAsChange) pulled++;
+                  }
+                } catch (retryErr) {
+                  console.warn(`⚠ satuan_barang UNIQUE retry failed for row:`, retryErr);
+                }
+                continue;
+              }
+
               throw rowError;
             }
           }

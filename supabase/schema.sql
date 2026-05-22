@@ -317,6 +317,8 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   faktor_konversi REAL NOT NULL,
   harga_satuan REAL NOT NULL,
   subtotal REAL NOT NULL,
+  panjang REAL,
+  lebar REAL,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,

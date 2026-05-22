@@ -60,15 +60,31 @@ export async function PUT(
       );
     }
 
+    const dimensionWasOff =
+      Number((existing as any).butuh_dimensi_status) !== 1;
+    const dimensionTurningOn = !!butuh_dimensi_status && dimensionWasOff;
+
+    const finalSatuanDasar = butuh_dimensi_status
+      ? "m²"
+      : satuan_dasar?.trim() ?? existing.satuan_dasar;
+
     const payload: Parameters<typeof updateMaterial>[1] = {
       nama: nama?.trim() ?? existing.nama,
       deskripsi: deskripsi?.trim() || null,
       kategori_id: kategori_id || null,
       subkategori_id: subkategori_id || null,
-      satuan_dasar: satuan_dasar?.trim() ?? existing.satuan_dasar,
+      satuan_dasar: finalSatuanDasar,
       spesifikasi: spesifikasi?.trim() || null,
-      jumlah_stok: jumlah_stok ?? existing.jumlah_stok,
-      level_stok_minimum: level_stok_minimum ?? existing.level_stok_minimum,
+      // When dimension flag is freshly turned on the unit changes from linear
+      // to area, so previous stock numbers no longer apply. Reset to zero so
+      // the user re-enters via a purchase. Already-dimensional materials
+      // keep their existing stock unless the caller passes a new value.
+      jumlah_stok: dimensionTurningOn
+        ? 0
+        : jumlah_stok ?? existing.jumlah_stok,
+      level_stok_minimum: dimensionTurningOn
+        ? 0
+        : level_stok_minimum ?? existing.level_stok_minimum,
       lacak_inventori_status: lacak_inventori_status !== false ? 1 : 0,
       butuh_dimensi_status: butuh_dimensi_status ? 1 : 0,
     };

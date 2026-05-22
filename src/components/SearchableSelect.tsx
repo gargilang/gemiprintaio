@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   emptyText?: string;
   className?: string;
+  inputClassName?: string;
   disabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ export default function SearchableSelect({
   placeholder = "Pilih...",
   emptyText = "Tidak ada data",
   className = "",
+  inputClassName = "",
   disabled = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,7 +137,7 @@ export default function SearchableSelect({
             !searchQuery && !isOpen && selectedLabel ? "text-gray-900" : ""
           } ${
             !searchQuery && !isOpen && !selectedLabel ? "text-gray-400" : ""
-          }`}
+          } ${inputClassName}`}
         />
         <svg
           className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-transform pointer-events-none ${

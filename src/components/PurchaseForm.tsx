@@ -20,6 +20,10 @@ interface PurchaseItem {
   faktor_konversi?: number;
   jumlah: number;
   harga_beli: number;
+  // Filled only for materials with butuh_dimensi_status = 1.
+  // jumlah is then derived as panjang * lebar (m²).
+  panjang?: number | null;
+  lebar?: number | null;
 }
 
 interface PurchaseFormData {
@@ -35,12 +39,14 @@ interface Material {
   id: string;
   nama: string;
   satuan_dasar: string;
+  butuh_dimensi_status?: number | boolean;
   unit_prices: {
     id: string;
     nama_satuan: string;
     faktor_konversi: number;
     harga_jual: number;
     harga_beli: number;
+    default_status?: number | boolean;
   }[];
 }
 
@@ -61,6 +67,12 @@ interface PurchaseFormProps {
   showNotification: (type: "success" | "error", message: string) => void;
   onCreatePurchase: (data: any) => Promise<any>;
   onUpdatePurchase: (id: string, data: any) => Promise<any>;
+}
+
+function isDimensionalMaterial(material: Material | undefined): boolean {
+  if (!material) return false;
+  const flag = material.butuh_dimensi_status;
+  return flag === 1 || flag === true;
 }
 
 export default function PurchaseForm({
@@ -87,6 +99,8 @@ export default function PurchaseForm({
         id_satuan: "",
         jumlah: 1,
         harga_beli: 0,
+        panjang: null,
+        lebar: null,
       },
     ],
   });
@@ -141,6 +155,8 @@ export default function PurchaseForm({
           faktor_konversi: item.faktor_konversi || 1,
           jumlah: item.jumlah,
           harga_beli: item.harga_satuan || item.harga_beli || 0,
+          panjang: item.panjang ?? null,
+          lebar: item.lebar ?? null,
         })),
       });
     }
@@ -175,10 +191,36 @@ export default function PurchaseForm({
     if (field === "id_barang" && value) {
       const material = materials.find((m) => m.id === value);
       if (material) {
+        const isDimensional = isDimensionalMaterial(material);
         newItems[index].nama_barang = material.nama;
-        newItems[index].id_satuan = "";
-        newItems[index].nama_satuan = "";
-        newItems[index].faktor_konversi = 1;
+
+        // Auto-pick the canonical unit so users don't have to click into
+        // the dropdown for the common case (single-unit materials, or the
+        // base unit on multi-unit materials). Preference order:
+        //   1. unit flagged as default
+        //   2. unit with faktor_konversi === 1 (the base / smallest unit)
+        //   3. first unit in the list
+        const defaultUnit =
+          material.unit_prices.find((u) => Number(u.default_status) === 1) ??
+          material.unit_prices.find((u) => Number(u.faktor_konversi) === 1) ??
+          material.unit_prices[0];
+
+        if (defaultUnit) {
+          newItems[index].id_satuan = defaultUnit.id;
+          newItems[index].nama_satuan = defaultUnit.nama_satuan;
+          newItems[index].faktor_konversi = defaultUnit.faktor_konversi;
+          if (defaultUnit.harga_beli && defaultUnit.harga_beli > 0) {
+            newItems[index].harga_beli = defaultUnit.harga_beli;
+          }
+        } else {
+          newItems[index].id_satuan = "";
+          newItems[index].nama_satuan = "";
+          newItems[index].faktor_konversi = 1;
+        }
+
+        newItems[index].panjang = isDimensional ? 0 : null;
+        newItems[index].lebar = isDimensional ? 0 : null;
+        newItems[index].jumlah = isDimensional ? 0 : 1;
       }
     }
 
@@ -200,6 +242,13 @@ export default function PurchaseForm({
       }
     }
 
+    // Recompute jumlah (m²) whenever panjang/lebar changes for dimensional items.
+    if (field === "panjang" || field === "lebar") {
+      const p = Number(newItems[index].panjang) || 0;
+      const l = Number(newItems[index].lebar) || 0;
+      newItems[index].jumlah = p * l;
+    }
+
     setFormData((prev) => ({ ...prev, items: newItems }));
   };
 
@@ -213,6 +262,8 @@ export default function PurchaseForm({
           id_satuan: "",
           jumlah: 1,
           harga_beli: 0,
+          panjang: null,
+          lebar: null,
         },
       ],
     }));
@@ -249,7 +300,19 @@ export default function PurchaseForm({
         );
         return;
       }
-      if (item.jumlah <= 0) {
+      const material = materials.find((m) => m.id === item.id_barang);
+      const isDimensional = isDimensionalMaterial(material);
+      if (isDimensional) {
+        const p = Number(item.panjang);
+        const l = Number(item.lebar);
+        if (!p || p <= 0 || !l || l <= 0) {
+          showNotification(
+            "error",
+            `Item #${i + 1}: Panjang dan lebar harus lebih dari 0!`
+          );
+          return;
+        }
+      } else if (item.jumlah <= 0) {
         showNotification("error", `Item #${i + 1}: Jumlah harus lebih dari 0!`);
         return;
       }
@@ -275,14 +338,20 @@ export default function PurchaseForm({
         vendor_id: formData.id_vendor,
         catatan: formData.catatan,
         metode_pembayaran: formData.metode_pembayaran,
-        items: formData.items.map((item) => ({
-          barang_id: item.id_barang,
-          harga_satuan_id: item.id_satuan,
-          jumlah: item.jumlah,
-          nama_satuan: item.nama_satuan || "",
-          faktor_konversi: item.faktor_konversi || 1,
-          harga_satuan: item.harga_beli,
-        })),
+        items: formData.items.map((item) => {
+          const material = materials.find((m) => m.id === item.id_barang);
+          const isDimensional = isDimensionalMaterial(material);
+          return {
+            barang_id: item.id_barang,
+            harga_satuan_id: item.id_satuan,
+            jumlah: item.jumlah,
+            nama_satuan: item.nama_satuan || "",
+            faktor_konversi: item.faktor_konversi || 1,
+            harga_satuan: item.harga_beli,
+            panjang: isDimensional ? item.panjang ?? null : null,
+            lebar: isDimensional ? item.lebar ?? null : null,
+          };
+        }),
       };
 
       if (editData) {
@@ -311,6 +380,8 @@ export default function PurchaseForm({
               id_satuan: "",
               jumlah: 1,
               harga_beli: 0,
+              panjang: null,
+              lebar: null,
             },
           ],
         });
@@ -397,7 +468,15 @@ export default function PurchaseForm({
         </div>
 
         <div className="border border-gray-300 rounded-lg max-h-[400px] overflow-y-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[10%]" />
+              <col className="w-[18%]" />
+              <col className="w-[14%]" />
+              <col className="w-[22%]" />
+              <col className="w-[8%]" />
+            </colgroup>
             <thead className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 text-white z-10">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-semibold">
@@ -407,7 +486,7 @@ export default function PurchaseForm({
                   Satuan
                 </th>
                 <th className="px-3 py-2 text-center text-xs font-semibold">
-                  Jumlah
+                  Jumlah / Dimensi (m)
                 </th>
                 <th className="px-3 py-2 text-right text-xs font-semibold">
                   Harga Beli
@@ -415,7 +494,7 @@ export default function PurchaseForm({
                 <th className="px-3 py-2 text-right text-xs font-semibold">
                   Subtotal
                 </th>
-                <th className="px-3 py-2 text-center text-xs font-semibold w-12">
+                <th className="px-3 py-2 text-center text-xs font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -426,6 +505,7 @@ export default function PurchaseForm({
                   (m) => m.id === item.id_barang
                 );
                 const subtotal = item.jumlah * item.harga_beli;
+                const isDimensional = isDimensionalMaterial(selectedMaterial);
 
                 return (
                   <tr
@@ -434,34 +514,37 @@ export default function PurchaseForm({
                       index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}
                   >
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 align-top">
                       <SearchableSelect
-                        options={[
-                          { value: "", label: "-- Pilih Barang --" },
-                          ...materials.map((m) => ({
-                            value: m.id,
-                            label: m.nama,
-                          })),
-                        ]}
+                        options={materials.map((m) => ({
+                          value: m.id,
+                          label: m.nama,
+                        }))}
                         value={item.id_barang}
                         onChange={(value) =>
                           handleItemChange(index, "id_barang", value)
                         }
                         placeholder="Cari barang..."
                         emptyText="Tidak ada barang"
+                        inputClassName="!px-2 !py-1 !h-[30px] text-sm"
                       />
+                      {isDimensional && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          Barang dimensi · stok dalam m²
+                        </p>
+                      )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 align-top">
                       <select
                         value={item.id_satuan}
                         onChange={(e) =>
                           handleItemChange(index, "id_satuan", e.target.value)
                         }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 h-[30px]"
                         disabled={!item.id_barang}
                         required
                       >
-                        <option value="">-- Pilih Satuan --</option>
+                        <option value="" disabled hidden>Satuan</option>
                         {selectedMaterial?.unit_prices.map((unit) => (
                           <option key={unit.id} value={unit.id}>
                             {unit.nama_satuan}
@@ -469,34 +552,87 @@ export default function PurchaseForm({
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        value={item.jumlah}
-                        onChange={(e) =>
-                          handleItemChange(
-                            index,
-                            "jumlah",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
-                            return;
+                    <td className="px-3 py-2 align-top">
+                      {isDimensional ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              value={item.panjang ?? ""}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "panjang",
+                                  e.target.value === ""
+                                    ? null
+                                    : parseFloat(e.target.value) || 0
+                                )
+                              }
+                              min="0"
+                              max="999"
+                              step="any"
+                              inputMode="decimal"
+                              placeholder="P"
+                              title="Panjang (m)"
+                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              required
+                            />
+                            <span className="text-xs text-gray-500">×</span>
+                            <input
+                              type="number"
+                              value={item.lebar ?? ""}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "lebar",
+                                  e.target.value === ""
+                                    ? null
+                                    : parseFloat(e.target.value) || 0
+                                )
+                              }
+                              min="0"
+                              max="999"
+                              step="any"
+                              inputMode="decimal"
+                              placeholder="L"
+                              title="Lebar (m)"
+                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              required
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-500 text-center">
+                            = {item.jumlah.toLocaleString("id-ID")} m²
+                          </p>
+                        </div>
+                      ) : (
+                        <input
+                          type="number"
+                          value={item.jumlah}
+                          onChange={(e) =>
+                            handleItemChange(
+                              index,
+                              "jumlah",
+                              parseFloat(e.target.value) || 0
+                            )
                           }
-                          e.preventDefault();
-                          const delta = e.key === "ArrowUp" ? 1 : -1;
-                          const next = Math.max(0, (item.jumlah || 0) + delta);
-                          handleItemChange(index, "jumlah", next);
-                        }}
-                        min="0"
-                        step="any"
-                        inputMode="decimal"
-                        className="w-full px-2 py-1 text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
+                          onKeyDown={(e) => {
+                            if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
+                              return;
+                            }
+                            e.preventDefault();
+                            const delta = e.key === "ArrowUp" ? 1 : -1;
+                            const next = Math.max(0, (item.jumlah || 0) + delta);
+                            handleItemChange(index, "jumlah", next);
+                          }}
+                          min="0"
+                          step="any"
+                          inputMode="decimal"
+                          className="w-full px-2 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                      )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 align-top">
                       <input
                         type="number"
                         value={item.harga_beli}
@@ -509,14 +645,24 @@ export default function PurchaseForm({
                         }
                         min="0"
                         step="any"
-                        className="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        title={
+                          isDimensional
+                            ? "Harga per m²"
+                            : "Harga per satuan"
+                        }
+                        className="w-full px-2 py-1 h-[30px] text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         required
                       />
+                      {isDimensional && (
+                        <p className="text-[11px] text-gray-500 text-right mt-0.5">
+                          per m²
+                        </p>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-right text-sm font-semibold text-gray-800">
+                    <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-800 whitespace-nowrap">
                       Rp {subtotal.toLocaleString("id-ID")}
                     </td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-3 py-2 align-top text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           type="button"
