@@ -15,7 +15,7 @@ Available on four platforms:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         Supabase (Postgres)                        │
+│                         Supabase (Postgres)                         │
 │                    Cloud database + Row Level Security              │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
