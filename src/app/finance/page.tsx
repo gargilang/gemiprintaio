@@ -380,6 +380,7 @@ export default function FinancePage() {
             "SUBSIDI",
             "LUNAS",
             "SUPPLY",
+            "HPP",
             "LABA",
             "KOMISI",
             "TABUNGAN",
@@ -897,6 +898,11 @@ export default function FinancePage() {
         text: "text-orange-800",
         border: "border-orange-300",
       },
+      HPP: {
+        bg: "bg-slate-100",
+        text: "text-slate-800",
+        border: "border-slate-300",
+      },
       LABA: {
         bg: "bg-emerald-100",
         text: "text-emerald-800",
@@ -1368,7 +1374,7 @@ export default function FinancePage() {
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Bahan:</span>
+                <span className="text-sm text-gray-600">HPP:</span>
                 <span className="text-sm font-semibold text-red-700">
                   {formatRupiah(summaryData.biayaBahan)}
                 </span>

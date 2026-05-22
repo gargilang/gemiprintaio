@@ -108,18 +108,19 @@ const astBiayaOps: ASTNode = iff(
 );
 
 /**
- * I: BIAYA BAHAN
- *   =IF(ROW()=2, 0, IF(OR(C="SUPPLY",C="HUTANG"), I_prev + E, I_prev))
+ * I: BIAYA BAHAN / HPP
+ *   =IF(ROW()=2, 0, IF(C="HPP", I_prev + E, I_prev))
+ * Purchases stay as cash/inventory movements; they become cost when sold.
  */
 const astBiayaBahan: ASTNode = iff(
   isFirstRow(),
   iff(
-    or(op("=", col("C"), lit("SUPPLY")), op("=", col("C"), lit("HUTANG"))),
+    op("=", col("C"), lit("HPP")),
     col("E"),
     lit(0)
   ),
   iff(
-    or(op("=", col("C"), lit("SUPPLY")), op("=", col("C"), lit("HUTANG"))),
+    op("=", col("C"), lit("HPP")),
     op("+", prev("I"), col("E")),
     prev("I")
   )
@@ -232,7 +233,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     enabled: true,
     isSystem: true,
     displayOrder: 30,
-    description: "Akumulasi SUPPLY + HUTANG.",
+    description: "Akumulasi HPP dari barang yang terjual.",
   },
   {
     id: "formula-j-saldo",

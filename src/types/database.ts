@@ -46,6 +46,7 @@ export interface Material {
   selling_price: number;
   member_price: number;
   stock_quantity: number;
+  average_cost_per_base_unit?: number;
   min_stock_level: number;
   created_at: string;
   updated_at: string;
@@ -97,6 +98,10 @@ export interface SaleItem {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  hpp_satuan?: number;
+  hpp_total?: number;
+  gross_profit?: number;
+  gross_margin?: number;
   created_at: string;
 }
 

@@ -20,7 +20,12 @@ ALTER TABLE item_pembelian
 ALTER TABLE item_pembelian
   ADD COLUMN IF NOT EXISTS lebar REAL;
 
--- 2. Seed the square-meter unit. Existing installs get it on next sync.
+-- 2. Seed the square-meter unit. Existing installs may already have m² under
+-- a different id, so canonicalize by name before inserting.
+UPDATE satuan_barang
+SET id = 'unit-m2'
+WHERE nama = 'm²' AND id <> 'unit-m2';
+
 INSERT INTO satuan_barang (id, nama, urutan_tampilan)
 VALUES ('unit-m2', 'm²', 0)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (nama) DO UPDATE SET id = EXCLUDED.id;

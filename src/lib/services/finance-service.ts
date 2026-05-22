@@ -152,7 +152,7 @@ async function calculateRunningTotals(
   if (isFirstEntry) {
     biaya_bahan = 0;
   } else {
-    if (kategori_transaksi === "SUPPLY" || kategori_transaksi === "HUTANG") {
+    if (kategori_transaksi === "HPP") {
       biaya_bahan = prev.biaya_bahan + kredit;
     } else {
       biaya_bahan = prev.biaya_bahan;

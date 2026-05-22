@@ -39,6 +39,11 @@ const MaterialRow = memo(
     const otherUnits = material.unit_prices?.filter(
       (up: any) => !up.default_status
     );
+    const averageCostPerBaseUnit =
+      Number(material.average_cost_per_base_unit || 0) ||
+      (defaultUnit?.harga_beli && defaultUnit?.faktor_konversi
+        ? Number(defaultUnit.harga_beli) / Number(defaultUnit.faktor_konversi)
+        : 0);
 
     return (
       <tr
@@ -130,6 +135,14 @@ const MaterialRow = memo(
           ) : (
             <span className="text-gray-400 text-sm">-</span>
           )}
+        </td>
+        <td className="px-4 py-3 text-right">
+          <div className="font-semibold text-gray-800">
+            Rp {averageCostPerBaseUnit.toLocaleString("id-ID")}
+          </div>
+          <div className="text-xs text-gray-500">
+            per {material.satuan_dasar}
+          </div>
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-center gap-2">
@@ -267,14 +280,20 @@ export default function MaterialsPage() {
       } else if (sortBy === "stock") {
         comparison = a.jumlah_stok - b.jumlah_stok;
       } else if (sortBy === "value") {
-        const aValue =
-          a.jumlah_stok *
-          (a.unit_prices?.find((up: any) => up.default_status)?.harga_beli ||
-            0);
-        const bValue =
-          b.jumlah_stok *
-          (b.unit_prices?.find((up: any) => up.default_status)?.harga_beli ||
-            0);
+        const aDefaultUnit = a.unit_prices?.find((up: any) => up.default_status);
+        const bDefaultUnit = b.unit_prices?.find((up: any) => up.default_status);
+        const aCost =
+          Number(a.average_cost_per_base_unit || 0) ||
+          (aDefaultUnit?.harga_beli && aDefaultUnit?.faktor_konversi
+            ? Number(aDefaultUnit.harga_beli) / Number(aDefaultUnit.faktor_konversi)
+            : 0);
+        const bCost =
+          Number(b.average_cost_per_base_unit || 0) ||
+          (bDefaultUnit?.harga_beli && bDefaultUnit?.faktor_konversi
+            ? Number(bDefaultUnit.harga_beli) / Number(bDefaultUnit.faktor_konversi)
+            : 0);
+        const aValue = a.jumlah_stok * aCost;
+        const bValue = b.jumlah_stok * bCost;
         comparison = aValue - bValue;
       }
 
@@ -440,7 +459,11 @@ export default function MaterialsPage() {
   const totalItems = materials.length;
   const totalStockValue = materials.reduce((sum, m) => {
     const defaultUnit = m.unit_prices?.find((up: any) => up.default_status);
-    const price = defaultUnit?.harga_beli || 0;
+    const price =
+      Number(m.average_cost_per_base_unit || 0) ||
+      (defaultUnit?.harga_beli && defaultUnit?.faktor_konversi
+        ? Number(defaultUnit.harga_beli) / Number(defaultUnit.faktor_konversi)
+        : 0);
     return sum + m.jumlah_stok * price;
   }, 0);
   const lowStockItems = materials.filter(
@@ -654,6 +677,19 @@ export default function MaterialsPage() {
                     )}
                   </div>
                 </th>
+                <th
+                  className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider cursor-pointer hover:bg-white/10 transition-colors"
+                  onClick={() => handleSort("value")}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    HPP Rata-rata
+                    {sortBy === "value" && (
+                      <span className="text-xs">
+                        {sortOrder === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                   Aksi
                 </th>
@@ -662,7 +698,7 @@ export default function MaterialsPage() {
             <tbody>
               {loading && materials.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
+                  <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <svg
                         className="animate-spin h-6 w-6 text-emerald-500"
@@ -691,7 +727,7 @@ export default function MaterialsPage() {
               ) : filteredMaterials.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-12 text-center text-gray-500"
                   >
                     <div className="flex flex-col items-center gap-3">

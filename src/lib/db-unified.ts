@@ -707,6 +707,111 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     }
   }
 
+  // Moving average inventory costing + HPP snapshots. Additive migration for
+  // existing local SQLite installs; new template schemas already include these.
+  const barangExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang' LIMIT 1"
+    )
+    .get();
+  if (barangExists) {
+    const barangCols = (
+      db.prepare("PRAGMA table_info(barang)").all() as Array<{ name: string }>
+    ).map((c) => c.name);
+    if (!barangCols.includes("average_cost_per_base_unit")) {
+      db.exec(`ALTER TABLE barang ADD COLUMN average_cost_per_base_unit REAL DEFAULT 0`);
+      db.exec(`
+        UPDATE barang
+        SET average_cost_per_base_unit = COALESCE(
+          NULLIF(average_cost_per_base_unit, 0),
+          COALESCE((
+            SELECT h.harga_beli / NULLIF(h.faktor_konversi, 0)
+            FROM harga_barang_satuan h
+            WHERE h.barang_id = barang.id
+            ORDER BY h.default_status DESC, h.faktor_konversi ASC, h.urutan_tampilan ASC
+            LIMIT 1
+          ), 0)
+        )
+      `);
+    }
+  }
+
+  const itemPenjualanExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penjualan' LIMIT 1"
+    )
+    .get();
+  if (itemPenjualanExists) {
+    const ijCols = (
+      db.prepare("PRAGMA table_info(item_penjualan)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (!ijCols.includes("hpp_satuan")) {
+      db.exec(`ALTER TABLE item_penjualan ADD COLUMN hpp_satuan REAL DEFAULT 0`);
+    }
+    if (!ijCols.includes("hpp_total")) {
+      db.exec(`ALTER TABLE item_penjualan ADD COLUMN hpp_total REAL DEFAULT 0`);
+    }
+    if (!ijCols.includes("gross_profit")) {
+      db.exec(`ALTER TABLE item_penjualan ADD COLUMN gross_profit REAL DEFAULT 0`);
+    }
+    if (!ijCols.includes("gross_margin")) {
+      db.exec(`ALTER TABLE item_penjualan ADD COLUMN gross_margin REAL DEFAULT 0`);
+    }
+  }
+
+  const hppAst = `{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"HPP"}},"then":{"type":"columnRef","column":"E"},"else":{"type":"literal","value":0}},"else":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"HPP"}},"then":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"I"},"right":{"type":"columnRef","column":"E"}},"else":{"type":"prevOutput","column":"I"}}}`;
+  const financeCategoryExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'finance_category_definitions' LIMIT 1"
+    )
+    .get();
+  if (financeCategoryExists) {
+    const catCols = (
+      db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    const hasMetricContrib = catCols.includes("metric_contributions");
+    const hppValues = hasMetricContrib
+      ? `('fin-cat-hpp', 'HPP', 'Harga Pokok Penjualan', 'bg-slate-100', 'text-slate-800', 'border-slate-300', 'kredit', 1, 75, '[{"column":"biaya_bahan","amount_field":"kredit","sign":1}]')`
+      : `('fin-cat-hpp', 'HPP', 'Harga Pokok Penjualan', 'bg-slate-100', 'text-slate-800', 'border-slate-300', 'kredit', 1, 75)`;
+    const hppColumns = hasMetricContrib
+      ? `(id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order, metric_contributions)`
+      : `(id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)`;
+    db.exec(`
+      INSERT OR IGNORE INTO finance_category_definitions ${hppColumns}
+      VALUES ${hppValues};
+      UPDATE finance_category_definitions
+      SET display_name = 'Harga Pokok Penjualan'
+      WHERE category_code = 'HPP';
+      ${
+        hasMetricContrib
+          ? `UPDATE finance_category_definitions
+             SET metric_contributions = '[{"column":"biaya_bahan","amount_field":"kredit","sign":1}]'
+             WHERE category_code = 'HPP';
+             UPDATE finance_category_definitions
+             SET metric_contributions = NULL
+             WHERE category_code IN ('SUPPLY','HUTANG');`
+          : ""
+      }
+    `);
+  }
+
+  const cashbookFormulaExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'cashbook_formula' LIMIT 1"
+    )
+    .get();
+  if (cashbookFormulaExists) {
+    db.prepare(
+      `UPDATE cashbook_formula
+       SET ast = ?, description = 'Akumulasi HPP dari barang yang terjual.'
+       WHERE db_column = 'biaya_bahan'`
+    ).run(hppAst);
+  }
+
   const satuanExists = db
     .prepare(
       "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'satuan_barang' LIMIT 1"
@@ -2591,6 +2696,15 @@ export async function createMaterialWithUnitPrices(materialData: {
 
     // Execute in transaction (Tauri only, Web executes sequentially)
     return await db.transaction(async () => {
+      const defaultUnitPrice =
+        materialData.unit_prices.find((up) => up.default_status) ??
+        materialData.unit_prices.find((up) => Number(up.faktor_konversi) === 1) ??
+        materialData.unit_prices[0];
+      const averageCostPerBaseUnit =
+        defaultUnitPrice && Number(defaultUnitPrice.faktor_konversi || 0) > 0
+          ? Number(defaultUnitPrice.harga_beli || 0) /
+            Number(defaultUnitPrice.faktor_konversi || 1)
+          : 0;
       // Prepare material data
       const material = {
         id: materialId,
@@ -2605,6 +2719,7 @@ export async function createMaterialWithUnitPrices(materialData: {
         lacak_inventori_status:
           materialData.lacak_inventori_status !== false ? 1 : 0,
         butuh_dimensi_status: materialData.butuh_dimensi_status ? 1 : 0,
+        average_cost_per_base_unit: averageCostPerBaseUnit,
       };
 
       // Insert material

@@ -292,7 +292,7 @@ describe("AST evaluator — logical operators", () => {
   });
 });
 
-describe("Default formula dataset — reproduces original Sheets logic", () => {
+describe("Default formula dataset — reproduces current cashbook logic", () => {
   /**
    * Walk a representative dataset and verify each computed output column
    * matches a hand-rolled reference implementation of the original Sheets
@@ -302,13 +302,14 @@ describe("Default formula dataset — reproduces original Sheets logic", () => {
     { C: "OMZET", D: 1_000_000, E: 0, F: "penjualan harian" },
     { C: "BIAYA", D: 0, E: 150_000, F: "Listrik" },
     { C: "SUPPLY", D: 0, E: 200_000, F: "Tinta" },
+    { C: "HPP", D: 0, E: 120_000, F: "HPP INV-001" },
     { C: "INVESTOR", D: 500_000, E: 0, F: "Setoran Cahaya" },
     { C: "PRIBADI-S", D: 0, E: 50_000, F: "Kasbon Suri" },
     { C: "PIUTANG", D: 250_000, E: 0, F: "Pelunasan Andi" },
     { C: "BIAYA", D: 0, E: 75_000, F: "Pembelian Cahaya" },
   ];
 
-  // Reference (hand-rolled) computation — translates the original Sheets
+  // Reference (hand-rolled) computation — translates the current cashbook
   // formulas directly so we can compare term-by-term.
   function reference() {
     const out: Array<Record<string, number>> = [];
@@ -344,9 +345,9 @@ describe("Default formula dataset — reproduces original Sheets logic", () => {
 
       // I
       if (isFirst) {
-        I = C === "SUPPLY" || C === "HUTANG" ? E : 0;
+        I = C === "HPP" ? E : 0;
       } else {
-        I = C === "SUPPLY" || C === "HUTANG" ? I + E : I;
+        I = C === "HPP" ? I + E : I;
       }
 
       // J

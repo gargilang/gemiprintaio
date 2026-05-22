@@ -12,11 +12,11 @@ import {
   ShoppingCartIcon,
   ClipboardIcon,
 } from "@/components/icons/ContentIcons";
-import { getArchivedPeriodsAction } from "./actions";
 import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+  getArchivedPeriodsAction,
+  getFormalAccountingReportAction,
+} from "./actions";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
@@ -33,7 +33,128 @@ interface Archive {
   archived_at: string;
 }
 
-type ReportType = "financial" | "inventory" | "pos" | "receivables";
+type ReportType =
+  | "cash"
+  | "financial"
+  | "profit-loss"
+  | "inventory"
+  | "pos"
+  | "receivables";
+
+interface FormalAccountingReport {
+  cashReport: {
+    totalDebit: number;
+    totalCredit: number;
+    netCashFlow: number;
+    endingBalance: number;
+    omzet: number;
+    operationalExpenses: number;
+    cogs: number;
+    netProfit: number;
+    cashOnHand: number;
+    rows: Array<{
+      date: string;
+      category: string;
+      description: string;
+      debit: number;
+      credit: number;
+      balance: number;
+      omzet: number;
+      operationalExpenses: number;
+      cogs: number;
+      netProfit: number;
+    }>;
+  };
+  profitLoss: {
+    revenue: number;
+    cogs: number;
+    grossProfit: number;
+    grossMargin: number;
+    operationalExpenses: number;
+    netProfit: number;
+    netMargin: number;
+    salesCount: number;
+  };
+  inventory: {
+    trackedItems: number;
+    lowStockItems: number;
+    inventoryValue: number;
+    items: Array<{
+      id: string;
+      name: string;
+      stock: number;
+      unit: string;
+      averageCost: number;
+      value: number;
+      lowStock: boolean;
+    }>;
+  };
+  salesMargin: {
+    invoiceCount: number;
+    averageMargin: number;
+    rows: Array<{
+      invoice: string;
+      date: string;
+      customerName: string;
+      revenue: number;
+      cogs: number;
+      grossProfit: number;
+      grossMargin: number;
+      itemCount: number;
+    }>;
+  };
+  receivables: {
+    count: number;
+    totalOutstanding: number;
+    rows: Array<{
+      invoice: string;
+      customerName: string;
+      amount: number;
+      paid: number;
+      remaining: number;
+      status: string;
+      date: string;
+    }>;
+  };
+  payables: {
+    count: number;
+    totalOutstanding: number;
+    rows: Array<{
+      purchaseNumber: string;
+      invoiceNumber: string;
+      vendorName: string;
+      amount: number;
+      paid: number;
+      remaining: number;
+      status: string;
+      date: string;
+    }>;
+  };
+}
+
+function getMonthStart(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function getTodayKey(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+}
+
+function emptyCashReport(): FormalAccountingReport["cashReport"] {
+  return {
+    totalDebit: 0,
+    totalCredit: 0,
+    netCashFlow: 0,
+    endingBalance: 0,
+    omzet: 0,
+    operationalExpenses: 0,
+    cogs: 0,
+    netProfit: 0,
+    cashOnHand: 0,
+    rows: [],
+  };
+}
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -46,7 +167,7 @@ export default function ReportsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [selectedReportType, setSelectedReportType] =
-    useState<ReportType>("financial");
+    useState<ReportType>("cash");
   const {
     data: archivesData,
     isLoading: loadingArchives,
@@ -56,12 +177,21 @@ export default function ReportsPage() {
     async () => {
       const list = await getArchivedPeriodsAction();
       return (list as Archive[]) || [];
-    }
+    },
   );
   const archives = archivesData ?? [];
   const [selectedArchive, setSelectedArchive] = useState<Archive | null>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [startDate, setStartDate] = useState(getMonthStart());
+  const [endDate, setEndDate] = useState(getTodayKey());
+  const [formalReport, setFormalReport] =
+    useState<FormalAccountingReport | null>(null);
+  const [loadingFormalReport, setLoadingFormalReport] = useState(false);
   const loading = currentUser === null;
+
+  useEffect(() => {
+    setFormalReport(null);
+  }, [selectedReportType, startDate, endDate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,24 +242,24 @@ export default function ReportsPage() {
     try {
       // Open print-friendly page with archived label & timestamp
       const printUrl = `/reports/financial/print?label=${encodeURIComponent(
-        selectedArchive.archived_label
+        selectedArchive.archived_label,
       )}&at=${encodeURIComponent(selectedArchive.archived_at)}`;
 
       const printWindow = window.open(
         printUrl,
         "_blank",
-        "width=1024,height=768"
+        "width=1024,height=768",
       );
 
       if (!printWindow) {
         throw new Error(
-          "Popup blocked! Mohon izinkan popup untuk browser ini."
+          "Popup blocked! Mohon izinkan popup untuk browser ini.",
         );
       }
 
       showMsg(
         "success",
-        "Print window dibuka! Anda bisa print atau save as PDF dari browser."
+        "Print window dibuka! Anda bisa print atau save as PDF dari browser.",
       );
     } catch (err: any) {
       console.error("Error opening print window:", err);
@@ -148,34 +278,81 @@ export default function ReportsPage() {
     });
   };
 
+  const formatRupiah = (amount: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount || 0);
+  };
+
+  const handleLoadFormalReport = async () => {
+    if (startDate > endDate) {
+      showMsg(
+        "error",
+        "Tanggal awal tidak boleh lebih besar dari tanggal akhir",
+      );
+      return;
+    }
+
+    setLoadingFormalReport(true);
+    try {
+      const report = await getFormalAccountingReportAction({
+        startDate,
+        endDate,
+      });
+      setFormalReport(report as FormalAccountingReport);
+      showMsg("success", "Laporan diperbarui");
+    } catch (err: any) {
+      console.error("Error loading formal report:", err);
+      showMsg("error", err.message || "Gagal memuat laporan");
+    } finally {
+      setLoadingFormalReport(false);
+    }
+  };
+
   const reportTypes = [
+    {
+      id: "cash" as ReportType,
+      icon: <CoinIcon size={32} />,
+      title: "Laporan Kas",
+      description: "Transaksi kas, saldo akhir, omzet, biaya, laba",
+      available: true,
+    },
     {
       id: "financial" as ReportType,
       icon: <CoinIcon size={32} />,
-      title: "Laporan Keuangan",
+      title: "Arsip Kas",
       description: "Ringkasan transaksi dari arsip tutup buku",
+      available: true,
+    },
+    {
+      id: "profit-loss" as ReportType,
+      icon: <CoinIcon size={32} />,
+      title: "Laba Rugi",
+      description: "Omzet, HPP, laba kotor, biaya, laba bersih",
       available: true,
     },
     {
       id: "inventory" as ReportType,
       icon: <BoxIcon size={32} />,
-      title: "Laporan Inventori",
-      description: "Stok barang dan pergerakan inventori",
-      available: false,
+      title: "Persediaan",
+      description: "Stok, HPP rata-rata, dan nilai persediaan",
+      available: true,
     },
     {
       id: "pos" as ReportType,
       icon: <ShoppingCartIcon size={32} />,
-      title: "Laporan POS",
-      description: "Transaksi penjualan dari sistem kasir",
-      available: false,
+      title: "Margin Penjualan",
+      description: "Invoice, HPP snapshot, laba kotor, margin",
+      available: true,
     },
     {
       id: "receivables" as ReportType,
       icon: <ClipboardIcon size={32} />,
-      title: "Laporan Hutang & Piutang",
+      title: "Hutang & Piutang",
       description: "Daftar hutang supplier dan piutang customer",
-      available: false,
+      available: true,
     },
   ];
 
@@ -209,7 +386,7 @@ export default function ReportsPage() {
         <h3 className="text-lg font-bold text-gray-800 mb-4">
           Pilih Jenis Laporan
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
           {reportTypes.map((type) => (
             <button
               key={type.id}
@@ -221,8 +398,8 @@ export default function ReportsPage() {
                   selectedReportType === type.id && type.available
                     ? "border-purple-500 bg-purple-50 shadow-lg transform scale-105"
                     : type.available
-                    ? "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md"
-                    : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                      ? "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md"
+                      : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
                 }
               `}
             >
@@ -445,15 +622,23 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Coming Soon Sections */}
+      {/* Accounting Reports */}
       {selectedReportType !== "financial" && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="text-6xl mb-4">🚧</div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Coming Soon</h3>
-          <p className="text-gray-600">
-            Fitur laporan ini sedang dalam pengembangan
-          </p>
-        </div>
+        <FormalReportPanel
+          selectedReportType={selectedReportType}
+          title={
+            reportTypes.find((type) => type.id === selectedReportType)?.title ||
+            "Laporan"
+          }
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onLoad={handleLoadFormalReport}
+          loading={loadingFormalReport}
+          report={formalReport}
+          formatRupiah={formatRupiah}
+        />
       )}
 
       {/* Notification Toast */}
@@ -461,5 +646,391 @@ export default function ReportsPage() {
         <NotificationToast type={notice.type} message={notice.message} />
       )}
     </>
+  );
+}
+
+function FormalReportPanel({
+  selectedReportType,
+  title,
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+  onLoad,
+  loading,
+  report,
+  formatRupiah,
+}: {
+  selectedReportType: Exclude<ReportType, "financial">;
+  title: string;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  onLoad: () => void;
+  loading: boolean;
+  report: FormalAccountingReport | null;
+  formatRupiah: (amount: number) => string;
+}) {
+  const cashReport = report?.cashReport ?? emptyCashReport();
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-1">{title}</h3>
+          <p className="text-sm text-gray-600">
+            Kalkulasi otomatis dari transaksi POS, HPP snapshot, persediaan,
+            piutang, hutang, dan buku kas.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Dari
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => onStartDateChange(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Sampai
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => onEndDateChange(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <button
+            onClick={onLoad}
+            disabled={loading}
+            className="self-end px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50"
+          >
+            {loading ? "Memuat..." : "Muat Laporan"}
+          </button>
+        </div>
+      </div>
+
+      {!report ? (
+        <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
+          <ClipboardIcon size={48} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-700 font-semibold">
+            Pilih periode lalu klik Muat Laporan
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Laporan dihitung langsung dari transaksi, bukan rumus bebas
+            halaman Keuangan.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {selectedReportType === "cash" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MetricCard
+                  label="Saldo Akhir"
+                  value={formatRupiah(cashReport.endingBalance)}
+                  color="purple"
+                />
+                <MetricCard
+                  label="Kas Masuk"
+                  value={formatRupiah(cashReport.totalDebit)}
+                  color="green"
+                />
+                <MetricCard
+                  label="Kas Keluar"
+                  value={formatRupiah(cashReport.totalCredit)}
+                  color="red"
+                />
+                <MetricCard
+                  label="Omzet"
+                  value={formatRupiah(cashReport.omzet)}
+                  color="blue"
+                />
+                <MetricCard
+                  label="Total Biaya"
+                  value={formatRupiah(
+                    cashReport.operationalExpenses + cashReport.cogs,
+                  )}
+                  color="slate"
+                />
+                <MetricCard
+                  label="Laba Bersih"
+                  value={formatRupiah(cashReport.netProfit)}
+                  color="amber"
+                />
+              </div>
+              <FormalTable
+                columns={[
+                  "Tanggal",
+                  "Kategori",
+                  "Keterangan",
+                  "Debit",
+                  "Kredit",
+                  "Saldo",
+                  "Omzet",
+                  "Biaya Ops",
+                ]}
+                rows={cashReport.rows.map((row) => [
+                  row.date,
+                  row.category,
+                  row.description,
+                  formatRupiah(row.debit),
+                  formatRupiah(row.credit),
+                  formatRupiah(row.balance),
+                  formatRupiah(row.omzet),
+                  formatRupiah(row.operationalExpenses),
+                ])}
+              />
+            </>
+          )}
+
+          {selectedReportType === "profit-loss" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MetricCard
+                label="Omzet"
+                value={formatRupiah(report.profitLoss.revenue)}
+                detail={`${report.profitLoss.salesCount} invoice`}
+                color="green"
+              />
+              <MetricCard
+                label="HPP"
+                value={formatRupiah(report.profitLoss.cogs)}
+                color="slate"
+              />
+              <MetricCard
+                label="Laba Kotor"
+                value={formatRupiah(report.profitLoss.grossProfit)}
+                detail={`Margin ${report.profitLoss.grossMargin.toFixed(2)}%`}
+                color="blue"
+              />
+              <MetricCard
+                label="Biaya Operasional"
+                value={formatRupiah(report.profitLoss.operationalExpenses)}
+                color="red"
+              />
+              <MetricCard
+                label="Laba Bersih"
+                value={formatRupiah(report.profitLoss.netProfit)}
+                detail={`Net margin ${report.profitLoss.netMargin.toFixed(2)}%`}
+                color="purple"
+                wide
+              />
+            </div>
+          )}
+
+          {selectedReportType === "inventory" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MetricCard
+                  label="Nilai Persediaan"
+                  value={formatRupiah(report.inventory.inventoryValue)}
+                  color="green"
+                />
+                <MetricCard
+                  label="Item Dilacak"
+                  value={String(report.inventory.trackedItems)}
+                  color="slate"
+                />
+                <MetricCard
+                  label="Stok Menipis"
+                  value={String(report.inventory.lowStockItems)}
+                  color="red"
+                />
+              </div>
+              <FormalTable
+                columns={["Barang", "Stok", "HPP Rata-rata", "Nilai"]}
+                rows={report.inventory.items.map((item) => [
+                  item.name,
+                  `${item.stock.toLocaleString("id-ID")} ${item.unit}`,
+                  formatRupiah(item.averageCost),
+                  formatRupiah(item.value),
+                ])}
+              />
+            </>
+          )}
+
+          {selectedReportType === "pos" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MetricCard
+                  label="Invoice"
+                  value={String(report.salesMargin.invoiceCount)}
+                  color="blue"
+                />
+                <MetricCard
+                  label="Rata-rata Margin"
+                  value={`${report.salesMargin.averageMargin.toFixed(2)}%`}
+                  color="purple"
+                />
+                <MetricCard
+                  label="Laba Kotor"
+                  value={formatRupiah(report.profitLoss.grossProfit)}
+                  color="green"
+                />
+              </div>
+              <FormalTable
+                columns={[
+                  "Invoice",
+                  "Customer",
+                  "Omzet",
+                  "HPP",
+                  "Laba",
+                  "Margin",
+                ]}
+                rows={report.salesMargin.rows.map((row) => [
+                  row.invoice,
+                  row.customerName,
+                  formatRupiah(row.revenue),
+                  formatRupiah(row.cogs),
+                  formatRupiah(row.grossProfit),
+                  `${row.grossMargin.toFixed(2)}%`,
+                ])}
+              />
+            </>
+          )}
+
+          {selectedReportType === "receivables" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetricCard
+                  label="Piutang Belum Lunas"
+                  value={formatRupiah(report.receivables.totalOutstanding)}
+                  detail={`${report.receivables.count} invoice`}
+                  color="green"
+                />
+                <MetricCard
+                  label="Hutang Vendor"
+                  value={formatRupiah(report.payables.totalOutstanding)}
+                  detail={`${report.payables.count} tagihan`}
+                  color="amber"
+                />
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <FormalTable
+                  title="Piutang"
+                  columns={["Invoice", "Customer", "Sisa", "Status"]}
+                  rows={report.receivables.rows.map((row) => [
+                    row.invoice,
+                    row.customerName,
+                    formatRupiah(row.remaining),
+                    row.status,
+                  ])}
+                />
+                <FormalTable
+                  title="Hutang"
+                  columns={["PO", "Vendor", "Sisa", "Status"]}
+                  rows={report.payables.rows.map((row) => [
+                    row.purchaseNumber || row.invoiceNumber,
+                    row.vendorName,
+                    formatRupiah(row.remaining),
+                    row.status,
+                  ])}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  color,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  color: "green" | "slate" | "blue" | "red" | "purple" | "amber";
+  wide?: boolean;
+}) {
+  const classes = {
+    green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-700",
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    red: "border-red-200 bg-red-50 text-red-700",
+    purple: "border-purple-200 bg-purple-50 text-purple-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+  }[color];
+
+  return (
+    <div
+      className={`rounded-xl border p-4 ${classes} ${
+        wide ? "md:col-span-2" : ""
+      }`}
+    >
+      <p className="text-sm text-gray-600 font-semibold">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
+      {detail && <p className="text-xs text-gray-500 mt-1">{detail}</p>}
+    </div>
+  );
+}
+
+function FormalTable({
+  title,
+  columns,
+  rows,
+}: {
+  title?: string;
+  columns: string[];
+  rows: string[][];
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      {title && (
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-bold text-gray-800">
+          {title}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-800 text-white">
+            <tr>
+              {columns.map((column) => (
+                <th key={column} className="px-4 py-3 text-left font-bold">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-8 text-center text-gray-500"
+                >
+                  Tidak ada data untuk periode ini.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, rowIndex) => (
+                <tr
+                  key={rowIndex}
+                  className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="px-4 py-3 text-gray-700">
+                      {cell || "-"}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

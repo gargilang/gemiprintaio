@@ -81,6 +81,10 @@ class SaleItem {
   final double quantity;
   final double hargaSatuan;
   final double subtotal;
+  final double hppSatuan;
+  final double hppTotal;
+  final double grossProfit;
+  final double grossMargin;
   final double? panjang;
   final double? lebar;
   final String? finishingOptions;
@@ -94,6 +98,10 @@ class SaleItem {
     this.quantity = 0,
     this.hargaSatuan = 0,
     this.subtotal = 0,
+    this.hppSatuan = 0,
+    this.hppTotal = 0,
+    this.grossProfit = 0,
+    this.grossMargin = 0,
     this.panjang,
     this.lebar,
     this.finishingOptions,
@@ -109,6 +117,10 @@ class SaleItem {
       quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
       hargaSatuan: (json['harga_satuan'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
+      hppSatuan: (json['hpp_satuan'] as num?)?.toDouble() ?? 0,
+      hppTotal: (json['hpp_total'] as num?)?.toDouble() ?? 0,
+      grossProfit: (json['gross_profit'] as num?)?.toDouble() ?? 0,
+      grossMargin: (json['gross_margin'] as num?)?.toDouble() ?? 0,
       panjang: (json['panjang'] as num?)?.toDouble(),
       lebar: (json['lebar'] as num?)?.toDouble(),
       finishingOptions: json['finishing_options'] as String?,

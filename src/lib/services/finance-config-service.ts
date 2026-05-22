@@ -360,7 +360,7 @@ async function ensureColumnRulesTable(): Promise<void> {
       const seedContributions = [
         { codes: ["OMZET", "PIUTANG", "LUNAS"], contrib: [{ column: "omzet", amount_field: "debit", sign: 1 }] },
         { codes: ["BIAYA", "TABUNGAN", "KOMISI"], contrib: [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }] },
-        { codes: ["SUPPLY", "HUTANG"], contrib: [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }] },
+        { codes: ["HPP"], contrib: [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }] },
       ];
       for (const { codes, contrib } of seedContributions) {
         await sb

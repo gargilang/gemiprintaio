@@ -7,7 +7,7 @@ export const FINANCE_SLOT_LABELS: Record<string, string> = {
   saldo: "Saldo kas",
   omzet: "Omzet",
   biaya_operasional: "Biaya operasional",
-  biaya_bahan: "Biaya bahan",
+  biaya_bahan: "HPP",
   laba_bersih: "Laba bersih",
   bagi_hasil_anwar: "Mitra bagi hasil 1",
   bagi_hasil_suri: "Mitra bagi hasil 2",

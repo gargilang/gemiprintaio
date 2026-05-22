@@ -20,6 +20,9 @@ interface ReportData {
   summary: {
     totalIncome: number;
     totalExpenses: number;
+    totalHpp?: number;
+    grossProfit?: number;
+    operationalExpenses?: number;
     netProfit: number;
     profitMargin: number;
   };
@@ -127,6 +130,7 @@ export default function PrintFinancialReport() {
       SUBSIDI: "#eab308", // yellow-500
       LUNAS: "#14b8a6", // teal-500
       SUPPLY: "#f97316", // orange-500
+      HPP: "#475569", // slate-600
       LABA: "#10b981", // emerald-500
       KOMISI: "#06b6d4", // cyan-500
       TABUNGAN: "#6366f1", // indigo-500
@@ -282,10 +286,22 @@ export default function PrintFinancialReport() {
             </div>
             <div className="border-2 border-red-500 rounded-lg p-4 bg-red-50">
               <p className="text-sm text-gray-600 mb-1 font-medium">
-                Total Pengeluaran
+                Total Biaya
               </p>
               <p className="text-2xl font-bold text-red-600">
                 {formatCurrency(reportData.summary.totalExpenses)}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                HPP {formatCurrency(reportData.summary.totalHpp ?? 0)} + Ops{" "}
+                {formatCurrency(reportData.summary.operationalExpenses ?? 0)}
+              </p>
+            </div>
+            <div className="border-2 border-slate-500 rounded-lg p-4 bg-slate-50">
+              <p className="text-sm text-gray-600 mb-1 font-medium">
+                Laba Kotor
+              </p>
+              <p className="text-2xl font-bold text-slate-700">
+                {formatCurrency(reportData.summary.grossProfit ?? 0)}
               </p>
             </div>
             <div className="border-2 border-[#00afef] rounded-lg p-4 bg-blue-50">

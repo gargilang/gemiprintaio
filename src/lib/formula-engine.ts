@@ -191,8 +191,7 @@ export const DEFAULT_CATEGORY_CONTRIBUTIONS: Record<string, CategoryContribution
   BIAYA:   [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
   TABUNGAN:[{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
   KOMISI:  [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
-  SUPPLY:  [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }],
-  HUTANG:  [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }],
+  HPP:     [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }],
 };
 
 /** Resolve KasbonConditions from raw DB value (string or object). */

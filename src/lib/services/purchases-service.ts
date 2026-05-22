@@ -125,6 +125,124 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function positiveNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+async function fallbackAverageCostPerBaseUnit(
+  barangId: string,
+  preferredHargaSatuanId?: string | null
+): Promise<number> {
+  const prices = await db.query<any>("harga_barang_satuan", {
+    where: { barang_id: barangId },
+    orderBy: { column: "urutan_tampilan", ascending: true },
+  });
+  const rows = prices.data || [];
+  const preferred = preferredHargaSatuanId
+    ? rows.find((r: any) => r.id === preferredHargaSatuanId)
+    : null;
+  const unit =
+    preferred ||
+    rows.find((r: any) => Number(r.default_status) === 1) ||
+    rows.find((r: any) => Number(r.faktor_konversi) === 1) ||
+    rows[0];
+  const factor = positiveNumber(unit?.faktor_konversi) || 1;
+  return positiveNumber(unit?.harga_beli) / factor;
+}
+
+async function syncUnitPurchasePricesFromAverage(
+  barangId: string,
+  averageCostPerBaseUnit: number
+): Promise<void> {
+  const upsRes = await db.query<{ id: string; faktor_konversi: number }>(
+    "harga_barang_satuan",
+    { where: { barang_id: barangId } }
+  );
+  if (upsRes.error) throw upsRes.error;
+  for (const up of upsRes.data || []) {
+    const newPrice = averageCostPerBaseUnit * (positiveNumber(up.faktor_konversi) || 1);
+    const upd = await db.update("harga_barang_satuan", up.id, {
+      harga_beli: newPrice,
+      diperbarui_pada: new Date().toISOString(),
+    });
+    if (upd.error) throw upd.error;
+  }
+}
+
+async function applyPurchaseCostToMaterial(item: {
+  barang_id: string;
+  harga_satuan_id?: string | null;
+  jumlah: number;
+  faktor_konversi: number;
+  harga_satuan: number;
+}): Promise<void> {
+  const materialResult = await db.queryOne("barang", {
+    where: { id: item.barang_id },
+  });
+  const material = materialResult.data as Record<string, unknown> | null;
+
+  if (!material) {
+    throw new Error(`Barang tidak ditemukan: ${item.barang_id}`);
+  }
+
+  const qtyBase = item.jumlah * (positiveNumber(item.faktor_konversi) || 1);
+  const oldStock = Number(material.jumlah_stok) || 0;
+  const oldAverage =
+    positiveNumber((material as any).average_cost_per_base_unit) ||
+    (await fallbackAverageCostPerBaseUnit(item.barang_id, item.harga_satuan_id));
+  const purchaseCostPerBase =
+    positiveNumber(item.harga_satuan) / (positiveNumber(item.faktor_konversi) || 1);
+  const newStock = oldStock + qtyBase;
+  const newAverage =
+    newStock > 0
+      ? (oldStock * oldAverage + qtyBase * purchaseCostPerBase) / newStock
+      : purchaseCostPerBase;
+
+  const stockResult = await db.update("barang", item.barang_id, {
+    jumlah_stok: newStock,
+    average_cost_per_base_unit: newAverage,
+    diperbarui_pada: new Date().toISOString(),
+  });
+  if (stockResult.error) throw stockResult.error;
+
+  await syncUnitPurchasePricesFromAverage(item.barang_id, newAverage);
+}
+
+async function reversePurchaseCostFromMaterial(item: {
+  barang_id: string;
+  harga_satuan_id?: string | null;
+  jumlah: number;
+  faktor_konversi: number;
+  harga_satuan: number;
+}): Promise<void> {
+  const materialResult = await db.query("barang", {
+    where: { id: item.barang_id },
+  });
+  const material = materialResult.data?.[0];
+  if (!material) return;
+
+  const qtyBase = item.jumlah * (positiveNumber(item.faktor_konversi) || 1);
+  const currentStock = Number(material.jumlah_stok) || 0;
+  const currentAverage =
+    positiveNumber(material.average_cost_per_base_unit) ||
+    (await fallbackAverageCostPerBaseUnit(item.barang_id, item.harga_satuan_id));
+  const purchaseCostPerBase =
+    positiveNumber(item.harga_satuan) / (positiveNumber(item.faktor_konversi) || 1);
+  const newStock = Math.max(0, currentStock - qtyBase);
+  const newAverage =
+    newStock > 0
+      ? Math.max(0, (currentStock * currentAverage - qtyBase * purchaseCostPerBase) / newStock)
+      : 0;
+
+  await db.update("barang", item.barang_id, {
+    jumlah_stok: newStock,
+    average_cost_per_base_unit: newAverage,
+    diperbarui_pada: new Date().toISOString(),
+  });
+  await syncUnitPurchasePricesFromAverage(item.barang_id, newAverage);
+}
+
 async function nextNomorPembelian(): Promise<string> {
   let last: string | null | undefined;
   if (getServerSupabaseClient()) {
@@ -419,46 +537,7 @@ export async function createPurchase(data: {
           throw itemResult.error;
         }
 
-        const materialResult = await db.queryOne("barang", {
-          where: { id: item.barang_id },
-        });
-        const material = materialResult.data as Record<string, unknown> | null;
-
-        if (!material) {
-          throw new Error(`Barang tidak ditemukan: ${item.barang_id}`);
-        }
-
-        const jumlahDalamSatuanDasar =
-          item.jumlah * (item.faktor_konversi || 1);
-        const newStock =
-          (Number(material.jumlah_stok) || 0) + jumlahDalamSatuanDasar;
-
-        const stockResult = await db.update("barang", item.barang_id, {
-          jumlah_stok: newStock,
-          diperbarui_pada: new Date().toISOString(),
-        });
-        if (stockResult.error) {
-          throw stockResult.error;
-        }
-
-        if (item.harga_satuan_id && item.faktor_konversi) {
-          const pricePerBaseUnit = item.harga_satuan / item.faktor_konversi;
-          const upsRes = await db.query<{ id: string; faktor_konversi: number }>(
-            "harga_barang_satuan",
-            {
-              where: { barang_id: item.barang_id },
-            }
-          );
-          if (upsRes.error) throw upsRes.error;
-          for (const up of upsRes.data || []) {
-            const newPrice = pricePerBaseUnit * up.faktor_konversi;
-            const upd = await db.update("harga_barang_satuan", up.id, {
-              harga_beli: newPrice,
-              diperbarui_pada: new Date().toISOString(),
-            });
-            if (upd.error) throw upd.error;
-          }
-        }
+        await applyPurchaseCostToMaterial(item);
       }
 
       if (isCashPayment(metodePembayaran)) {
@@ -496,7 +575,7 @@ export async function createPurchase(data: {
           debit: 0,
           kredit: total_harga,
           keperluan,
-          biaya_bahan: total_harga,
+          biaya_bahan: 0,
           catatan: data.catatan?.trim() || null,
           dibuat_oleh: data.dibuat_oleh || null,
           urutan_tampilan: nextOrder,
@@ -668,21 +747,9 @@ export async function updatePurchase(
     });
     const oldItems = oldItemsResult.data || [];
 
-    // Reverse old stock changes
+    // Reverse old stock and inventory value changes
     for (const oldItem of oldItems) {
-      const materialResult = await db.query("barang", {
-        where: { id: oldItem.barang_id },
-      });
-      const material = materialResult.data?.[0];
-
-      if (material && material.lacak_inventori_status) {
-        const stockToRemove = oldItem.jumlah * oldItem.faktor_konversi;
-        const newStock = (material.jumlah_stok || 0) - stockToRemove;
-
-        await db.update("barang", oldItem.barang_id, {
-          jumlah_stok: newStock,
-        });
-      }
+      await reversePurchaseCostFromMaterial(oldItem);
     }
 
     // Delete old items
@@ -738,27 +805,7 @@ export async function updatePurchase(
         console.error("Failed to insert purchase item:", itemResult.error);
       }
 
-      // Add new stock
-      const materialResult = await db.query("barang", {
-        where: { id: item.barang_id },
-      });
-      const material = materialResult.data?.[0];
-
-      if (material && material.lacak_inventori_status) {
-        const jumlahDalamSatuanDasar = item.jumlah * item.faktor_konversi;
-        const newStock = (material.jumlah_stok || 0) + jumlahDalamSatuanDasar;
-
-        await db.update("barang", item.barang_id, {
-          jumlah_stok: newStock,
-        });
-      }
-
-      // Update harga_beli in harga_barang_satuan if exists
-      if (item.harga_satuan_id) {
-        await db.update("harga_barang_satuan", item.harga_satuan_id, {
-          harga_beli: item.harga_satuan,
-        });
-      }
+      await applyPurchaseCostToMaterial(item);
     }
 
     // Update keuangan entry if exists (for LUNAS purchases)
@@ -777,7 +824,7 @@ export async function updatePurchase(
         tanggal: data.tanggal,
         keperluan: keperluanText,
         kredit: total_harga,
-        biaya_bahan: total_harga,
+        biaya_bahan: 0,
         catatan: data.catatan || null,
       });
     }
@@ -858,21 +905,9 @@ export async function deletePurchase(id: string): Promise<void> {
 
     const items = itemsResult.data || [];
 
-    // Reverse stock changes
+    // Reverse stock and inventory value changes
     for (const item of items) {
-      const materialResult = await db.query("barang", {
-        where: { id: item.barang_id },
-      });
-      const material = materialResult.data?.[0];
-
-      if (material && material.lacak_inventori_status) {
-        const stockToRemove = item.jumlah * item.faktor_konversi;
-        const newStock = (material.jumlah_stok || 0) - stockToRemove;
-
-        await db.update("barang", item.barang_id, {
-          jumlah_stok: Math.max(0, newStock),
-        });
-      }
+      await reversePurchaseCostFromMaterial(item);
     }
 
     // Delete linked cashbook entries by reference (works on Supabase + SQLite)
@@ -1112,7 +1147,7 @@ export async function payDebt(data: {
       debit: 0,
       kredit: data.jumlah_bayar,
       keperluan,
-      biaya_bahan: data.jumlah_bayar,
+      biaya_bahan: 0,
       catatan:
         data.catatan || `Pelunasan ${newStatus} - ${purchase.nomor_faktur}`,
       dibuat_oleh: data.dibuat_oleh || null,

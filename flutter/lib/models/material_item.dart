@@ -11,6 +11,7 @@ class MaterialItem {
   final bool trackStock;
   final bool dimensiRequired;
   final double stok;
+  final double averageCostPerBaseUnit;
   final String? createdAt;
   final String? updatedAt;
   final List<MaterialPrice> harga;
@@ -28,6 +29,7 @@ class MaterialItem {
     this.trackStock = false,
     this.dimensiRequired = false,
     this.stok = 0,
+    this.averageCostPerBaseUnit = 0,
     this.createdAt,
     this.updatedAt,
     this.harga = const [],
@@ -48,6 +50,8 @@ class MaterialItem {
       trackStock: (json['track_stock'] ?? false) as bool,
       dimensiRequired: (json['dimensi_required'] ?? false) as bool,
       stok: (json['stok'] as num?)?.toDouble() ?? 0,
+      averageCostPerBaseUnit:
+          (json['average_cost_per_base_unit'] as num?)?.toDouble() ?? 0,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
       harga: hargaList is List

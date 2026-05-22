@@ -27,6 +27,7 @@ export interface Material {
   satuan_dasar: string;
   spesifikasi?: string | null;
   jumlah_stok: number;
+  average_cost_per_base_unit?: number;
   level_stok_minimum: number;
   lacak_inventori_status: boolean | number;
   butuh_dimensi_status: boolean | number;
@@ -171,6 +172,17 @@ export async function createMaterial(
 
     // Insert material
     const isDimensional = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
+    const defaultUnitPrice =
+      Array.isArray(unit_prices) && unit_prices.length > 0
+        ? unit_prices.find((up: UnitPrice) => toDbIntBoolean(up.default_status) === 1) ??
+          unit_prices.find((up: UnitPrice) => Number(up.faktor_konversi) === 1) ??
+          unit_prices[0]
+        : null;
+    const initialAverageCostPerBaseUnit =
+      defaultUnitPrice && Number(defaultUnitPrice.faktor_konversi || 0) > 0
+        ? Number(defaultUnitPrice.harga_beli || 0) /
+          Number(defaultUnitPrice.faktor_konversi || 1)
+        : 0;
     const materialResult = await db.insert("barang", {
       id: materialId,
       ...materialData,
@@ -183,6 +195,8 @@ export async function createMaterial(
         : materialData.level_stok_minimum ?? 0,
       lacak_inventori_status: toDbIntBoolean(materialData.lacak_inventori_status),
       butuh_dimensi_status: toDbIntBoolean(materialData.butuh_dimensi_status),
+      average_cost_per_base_unit:
+        materialData.average_cost_per_base_unit ?? initialAverageCostPerBaseUnit,
       dibuat_pada: new Date().toISOString(),
       diperbarui_pada: new Date().toISOString(),
     });

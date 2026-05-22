@@ -966,7 +966,7 @@ export default function AddMaterialModal({
                       {/* Harga Beli */}
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Harga Beli
+                          HPP Rata-rata Awal
                         </label>
                         <input
                           type="number"

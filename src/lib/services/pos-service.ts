@@ -56,6 +56,10 @@ export interface SaleItem {
   faktor_konversi: number;
   harga_satuan: number;
   subtotal: number;
+  hpp_satuan?: number;
+  hpp_total?: number;
+  gross_profit?: number;
+  gross_margin?: number;
   panjang?: number | null;
   lebar?: number | null;
   dibuat_pada?: string;
@@ -128,6 +132,32 @@ function getTodayJakarta(): string {
   return new Date().toLocaleDateString("sv-SE", {
     timeZone: "Asia/Jakarta",
   });
+}
+
+function positiveNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+async function fallbackAverageCostPerBaseUnit(
+  barangId: string,
+  hargaSatuanId?: string | null
+): Promise<number> {
+  const unitPricesResult = await db.query<any>("harga_barang_satuan", {
+    where: { barang_id: barangId },
+    orderBy: { column: "urutan_tampilan", ascending: true },
+  });
+  const rows = unitPricesResult.data || [];
+  const preferred = hargaSatuanId
+    ? rows.find((r: any) => r.id === hargaSatuanId)
+    : null;
+  const unit =
+    preferred ||
+    rows.find((r: any) => Number(r.default_status) === 1) ||
+    rows.find((r: any) => Number(r.faktor_konversi) === 1) ||
+    rows[0];
+  const factor = positiveNumber(unit?.faktor_konversi) || 1;
+  return positiveNumber(unit?.harga_beli) / factor;
 }
 
 async function generateInvoiceNumber(tanggal: string): Promise<string> {
@@ -345,6 +375,8 @@ export async function createSale(data: CreateSaleData): Promise<{
       ["DOWN_PAYMENT", "NET30"].includes(data.metode_pembayaran) ||
       (isFullPaymentMethod && actualPaid < data.total_jumlah && actualPaid > 0);
 
+    let totalHpp = 0;
+
     // Execute in transaction
     const saleResultPayload = await db.transaction(async () => {
       // Create sale record
@@ -367,6 +399,24 @@ export async function createSale(data: CreateSaleData): Promise<{
       for (const item of data.items) {
         const itemId = generateId();
 
+        const materialResult = await db.queryOne("barang", {
+          where: { id: item.barang_id },
+        });
+        const material = materialResult.data;
+        const averageCostPerBaseUnit =
+          positiveNumber(material?.average_cost_per_base_unit) ||
+          (await fallbackAverageCostPerBaseUnit(
+            item.barang_id,
+            item.harga_satuan_id
+          ));
+        const hppSatuan =
+          averageCostPerBaseUnit * (positiveNumber(item.faktor_konversi) || 1);
+        const hppTotal = hppSatuan * item.jumlah;
+        const grossProfit = item.subtotal - hppTotal;
+        const grossMargin =
+          item.subtotal > 0 ? (grossProfit / item.subtotal) * 100 : 0;
+        totalHpp += hppTotal;
+
         const saleItem = {
           id: itemId,
           penjualan_id: saleId,
@@ -377,17 +427,16 @@ export async function createSale(data: CreateSaleData): Promise<{
           faktor_konversi: item.faktor_konversi,
           harga_satuan: item.harga_satuan,
           subtotal: item.subtotal,
+          hpp_satuan: hppSatuan,
+          hpp_total: hppTotal,
+          gross_profit: grossProfit,
+          gross_margin: grossMargin,
         };
 
         const itemResult = await db.insert("item_penjualan", saleItem);
         if (itemResult.error) throw itemResult.error;
 
         // Update stock if material tracks inventory
-        const materialResult = await db.queryOne("barang", {
-          where: { id: item.barang_id },
-        });
-
-        const material = materialResult.data;
         if (material && material.lacak_inventori_status) {
           const stockReduction = item.jumlah * item.faktor_konversi;
           const newStock = (material.jumlah_stok || 0) - stockReduction;
@@ -417,6 +466,20 @@ export async function createSale(data: CreateSaleData): Promise<{
             saleId
           ),
           omzet: data.total_jumlah,
+          catatan: data.catatan,
+          dibuat_oleh: data.kasir_id,
+        });
+      }
+
+      if (totalHpp > 0) {
+        await createFinanceEntry({
+          tanggal: tanggalSale,
+          kategori_transaksi: "HPP",
+          debit: 0,
+          kredit: totalHpp,
+          keperluan: `HPP ${invoiceNumber} [REF:${saleId}]`,
+          omzet: 0,
+          biaya_bahan: totalHpp,
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
         });
@@ -944,9 +1007,11 @@ export async function revertSalePayment(data: {
 async function createFinanceEntry(data: {
   tanggal: string;
   kategori_transaksi: string;
-  debit: number;
+  debit?: number;
+  kredit?: number;
   keperluan: string;
-  omzet: number;
+  omzet?: number;
+  biaya_bahan?: number;
   catatan?: string | null;
   dibuat_oleh?: string | null;
 }) {
@@ -964,14 +1029,17 @@ async function createFinanceEntry(data: {
   const nextDisplayOrder = (maxOrder || 0) + 1;
 
   const keuanganId = generateId();
+  const debit = data.debit ?? 0;
+  const kredit = data.kredit ?? 0;
   const finance = {
     id: keuanganId,
     tanggal: data.tanggal,
     kategori_transaksi: data.kategori_transaksi,
-    debit: data.debit,
-    kredit: 0,
+    debit,
+    kredit,
     keperluan: data.keperluan,
-    omzet: data.omzet,
+    omzet: data.omzet ?? 0,
+    biaya_bahan: data.biaya_bahan ?? 0,
     catatan: data.catatan || null,
     dibuat_oleh: data.dibuat_oleh || null,
     urutan_tampilan: nextDisplayOrder,

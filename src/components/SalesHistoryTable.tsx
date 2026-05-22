@@ -439,6 +439,12 @@ export default function SalesHistoryTable({
                                   <span className="font-semibold text-[#00afef]">
                                     Rp {item.subtotal.toLocaleString("id-ID")}
                                   </span>
+                                  {typeof item.hpp_total === "number" && (
+                                    <span className="text-slate-500">
+                                      HPP Rp{" "}
+                                      {item.hpp_total.toLocaleString("id-ID")}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             ))}
