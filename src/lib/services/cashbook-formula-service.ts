@@ -39,6 +39,7 @@ interface FormulaRow {
   formula_key?: string | null;
   actor_id?: string | null;
   formula_group?: string | null;
+  is_visible_in_summary?: number | boolean | null;
 }
 
 interface PartnerRow {
@@ -65,6 +66,10 @@ function rowToFormula(r: FormulaRow): FormulaDefinition {
     r.formula_group && validGroups.has(r.formula_group)
       ? (r.formula_group as FormulaDefinition["formulaGroup"])
       : "custom";
+  // Visibility default mirrors the SQL migration: actor-driven groups are
+  // visible by default, summary + custom are hidden until opt-in.
+  const visibleDefault =
+    group === "profit_share" || group === "cash_advance" || group === "bonus";
   return {
     id: r.id,
     name: r.name,
@@ -73,6 +78,12 @@ function rowToFormula(r: FormulaRow): FormulaDefinition {
     formulaKey: r.formula_key ?? r.db_column,
     actorId: r.actor_id ?? null,
     formulaGroup: group,
+    isVisibleInSummary:
+      r.is_visible_in_summary === undefined ||
+      r.is_visible_in_summary === null
+        ? visibleDefault
+        : r.is_visible_in_summary === true ||
+          r.is_visible_in_summary === 1,
     ast: parseAst(r.ast),
     enabled: r.enabled === true || r.enabled === 1,
     isSystem: r.is_system === true || r.is_system === 1,
@@ -106,6 +117,12 @@ async function withSqlite<T>(
 // ── Formulas ───────────────────────────────────────────────────────────────
 
 export async function listFormulas(): Promise<FormulaDefinition[]> {
+  // seedDefaultsIfEmpty is idempotent (INSERT OR IGNORE) and cheap, so we
+  // call it on every list. This guarantees the 5 system formulas (Omzet,
+  // Biaya Operasional, Biaya Bahan, Saldo, Laba Bersih) exist even when
+  // the table already contains user-created actor formulas.
+  await seedDefaultsIfEmpty();
+
   const sb = getServerSupabaseClient();
   if (sb) {
     const { data, error } = await sb
@@ -114,17 +131,8 @@ export async function listFormulas(): Promise<FormulaDefinition[]> {
       .order("display_order", { ascending: true });
     if (error) {
       console.warn("listFormulas Supabase:", error.message);
-    } else if (data && data.length > 0) {
+    } else if (data) {
       return (data as FormulaRow[]).map(rowToFormula);
-    } else {
-      await seedDefaultsIfEmpty();
-      const { data: seeded } = await sb
-        .from("cashbook_formula")
-        .select("*")
-        .order("display_order", { ascending: true });
-      if (seeded && seeded.length > 0) {
-        return (seeded as FormulaRow[]).map(rowToFormula);
-      }
     }
   }
 
@@ -135,17 +143,8 @@ export async function listFormulas(): Promise<FormulaDefinition[]> {
       )
       .all() as FormulaRow[]
   );
-  if (sqliteRows && sqliteRows.length > 0) {
+  if (sqliteRows) {
     return sqliteRows.map(rowToFormula);
-  }
-  if (sqliteRows && sqliteRows.length === 0) {
-    await seedDefaultsIfEmpty();
-    const reread = await withSqlite((sqlite) =>
-      sqlite
-        .prepare("SELECT * FROM cashbook_formula ORDER BY display_order ASC")
-        .all() as FormulaRow[]
-    );
-    if (reread && reread.length > 0) return reread.map(rowToFormula);
   }
 
   return cloneDefaults(DEFAULT_FORMULAS);
@@ -183,6 +182,14 @@ export async function upsertFormula(
   // Resolve semantic key — fall back to legacy db_column for old code paths.
   const formulaKey = formula.formulaKey || formula.dbColumn;
   const formulaGroup = formula.formulaGroup ?? "custom";
+  const visibleDefault =
+    formulaGroup === "profit_share" ||
+    formulaGroup === "cash_advance" ||
+    formulaGroup === "bonus";
+  const isVisibleInSummary =
+    formula.isVisibleInSummary === undefined
+      ? visibleDefault
+      : formula.isVisibleInSummary;
   const payload = {
     id,
     name: formula.name,
@@ -191,6 +198,7 @@ export async function upsertFormula(
     formula_key: formulaKey,
     actor_id: formula.actorId ?? null,
     formula_group: formulaGroup,
+    is_visible_in_summary: isVisibleInSummary,
     ast: typeof formula.ast === "string" ? formula.ast : JSON.stringify(formula.ast),
     enabled: formula.enabled,
     is_system: formula.isSystem,
@@ -226,6 +234,7 @@ export async function upsertFormula(
              formula_key = @formula_key,
              actor_id = @actor_id,
              formula_group = @formula_group,
+             is_visible_in_summary = @is_visible_in_summary,
              ast = @ast,
              enabled = @enabled,
              is_system = @is_system,
@@ -238,24 +247,26 @@ export async function upsertFormula(
           ...payload,
           enabled: payload.enabled ? 1 : 0,
           is_system: payload.is_system ? 1 : 0,
+          is_visible_in_summary: payload.is_visible_in_summary ? 1 : 0,
         });
     } else {
       sqlite
         .prepare(
           `INSERT INTO cashbook_formula
-             (id, name, column_key, db_column, formula_key, actor_id, formula_group, ast, enabled, is_system, display_order, description)
+             (id, name, column_key, db_column, formula_key, actor_id, formula_group, is_visible_in_summary, ast, enabled, is_system, display_order, description)
            VALUES
-             (@id, @name, @column_key, @db_column, @formula_key, @actor_id, @formula_group, @ast, @enabled, @is_system, @display_order, @description)`
+             (@id, @name, @column_key, @db_column, @formula_key, @actor_id, @formula_group, @is_visible_in_summary, @ast, @enabled, @is_system, @display_order, @description)`
         )
         .run({
           ...payload,
           enabled: payload.enabled ? 1 : 0,
           is_system: payload.is_system ? 1 : 0,
+          is_visible_in_summary: payload.is_visible_in_summary ? 1 : 0,
         });
     }
   });
 
-  return { ...formula, id, formulaKey, formulaGroup } as FormulaDefinition;
+  return { ...formula, id, formulaKey, formulaGroup, isVisibleInSummary } as FormulaDefinition;
 }
 
 export async function deleteFormula(id: string): Promise<void> {
@@ -377,21 +388,73 @@ export async function deletePartner(id: string): Promise<void> {
 
 // ── Seeding ────────────────────────────────────────────────────────────────
 
+/**
+ * Ensure the 5 system default formulas exist. Idempotent — safe to call
+ * on every list / formula write. Uses upsert semantics so an install
+ * that lost its system formulas (because of a buggy cleanup, manual
+ * deletion, etc.) gets them restored on the next API call.
+ *
+ * Per-actor formulas (kasbon, bagi hasil, bonus) are NOT seeded here —
+ * those are generated dynamically via `syncFormulasForActor` from the
+ * Pengurus tab.
+ */
 export async function seedDefaultsIfEmpty(): Promise<{
   formulasInserted: number;
   partnersInserted: number;
 }> {
   let formulasInserted = 0;
-  let partnersInserted = 0;
+  const partnersInserted = 0;
 
   const sb = getServerSupabaseClient();
   if (sb) {
-    const { count: fCount } = await sb
+    // Find which system formulas are missing and only insert those.
+    const ids = DEFAULT_FORMULAS.map((f) => f.id);
+    const { data: existing } = await sb
       .from("cashbook_formula")
-      .select("*", { count: "exact", head: true });
-    if ((fCount ?? 0) === 0) {
-      const { error } = await sb.from("cashbook_formula").insert(
-        DEFAULT_FORMULAS.map((f) => ({
+      .select("id")
+      .in("id", ids);
+    const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
+    // Upsert all system formulas so AST changes in defaults.ts propagate
+    // to existing installs without requiring a manual DB migration.
+    const { error } = await sb.from("cashbook_formula").upsert(
+      DEFAULT_FORMULAS.map((f) => ({
+        id: f.id,
+        name: f.name,
+        column_key: f.column,
+        db_column: f.dbColumn,
+        formula_key: f.formulaKey ?? f.dbColumn,
+        actor_id: f.actorId ?? null,
+        formula_group: f.formulaGroup ?? "custom",
+        is_visible_in_summary:
+          f.isVisibleInSummary ??
+          (f.formulaGroup === "profit_share" ||
+            f.formulaGroup === "cash_advance" ||
+            f.formulaGroup === "bonus"),
+        ast: f.ast,
+        enabled: f.enabled,
+        is_system: f.isSystem,
+        display_order: f.displayOrder,
+        description: f.description ?? null,
+      })),
+      { onConflict: "id" }
+    );
+    if (!error) formulasInserted = DEFAULT_FORMULAS.length;
+    return { formulasInserted, partnersInserted };
+  }
+
+  // SQLite path — same logic, plain SQL.
+  await withSqlite((sqlite) => {
+    const stmt = sqlite.prepare(
+      `INSERT OR REPLACE INTO cashbook_formula
+         (id, name, column_key, db_column, formula_key, actor_id, formula_group,
+          is_visible_in_summary, ast, enabled, is_system, display_order, description)
+       VALUES
+         (@id, @name, @column_key, @db_column, @formula_key, @actor_id, @formula_group,
+          @is_visible_in_summary, @ast, @enabled, @is_system, @display_order, @description)`
+    );
+    const tx = sqlite.transaction((rows: typeof DEFAULT_FORMULAS) => {
+      for (const f of rows) {
+        const result = stmt.run({
           id: f.id,
           name: f.name,
           column_key: f.column,
@@ -399,96 +462,23 @@ export async function seedDefaultsIfEmpty(): Promise<{
           formula_key: f.formulaKey ?? f.dbColumn,
           actor_id: f.actorId ?? null,
           formula_group: f.formulaGroup ?? "custom",
-          ast: f.ast,
-          enabled: f.enabled,
-          is_system: f.isSystem,
+          is_visible_in_summary:
+            (f.isVisibleInSummary ??
+              (f.formulaGroup === "profit_share" ||
+                f.formulaGroup === "cash_advance" ||
+                f.formulaGroup === "bonus"))
+              ? 1
+              : 0,
+          ast: JSON.stringify(f.ast),
+          enabled: f.enabled ? 1 : 0,
+          is_system: f.isSystem ? 1 : 0,
           display_order: f.displayOrder,
           description: f.description ?? null,
-        }))
-      );
-      if (!error) formulasInserted = DEFAULT_FORMULAS.length;
-    }
-    // DEFAULT_PARTNERS is intentionally empty in the v2 architecture —
-    // partners are added by the user via "Kelola Orang", not seeded.
-    if (DEFAULT_PARTNERS.length > 0) {
-      const { count: pCount } = await sb
-        .from("cashbook_partner")
-        .select("*", { count: "exact", head: true });
-      if ((pCount ?? 0) === 0) {
-        const { error } = await sb.from("cashbook_partner").insert(
-          DEFAULT_PARTNERS.map((p) => ({
-            id: p.id,
-            name: p.name,
-            category: p.category ?? null,
-            display_order: p.displayOrder,
-          }))
-        );
-        if (!error) partnersInserted = DEFAULT_PARTNERS.length;
-      }
-    }
-    return { formulasInserted, partnersInserted };
-  }
-
-  await withSqlite((sqlite) => {
-    const fCount = (
-      sqlite
-        .prepare("SELECT COUNT(*) AS c FROM cashbook_formula")
-        .get() as { c: number }
-    ).c;
-    if (fCount === 0) {
-      const stmt = sqlite.prepare(
-        `INSERT OR IGNORE INTO cashbook_formula
-           (id, name, column_key, db_column, formula_key, actor_id, formula_group, ast, enabled, is_system, display_order, description)
-         VALUES
-           (@id, @name, @column_key, @db_column, @formula_key, @actor_id, @formula_group, @ast, @enabled, @is_system, @display_order, @description)`
-      );
-      const tx = sqlite.transaction((rows: typeof DEFAULT_FORMULAS) => {
-        for (const f of rows) {
-          stmt.run({
-            id: f.id,
-            name: f.name,
-            column_key: f.column,
-            db_column: f.dbColumn,
-            formula_key: f.formulaKey ?? f.dbColumn,
-            actor_id: f.actorId ?? null,
-            formula_group: f.formulaGroup ?? "custom",
-            ast: JSON.stringify(f.ast),
-            enabled: f.enabled ? 1 : 0,
-            is_system: f.isSystem ? 1 : 0,
-            display_order: f.displayOrder,
-            description: f.description ?? null,
-          });
-          formulasInserted += 1;
-        }
-      });
-      tx(DEFAULT_FORMULAS);
-    }
-
-    if (DEFAULT_PARTNERS.length > 0) {
-      const pCount = (
-        sqlite
-          .prepare("SELECT COUNT(*) AS c FROM cashbook_partner")
-          .get() as { c: number }
-      ).c;
-      if (pCount === 0) {
-        const stmt = sqlite.prepare(
-          `INSERT OR IGNORE INTO cashbook_partner (id, name, category, display_order)
-           VALUES (@id, @name, @category, @display_order)`
-        );
-        const tx = sqlite.transaction((rows: typeof DEFAULT_PARTNERS) => {
-          for (const p of rows) {
-            stmt.run({
-              id: p.id,
-              name: p.name,
-              category: p.category ?? null,
-              display_order: p.displayOrder,
-            });
-            partnersInserted += 1;
-          }
         });
-        tx(DEFAULT_PARTNERS);
+        if (result.changes > 0) formulasInserted += 1;
       }
-    }
+    });
+    tx(DEFAULT_FORMULAS);
   });
 
   return { formulasInserted, partnersInserted };

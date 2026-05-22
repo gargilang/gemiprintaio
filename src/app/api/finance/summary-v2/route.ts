@@ -15,9 +15,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   disableLegacyOrphanActorFormulas,
-  getActorFinanceSummaryRows,
+  getActorFinanceSummary,
+  syncAllActiveActorFormulas,
 } from "@/lib/services/formula-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
+import { seedDefaultsIfEmpty, listFormulas } from "@/lib/services/cashbook-formula-service";
+import { listBusinessActors } from "@/lib/services/business-actor-service";
+import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,12 +33,54 @@ export async function GET(request: NextRequest) {
     // Old seed formulas without Kelola Orang link are disabled automatically.
     await disableLegacyOrphanActorFormulas();
 
+    // Idempotent system formula seed — re-inserts missing defaults (Omzet,
+    // Biaya, Saldo, Laba Bersih, Modal Kas, Piutang Kas, Kas) without
+    // touching existing rows. When new formulas are added, recalc populates
+    // their values in transaction_computed so the cards show real numbers.
+    const seeded = await seedDefaultsIfEmpty();
+    if (seeded.formulasInserted > 0) {
+      await recalculateCashbookIfAvailable();
+    }
+
+    // Recovery: if any active actor has no linked formulas (e.g. after a
+    // "Kembalikan ke bawaan" wipe), re-sync their formulas automatically.
+    const [actors, formulas] = await Promise.all([
+      listBusinessActors({ includeInactive: false }),
+      listFormulas(),
+    ]);
+    const actorIdsWithFormulas = new Set(
+      formulas.filter((f) => f.actorId).map((f) => f.actorId as string)
+    );
+    const orphanActorIds = actors
+      .filter((a) => !actorIdsWithFormulas.has(a.id))
+      .map((a) => a.id);
+    if (orphanActorIds.length > 0) {
+      await syncAllActiveActorFormulas(orphanActorIds);
+      await recalculateCashbookIfAvailable();
+    }
+
     const latestMap = await getLatestPerFormulaKey(month);
-    const actorRows = await getActorFinanceSummaryRows(latestMap);
+    const summary = await getActorFinanceSummary(latestMap);
+
+    // Surface key system metrics so the page can render summary cards
+    // without computing them client-side. The values come from the
+    // latest computed row in the requested month.
+    const systemMetrics = {
+      omzet: latestMap.omzet ?? 0,
+      biaya_operasional: latestMap.biaya_operasional ?? 0,
+      biaya_bahan: latestMap.biaya_bahan ?? 0,
+      saldo: latestMap.saldo ?? 0,
+      laba_bersih: latestMap.laba_bersih ?? 0,
+      modal_kas: latestMap.modal_kas ?? 0,
+      piutang_kas: latestMap.piutang_kas ?? 0,
+      kas: latestMap.kas ?? 0,
+    };
 
     return NextResponse.json({
       month: month ?? null,
-      actorRows,
+      columns: summary.columns,
+      rows: summary.rows,
+      systemMetrics,
       legacyOrphanFormulas: 0,
     });
   } catch (error) {

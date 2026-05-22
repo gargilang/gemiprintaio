@@ -36,16 +36,17 @@ CREATE TABLE IF NOT EXISTS cashbook_partner (
 CREATE INDEX IF NOT EXISTS idx_cashbook_partner_order
   ON cashbook_partner(display_order);
 
--- ── Seed partners ─────────────────────────────────────────────────────────
--- Cahaya / Suri / Gemi only; Anwar + Dinil intentionally omitted.
+-- ── Seed partners (legacy, kept for backward compatibility only) ─────────
+-- v2 architecture replaced partners with business_actors; this section is
+-- intentionally empty so a fresh install starts with no person names
+-- anywhere. Existing installs that still have rows are cleaned up by
+-- migration 20260522030000_cleanup_legacy_seed_data.sql.
 
-INSERT INTO cashbook_partner (id, name, category, display_order) VALUES
-  ('partner-cahaya', 'Cahaya', NULL,        10),
-  ('partner-suri',   'Suri',   'PRIBADI-S', 20),
-  ('partner-gemi',   'Gemi',   NULL,        30)
-ON CONFLICT (id) DO NOTHING;
-
--- ── Seed formulas (G..O) ──────────────────────────────────────────────────
+-- ── Seed formulas — system defaults only ─────────────────────────────────
+-- Only the 5 group-agnostic system formulas (Omzet, Biaya Operasional,
+-- Biaya Bahan, Saldo, Laba Bersih) are seeded here. Per-person formulas
+-- (kasbon, bagi hasil, bonus) are generated dynamically from the
+-- "Pengurus" tab so a fresh install never carries stranger names.
 -- ASTs match `src/lib/ast/defaults.ts` exactly; keep both in sync if either
 -- changes. The literal text below is intentionally verbose so reviewers can
 -- audit it without running TypeScript.
@@ -75,25 +76,5 @@ INSERT INTO cashbook_formula (id, name, column_key, db_column, ast, enabled, is_
     'formula-k-laba', 'Laba Bersih', 'K', 'laba_bersih',
     '{"type":"binaryOp","op":"-","left":{"type":"outputRef","column":"G"},"right":{"type":"binaryOp","op":"+","left":{"type":"outputRef","column":"H"},"right":{"type":"outputRef","column":"I"}}}'::jsonb,
     TRUE, FALSE, 50, 'Omzet − (Biaya Operasional + Biaya Bahan).'
-  ),
-  (
-    'formula-l-kasbon-suri', 'Kasbon Suri', 'L', 'kasbon_suri',
-    '{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"PRIBADI-S"}},"then":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"columnRef","column":"D"},"then":{"type":"negate","arg":{"type":"columnRef","column":"D"}},"else":{"type":"columnRef","column":"E"}},"else":{"type":"if","cond":{"type":"columnRef","column":"D"},"then":{"type":"binaryOp","op":"-","left":{"type":"prevOutput","column":"L"},"right":{"type":"columnRef","column":"D"}},"else":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"L"},"right":{"type":"columnRef","column":"E"}}}},"else":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"literal","value":0},"else":{"type":"prevOutput","column":"L"}}}'::jsonb,
-    TRUE, FALSE, 60, 'Saldo kasbon Suri (kategori PRIBADI-S).'
-  ),
-  (
-    'formula-m-bagi-hasil-suri', 'Bagi Hasil Suri', 'M', 'bagi_hasil_suri',
-    '{"type":"binaryOp","op":"-","left":{"type":"binaryOp","op":"/","left":{"type":"outputRef","column":"K"},"right":{"type":"literal","value":2}},"right":{"type":"outputRef","column":"L"}}'::jsonb,
-    TRUE, FALSE, 70, 'Setengah laba bersih dikurangi kasbon Suri.'
-  ),
-  (
-    'formula-n-bagi-hasil-gemi', 'Bagi Hasil Gemi', 'N', 'bagi_hasil_gemi',
-    '{"type":"binaryOp","op":"-","left":{"type":"binaryOp","op":"+","left":{"type":"binaryOp","op":"+","left":{"type":"binaryOp","op":"/","left":{"type":"binaryOp","op":"-","left":{"type":"outputRef","column":"K"},"right":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"literal","value":0},"else":{"type":"prevOutput","column":"K"}}},"right":{"type":"literal","value":2}},"right":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"literal","value":0},"else":{"type":"prevOutput","column":"N"}}},"right":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"INVESTOR"}},"then":{"type":"columnRef","column":"D"},"else":{"type":"literal","value":0}}},"right":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"INVESTOR"}},"then":{"type":"columnRef","column":"E"},"else":{"type":"literal","value":0}}}'::jsonb,
-    TRUE, FALSE, 80, 'Akumulasi kenaikan laba ÷ 2 + transaksi investor.'
-  ),
-  (
-    'formula-o-kasbon-cahaya', 'Kasbon Cahaya', 'O', 'kasbon_cahaya',
-    '{"type":"if","cond":{"type":"and","left":{"type":"not","arg":{"type":"iserror","arg":{"type":"search","find":{"type":"partnerRef","partnerId":"partner-cahaya"},"within":{"type":"columnRef","column":"F"}}}},"right":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"INVESTOR"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}}}},"then":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"columnRef","column":"D"},"then":{"type":"negate","arg":{"type":"columnRef","column":"D"}},"else":{"type":"columnRef","column":"E"}},"else":{"type":"if","cond":{"type":"columnRef","column":"D"},"then":{"type":"binaryOp","op":"-","left":{"type":"prevOutput","column":"O"},"right":{"type":"columnRef","column":"D"}},"else":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"O"},"right":{"type":"columnRef","column":"E"}}}},"else":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"literal","value":0},"else":{"type":"prevOutput","column":"O"}}}'::jsonb,
-    TRUE, FALSE, 90, 'Saldo kasbon Cahaya (transaksi INVESTOR/BIAYA dengan keperluan Cahaya).'
   )
 ON CONFLICT (id) DO NOTHING;

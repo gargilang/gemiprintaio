@@ -28,6 +28,12 @@ export type InputColumn = "C" | "D" | "E" | "F";
 /**
  * One node of a formula tree. All sub-expressions are AST nodes themselves,
  * which keeps the structure uniform for the visual editor.
+ *
+ * Note on `funcCall`: this is the generic vehicle for all functions added
+ * after the initial design (math, text, date, aggregation). The legacy
+ * dedicated nodes (`search`, `iserror`, `not`, `and`, `or`, `if`, `row`,
+ * `prevOutput`, `negate`) stay as-is for backward compatibility with
+ * existing AST blobs in the database.
  */
 export type ASTNode =
   | { type: "literal"; value: string | number | boolean }
@@ -43,7 +49,8 @@ export type ASTNode =
   | { type: "and"; left: ASTNode; right: ASTNode }
   | { type: "or"; left: ASTNode; right: ASTNode }
   | { type: "if"; cond: ASTNode; then: ASTNode; else: ASTNode }
-  | { type: "binaryOp"; op: BinaryOp; left: ASTNode; right: ASTNode };
+  | { type: "binaryOp"; op: BinaryOp; left: ASTNode; right: ASTNode }
+  | { type: "funcCall"; name: string; args: ASTNode[] };
 
 /** Logical column key produced by a formula (G, H, I, ... or semantic like "omzet"). */
 export type OutputColumn = string;
@@ -83,6 +90,13 @@ export interface FormulaDefinition {
   actorId?: string | null;
   /** Visual grouping (drives which bar this formula appears in). */
   formulaGroup?: FormulaGroup;
+  /**
+   * When true, the formula gets its own column in the Keuangan "Ringkasan
+   * per orang" panel. Defaults to true for actor-driven groups
+   * (profit_share / cash_advance / bonus); summary + custom formulas
+   * default to hidden until the user explicitly opts in.
+   */
+  isVisibleInSummary?: boolean;
   ast: ASTNode;
   enabled: boolean;
   isSystem: boolean;
@@ -114,6 +128,9 @@ export interface InputRow {
 
 /** Map of computed values keyed by logical output column (G, H, ...). */
 export type OutputRow = Record<OutputColumn, number | string | boolean>;
+
+/** AST runtime value — same union as a JavaScript primitive. */
+export type Value = number | string | boolean;
 
 /** Error thrown by SEARCH when the needle is not present in the haystack. */
 export class SearchNotFoundError extends Error {

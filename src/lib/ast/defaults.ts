@@ -145,6 +145,52 @@ const astLabaBersih: ASTNode = op(
   op("+", cur("H"), cur("I"))
 );
 
+/**
+ * L: MODAL KAS
+ *   Akumulasi running balance dari transaksi berkategori "KAS" saja.
+ *   = IF(C == "KAS",
+ *        IF(ROW() == 2, D - E, MK_prev + D - E),
+ *        IF(ROW() == 2, 0, MK_prev))
+ */
+const astModalKas: ASTNode = iff(
+  op("=", col("C"), lit("KAS")),
+  iff(
+    isFirstRow(),
+    op("-", col("D"), col("E")),
+    op("-", op("+", prev("modal_kas"), col("D")), col("E"))
+  ),
+  iff(isFirstRow(), lit(0), prev("modal_kas"))
+);
+
+/**
+ * M: PIUTANG KAS (KASBON)
+ *   Akumulasi running balance dari transaksi berkategori "KASBON".
+ *   Kasbon keluar = kredit (piutang naik), kasbon dibayar = debit (piutang turun).
+ *   = IF(C == "KASBON",
+ *        IF(ROW() == 2, E - D, piutang_kas_prev + E - D),
+ *        IF(ROW() == 2, 0, piutang_kas_prev))
+ */
+const astPiutangKas: ASTNode = iff(
+  op("=", col("C"), lit("KASBON")),
+  iff(
+    isFirstRow(),
+    op("-", col("E"), col("D")),
+    op("-", op("+", prev("piutang_kas"), col("E")), col("D"))
+  ),
+  iff(isFirstRow(), lit(0), prev("piutang_kas"))
+);
+
+/**
+ * N: KAS
+ *   Total kas perusahaan yang masih di tangan (belum dipinjam).
+ *   = Modal Kas - Piutang Kas
+ */
+const astKas: ASTNode = op(
+  "-",
+  cur("modal_kas"),
+  cur("piutang_kas")
+);
+
 export const DEFAULT_FORMULAS: FormulaDefinition[] = [
   {
     id: "formula-g-omzet",
@@ -215,6 +261,48 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     isSystem: true,
     displayOrder: 50,
     description: "Omzet − (Biaya Operasional + Biaya Bahan).",
+  },
+  {
+    id: "formula-modal-kas",
+    name: "Modal Kas",
+    column: "modal_kas",
+    dbColumn: "modal_kas",
+    formulaKey: "modal_kas",
+    formulaGroup: "summary",
+    actorId: null,
+    ast: astModalKas,
+    enabled: true,
+    isSystem: true,
+    displayOrder: 60,
+    description: "Akumulasi running balance dari transaksi berkategori KAS.",
+  },
+  {
+    id: "formula-piutang-kas",
+    name: "Piutang Kas",
+    column: "piutang_kas",
+    dbColumn: "piutang_kas",
+    formulaKey: "piutang_kas",
+    formulaGroup: "summary",
+    actorId: null,
+    ast: astPiutangKas,
+    enabled: true,
+    isSystem: true,
+    displayOrder: 70,
+    description: "Total kasbon aktif yang sedang dipinjam pengurus.",
+  },
+  {
+    id: "formula-kas",
+    name: "Kas",
+    column: "kas",
+    dbColumn: "kas",
+    formulaKey: "kas",
+    formulaGroup: "summary",
+    actorId: null,
+    ast: astKas,
+    enabled: true,
+    isSystem: true,
+    displayOrder: 80,
+    description: "Total kas perusahaan: Modal Kas + Piutang Kas.",
   },
 ];
 

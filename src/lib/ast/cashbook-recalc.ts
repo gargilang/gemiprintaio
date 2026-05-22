@@ -138,6 +138,15 @@ export function computeCashbookRecalculationUpdates(
   const partnerMap: Record<string, PartnerDefinition> = {};
   for (const p of partners) partnerMap[p.id] = p;
 
+  // Build groupKeys map for SUM_GROUP() — formula_group → list of column ids.
+  const groupKeys: Record<string, string[]> = {};
+  for (const f of active) {
+    const g = f.formulaGroup;
+    if (!g) continue;
+    if (!groupKeys[g]) groupKeys[g] = [];
+    groupKeys[g].push(f.column);
+  }
+
   const out: Array<{
     id: string;
     updates: Record<string, number>;
@@ -159,6 +168,7 @@ export function computeCashbookRecalculationUpdates(
         prevOutputs,
         currentOutputs,
         partners: partnerMap,
+        groupKeys,
       };
       try {
         currentOutputs[formula.column] = evaluate(formula.ast, ctx);

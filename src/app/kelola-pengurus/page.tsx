@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * Halaman Kelola Orang telah dipindahkan ke modal Pengaturan Keuangan.
- * Halaman ini hanya menyediakan redirect agar URL lama tetap berfungsi.
+ * Halaman Kelola Pengurus telah dipindahkan ke modal Pengaturan Keuangan.
+ * Halaman ini hanya menyediakan redirect agar bookmark / URL eksternal
+ * tetap berfungsi.
  */
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function KelolaOrangRedirectPage() {
+export default function KelolaPengurusRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function KelolaOrangRedirectPage() {
           </svg>
         </div>
         <p className="text-slate-600 text-sm">
-          Fitur Kelola Orang sekarang ada di <strong>Keuangan → Pengaturan → Pengurus</strong>.
+          Fitur Kelola Pengurus sekarang ada di <strong>Keuangan → Pengaturan → Pengurus</strong>.
         </p>
         <p className="text-slate-400 text-xs">Mengalihkan…</p>
       </div>

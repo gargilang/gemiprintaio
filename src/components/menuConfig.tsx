@@ -155,13 +155,6 @@ export const MENU_ENTRIES: MenuEntry[] = [
         color: "from-orange-500 to-pink-600",
         allowedRoles: FULL_STAFF,
       },
-      {
-        href: "/kelola-orang",
-        icon: <UsersIcon size={18} />,
-        label: "Kelola Orang",
-        color: "from-blue-600 to-indigo-700",
-        allowedRoles: ADMIN_ONLY,
-      },
     ],
   },
   {
@@ -198,7 +191,6 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/vendors": "Vendor",
   "/purchases": "Pembelian",
   "/finance": "Keuangan",
-  "/kelola-orang": "Kelola Orang",
   "/reports": "Laporan",
   "/users": "Manajemen User",
   "/settings": "Pengaturan",

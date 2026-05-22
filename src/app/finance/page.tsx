@@ -281,11 +281,18 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
+  const [showKasDetail, setShowKasDetail] = useState(false);
+  const [systemMetrics, setSystemMetrics] = useState<{
+    modal_kas: number;
+    piutang_kas: number;
+    kas: number;
+  }>({ modal_kas: 0, piutang_kas: 0, kas: 0 });
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
   >(initialFinanceConfig?.categories ?? []);
   const [showPengaturanModal, setShowPengaturanModal] = useState(false);
-  const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("orang");
+  const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("pengurus");
+  const [actorSummaryTick, setActorSummaryTick] = useState(0);
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -316,6 +323,22 @@ export default function FinancePage() {
 
   // Archive viewing state
   const [viewingArchive, setViewingArchive] = useState<string | null>(null);
+
+  // Fetch system metrics (Modal Kas, Piutang Kas, Kas) from summary-v2.
+  // These come from cashbook_formula via transaction_computed and aren't
+  // available on the raw `keuangan` rows.
+  useEffect(() => {
+    let cancelled = false;
+    const url = `/api/finance/summary-v2${viewingArchive ? `?month=${encodeURIComponent(viewingArchive)}` : ""}`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((body: { systemMetrics?: { modal_kas: number; piutang_kas: number; kas: number } }) => {
+        if (cancelled) return;
+        if (body.systemMetrics) setSystemMetrics(body.systemMetrics);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [actorSummaryTick, viewingArchive]);
   const [currentArchiveInfo, setCurrentArchiveInfo] = useState<{
     label: string;
     archived_at: string;
@@ -383,7 +406,10 @@ export default function FinancePage() {
     return filteredCashBooks.slice(visibleRange.start, visibleRange.end);
   }, [filteredCashBooks, visibleRange]);
 
-  // Memoized summary values — recalculate once per cashBooks change
+  // Memoized summary values — recalculate once per cashBooks change.
+  // Reads the cumulative metrics from the latest visible row's hardcoded
+  // columns. The new transaction_computed-backed feed handles per-actor
+  // metrics; this block only powers the four cards at the top of the page.
   const summaryData = useMemo(() => {
     if (cashBooks.length === 0) {
       return {
@@ -393,13 +419,6 @@ export default function FinancePage() {
         biayaBahan: 0,
         totalBiaya: 0,
         labaBersih: 0,
-        bagiHasilAnwar: 0,
-        bagiHasilSuri: 0,
-        bagiHasilGemi: 0,
-        kasbonAnwar: 0,
-        kasbonSuri: 0,
-        kasbonCahaya: 0,
-        kasbonDinil: 0,
         hutang: totalHutang,
         hutangCount: hutangCount,
         piutang: totalPiutang,
@@ -407,9 +426,8 @@ export default function FinancePage() {
       };
     }
 
-    // Active data: use index 0 (highest display_order = newest transaction)
-    // Archive: use last index (lowest display_order = last transaction in period)
-    // display_order DESC: highest value = oldest transaction in CSV
+    // Active data: index 0 (highest display_order = newest transaction).
+    // Archive: last index (lowest display_order = last transaction in period).
     const latest = viewingArchive
       ? cashBooks[cashBooks.length - 1]
       : cashBooks[0];
@@ -421,13 +439,6 @@ export default function FinancePage() {
       biayaBahan: latest.biaya_bahan,
       totalBiaya: latest.biaya_operasional + latest.biaya_bahan,
       labaBersih: latest.laba_bersih,
-      bagiHasilAnwar: latest.bagi_hasil_anwar,
-      bagiHasilSuri: latest.bagi_hasil_suri,
-      bagiHasilGemi: latest.bagi_hasil_gemi,
-      kasbonAnwar: latest.kasbon_anwar,
-      kasbonSuri: latest.kasbon_suri,
-      kasbonCahaya: latest.kasbon_cahaya,
-      kasbonDinil: latest.kasbon_dinil,
       hutang: totalHutang,
       hutangCount: hutangCount,
       piutang: totalPiutang,
@@ -1259,7 +1270,51 @@ export default function FinancePage() {
         </div>
       </div>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        {/* Card 0: Kas (Clickable, expandable to Modal Kas + Piutang Kas) */}
+        <div
+          onClick={() => setShowKasDetail(!showKasDetail)}
+          className="bg-white rounded-xl shadow-md p-4 border-l-4 border-cyan-500 cursor-pointer hover:shadow-lg transition-all duration-200"
+        >
+          <p className="text-sm text-gray-500 font-semibold mb-1 flex items-center justify-between">
+            <span>Kas</span>
+            <svg
+              className={`w-5 h-5 transform transition-transform ${
+                showKasDetail ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </p>
+          <p className="text-2xl font-bold text-cyan-700">
+            {formatRupiah(systemMetrics.kas)}
+          </p>
+          {showKasDetail && (
+            <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Modal Kas:</span>
+                <span className="text-sm font-semibold text-cyan-700">
+                  {formatRupiah(systemMetrics.modal_kas)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Piutang Kas:</span>
+                <span className="text-sm font-semibold text-cyan-700">
+                  {formatRupiah(systemMetrics.piutang_kas)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Card 1: Saldo */}
         <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-pink-600">
           <p className="text-sm text-gray-500 font-semibold mb-1">Saldo</p>
@@ -1352,7 +1407,7 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Ringkasan per orang — Kelola Orang + transaction_computed */}
+      {/* Pengurus Usaha — DynamicActorSummary + transaction_computed */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
@@ -1360,7 +1415,11 @@ export default function FinancePage() {
           <DynamicActorSummary
             formatRupiah={formatRupiah}
             month={viewingArchive ?? undefined}
-            refreshKey={cashBooks.length}
+            refreshKey={`${cashBooks.length}-${actorSummaryTick}`}
+            onOpenPeopleSettings={() => {
+              setPengaturanDefaultTab("pengurus");
+              setShowPengaturanModal(true);
+            }}
           />
         )}
       {/* Toolbar for Cash Book Management - Moved here */}
@@ -1466,9 +1525,9 @@ export default function FinancePage() {
                 currentUser?.role === "manager" ||
                 currentUser?.role === "staff") && (
                 <button
-                  onClick={() => { setPengaturanDefaultTab("orang"); setShowPengaturanModal(true); }}
+                  onClick={() => { setPengaturanDefaultTab("kolom"); setShowPengaturanModal(true); }}
                   className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                  title="Kelola orang, kategori transaksi, dan rumus kalkulasi"
+                  title="Kelola pengurus, kategori transaksi, dan rumus kalkulasi"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1954,7 +2013,11 @@ export default function FinancePage() {
         onClose={() => setShowPengaturanModal(false)}
         defaultTab={pengaturanDefaultTab}
         onCategoriesChanged={() => void refreshFinanceConfig()}
-        onRecalcTriggered={() => void loadCashBooks()}
+        onActorsChanged={() => setActorSummaryTick((t) => t + 1)}
+        onRecalcTriggered={() => {
+          setActorSummaryTick((t) => t + 1);
+          void loadCashBooks();
+        }}
       />
       {/* Notification Toast */}
       {notice && (

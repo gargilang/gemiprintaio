@@ -486,16 +486,41 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
                  WHERE db_column LIKE 'kasbon_%'
                    AND formula_group = 'custom'`);
     }
+    if (!cashbookFormulaCols.includes("is_visible_in_summary")) {
+      db.exec(
+        `ALTER TABLE cashbook_formula ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+      );
+      // Mirror the Supabase default: actor-driven groups visible, others hidden.
+      db.exec(`UPDATE cashbook_formula
+                 SET is_visible_in_summary = 1
+                 WHERE formula_group IN ('profit_share', 'cash_advance', 'bonus')`);
+    }
     db.exec(`CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key   ON cashbook_formula(formula_key);
              CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);
              CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`);
 
-    // Per-person formulas without Kelola Orang (actor_id) are legacy — disable them.
+    // Per-person formulas without a linked actor are legacy seed data —
+    // hard-delete them so they don't clutter the Kolom and Rumus tabs.
+    // System formulas (formula_group = 'summary') are preserved.
     db.exec(`
-      UPDATE cashbook_formula SET enabled = 0
+      DELETE FROM cashbook_formula
       WHERE actor_id IS NULL
+        AND COALESCE(is_system, 0) = 0
         AND formula_group IN ('profit_share', 'cash_advance', 'bonus')
-        AND enabled = 1
+    `);
+
+    // cashbook_partner is purely legacy in the v2 architecture (replaced by
+    // business_actors). Drop every row so old "Cahaya/Suri/Gemi" partners
+    // don't appear in any UI.
+    db.exec(`DELETE FROM cashbook_partner`);
+
+    // Hardcoded "PRIBADI-A" / "PRIBADI-S" categories were seeded for the
+    // original Anwar/Suri kasbon split. Remove them from new installs and
+    // existing databases — users can recreate categories with their own
+    // names via tab Kategori.
+    db.exec(`
+      DELETE FROM finance_category_definitions
+      WHERE category_code IN ('PRIBADI-A', 'PRIBADI-S')
     `);
   }
 

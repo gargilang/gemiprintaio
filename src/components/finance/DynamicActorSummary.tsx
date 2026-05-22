@@ -1,26 +1,41 @@
 "use client";
 
 /**
- * Per-person finance summary from Kelola Orang — one row per person.
- * Only shows business_actors that have linked formulas (actor_id set).
- * Legacy orphan formulas (no actor_id) are not shown here.
+ * Per-person finance summary panel — fixed 3-column layout.
+ *
+ * Uses SWR with the persistent cache provider so data is shown instantly
+ * on revisit (no spinner after first load). Revalidates in background.
  */
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+
+type FormulaGroup =
+  | "summary"
+  | "profit_share"
+  | "cash_advance"
+  | "bonus"
+  | "custom";
+
+interface SummaryColumn {
+  formulaKey: string;
+  label: string;
+  group: FormulaGroup;
+}
 
 interface ActorRow {
-  actorId: string;
+  actorId: string | null;
   displayName: string;
   roleLabel: string;
-  profitShare: number | null;
-  cashAdvance: number | null;
-  bonus: number | null;
+  metrics: Record<string, number | null>;
   displayOrder: number;
+  isGlobal: boolean;
 }
 
 interface SummaryV2Response {
   month: string | null;
-  actorRows: ActorRow[];
+  columns: SummaryColumn[];
+  rows: ActorRow[];
   legacyOrphanFormulas: number;
 }
 
@@ -28,6 +43,26 @@ interface Props {
   month?: string;
   formatRupiah: (n: number) => string;
   refreshKey?: string | number;
+  onOpenPeopleSettings?: () => void;
+}
+
+async function fetchSummary(url: string): Promise<SummaryV2Response> {
+  const r = await fetch(url);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error || "Gagal memuat ringkasan");
+  return body as SummaryV2Response;
+}
+
+function sumGroup(
+  metrics: Record<string, number | null>,
+  columns: SummaryColumn[],
+  group: FormulaGroup
+): number | null {
+  const keys = columns.filter((c) => c.group === group).map((c) => c.formulaKey);
+  if (keys.length === 0) return null;
+  const hasAny = keys.some((k) => metrics[k] !== undefined && metrics[k] !== null);
+  if (!hasAny) return null;
+  return keys.reduce((sum, k) => sum + (metrics[k] ?? 0), 0);
 }
 
 function CellValue({
@@ -37,97 +72,78 @@ function CellValue({
 }: {
   value: number | null;
   formatRupiah: (n: number) => string;
-  tone: "amber" | "violet" | "emerald";
+  tone: string;
 }) {
-  if (value === null) {
-    return <span className="text-gray-300 text-sm">—</span>;
-  }
-  const toneClass =
-    tone === "amber"
-      ? "text-amber-800"
-      : tone === "violet"
-        ? "text-violet-800"
-        : "text-emerald-800";
-  return (
-    <span className={`font-bold tabular-nums text-sm ${toneClass}`}>
-      {formatRupiah(value)}
-    </span>
-  );
+  if (value === null) return <span className="text-gray-300 text-sm">—</span>;
+  return <span className={`font-bold tabular-nums text-sm ${tone}`}>{formatRupiah(value)}</span>;
 }
 
 export default function DynamicActorSummary({
   month,
   formatRupiah,
   refreshKey,
+  onOpenPeopleSettings,
 }: Props) {
-  const [data, setData] = useState<SummaryV2Response | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    const url = `/api/finance/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
-    fetch(url)
-      .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(body?.error || "Gagal memuat ringkasan");
-        if (!cancelled) setData(body as SummaryV2Response);
-      })
-      .catch((e) => {
-        if (!cancelled) setError((e as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
+  const url = `/api/finance/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
+  const swrKey = `${url}__${refreshKey ?? ""}`;
+
+  const { data, error, isLoading } = useSWR<SummaryV2Response>(
+    swrKey,
+    () => fetchSummary(url),
+    { keepPreviousData: true }
+  );
+
+  const hasGroup = useMemo(() => {
+    const cols = data?.columns ?? [];
+    return {
+      profit_share: cols.some((c) => c.group === "profit_share"),
+      cash_advance: cols.some((c) => c.group === "cash_advance"),
+      bonus: cols.some((c) => c.group === "bonus"),
     };
-  }, [month, refreshKey]);
+  }, [data]);
 
-  if (loading) {
+  if (isLoading && !data) {
     return (
       <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-sm text-gray-500">
-        Memuat ringkasan orang…
+        Memuat ringkasan pengurus…
       </div>
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
-        Gagal memuat ringkasan: {error}
+        Gagal memuat ringkasan: {(error as Error).message}
       </div>
     );
   }
 
-  const rows = data?.actorRows ?? [];
+  const rows = data?.rows ?? [];
+  const columns = data?.columns ?? [];
   const legacyCount = data?.legacyOrphanFormulas ?? 0;
+  const actorRows = rows.filter((r) => !r.isGlobal);
 
-  if (rows.length === 0) {
+  if (actorRows.length === 0) {
     return (
       <div className="mb-6 space-y-2">
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
           <span>
-            Belum ada orang di <strong>Kelola Orang</strong> dengan bagi hasil,
-            kasbon, atau bonus aktif. Tambah orang di sana — satu baris di sini
-            menampilkan semua angkanya sekaligus.
+            Belum ada pengurus terdaftar. Tambah di{" "}
+            <strong>Pengaturan → Pengurus</strong>, lalu centang bagi hasil, kasbon,
+            atau bonus agar angka muncul di kolom di bawah.
           </span>
-          <a
-            href="/kelola-orang"
-            className="text-blue-700 hover:text-blue-900 font-semibold underline whitespace-nowrap"
-          >
-            Buka Kelola Orang →
-          </a>
+          {onOpenPeopleSettings && (
+            <button
+              type="button"
+              onClick={onOpenPeopleSettings}
+              className="text-blue-700 hover:text-blue-900 font-semibold underline whitespace-nowrap"
+            >
+              Buka Pengaturan → Pengurus
+            </button>
+          )}
         </div>
-        {legacyCount > 0 && (
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Ada {legacyCount} rumus lama yang masih aktif di belakang layar.
-            Nonaktifkan di menu <strong>Kalkulasi Keuangan</strong> bila sudah
-            tidak dipakai.
-          </p>
-        )}
       </div>
     );
   }
@@ -136,77 +152,121 @@ export default function DynamicActorSummary({
     <div className="mb-6 space-y-2">
       <div className="rounded-xl border-2 border-slate-200 overflow-hidden bg-white shadow-sm">
         <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
-          <h3 className="text-sm font-bold text-slate-800">
-            Ringkasan per orang
-            <span className="ml-2 text-xs font-normal text-slate-500">
-              ({rows.length} orang)
-            </span>
-          </h3>
-          <a
-            href="/kelola-orang"
-            className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-600 transition-colors"
           >
-            Kelola Orang →
-          </a>
-        </div>
-
-        {/* Header — desktop */}
-        <div className="hidden md:grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100 bg-gray-50/80">
-          <span>Nama</span>
-          <span>Jabatan</span>
-          <span className="text-right text-amber-700">Bagi hasil</span>
-          <span className="text-right text-violet-700">Kasbon</span>
-          <span className="text-right text-emerald-700">Bonus</span>
-        </div>
-
-        <ul className="divide-y divide-gray-100">
-          {rows.map((row) => (
-            <li
-              key={row.actorId}
-              className="px-4 py-3 hover:bg-slate-50/80 transition-colors md:grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-3 md:items-center"
+            <svg
+              className={`w-4 h-4 text-slate-500 transition-transform ${collapsed ? "-rotate-90" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <div className="font-semibold text-gray-900 truncate">
-                {row.displayName}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5 md:mt-0 truncate">
-                {row.roleLabel}
-              </div>
-              <div className="mt-2 md:mt-0 flex items-center justify-between md:justify-end gap-2">
-                <span className="text-xs text-gray-400 md:hidden">Bagi hasil</span>
-                <CellValue
-                  value={row.profitShare}
-                  formatRupiah={formatRupiah}
-                  tone="amber"
-                />
-              </div>
-              <div className="mt-1 md:mt-0 flex items-center justify-between md:justify-end gap-2">
-                <span className="text-xs text-gray-400 md:hidden">Kasbon</span>
-                <CellValue
-                  value={row.cashAdvance}
-                  formatRupiah={formatRupiah}
-                  tone="violet"
-                />
-              </div>
-              <div className="mt-1 md:mt-0 flex items-center justify-between md:justify-end gap-2">
-                <span className="text-xs text-gray-400 md:hidden">Bonus</span>
-                <CellValue
-                  value={row.bonus}
-                  formatRupiah={formatRupiah}
-                  tone="emerald"
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            Pengurus Usaha
+            <span className="text-xs font-normal text-slate-500">
+              ({actorRows.length} pengurus)
+            </span>
+          </button>
+          {onOpenPeopleSettings && (
+            <button
+              type="button"
+              onClick={onOpenPeopleSettings}
+              className="p-1.5 rounded-md text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+              title="Pengaturan → Pengurus"
+              aria-label="Pengaturan Pengurus"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {!collapsed && (
+          <div
+            className="overflow-x-auto overflow-y-auto"
+            style={{
+              maxHeight: actorRows.length > 5 ? "320px" : undefined,
+              scrollBehavior: "smooth",
+            }}
+          >
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50/80 text-[11px] font-bold uppercase tracking-wide text-gray-500 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-2 text-left">Nama</th>
+                  <th className="px-4 py-2 text-left">Jabatan</th>
+                  {hasGroup.profit_share && (
+                    <th className="px-4 py-2 text-right text-amber-700">Bagi Hasil</th>
+                  )}
+                  {hasGroup.cash_advance && (
+                    <th className="px-4 py-2 text-right text-violet-700">Kasbon</th>
+                  )}
+                  {hasGroup.bonus && (
+                    <th className="px-4 py-2 text-right text-emerald-700">Bonus</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {actorRows.map((row) => {
+                  const ps = sumGroup(row.metrics, columns, "profit_share");
+                  const ca = sumGroup(row.metrics, columns, "cash_advance");
+                  const bn = sumGroup(row.metrics, columns, "bonus");
+                  const noMetrics = ps === null && ca === null && bn === null;
+                  return (
+                    <tr
+                      key={row.actorId ?? row.displayName}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
+                      <td className="px-4 py-3 align-top min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">{row.displayName}</div>
+                        {noMetrics && (
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Belum ada rumus — edit di Pengaturan → Pengurus
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top text-xs text-gray-500 truncate">
+                        {row.roleLabel}
+                      </td>
+                      {hasGroup.profit_share && (
+                        <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                          <CellValue value={ps} formatRupiah={formatRupiah} tone="text-amber-800" />
+                        </td>
+                      )}
+                      {hasGroup.cash_advance && (
+                        <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                          <CellValue value={ca} formatRupiah={formatRupiah} tone="text-violet-800" />
+                        </td>
+                      )}
+                      {hasGroup.bonus && (
+                        <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                          <CellValue value={bn} formatRupiah={formatRupiah} tone="text-emerald-800" />
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {legacyCount > 0 && (
         <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          {legacyCount} rumus lama masih aktif di belakang layar. Kelola orang di{" "}
-          <a href="/kelola-orang" className="underline font-semibold">
-            Kelola Orang
-          </a>
-          , lalu nonaktifkan sisa rumus lama di Kalkulasi Keuangan bila sudah tidak dipakai.
+          {legacyCount} rumus lama masih aktif di belakang layar. Kelola pengurus di{" "}
+          {onOpenPeopleSettings ? (
+            <button type="button" onClick={onOpenPeopleSettings} className="underline font-semibold">
+              Pengaturan → Pengurus
+            </button>
+          ) : (
+            <strong>Pengaturan → Pengurus</strong>
+          )}
+          , lalu nonaktifkan sisa rumus lama di Pengaturan → Kolom bila sudah tidak dipakai.
         </p>
       )}
     </div>

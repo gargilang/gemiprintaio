@@ -73,6 +73,13 @@ export async function POST(request: NextRequest) {
       name: String(formula.name),
       column: String(formula.column),
       dbColumn: String(formula.dbColumn),
+      formulaKey: formula.formulaKey ?? undefined,
+      actorId: formula.actorId ?? null,
+      formulaGroup: formula.formulaGroup ?? "custom",
+      isVisibleInSummary:
+        typeof formula.isVisibleInSummary === "boolean"
+          ? formula.isVisibleInSummary
+          : undefined,
       ast: formula.ast,
       enabled: formula.enabled !== false,
       isSystem: Boolean(formula.isSystem),

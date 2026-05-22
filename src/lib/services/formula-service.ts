@@ -397,26 +397,41 @@ export async function getActiveFormulasByGroup(): Promise<ActiveFormulasByGroup>
   return out;
 }
 
+/** One column in the dynamic per-actor summary table. */
+export interface ActorSummaryColumn {
+  formulaKey: string;
+  label: string;
+  group: FormulaGroup;
+}
+
 /** One row for the Keuangan v2 table — all metrics for one person on one line. */
 export interface ActorFinanceSummaryRow {
-  actorId: string;
+  actorId: string | null;
   displayName: string;
   roleLabel: string;
-  /** null = rumus bagi hasil belum diaktifkan untuk orang ini */
-  profitShare: number | null;
-  cashAdvance: number | null;
-  bonus: number | null;
+  /** Map of formula_key → numeric value (or null when not applicable). */
+  metrics: Record<string, number | null>;
   displayOrder: number;
+  /** True when this row is a global formula (no linked business_actor). */
+  isGlobal: boolean;
+}
+
+export interface ActorFinanceSummary {
+  /** Columns to render, in the order they should appear. */
+  columns: ActorSummaryColumn[];
+  /** Per-actor rows plus a final block of global custom formulas if any. */
+  rows: ActorFinanceSummaryRow[];
 }
 
 /**
- * Build per-person summary rows from Kelola Orang + linked formulas only.
- * Legacy formulas without actor_id (seeded from old hardcoded schema) are
- * intentionally excluded — they still appear in the legacy bars below.
+ * Build the dynamic per-actor summary feed. The column set is derived from
+ * `is_visible_in_summary = true` formulas plus a stable canonical ordering
+ * (Bagi Hasil → Kasbon → Bonus → Kustom). Rows with `actor_id` go in the
+ * actor block; visible custom rows without an actor become "(global)" rows.
  */
-export async function getActorFinanceSummaryRows(
+export async function getActorFinanceSummary(
   valuesByKey: Record<string, number>
-): Promise<ActorFinanceSummaryRow[]> {
+): Promise<ActorFinanceSummary> {
   const [actors, roles, formulas] = await Promise.all([
     listBusinessActors({ includeInactive: false }),
     listActorRoles(),
@@ -424,48 +439,148 @@ export async function getActorFinanceSummaryRows(
   ]);
 
   const roleLabelByCode = new Map(roles.map((r) => [r.role_code, r.role_label]));
-  const formulasByActor = new Map<string, FormulaDefinition[]>();
-  for (const f of formulas) {
-    if (!f.enabled || !f.actorId) continue;
-    const list = formulasByActor.get(f.actorId) ?? [];
-    list.push(f);
-    formulasByActor.set(f.actorId, list);
+  const visibleFormulas = formulas.filter(
+    (f) => f.enabled && f.isVisibleInSummary
+  );
+
+  // Build column set deterministically. Group order matches the UI:
+  // profit_share → cash_advance → bonus → custom (summary excluded; those
+  // already live in the cards above the table).
+  const groupRank: Record<FormulaGroup, number> = {
+    summary: 99,
+    profit_share: 0,
+    cash_advance: 1,
+    bonus: 2,
+    custom: 3,
+  };
+  const columns: ActorSummaryColumn[] = [];
+  const seen = new Set<string>();
+  for (const f of visibleFormulas
+    .slice()
+    .sort((a, b) => {
+      const ra = groupRank[a.formulaGroup ?? "custom"] ?? 99;
+      const rb = groupRank[b.formulaGroup ?? "custom"] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a.displayOrder - b.displayOrder;
+    })) {
+    const key = f.formulaKey ?? f.dbColumn;
+    if (!key || seen.has(key)) continue;
+    if ((f.formulaGroup ?? "custom") === "summary") continue;
+    seen.add(key);
+    columns.push({
+      formulaKey: key,
+      label: f.name,
+      group: f.formulaGroup ?? "custom",
+    });
   }
 
-  const metricValue = (formula: FormulaDefinition | undefined): number | null => {
-    if (!formula) return null;
-    const key = formula.formulaKey ?? formula.dbColumn;
+  // For per-row aggregation, we still need to know which formula keys
+  // belong to which actor (so each actor only shows their own metrics).
+  const formulasByActor = new Map<string, FormulaDefinition[]>();
+  const globalCustomFormulas: FormulaDefinition[] = [];
+  for (const f of visibleFormulas) {
+    if (f.actorId) {
+      const list = formulasByActor.get(f.actorId) ?? [];
+      list.push(f);
+      formulasByActor.set(f.actorId, list);
+    } else if ((f.formulaGroup ?? "custom") === "custom") {
+      globalCustomFormulas.push(f);
+    }
+  }
+
+  const value = (key: string): number | null => {
     const v = valuesByKey[key];
-    return v !== undefined && v !== null ? Number(v) : 0;
+    return v === undefined || v === null ? 0 : Number(v);
   };
 
-  return actors
+  // Map per-actor rows. A cell is null when the actor has no formula for
+  // that key (so the UI can render "—" instead of 0).
+  const actorRows: ActorFinanceSummaryRow[] = actors
     .map((actor) => {
       const linked = formulasByActor.get(actor.id) ?? [];
-      const byGroup = (g: FormulaGroup) =>
-        linked.find((f) => (f.formulaGroup ?? "custom") === g);
-
+      const linkedKeys = new Set(
+        linked.map((f) => f.formulaKey ?? f.dbColumn)
+      );
+      const metrics: Record<string, number | null> = {};
+      for (const col of columns) {
+        metrics[col.formulaKey] = linkedKeys.has(col.formulaKey)
+          ? value(col.formulaKey)
+          : null;
+      }
       return {
         actorId: actor.id,
         displayName: actor.display_name,
-        roleLabel: roleLabelByCode.get(actor.role_code) ?? actor.role_code,
-        profitShare: actor.profit_share_percent !== null
-          ? metricValue(byGroup("profit_share"))
-          : null,
-        cashAdvance:
-          (actor.cash_advance_categories?.length ?? 0) > 0
-            ? metricValue(byGroup("cash_advance"))
-            : null,
-        bonus:
-          actor.bonus_percent !== null ? metricValue(byGroup("bonus")) : null,
+        roleLabel:
+          roleLabelByCode.get(actor.role_code) ?? actor.role_code,
+        metrics,
         displayOrder: actor.display_order,
+        isGlobal: false,
       };
     })
-    .filter(
-      (r) =>
-        r.profitShare !== null || r.cashAdvance !== null || r.bonus !== null
-    )
     .sort((a, b) => a.displayOrder - b.displayOrder);
+
+  // Append global custom formulas as standalone rows so user-defined
+  // metrics that don't belong to a person still surface in the panel.
+  const globalRows: ActorFinanceSummaryRow[] = globalCustomFormulas.map(
+    (f) => {
+      const metrics: Record<string, number | null> = {};
+      for (const col of columns) {
+        metrics[col.formulaKey] =
+          col.formulaKey === (f.formulaKey ?? f.dbColumn)
+            ? value(col.formulaKey)
+            : null;
+      }
+      return {
+        actorId: null,
+        displayName: f.name,
+        roleLabel: "Rumus kustom",
+        metrics,
+        displayOrder: 9_000_000 + f.displayOrder,
+        isGlobal: true,
+      };
+    }
+  );
+
+  return { columns, rows: [...actorRows, ...globalRows] };
+}
+
+/**
+ * Legacy adapter retained until UI callers migrate to `getActorFinanceSummary`.
+ *
+ * @deprecated Prefer `getActorFinanceSummary` — it returns adaptive columns
+ *             driven by `is_visible_in_summary` instead of the hardcoded
+ *             three-slot layout.
+ */
+export async function getActorFinanceSummaryRows(
+  valuesByKey: Record<string, number>
+): Promise<
+  Array<{
+    actorId: string;
+    displayName: string;
+    roleLabel: string;
+    profitShare: number | null;
+    cashAdvance: number | null;
+    bonus: number | null;
+    displayOrder: number;
+  }>
+> {
+  const summary = await getActorFinanceSummary(valuesByKey);
+  return summary.rows
+    .filter((r) => !r.isGlobal && r.actorId !== null)
+    .map((r) => {
+      const ps = summary.columns.find((c) => c.group === "profit_share");
+      const ca = summary.columns.find((c) => c.group === "cash_advance");
+      const bn = summary.columns.find((c) => c.group === "bonus");
+      return {
+        actorId: r.actorId as string,
+        displayName: r.displayName,
+        roleLabel: r.roleLabel,
+        profitShare: ps ? r.metrics[ps.formulaKey] ?? null : null,
+        cashAdvance: ca ? r.metrics[ca.formulaKey] ?? null : null,
+        bonus: bn ? r.metrics[bn.formulaKey] ?? null : null,
+        displayOrder: r.displayOrder,
+      };
+    });
 }
 
 /** Count enabled actor-type formulas that are not linked to any business_actor. */

@@ -21,9 +21,11 @@ import {
   type InputRow,
   type OutputRow,
   type PartnerDefinition,
+  type Value,
   FormulaEvalError,
   SearchNotFoundError,
 } from "./types";
+import { FUNCTION_BY_NAME, AGGREGATION_FUNCTIONS } from "./function-library";
 
 /**
  * Runtime context passed to the evaluator.
@@ -40,10 +42,23 @@ export interface EvalContext {
   prevOutputs: OutputRow;
   currentOutputs: OutputRow;
   partners: Record<string, PartnerDefinition>;
+  /**
+   * Pre-computed aggregation results keyed by `aggregateKey(funcCall)`.
+   * Populated by `evaluateDataset` before per-row evaluation; absent for
+   * ad-hoc single-node evaluation, in which case aggregation calls
+   * resolve to 0.
+   */
+  aggregates?: Record<string, Value>;
+  /**
+   * Map of formula_group → list of formula keys (column ids) belonging to
+   * that group. Used by SUM_GROUP() to aggregate values from sibling
+   * formulas in the same group. Empty when not provided (ad-hoc eval).
+   */
+  groupKeys?: Record<string, string[]>;
 }
 
-/** AST runtime value — same union as a JavaScript primitive. */
-export type Value = number | string | boolean;
+/** AST runtime value — re-exported here for callers that historically imported it. */
+export type { Value } from "./types";
 
 /** Spreadsheet-style truthiness: 0, false, "" are falsy. */
 function isTruthy(v: Value): boolean {
@@ -215,6 +230,35 @@ export function evaluate(node: ASTNode, ctx: EvalContext): Value {
       }
       throw new FormulaEvalError(`Unknown binary operator: ${(node as { op: string }).op}`);
     }
+
+    case "funcCall": {
+      const def = FUNCTION_BY_NAME[node.name];
+      if (!def) {
+        throw new FormulaEvalError(`Fungsi tidak dikenal: ${node.name}`);
+      }
+      // Aggregation functions are pre-computed by the dataset evaluator and
+      // stored in ctx.aggregates. Per-row evaluation just looks up the result.
+      if (AGGREGATION_FUNCTIONS.has(node.name)) {
+        const aggs = ctx.aggregates ?? {};
+        const key = aggregateKey(node);
+        if (key in aggs) return aggs[key];
+        // Fallback when aggregation pass didn't run (e.g. ad-hoc evaluate).
+        return 0;
+      }
+      const args = node.args.map((a) => evaluate(a, ctx));
+      // Functions that need access to other formula values (mainly
+      // SUM_GROUP) use evaluateWithContext instead of plain evaluate.
+      if (def.evaluateWithContext) {
+        return def.evaluateWithContext(args, {
+          currentOutputs: ctx.currentOutputs,
+          groupKeys: ctx.groupKeys ?? {},
+        });
+      }
+      if (!def.evaluate) {
+        throw new FormulaEvalError(`Fungsi ${node.name} belum punya implementasi.`);
+      }
+      return def.evaluate(args);
+    }
   }
 
   throw new FormulaEvalError(
@@ -249,6 +293,10 @@ export function collectDependencies(node: ASTNode, out = new Set<string>()): Set
     if (v && typeof v === "object" && "type" in (v as Record<string, unknown>)) {
       collectDependencies(v as ASTNode, out);
     }
+  }
+  // funcCall stores its children in `args` rather than the standard slots.
+  if (node.type === "funcCall") {
+    for (const a of node.args) collectDependencies(a, out);
   }
   return out;
 }
@@ -287,25 +335,213 @@ export function sortFormulasByDependency<
 }
 
 /**
+ * Build a stable key for an aggregation funcCall so the dataset evaluator
+ * can cache the result. The key combines the function name with each
+ * argument's structural shape (column letter, formula key, or literal
+ * value) — enough to identify two calls as equivalent.
+ */
+function aggregateKey(node: ASTNode & { type: "funcCall" }): string {
+  return `${node.name}(${node.args.map(argSig).join(",")})`;
+}
+
+function argSig(n: ASTNode): string {
+  switch (n.type) {
+    case "literal":
+      return JSON.stringify(n.value);
+    case "columnRef":
+      return `C:${n.column}`;
+    case "outputRef":
+      return `O:${n.column}`;
+    case "prevOutput":
+      return `P:${n.column}`;
+    default:
+      return JSON.stringify(n);
+  }
+}
+
+/**
+ * Walk an AST and collect every aggregation funcCall it depends on.
+ * Aggregations are evaluated once per dataset, before per-row evaluation.
+ */
+function collectAggregations(
+  node: ASTNode,
+  out: Map<string, ASTNode & { type: "funcCall" }> = new Map()
+): Map<string, ASTNode & { type: "funcCall" }> {
+  if (node.type === "funcCall" && AGGREGATION_FUNCTIONS.has(node.name)) {
+    out.set(aggregateKey(node), node);
+  }
+  const childKeys: (keyof typeof node)[] = [
+    "arg" as keyof typeof node,
+    "left" as keyof typeof node,
+    "right" as keyof typeof node,
+    "cond" as keyof typeof node,
+    "then" as keyof typeof node,
+    "else" as keyof typeof node,
+    "find" as keyof typeof node,
+    "within" as keyof typeof node,
+  ];
+  for (const k of childKeys) {
+    const v = (node as Record<string, unknown>)[k as string];
+    if (v && typeof v === "object" && "type" in (v as Record<string, unknown>)) {
+      collectAggregations(v as ASTNode, out);
+    }
+  }
+  if (node.type === "funcCall") {
+    for (const a of node.args) collectAggregations(a, out);
+  }
+  return out;
+}
+
+/** Resolve an aggregation argument to a concrete value-getter for a row. */
+function readAggArg(
+  n: ASTNode,
+  row: InputRow,
+  computedRow: OutputRow
+): number | string {
+  if (n.type === "literal") {
+    return typeof n.value === "boolean" ? (n.value ? 1 : 0) : n.value;
+  }
+  if (n.type === "columnRef") {
+    const v = row[n.column];
+    return v ?? (n.column === "C" || n.column === "F" ? "" : 0);
+  }
+  if (n.type === "outputRef") {
+    const v = computedRow[n.column];
+    return typeof v === "boolean" ? (v ? 1 : 0) : v ?? 0;
+  }
+  return 0;
+}
+
+function asNumber(v: number | string): number {
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Compute one aggregation across all rows. Aggregations may reference
+ * `outputRef` of other formulas; for those we use the second-pass
+ * computed values from the previous run (best-effort — see notes in
+ * `evaluateDataset`). Input columns are read directly from the dataset.
+ */
+function computeAggregation(
+  node: ASTNode & { type: "funcCall" },
+  rows: InputRow[],
+  computedRows: OutputRow[]
+): Value {
+  switch (node.name) {
+    case "SUM": {
+      let total = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        total += asNumber(readAggArg(node.args[0], rows[i], computedRows[i] ?? {}));
+      }
+      return total;
+    }
+    case "AVERAGE": {
+      let total = 0;
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        const v = readAggArg(node.args[0], rows[i], computedRows[i] ?? {});
+        if (typeof v === "number" && Number.isFinite(v)) {
+          total += v;
+          n += 1;
+        }
+      }
+      return n === 0 ? 0 : total / n;
+    }
+    case "COUNT": {
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        const v = readAggArg(node.args[0], rows[i], computedRows[i] ?? {});
+        if (typeof v === "number" && v !== 0) n += 1;
+      }
+      return n;
+    }
+    case "SUMIF": {
+      // SUMIF(condCol, target, sumCol)
+      const targetVal = node.args[1].type === "literal" ? node.args[1].value : "";
+      const target = String(targetVal).toUpperCase();
+      let total = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        const cond = String(readAggArg(node.args[0], rows[i], computedRows[i] ?? "")).toUpperCase();
+        if (cond === target) {
+          total += asNumber(readAggArg(node.args[2], rows[i], computedRows[i] ?? {}));
+        }
+      }
+      return total;
+    }
+    case "COUNTIF": {
+      const targetVal = node.args[1].type === "literal" ? node.args[1].value : "";
+      const target = String(targetVal).toUpperCase();
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        const cond = String(readAggArg(node.args[0], rows[i], computedRows[i] ?? "")).toUpperCase();
+        if (cond === target) n += 1;
+      }
+      return n;
+    }
+    case "AVERAGEIF": {
+      const targetVal = node.args[1].type === "literal" ? node.args[1].value : "";
+      const target = String(targetVal).toUpperCase();
+      let total = 0;
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 1) {
+        const cond = String(readAggArg(node.args[0], rows[i], computedRows[i] ?? "")).toUpperCase();
+        if (cond === target) {
+          total += asNumber(readAggArg(node.args[2], rows[i], computedRows[i] ?? {}));
+          n += 1;
+        }
+      }
+      return n === 0 ? 0 : total / n;
+    }
+  }
+  return 0;
+}
+
+/**
  * Evaluate every formula across the dataset, row by row. The returned array
  * matches the input rows 1:1.
+ *
+ * `formulas` may include an optional `formulaGroup` field per entry; when
+ * provided, SUM_GROUP() can sum sibling formula values from the same group
+ * within each row.
  */
 export function evaluateDataset(
   rows: InputRow[],
-  formulas: Array<{ column: string; ast: ASTNode }>,
+  formulas: Array<{ column: string; ast: ASTNode; formulaGroup?: string }>,
   partners: PartnerDefinition[] = []
 ): OutputRow[] {
   const ordered = sortFormulasByDependency(formulas);
   const partnerMap: Record<string, PartnerDefinition> = {};
   for (const p of partners) partnerMap[p.id] = p;
 
+  // Build groupKeys map: formula_group → list of column ids in that group.
+  // Consumed by SUM_GROUP() during per-row evaluation.
+  const groupKeys: Record<string, string[]> = {};
+  for (const f of formulas) {
+    const g = f.formulaGroup;
+    if (!g) continue;
+    if (!groupKeys[g]) groupKeys[g] = [];
+    groupKeys[g].push(f.column);
+  }
+
+  // Pass 1: discover every aggregation funcCall referenced by any formula.
+  const aggs = new Map<string, ASTNode & { type: "funcCall" }>();
+  for (const f of ordered) collectAggregations(f.ast, aggs);
+
+  // Pass 2: pre-compute aggregations against the input columns.
+  const aggregates: Record<string, Value> = {};
+  for (const [key, node] of aggs) {
+    aggregates[key] = computeAggregation(node, rows, []);
+  }
+
+  // Pass 3: per-row evaluation with aggregation results in context.
   const out: OutputRow[] = [];
   let prevOutputs: OutputRow = {};
 
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 0; i < rows.length; i += 1) {
     const input = rows[i];
     const currentOutputs: OutputRow = {};
-    // Spreadsheet rows start at 2 because row 1 is the header.
     const rowNum = i + 2;
 
     for (const formula of ordered) {
@@ -316,6 +552,8 @@ export function evaluateDataset(
           prevOutputs,
           currentOutputs,
           partners: partnerMap,
+          aggregates,
+          groupKeys,
         });
         currentOutputs[formula.column] = value;
       } catch (e) {
