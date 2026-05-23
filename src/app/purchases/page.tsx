@@ -23,7 +23,7 @@ import {
   getCategoriesAction,
   getSubcategoriesAction,
   getUnitsAction,
-  deletePurchaseAction,
+  voidPurchaseAction,
   revertPaymentAction,
   getDebtsAction,
   payDebtAction,
@@ -290,27 +290,28 @@ export default function PurchasesPage() {
   const handleDelete = (purchase: any) => {
     setConfirmDialog({
       show: true,
-      title: "Hapus Pembelian",
-      message: `Yakin ingin menghapus pembelian "${
+      title: "Batalkan Pembelian",
+      message: `Yakin ingin membatalkan pembelian "${
         purchase.nomor_faktur
       }"?\n\nVendor: ${
         purchase.vendor_name || "Tanpa Vendor"
       }\nTotal: Rp ${purchase.total_harga.toLocaleString(
         "id-ID"
-      )}\n\nTindakan ini akan:\n- Mengurangi stok barang yang telah ditambahkan\n- Menghapus catatan keuangan terkait\n\nData tidak dapat dikembalikan!`,
-      confirmText: "Ya, Hapus",
+      )}\n\nTindakan ini akan:\n- Menyimpan dokumen sebagai VOID, bukan menghapus permanen\n- Membuat jurnal pembalik stok dan menandai kas/buku besar sebagai VOID\n- Ditolak jika stok dari pembelian ini sudah terpakai atau tagihan sudah dilunasi\n\nJika ditolak, gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu.`,
+      confirmText: "Ya, Batalkan",
       cancelText: "Batal",
       type: "danger",
       onConfirm: async () => {
         try {
-          await deletePurchaseAction(purchase.id);
-          setPurchases((prev: any[]) =>
-            prev.filter((p) => p.id !== purchase.id)
+          await voidPurchaseAction(
+            purchase.id,
+            "Pembelian dibatalkan dari Daftar Pembelian"
           );
-          showMsg("success", "Pembelian berhasil dihapus!");
+          await loadPurchases();
+          showMsg("success", "Pembelian berhasil dibatalkan.");
         } catch (error: any) {
           console.error("Error deleting purchase:", error);
-          showMsg("error", error.message || "Gagal menghapus pembelian");
+          showMsg("error", error.message || "Gagal membatalkan pembelian");
         } finally {
           setConfirmDialog(null);
         }

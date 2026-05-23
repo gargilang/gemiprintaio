@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  deletePurchase,
   getPurchaseById,
   updatePurchase,
+  voidPurchase,
 } from "@/lib/services/purchases-service";
 
 export const runtime = "nodejs";
@@ -84,15 +84,15 @@ export async function DELETE(
   try {
     const params = await context.params;
 
-    await deletePurchase(params.id);
+    await voidPurchase(params.id, "Pembelian dibatalkan via API");
 
     return NextResponse.json({
-      message: "Pembelian berhasil dihapus",
+      message: "Pembelian berhasil dibatalkan",
     });
   } catch (error: any) {
-    console.error("Error deleting purchase:", error);
+    console.error("Error voiding purchase:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete purchase" },
+      { error: error.message || "Failed to void purchase" },
       { status: 500 }
     );
   }

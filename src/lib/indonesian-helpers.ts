@@ -35,6 +35,7 @@ export const kategoriTransaksiLabels: Record<KategoriTransaksi, string> = {
   PIUTANG: "Piutang",
   "PRIBADI-A": "Pribadi (Tambah)",
   "PRIBADI-S": "Pribadi (Kurang)",
+  MAKLON: "Maklon",
 };
 
 export const kategoriTransaksiIcons: Record<KategoriTransaksi, string> = {
@@ -52,6 +53,7 @@ export const kategoriTransaksiIcons: Record<KategoriTransaksi, string> = {
   PIUTANG: "🟡",
   "PRIBADI-A": "👤",
   "PRIBADI-S": "👤",
+  MAKLON: "🖨️",
 };
 
 export const kategoriTransaksiColors: Record<KategoriTransaksi, string> = {
@@ -69,6 +71,7 @@ export const kategoriTransaksiColors: Record<KategoriTransaksi, string> = {
   PIUTANG: "yellow",
   "PRIBADI-A": "gray",
   "PRIBADI-S": "gray",
+  MAKLON: "purple",
 };
 
 export const kategoriTransaksiOptions = [
@@ -98,6 +101,13 @@ export const kategoriTransaksiOptions = [
     label: "Supply",
     icon: "📦",
     color: "orange",
+    group: "Pengeluaran",
+  },
+  {
+    value: "MAKLON" as KategoriTransaksi,
+    label: "Maklon",
+    icon: "🖨️",
+    color: "purple",
     group: "Pengeluaran",
   },
   {
@@ -199,7 +209,7 @@ export function getTipePelangganLabel(tipe: TipePelanggan): string {
 export const kategoriTransaksiGroups = {
   Umum: ["KAS"],
   Pemasukan: ["OMZET"],
-  Pengeluaran: ["BIAYA", "SUPPLY"],
+  Pengeluaran: ["BIAYA", "SUPPLY", "MAKLON"],
   Keuangan: ["HUTANG", "PIUTANG", "LUNAS"],
   Lainnya: ["INVESTOR", "SUBSIDI", "LABA", "KOMISI", "TABUNGAN"],
   Pribadi: ["PRIBADI-A", "PRIBADI-S"],
@@ -222,7 +232,9 @@ export function isIncome(kategori: KategoriTransaksi): boolean {
 }
 
 export function isExpense(kategori: KategoriTransaksi): boolean {
-  return ["BIAYA", "SUPPLY", "HUTANG", "PRIBADI-S"].includes(kategori);
+  return ["BIAYA", "SUPPLY", "HUTANG", "PRIBADI-S", "MAKLON"].includes(
+    kategori
+  );
 }
 
 export function isBalance(kategori: KategoriTransaksi): boolean {

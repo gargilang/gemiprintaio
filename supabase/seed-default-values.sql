@@ -114,6 +114,31 @@ INSERT INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-ll-umum', 'cat-lain-lain', 'Umum', 1)
 ON CONFLICT (id) DO NOTHING;
 
+-- Maklon placeholder material (used by sale + purchase rows with tipe = MAKLON).
+-- Inventory tracking off — cost is captured per line via biaya_subkontrak /
+-- harga_satuan, not via the moving-average on this row.
+INSERT INTO barang
+  (id, nama, deskripsi, kategori_id, satuan_dasar, jumlah_stok, average_cost_per_base_unit,
+   level_stok_minimum, lacak_inventori_status, butuh_dimensi_status)
+VALUES
+  ('barang-jasa-maklon', 'Jasa Maklon Cetak',
+   'Placeholder untuk pekerjaan yang dikerjakan vendor subkontraktor (auto-generated, jangan diedit).',
+   'cat-lain-lain', 'pcs', 0, 0, 0, 0, 0)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO harga_barang_satuan
+  (id, barang_id, nama_satuan, faktor_konversi, harga_beli, harga_jual, harga_member, default_status, urutan_tampilan)
+VALUES
+  ('harga-jasa-maklon-pcs', 'barang-jasa-maklon', 'pcs', 1, 0, 0, 0, 1, 0)
+ON CONFLICT (id) DO NOTHING;
+
+-- MAKLON finance category for subcontract outflows (separate from SUPPLY).
+INSERT INTO finance_category_definitions
+  (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)
+VALUES
+  ('fin-cat-maklon', 'MAKLON', 'Maklon', 'bg-fuchsia-100', 'text-fuchsia-800', 'border-fuchsia-300', 'kredit', 1, 78)
+ON CONFLICT (category_code) DO NOTHING;
+
 INSERT INTO satuan_barang (id, nama, urutan_tampilan) VALUES
   ('unit-m2', 'm²', 0),
   ('unit-meter', 'meter', 1),

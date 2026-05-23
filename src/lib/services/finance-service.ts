@@ -48,6 +48,7 @@ export interface CashBookEntry {
   urutan_tampilan: number;
   dibuat_oleh?: string;
   diarsipkan_pada?: string;
+  status_transaksi?: "POSTED" | "VOIDED";
   dibuat_pada?: string;
   diperbarui_pada?: string;
 }
@@ -63,7 +64,9 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
     });
 
     if (result.error) throw result.error;
-    return result.data || [];
+    return (result.data || []).filter(
+      (row) => row.status_transaksi !== "VOIDED"
+    );
   } catch (error) {
     console.error("Error fetching cash book entries:", error);
     throw error;
@@ -101,10 +104,11 @@ async function calculateRunningTotals(
   // Get last entry
   const lastEntryResult = await db.query<CashBookEntry>("keuangan", {
     orderBy: { column: "urutan_tampilan", ascending: false },
-    limit: 1,
   });
 
-  const lastEntry = lastEntryResult.data?.[0];
+  const lastEntry = (lastEntryResult.data || []).find(
+    (row) => row.status_transaksi !== "VOIDED"
+  );
   const isFirstEntry = !lastEntry;
 
   // Previous values
@@ -162,6 +166,12 @@ async function calculateRunningTotals(
   // SALDO
   // HPP is a non-cash journal entry — exclude it from cash balance.
   // The actual cash outflow happened at purchase time (SUPPLY entry).
+  //
+  // MAKLON (subcontract printing payouts) and SUPPLY (regular purchases) are
+  // real cash outflows: they only move `saldo` (debit − kredit). They do NOT
+  // bump biaya_operasional or biaya_bahan because the cost was already booked
+  // as HPP when the sale that triggered them was created. Bumping again here
+  // would double-count the cost in laba_bersih.
   const saldo =
     kategori_transaksi === "HPP"
       ? isFirstEntry
@@ -422,7 +432,9 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
   }
 
   const sorted = sortCashbookRowsForRecalc(
-    (rows || []) as CashbookRecalcInputRow[]
+    ((rows || []) as CashbookRecalcInputRow[]).filter(
+      (row) => row.status_transaksi !== "VOIDED"
+    )
   );
   const [formulas, partners] = await Promise.all([
     listActiveFormulas(),
@@ -678,6 +690,7 @@ const ALLOWED_CATEGORIES = new Set([
   "PIUTANG",
   "PRIBADI-A",
   "PRIBADI-S",
+  "MAKLON",
 ]);
 
 function normalizeCategory(raw: any): string | null {

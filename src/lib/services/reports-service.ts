@@ -176,6 +176,10 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isPosted(row: any): boolean {
+  return String(row?.status_transaksi || "POSTED").toUpperCase() !== "VOIDED";
+}
+
 function marginPercent(profit: number, revenue: number): number {
   return revenue > 0 ? (profit / revenue) * 100 : 0;
 }
@@ -189,7 +193,8 @@ export async function getArchivedPeriods(): Promise<Archive[]> {
     const { data, error } = await sb
       .from("keuangan")
       .select("label_arsip, tanggal, diarsipkan_pada")
-      .not("diarsipkan_pada", "is", null);
+      .not("diarsipkan_pada", "is", null)
+      .neq("status_transaksi", "VOIDED");
     if (error) throw error;
 
     const groups = new Map<
@@ -232,6 +237,7 @@ export async function getArchivedPeriods(): Promise<Archive[]> {
         diarsipkan_pada as archived_at
       FROM keuangan
       WHERE diarsipkan_pada IS NOT NULL
+        AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
       GROUP BY label_arsip, diarsipkan_pada
       ORDER BY diarsipkan_pada DESC
     `);
@@ -267,7 +273,8 @@ export async function archiveCashbook(data: {
       })
       .gte("tanggal", data.startDate)
       .lte("tanggal", data.endDate)
-      .is("diarsipkan_pada", null);
+      .is("diarsipkan_pada", null)
+      .neq("status_transaksi", "VOIDED");
     if (error) throw error;
     return { archived: 0 };
   }
@@ -276,7 +283,8 @@ export async function archiveCashbook(data: {
     await db.executeRaw(
       `UPDATE keuangan 
        SET diarsipkan_pada = ?, label_arsip = ?
-       WHERE tanggal >= ? AND tanggal <= ? AND diarsipkan_pada IS NULL`,
+       WHERE tanggal >= ? AND tanggal <= ? AND diarsipkan_pada IS NULL
+         AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'`,
       [now, data.label, data.startDate, data.endDate],
     );
     return { archived: 0 };
@@ -307,6 +315,7 @@ export async function getFinancialReport(
         .select("*")
         .eq("label_arsip", label)
         .eq("diarsipkan_pada", archivedAt)
+        .neq("status_transaksi", "VOIDED")
         .order("tanggal", { ascending: true })
         .order("dibuat_pada", { ascending: true });
       if (error) throw error;
@@ -316,6 +325,7 @@ export async function getFinancialReport(
         (await db.queryRaw<any>(
           `SELECT * FROM keuangan 
        WHERE label_arsip = ? AND diarsipkan_pada = ?
+         AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
        ORDER BY tanggal ASC, dibuat_pada ASC`,
           [label, archivedAt],
         )) || [];
@@ -460,12 +470,18 @@ export async function getFormalAccountingReport(data: {
   const customerMap = new Map(customers.map((c: any) => [c.id, c]));
   const vendors = vendorsRes.data || [];
   const vendorMap = new Map(vendors.map((v: any) => [v.id, v]));
-  const purchases = purchasesRes.data || [];
+  const purchases = (purchasesRes.data || []).filter(isPosted);
   const purchaseMap = new Map(purchases.map((p: any) => [p.id, p]));
 
-  const sales = (salesRes.data || []).filter((sale: any) =>
-    inDateRange(sale.tanggal ?? sale.dibuat_pada, data.startDate, data.endDate),
-  );
+  const sales = (salesRes.data || [])
+    .filter(isPosted)
+    .filter((sale: any) =>
+      inDateRange(
+        sale.tanggal ?? sale.dibuat_pada,
+        data.startDate,
+        data.endDate,
+      ),
+    );
   const saleIdSet = new Set(sales.map((sale: any) => sale.id));
   const saleItems = (saleItemsRes.data || []).filter((item: any) =>
     saleIdSet.has(item.penjualan_id),
@@ -493,7 +509,9 @@ export async function getFormalAccountingReport(data: {
   }
 
   const operationalCategories = new Set(["BIAYA", "TABUNGAN", "KOMISI"]);
-  const operationalExpenses = (cashbookRes.data || [])
+  const activeCashbookRows = (cashbookRes.data || []).filter(isPosted);
+
+  const operationalExpenses = activeCashbookRows
     .filter((row: any) =>
       inDateRange(row.tanggal, data.startDate, data.endDate),
     )
@@ -504,7 +522,7 @@ export async function getFormalAccountingReport(data: {
 
   const grossProfit = revenue - cogs;
   const netProfit = grossProfit - operationalExpenses;
-  const cashbookRows = (cashbookRes.data || [])
+  const cashbookRows = activeCashbookRows
     .filter((row: any) =>
       inDateRange(row.tanggal, data.startDate, data.endDate),
     )
@@ -515,7 +533,7 @@ export async function getFormalAccountingReport(data: {
         String(b.dibuat_pada || ""),
       );
     });
-  const latestCashbookRow = (cashbookRes.data || [])
+  const latestCashbookRow = activeCashbookRows
     .filter((row: any) => onOrBeforeDate(row.tanggal, data.endDate))
     .sort((a: any, b: any) => {
       const orderCmp = num(a.urutan_tampilan) - num(b.urutan_tampilan);

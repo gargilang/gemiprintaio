@@ -113,6 +113,30 @@ INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan
 INSERT OR IGNORE INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-ll-umum', 'cat-lain-lain', 'Umum', 1);
 
+-- Default Materials
+-- Placeholder material for maklon (subcontract printing). Used by item_penjualan
+-- and item_pembelian rows where tipe_item / tipe_pembelian = 'MAKLON'. Inventory
+-- tracking off so stock never moves; cost is captured per line via
+-- biaya_subkontrak / harga_satuan instead.
+INSERT OR IGNORE INTO barang
+  (id, nama, deskripsi, kategori_id, satuan_dasar, jumlah_stok, average_cost_per_base_unit,
+   level_stok_minimum, lacak_inventori_status, butuh_dimensi_status)
+VALUES
+  ('barang-jasa-maklon', 'Jasa Maklon Cetak',
+   'Placeholder untuk pekerjaan yang dikerjakan vendor subkontraktor (auto-generated, jangan diedit).',
+   'cat-lain-lain', 'pcs', 0, 0, 0, 0, 0);
+
+INSERT OR IGNORE INTO harga_barang_satuan
+  (id, barang_id, nama_satuan, faktor_konversi, harga_beli, harga_jual, harga_member, default_status, urutan_tampilan)
+VALUES
+  ('harga-jasa-maklon-pcs', 'barang-jasa-maklon', 'pcs', 1, 0, 0, 0, 1, 0);
+
+-- Default finance categories include MAKLON for subcontract outflows.
+INSERT OR IGNORE INTO finance_category_definitions
+  (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)
+VALUES
+  ('fin-cat-maklon', 'MAKLON', 'Maklon', 'bg-fuchsia-100', 'text-fuchsia-800', 'border-fuchsia-300', 'kredit', 1, 78);
+
 -- Default Material Units
 INSERT OR IGNORE INTO satuan_barang (id, nama, urutan_tampilan) VALUES
   ('unit-meter', 'meter', 1),

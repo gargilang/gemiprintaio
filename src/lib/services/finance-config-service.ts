@@ -87,6 +87,7 @@ const DEFAULT_CATEGORIES: FinanceCategoryDefinition[] = [
   { category_code: "PIUTANG", display_name: "Piutang", color_bg: "bg-lime-100", color_text: "text-lime-800", color_border: "border-lime-300", direction: "debit", display_order: 120 },
   { category_code: "PRIBADI-A", display_name: "Pribadi A", color_bg: "bg-sky-100", color_text: "text-sky-800", color_border: "border-sky-300", direction: "both", display_order: 130 },
   { category_code: "PRIBADI-S", display_name: "Pribadi S", color_bg: "bg-pink-100", color_text: "text-pink-800", color_border: "border-pink-300", direction: "both", display_order: 140 },
+  { category_code: "MAKLON", display_name: "Maklon", color_bg: "bg-fuchsia-100", color_text: "text-fuchsia-800", color_border: "border-fuchsia-300", direction: "kredit", display_order: 78 },
 ];
 
 const DEFAULT_MAPPINGS: FinanceMetricMapping[] = [

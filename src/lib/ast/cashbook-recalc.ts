@@ -55,6 +55,7 @@ export interface CashbookRecalcInputRow {
   dibuat_pada: string;
   diperbarui_pada?: string;
   diarsipkan_pada?: string | null;
+  status_transaksi?: string | null;
 
   // Computed columns — read here for override fallback values.
   omzet?: number;
@@ -231,7 +232,7 @@ export function computeCashbookRecalculationUpdates(
  */
 export async function recalculateCashbook(
   db: Database.Database,
-  whereClause: string = "diarsipkan_pada IS NULL"
+  whereClause: string = "diarsipkan_pada IS NULL AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'"
 ): Promise<number> {
   const rows = db
     .prepare(

@@ -8,6 +8,10 @@ import "server-only";
 import { db, getServerSupabaseClient } from "../db-unified";
 import { fetchLastNomorPembelian } from "../server-data-supabase";
 import { recalculateCashbookIfAvailable } from "./finance-service";
+import {
+  getInventoryMovements,
+  postInventoryMovement,
+} from "./inventory-service";
 
 /**
  * Build purchase DTOs from pembelian rows using db-unified (Supabase / SQLite).
@@ -269,6 +273,28 @@ async function nextNomorPembelian(): Promise<string> {
   return `PO-${nextNumber.toString().padStart(5, "0")}`;
 }
 
+/**
+ * Generate the next maklon purchase number (`MK-NNNNN`). Uses a separate
+ * counter from PO so subcontract purchases are visually distinct in lists
+ * and reports. Falls back to `MK-00001` if no prior maklon PO exists.
+ */
+async function nextNomorPembelianMaklon(): Promise<string> {
+  const rows = await db.queryRaw<{ nomor_pembelian: string }>(
+    `SELECT nomor_pembelian FROM pembelian
+     WHERE nomor_pembelian LIKE 'MK-%'
+     ORDER BY nomor_pembelian DESC
+     LIMIT 1`,
+    []
+  );
+  let nextNumber = 1;
+  const last = rows[0]?.nomor_pembelian;
+  if (last) {
+    const match = last.match(/(\d+)$/);
+    if (match) nextNumber = parseInt(match[1], 10) + 1;
+  }
+  return `MK-${nextNumber.toString().padStart(5, "0")}`;
+}
+
 function normalizePurchaseItemsForUI(items: any[]): any[] {
   return items.map((item) => ({
     ...item,
@@ -299,8 +325,16 @@ export interface Purchase {
   dibuat_oleh?: string;
   created_by_name?: string;
   diterima_oleh?: string | null;
+  status_transaksi?: "DRAFT" | "POSTED" | "VOIDED";
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
+  /** Maklon support: distinguishes auto-generated subcontract PO from regular purchase. */
+  tipe_pembelian?: "BARANG" | "MAKLON";
+  /** Sale ID that triggered this maklon PO (null for regular purchases). */
+  penjualan_id_sumber?: string | null;
   items?: PurchaseItem[];
 }
 
@@ -505,6 +539,124 @@ export async function createPurchase(data: {
     const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
     const statusPembayaran = isCashPayment(metodePembayaran) ? "LUNAS" : "HUTANG";
 
+    const sb =
+      process.env.TAURI === "true" || process.env.TAURI === "1"
+        ? null
+        : getServerSupabaseClient();
+    if (sb) {
+      const preparedItems = data.items.map((item) => {
+        const itemId = generateId("pi");
+        const subtotal = item.jumlah * item.harga_satuan;
+        return {
+          id: itemId,
+          barang_id: item.barang_id,
+          harga_satuan_id: item.harga_satuan_id || null,
+          nama_satuan: item.nama_satuan || "",
+          faktor_konversi: item.faktor_konversi || 1,
+          jumlah: item.jumlah,
+          harga_satuan: item.harga_satuan,
+          subtotal,
+          panjang: item.panjang ?? null,
+          lebar: item.lebar ?? null,
+          movement_id: `mov-${itemId}`,
+        };
+      });
+
+      let finance: any = null;
+      let debt: any = null;
+      if (isCashPayment(metodePembayaran)) {
+        const maxOrderResult = await db.query<any>("keuangan", {
+          orderBy: { column: "urutan_tampilan", ascending: false },
+          limit: 1,
+        });
+        const nextOrder =
+          (maxOrderResult.data?.[0]?.urutan_tampilan || 0) + 1;
+        const vendorName = data.vendor_id
+          ? (await db.queryOne("vendor", { where: { id: data.vendor_id } })).data
+              ?.nama_perusahaan
+          : null;
+        const catatanTrim = data.catatan?.trim();
+        const catatanExcerpt =
+          catatanTrim && catatanTrim.length > 0
+            ? catatanTrim.substring(0, 25) +
+              (catatanTrim.length > 25 ? "..." : "")
+            : null;
+        const poLabel =
+          nomorPembelian && nomorPembelian !== nomorFakturNorm
+            ? `${nomorPembelian} / Faktur ${nomorFakturNorm}`
+            : `Faktur ${nomorFakturNorm}`;
+        let keperluan = `Pembelian ${poLabel}`;
+        if (vendorName) {
+          keperluan += ` - ${vendorName}`;
+        } else if (catatanExcerpt) {
+          keperluan += ` (${catatanExcerpt})`;
+        }
+        keperluan += ` [REF:${purchaseId}]`;
+        finance = {
+          id: generateId("keu"),
+          tanggal: data.tanggal,
+          kategori_transaksi: "SUPPLY",
+          debit: 0,
+          kredit: total_harga,
+          keperluan,
+          omzet: 0,
+          biaya_bahan: 0,
+          catatan: data.catatan?.trim() || null,
+          dibuat_oleh: data.dibuat_oleh || null,
+          urutan_tampilan: nextOrder,
+        };
+      } else {
+        const jatuhTempo =
+          metodePembayaran === "NET30"
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0]
+            : null;
+        debt = {
+          id: generateId("hutang"),
+          jumlah_hutang: total_harga,
+          jumlah_terbayar: 0,
+          sisa_hutang: total_harga,
+          jatuh_tempo: jatuhTempo,
+          status: "AKTIF",
+          catatan:
+            metodePembayaran === "NET30"
+              ? "Tagihan dengan jatuh tempo 30 hari"
+              : "Tagihan COD - bayar saat terima barang",
+        };
+      }
+
+      const { error } = await sb.rpc("create_purchase_with_inventory", {
+        payload: {
+          purchase: {
+            id: purchaseId,
+            nomor_pembelian: nomorPembelian,
+            nomor_faktur: nomorFakturNorm,
+            vendor_id: data.vendor_id,
+            tanggal: data.tanggal,
+            metode_pembayaran: metodePembayaran,
+            total_jumlah: total_harga,
+            jumlah_dibayar: jumlahDibayar,
+            status_pembayaran: statusPembayaran,
+            catatan: data.catatan?.trim() || null,
+            dibuat_oleh: data.dibuat_oleh || null,
+            diterima_oleh: data.diterima_oleh?.trim() || null,
+            tipe_pembelian: "BARANG",
+          },
+          items: preparedItems,
+          finance,
+          debt,
+        },
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+      if (isCashPayment(metodePembayaran)) {
+        await recalculateCashbookIfAvailable();
+      }
+      return { id: purchaseId };
+    }
+
     await db.transaction(async () => {
       // Create purchase header
       const purchase = {
@@ -551,7 +703,20 @@ export async function createPurchase(data: {
           throw itemResult.error;
         }
 
-        await applyPurchaseCostToMaterial(item);
+        const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+        await postInventoryMovement({
+          id: `mov-${itemId}`,
+          barang_id: item.barang_id,
+          tanggal: data.tanggal,
+          movement_type: "PURCHASE_RECEIPT",
+          qty_delta: item.jumlah * faktorKonversi,
+          unit_cost: positiveNumber(item.harga_satuan) / faktorKonversi,
+          source_type: "PURCHASE",
+          source_id: purchaseId,
+          source_line_id: itemId,
+          catatan: `Penerimaan pembelian ${nomorFakturNorm}`,
+          dibuat_oleh: data.dibuat_oleh || null,
+        });
       }
 
       if (isCashPayment(metodePembayaran)) {
@@ -639,6 +804,194 @@ export async function createPurchase(data: {
     console.error("Error creating purchase:", error);
     throw error;
   }
+}
+
+/**
+ * Create a maklon (subcontract) purchase order linked to a sale.
+ *
+ * One call per (vendor, payment method) group on a sale — so a single sale
+ * can produce multiple maklon POs if it spans multiple vendors or mixes
+ * CASH+NET30 to the same vendor.
+ *
+ * Inserts:
+ *   - 1 pembelian row with `tipe_pembelian='MAKLON'` and `penjualan_id_sumber`
+ *   - 1 item_pembelian row per maklon line (placeholder barang `barang-jasa-maklon`,
+ *     skips moving-average since maklon is not stocked inventory)
+ *   - CASH: 1 keuangan row (kategori `MAKLON`, kredit) with `[REF:<purchaseId>]`
+ *   - NET30: 1 hutang_pembelian row (jatuh_tempo +30 days)
+ *
+ * Returns the new pembelian.id so the caller can link
+ * `item_penjualan.pembelian_id_terkait` for each maklon line in the group.
+ */
+export async function createMaklonPurchase(input: {
+  saleId: string;
+  saleInvoiceNumber: string;
+  vendorId: string;
+  metodeBayar: "CASH" | "NET30";
+  tanggal: string;
+  catatan?: string;
+  dibuatOleh?: string | null;
+  /** One entry per maklon line in this vendor+payment group. */
+  items: Array<{
+    deskripsi_pekerjaan: string;
+    jumlah: number;
+    biaya_subkontrak: number;
+  }>;
+}): Promise<{ id: string }> {
+  if (!input.vendorId) {
+    throw new Error("Vendor subkontraktor wajib dipilih untuk maklon");
+  }
+  if (!input.items || input.items.length === 0) {
+    throw new Error("Item maklon kosong");
+  }
+  if (input.items.some((it) => !(it.biaya_subkontrak > 0))) {
+    throw new Error("Biaya subkontrak harus lebih dari 0");
+  }
+  if (input.metodeBayar !== "CASH" && input.metodeBayar !== "NET30") {
+    throw new Error(`Metode bayar vendor tidak valid: ${input.metodeBayar}`);
+  }
+
+  const purchaseId = generateId("maklon");
+  const nomorPembelian = await nextNomorPembelianMaklon();
+  // Auto-generated faktur number; user can edit later when the vendor sends
+  // a real invoice. Always unique because saleInvoiceNumber + groupSeq is
+  // unique per (vendor, payment method) group.
+  const groupSeq = `${input.vendorId.slice(0, 6)}-${input.metodeBayar}`;
+  const nomorFaktur = `MAKLON-${input.saleInvoiceNumber}-${groupSeq}`;
+
+  const totalHarga = input.items.reduce(
+    (sum, it) => sum + it.biaya_subkontrak,
+    0
+  );
+  const jumlahDibayar = input.metodeBayar === "CASH" ? totalHarga : 0;
+  const statusPembayaran = input.metodeBayar === "CASH" ? "LUNAS" : "HUTANG";
+
+  await db.transaction(async () => {
+    const purchase = {
+      id: purchaseId,
+      nomor_pembelian: nomorPembelian,
+      nomor_faktur: nomorFaktur,
+      vendor_id: input.vendorId,
+      tanggal: input.tanggal,
+      metode_pembayaran: input.metodeBayar,
+      total_jumlah: totalHarga,
+      jumlah_dibayar: jumlahDibayar,
+      status_pembayaran: statusPembayaran,
+      catatan:
+        input.catatan?.trim() ||
+        `Maklon untuk ${input.saleInvoiceNumber}`,
+      dibuat_oleh: input.dibuatOleh || null,
+      diterima_oleh: null,
+      tipe_pembelian: "MAKLON",
+      penjualan_id_sumber: input.saleId,
+    };
+
+    const purchaseResult = await db.insert("pembelian", purchase);
+    if (purchaseResult.error) throw purchaseResult.error;
+
+    // Insert line items pointing at the placeholder barang. We do NOT call
+    // applyPurchaseCostToMaterial — maklon is not stocked inventory.
+    for (const item of input.items) {
+      const itemId = generateId("pi");
+      const subtotal =
+        item.jumlah > 0 ? item.biaya_subkontrak : item.biaya_subkontrak;
+      const hargaSatuan =
+        item.jumlah > 0 ? item.biaya_subkontrak / item.jumlah : item.biaya_subkontrak;
+
+      const purchaseItem = {
+        id: itemId,
+        pembelian_id: purchaseId,
+        barang_id: "barang-jasa-maklon",
+        harga_satuan_id: "harga-jasa-maklon-pcs",
+        nama_satuan: "pcs",
+        faktor_konversi: 1,
+        jumlah: item.jumlah > 0 ? item.jumlah : 1,
+        harga_satuan: hargaSatuan,
+        subtotal,
+        panjang: null,
+        lebar: null,
+      };
+
+      const itemResult = await db.insert("item_pembelian", purchaseItem);
+      if (itemResult.error) throw itemResult.error;
+    }
+
+    if (input.metodeBayar === "CASH") {
+      const maxOrderResult = await db.query<any>("keuangan", {
+        orderBy: { column: "urutan_tampilan", ascending: false },
+        limit: 1,
+      });
+      const nextOrder =
+        (maxOrderResult.data?.[0]?.urutan_tampilan || 0) + 1;
+
+      const vendorRow = await db.queryOne<{ nama_perusahaan: string }>(
+        "vendor",
+        { where: { id: input.vendorId } }
+      );
+      const vendorName = vendorRow.data?.nama_perusahaan || "Vendor Maklon";
+
+      const keperluan = `Maklon ${input.saleInvoiceNumber} - ${vendorName} [REF:${purchaseId}]`;
+
+      const financeResult = await db.insert("keuangan", {
+        id: generateId("keu"),
+        tanggal: input.tanggal,
+        kategori_transaksi: "MAKLON",
+        debit: 0,
+        kredit: totalHarga,
+        keperluan,
+        biaya_bahan: 0,
+        catatan:
+          input.catatan?.trim() || `Maklon ke ${vendorName}`,
+        dibuat_oleh: input.dibuatOleh || null,
+        urutan_tampilan: nextOrder,
+      });
+      if (financeResult.error) throw financeResult.error;
+    } else {
+      const jatuhTempo = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
+      const debtResult = await db.insert("hutang_pembelian", {
+        id: generateId("hutang"),
+        id_pembelian: purchaseId,
+        jumlah_hutang: totalHarga,
+        jumlah_terbayar: 0,
+        sisa_hutang: totalHarga,
+        jatuh_tempo: jatuhTempo,
+        status: "AKTIF",
+        catatan: `Tagihan maklon ${input.saleInvoiceNumber} - jatuh tempo 30 hari`,
+      });
+      if (debtResult.error) throw debtResult.error;
+    }
+  });
+
+  // No recalc here — the caller (createSale) triggers recalc once at the end
+  // for the whole transaction.
+  return { id: purchaseId };
+}
+
+/**
+ * Delete every maklon purchase that was auto-created for a given sale.
+ * Reverses linked finance entries (via [REF:<purchaseId>]) and outstanding
+ * hutang rows. Used by deleteSale to keep the books consistent.
+ */
+export async function deleteMaklonPurchasesForSale(
+  saleId: string
+): Promise<number> {
+  const rows = await db.query<any>("pembelian", {
+    where: { penjualan_id_sumber: saleId, tipe_pembelian: "MAKLON" },
+  });
+  const purchases = rows.data || [];
+  if (purchases.length === 0) return 0;
+
+  for (const purchase of purchases) {
+    await voidPurchase(
+      purchase.id,
+      `Pembelian maklon dibatalkan karena penjualan ${saleId} dibatalkan`
+    );
+  }
+
+  return purchases.length;
 }
 
 /**
@@ -756,6 +1109,20 @@ export async function updatePurchase(
       throw new Error("Pembelian tidak ditemukan");
     }
 
+    if ((existing.data as any).status_transaksi === "VOIDED") {
+      throw new Error("Pembelian yang sudah dibatalkan tidak dapat diedit");
+    }
+
+    const existingMovements = await getInventoryMovements({
+      source_type: "PURCHASE",
+      source_id: id,
+    });
+    if (existingMovements.length > 0) {
+      throw new Error(
+        "Pembelian yang sudah masuk stok tidak dapat diedit langsung. Batalkan pembelian lalu buat ulang agar riwayat stok tetap rapi."
+      );
+    }
+
     // Calculate new total
     const total_harga = data.items.reduce(
       (sum, item) => sum + item.jumlah * item.harga_satuan,
@@ -827,7 +1194,19 @@ export async function updatePurchase(
         console.error("Failed to insert purchase item:", itemResult.error);
       }
 
-      await applyPurchaseCostToMaterial(item);
+      const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+      await postInventoryMovement({
+        id: `mov-${itemId}`,
+        barang_id: item.barang_id,
+        tanggal: data.tanggal,
+        movement_type: "PURCHASE_RECEIPT",
+        qty_delta: item.jumlah * faktorKonversi,
+        unit_cost: positiveNumber(item.harga_satuan) / faktorKonversi,
+        source_type: "PURCHASE",
+        source_id: id,
+        source_line_id: itemId,
+        catatan: `Penerimaan pembelian ${data.nomor_faktur}`,
+      });
     }
 
     // Update keuangan entry if exists (for LUNAS purchases)
@@ -918,50 +1297,153 @@ export async function getDebts(): Promise<any[]> {
   }
 }
 
-/**
- * Delete purchase with stock reversal
- */
-export async function deletePurchase(id: string): Promise<void> {
+export async function voidPurchase(
+  id: string,
+  reason: string = "Pembelian dibatalkan",
+  actorId?: string | null
+): Promise<void> {
   try {
+    const sb =
+      process.env.TAURI === "true" || process.env.TAURI === "1"
+        ? null
+        : getServerSupabaseClient();
+    if (sb) {
+      const { error } = await sb.rpc("void_purchase_with_inventory", {
+        purchase_id: id,
+        reason,
+        actor_id: actorId || null,
+      });
+      if (error) {
+        const friendly = error.message.includes("Stok tidak cukup")
+          ? `Stok dari pembelian ini sudah dipakai. Gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${error.message}`
+          : error.message;
+        throw new Error(friendly);
+      }
+      await recalculateCashbookIfAvailable();
+      return;
+    }
+
+    const purchase = await getPurchaseById(id);
+    if (!purchase) {
+      throw new Error("Pembelian tidak ditemukan");
+    }
+    if ((purchase as any).status_transaksi === "VOIDED") {
+      throw new Error("Pembelian sudah dibatalkan");
+    }
+
+    const hutangRow = await db.queryOne<any>("hutang_pembelian", {
+      where: { id_pembelian: id },
+    });
+    if (hutangRow.data) {
+      const payments = await db.query<any>("pelunasan_hutang", {
+        where: { id_hutang: hutangRow.data.id },
+      });
+      if ((payments.data || []).length > 0) {
+        throw new Error(
+          "Pembelian sudah memiliki pembayaran tagihan. Revert pembayaran dulu sebelum membatalkan pembelian."
+        );
+      }
+    }
+
     // Get items to reverse stock
     const itemsResult = await db.query<PurchaseItem>("item_pembelian", {
       where: { pembelian_id: id },
     });
 
     const items = itemsResult.data || [];
+    const movements = await getInventoryMovements({
+      source_type: "PURCHASE",
+      source_id: id,
+    });
 
-    // Reverse stock and inventory value changes
+    // Append reversal movements. If stock has already been consumed, this
+    // throws a friendly insufficient-stock error and leaves the purchase posted.
     for (const item of items) {
-      await reversePurchaseCostFromMaterial(item);
-    }
+      const original = movements.find((movement) => {
+        return (
+          movement.source_line_id === item.id &&
+          movement.movement_type === "PURCHASE_RECEIPT"
+        );
+      });
+      const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+      const qtyBase = original
+        ? Math.abs(Number(original.qty_delta || 0))
+        : item.jumlah * faktorKonversi;
+      const unitCost = original
+        ? Number(original.unit_cost || 0)
+        : positiveNumber(item.harga_satuan) / faktorKonversi;
 
-    // Delete linked cashbook entries by reference (works on Supabase + SQLite)
-    const linkedCashbook = await db.query("keuangan", {});
-    if (linkedCashbook.data) {
-      const toDelete = linkedCashbook.data.filter((entry: any) =>
-        String(entry.keperluan || "").includes(`[REF:${id}]`)
-      );
-      for (const entry of toDelete) {
-        const delResult = await db.delete("keuangan", entry.id);
-        if (delResult.error) throw delResult.error;
+      try {
+        await postInventoryMovement({
+          id: original ? `void-${original.id}` : `void-${item.id}`,
+          barang_id: item.barang_id,
+          tanggal: new Date().toISOString().split("T")[0],
+          movement_type: "PURCHASE_VOID",
+          qty_delta: -qtyBase,
+          unit_cost: unitCost,
+          source_type: "PURCHASE_VOID",
+          source_id: id,
+          source_line_id: item.id,
+          reversal_of_id: original?.id || null,
+          catatan: reason,
+          dibuat_oleh: actorId || null,
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Stok dari pembelian ini sudah dipakai. Gunakan retur/adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${msg}`
+        );
       }
     }
 
-    // Delete purchase items by record id (works on Supabase + SQLite)
-    for (const item of items) {
-      const delItemResult = await db.delete("item_pembelian", item.id);
-      if (delItemResult.error) throw delItemResult.error;
+    // Void linked cashbook entries by reference (works on Supabase + SQLite)
+    const linkedCashbook = await db.query("keuangan", {});
+    if (linkedCashbook.data) {
+      const toVoid = linkedCashbook.data.filter((entry: any) =>
+        String(entry.keperluan || "").includes(`[REF:${id}]`)
+      );
+      for (const entry of toVoid) {
+        const voidResult = await db.update("keuangan", entry.id, {
+          status_transaksi: "VOIDED",
+          voided_at: new Date().toISOString(),
+          voided_by: actorId || null,
+          void_reason: reason,
+        });
+        if (voidResult.error) throw voidResult.error;
+      }
     }
 
-    // Delete purchase
-    const result = await db.delete("pembelian", id);
+    if (hutangRow.data) {
+      const debtVoid = await db.update("hutang_pembelian", hutangRow.data.id, {
+        jumlah_terbayar: 0,
+        sisa_hutang: 0,
+        status: "LUNAS",
+        catatan: `${hutangRow.data.catatan || ""} (Pembelian dibatalkan)`.trim(),
+      });
+      if (debtVoid.error) throw debtVoid.error;
+    }
+
+    const result = await db.update("pembelian", id, {
+      status_transaksi: "VOIDED",
+      voided_at: new Date().toISOString(),
+      voided_by: actorId || null,
+      void_reason: reason,
+    });
     if (result.error) throw result.error;
 
     await recalculateCashbookIfAvailable();
   } catch (error) {
-    console.error("Error deleting purchase:", error);
+    console.error("Error voiding purchase:", error);
     throw error;
   }
+}
+
+/**
+ * Compatibility wrapper: old callers still ask to delete, but posted
+ * purchases are now voided so inventory history remains auditable.
+ */
+export async function deletePurchase(id: string): Promise<void> {
+  return voidPurchase(id, "Pembelian dibatalkan");
 }
 
 /**
@@ -1165,10 +1647,16 @@ export async function payDebt(data: {
       data.purchase_id
     }]`;
 
+    // Use MAKLON category when paying off a maklon vendor PO so the cashbook
+    // reports it under "Biaya Maklon" instead of "Supply". For regular
+    // BARANG purchases, keep the legacy SUPPLY category.
+    const kategoriPembayaran =
+      (purchase as any).tipe_pembelian === "MAKLON" ? "MAKLON" : "SUPPLY";
+
     await db.insert("keuangan", {
       id: `keu-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       tanggal: data.tanggal_bayar || new Date().toISOString().split("T")[0],
-      kategori_transaksi: "SUPPLY",
+      kategori_transaksi: kategoriPembayaran,
       debit: 0,
       kredit: data.jumlah_bayar,
       keperluan,

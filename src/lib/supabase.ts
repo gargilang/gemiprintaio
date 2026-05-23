@@ -101,6 +101,7 @@ export const SYNC_TABLES = [
   "item_penjualan",
   "pembelian",
   "item_pembelian",
+  "inventory_movements",
   "piutang_penjualan",
   "pelunasan_piutang",
   "hutang_pembelian",

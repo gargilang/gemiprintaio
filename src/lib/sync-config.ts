@@ -9,6 +9,7 @@ export const CORE_SYNC_TABLES = [
   "item_penjualan",
   "pembelian",
   "item_pembelian",
+  "inventory_movements",
   "keuangan",
 ] as const;
 

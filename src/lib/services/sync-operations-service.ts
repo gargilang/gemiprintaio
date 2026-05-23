@@ -149,12 +149,31 @@ export async function triggerPullFromCloud(): Promise<SyncResult> {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
+    // syncFromCloud is a no-op when Supabase is not configured (web-only /
+    // SQLite-only mode). Treat it as a silent success so the sync cycle
+    // doesn't report spurious failures in the console.
+    const msg = error instanceof Error ? error.message : String(error);
+    const isNoOp =
+      msg.includes("not configured") ||
+      msg.includes("not available") ||
+      msg.includes("not supported") ||
+      msg.includes("no-op");
+    if (isNoOp) {
+      return {
+        success: true,
+        synced: 0,
+        pulled: 0,
+        failed: 0,
+        message: "Pull skipped (cloud not configured)",
+        timestamp: new Date().toISOString(),
+      };
+    }
     return {
       success: false,
       synced: 0,
       pulled: 0,
       failed: 1,
-      message: error instanceof Error ? error.message : "Unknown pull error",
+      message: msg,
       timestamp: new Date().toISOString(),
     };
   }

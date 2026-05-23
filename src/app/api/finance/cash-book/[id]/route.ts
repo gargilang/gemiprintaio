@@ -26,7 +26,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           error:
-            "Transaksi pembelian harus dihapus melalui Halaman Pembelian",
+            "Transaksi pembelian harus dibatalkan melalui Halaman Pembelian",
           isPurchaseTransaction: true,
         },
         { status: 403 }

@@ -992,7 +992,7 @@ export default function FinancePage() {
           stripReferenceId(cashBook.keperluan) || "-"
         }\nTanggal: ${formatDateJakarta(
           cashBook.tanggal
-        )}\n\nUntuk menghapus atau membatalkan transaksi ini:\n\n1. Buka halaman PEMBELIAN\n2. Untuk pembelian yang sudah Lunas lewat pembayaran Cash: Klik tombol Hapus pada Daftar Pembelian\n3. Untuk pembayaran tagihan yang sudah Lunas (sudah dibayar): Klik tombol Revert untuk mengembalikan ke status TAGIHAN`,
+        )}\n\nUntuk membatalkan transaksi ini:\n\n1. Buka halaman PEMBELIAN\n2. Klik tombol Batalkan pada Daftar Pembelian\n3. Jika pembelian sudah punya pelunasan tagihan, lakukan Revert pembayaran dulu`,
         confirmText: "Mengerti",
         cancelText: "",
         type: "purchases",
@@ -1013,7 +1013,7 @@ export default function FinancePage() {
           stripReferenceId(cashBook.keperluan) || "-"
         }\nTanggal: ${formatDateJakarta(
           cashBook.tanggal
-        )}\n\nUntuk menghapus transaksi ini:\n\n1. Buka halaman POS\n2. Scroll ke bagian RIWAYAT PENJUALAN\n3. Cari transaksi yang ingin dihapus\n4. Klik tombol Hapus (ikon tempat sampah) pada transaksi tersebut\n\nPerhatian: Menghapus transaksi penjualan akan mengembalikan stok barang dan menghapus semua data terkait termasuk piutang (jika ada).`,
+        )}\n\nUntuk membatalkan transaksi ini:\n\n1. Buka halaman POS\n2. Scroll ke bagian RIWAYAT PENJUALAN\n3. Cari transaksi yang ingin dibatalkan\n4. Klik tombol Batalkan pada transaksi tersebut\n\nTransaksi akan ditandai VOID dan stok dikembalikan lewat jurnal pembalik.`,
         confirmText: "Mengerti",
         cancelText: "",
         type: "pos",

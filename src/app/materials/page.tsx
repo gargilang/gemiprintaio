@@ -13,6 +13,8 @@ import {
   createMaterialWithUnitPricesAction,
   updateMaterialWithUnitPricesAction,
   deleteMaterialAction,
+  getInventoryMovementsAction,
+  createInventoryAdjustmentAction,
   getCategoriesAction,
   getSubcategoriesAction,
   getUnitsAction,
@@ -27,11 +29,15 @@ const MaterialRow = memo(
     index,
     onEdit,
     onDelete,
+    onViewMovements,
+    onAdjustStock,
   }: {
     material: any;
     index: number;
     onEdit: (material: any) => void;
     onDelete: (material: any) => void;
+    onViewMovements: (material: any) => void;
+    onAdjustStock: (material: any) => void;
   }) => {
     const defaultUnit = material.unit_prices?.find(
       (up: any) => up.default_status
@@ -146,6 +152,48 @@ const MaterialRow = memo(
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-center gap-2">
+            {material.lacak_inventori_status && (
+              <>
+                <button
+                  onClick={() => onViewMovements(material)}
+                  className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="Riwayat stok"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onAdjustStock(material)}
+                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                  title="Adjustment stok"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v12m6-6H6"
+                    />
+                  </svg>
+                </button>
+              </>
+            )}
             <button
               onClick={() => onEdit(material)}
               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -224,6 +272,13 @@ export default function MaterialsPage() {
   );
   const loading = materialsLoading;
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [movementMaterial, setMovementMaterial] = useState<any>(null);
+  const [movementRows, setMovementRows] = useState<any[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(false);
+  const [adjustMaterial, setAdjustMaterial] = useState<any>(null);
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -353,13 +408,15 @@ export default function MaterialsPage() {
     const handleEscKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (showModal) handleCloseModal();
+        else if (movementMaterial) setMovementMaterial(null);
+        else if (adjustMaterial) setAdjustMaterial(null);
         else if (confirmDialog?.show) setConfirmDialog(null);
       }
     };
 
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
-  }, [showModal, confirmDialog]);
+  }, [showModal, movementMaterial, adjustMaterial, confirmDialog]);
 
   const loadMaterials = async () => {
     try {
@@ -439,6 +496,56 @@ export default function MaterialsPage() {
         }
       },
     });
+  };
+
+  const handleViewMovements = async (material: any) => {
+    setMovementMaterial(material);
+    setLoadingMovements(true);
+    try {
+      const rows = await getInventoryMovementsAction({ barang_id: material.id });
+      setMovementRows(rows || []);
+    } catch (error) {
+      console.error("Error loading inventory movements:", error);
+      showNotification("error", "Gagal memuat riwayat stok");
+      setMovementRows([]);
+    } finally {
+      setLoadingMovements(false);
+    }
+  };
+
+  const handleAdjustStock = (material: any) => {
+    setAdjustMaterial(material);
+    setAdjustQty("");
+    setAdjustReason("");
+  };
+
+  const submitAdjustment = async () => {
+    if (!adjustMaterial) return;
+    const qty = Number(adjustQty);
+    if (!Number.isFinite(qty) || qty === 0) {
+      showNotification("error", "Qty adjustment tidak boleh 0");
+      return;
+    }
+    if (!adjustReason.trim()) {
+      showNotification("error", "Alasan adjustment wajib diisi");
+      return;
+    }
+    setSavingAdjustment(true);
+    try {
+      await createInventoryAdjustmentAction({
+        barang_id: adjustMaterial.id,
+        qty_delta: qty,
+        reason: adjustReason.trim(),
+      });
+      setAdjustMaterial(null);
+      await loadMaterials();
+      showNotification("success", "Adjustment stok berhasil disimpan");
+    } catch (error: any) {
+      console.error("Error creating adjustment:", error);
+      showNotification("error", error.message || "Gagal menyimpan adjustment");
+    } finally {
+      setSavingAdjustment(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -753,6 +860,8 @@ export default function MaterialsPage() {
                     index={visibleRange.start + idx}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onViewMovements={handleViewMovements}
+                    onAdjustStock={handleAdjustStock}
                   />
                 ))
               )}
@@ -775,6 +884,156 @@ export default function MaterialsPage() {
         onGetUnits={getUnitsAction}
         onGetQuickSpecs={getQuickSpecsAction}
       />
+
+      {movementMaterial && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  Riwayat Stok
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {movementMaterial.nama}
+                </p>
+              </div>
+              <button
+                onClick={() => setMovementMaterial(null)}
+                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                title="Tutup"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[60vh]">
+              {loadingMovements ? (
+                <div className="p-8 text-center text-gray-500">
+                  Memuat riwayat stok...
+                </div>
+              ) : movementRows.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  Belum ada riwayat stok untuk barang ini.
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Tanggal</th>
+                      <th className="px-4 py-3 text-left">Tipe</th>
+                      <th className="px-4 py-3 text-right">Qty</th>
+                      <th className="px-4 py-3 text-right">Stok</th>
+                      <th className="px-4 py-3 text-right">HPP</th>
+                      <th className="px-4 py-3 text-left">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movementRows.map((row) => (
+                      <tr key={row.id} className="border-t">
+                        <td className="px-4 py-3 text-gray-700">
+                          {row.tanggal}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-block px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-semibold">
+                            {row.movement_type}
+                          </span>
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-right font-semibold ${
+                            Number(row.qty_delta) >= 0
+                              ? "text-emerald-700"
+                              : "text-red-700"
+                          }`}
+                        >
+                          {Number(row.qty_delta || 0).toLocaleString("id-ID")}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {Number(row.qty_before || 0).toLocaleString("id-ID")}
+                          {" -> "}
+                          {Number(row.qty_after || 0).toLocaleString("id-ID")}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          Rp{" "}
+                          {Number(row.avg_cost_after || 0).toLocaleString(
+                            "id-ID"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {row.catatan || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {adjustMaterial && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b">
+              <h3 className="text-lg font-bold text-gray-800">
+                Adjustment Stok
+              </h3>
+              <p className="text-sm text-gray-500">{adjustMaterial.nama}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Qty Delta
+                </label>
+                <input
+                  type="number"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Contoh: -2 atau 10"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Alasan
+                </label>
+                <textarea
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+              <button
+                onClick={() => setAdjustMaterial(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={submitAdjustment}
+                disabled={savingAdjustment}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {savingAdjustment ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (

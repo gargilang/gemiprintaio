@@ -48,6 +48,7 @@ import {
   runSyncCycle,
   setAutoSyncIntervalMinutes,
 } from "@/lib/sync-client";
+import { isTauriApp } from "@/lib/client-utils";
 import {
   DndContext,
   closestCenter,
@@ -3075,6 +3076,13 @@ function FinishingOptionsTab() {
 function SystemTab() {
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
+  // Tauri detection — sync UI is Tauri-only since web users go straight to
+  // Supabase via server actions and have no local SQLite to sync with.
+  const [isTauri, setIsTauri] = useState(false);
+  useEffect(() => {
+    setIsTauri(isTauriApp());
+  }, []);
+
   // Sync state
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncLoading, setSyncLoading] = useState(true);
@@ -3213,6 +3221,12 @@ function SystemTab() {
   };
 
   useEffect(() => {
+    // Sync status polling is only meaningful for Tauri desktop builds.
+    // Web users hit Supabase directly — there is nothing to poll.
+    if (!isTauriApp()) {
+      setSyncLoading(false);
+      return;
+    }
     loadSyncStatus();
     const interval = setInterval(() => {
       loadSyncStatus();
@@ -3256,7 +3270,10 @@ function SystemTab() {
         </div>
       </div>
 
-      {/* Auto-Backup Database */}
+      {/* Auto-Backup Database — Tauri desktop only. Web users (Vercel /
+          localhost browser) write directly to Supabase via server actions,
+          so there is no local store to sync. */}
+      {isTauri && (
       <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
         <div className="flex items-center justify-between gap-6">
           {/* Left: Title & Status */}
@@ -3428,6 +3445,7 @@ function SystemTab() {
           </span>
         </div>
       </div>
+      )}
 
       {/* Printer Settings - Coming Soon */}
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">

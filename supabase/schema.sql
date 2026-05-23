@@ -114,6 +114,47 @@ CREATE TABLE IF NOT EXISTS barang (
 
 CREATE INDEX IF NOT EXISTS idx_barang_sync_status ON barang(sync_status);
 
+-- Table: inventory_movements (Append-only inventory ledger)
+CREATE TABLE IF NOT EXISTS inventory_movements (
+  id TEXT PRIMARY KEY,
+  barang_id TEXT NOT NULL,
+  tanggal TEXT NOT NULL,
+  movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE', 'PURCHASE_RECEIPT', 'SALE_ISSUE', 'SALE_VOID', 'PURCHASE_VOID', 'PURCHASE_RETURN', 'ADJUSTMENT')),
+  qty_delta REAL NOT NULL,
+  unit_cost REAL NOT NULL DEFAULT 0,
+  value_delta REAL NOT NULL DEFAULT 0,
+  qty_before REAL NOT NULL DEFAULT 0,
+  qty_after REAL NOT NULL DEFAULT 0,
+  avg_cost_before REAL NOT NULL DEFAULT 0,
+  avg_cost_after REAL NOT NULL DEFAULT 0,
+  source_type TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  source_line_id TEXT,
+  reversal_of_id TEXT,
+  catatan TEXT,
+  dibuat_oleh TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  updated_at_server TIMESTAMPTZ,
+  updated_by_device TEXT DEFAULT 'server',
+  change_version INTEGER DEFAULT 1,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TIMESTAMPTZ,
+  client_mutation_id TEXT,
+  FOREIGN KEY (barang_id) REFERENCES barang(id),
+  FOREIGN KEY (reversal_of_id) REFERENCES inventory_movements(id),
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_barang ON inventory_movements(barang_id, dibuat_pada);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_source ON inventory_movements(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_line ON inventory_movements(source_line_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_type ON inventory_movements(movement_type);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_sync_status ON inventory_movements(sync_status);
+
 -- Table: harga_barang_satuan (Material Unit Prices)
 CREATE TABLE IF NOT EXISTS harga_barang_satuan (
   id TEXT PRIMARY KEY,
@@ -187,6 +228,7 @@ CREATE TABLE IF NOT EXISTS vendor (
   ketentuan_bayar TEXT,
   aktif_status INTEGER DEFAULT 1,
   catatan TEXT,
+  tipe_vendor TEXT NOT NULL DEFAULT 'SUPPLIER' CHECK(tipe_vendor IN ('SUPPLIER', 'SUBKONTRAKTOR', 'KEDUANYA')),
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
@@ -195,6 +237,7 @@ CREATE TABLE IF NOT EXISTS vendor (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vendor_sync_status ON vendor(sync_status);
+CREATE INDEX IF NOT EXISTS idx_vendor_tipe ON vendor(tipe_vendor);
 
 -- Table: profil (User Profiles)
 CREATE TABLE IF NOT EXISTS profil (
@@ -252,6 +295,10 @@ CREATE TABLE IF NOT EXISTS penjualan (
   metode_pembayaran TEXT,
   kasir_id TEXT,
   catatan TEXT,
+  status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('DRAFT', 'POSTED', 'VOIDED')),
+  voided_at TIMESTAMPTZ,
+  voided_by TEXT,
+  void_reason TEXT,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
@@ -262,6 +309,7 @@ CREATE TABLE IF NOT EXISTS penjualan (
 );
 
 CREATE INDEX IF NOT EXISTS idx_penjualan_sync_status ON penjualan(sync_status);
+CREATE INDEX IF NOT EXISTS idx_penjualan_status_transaksi ON penjualan(status_transaksi);
 
 -- Table: item_penjualan (Sales Items)
 CREATE TABLE IF NOT EXISTS item_penjualan (
@@ -280,16 +328,26 @@ CREATE TABLE IF NOT EXISTS item_penjualan (
   gross_margin REAL DEFAULT 0,
   panjang REAL,
   lebar REAL,
+  tipe_item TEXT NOT NULL DEFAULT 'BARANG' CHECK(tipe_item IN ('BARANG', 'JASA', 'MAKLON')),
+  vendor_subkontrak_id TEXT,
+  biaya_subkontrak REAL,
+  metode_bayar_vendor TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH', 'NET30')),
+  pembelian_id_terkait TEXT,
+  deskripsi_pekerjaan TEXT,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
   FOREIGN KEY (barang_id) REFERENCES barang(id),
-  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)
+  FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id),
+  FOREIGN KEY (vendor_subkontrak_id) REFERENCES vendor(id) ON DELETE SET NULL,
+  FOREIGN KEY (pembelian_id_terkait) REFERENCES pembelian(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_item_penjualan_sync_status ON item_penjualan(sync_status);
+CREATE INDEX IF NOT EXISTS idx_item_penjualan_tipe_item ON item_penjualan(tipe_item);
+CREATE INDEX IF NOT EXISTS idx_item_penjualan_pembelian_terkait ON item_penjualan(pembelian_id_terkait);
 
 -- Table: pembelian (Purchases)
 CREATE TABLE IF NOT EXISTS pembelian (
@@ -307,14 +365,24 @@ CREATE TABLE IF NOT EXISTS pembelian (
   tanggal DATE DEFAULT CURRENT_DATE,
   nomor_faktur TEXT,
   status_pembayaran TEXT DEFAULT 'LUNAS' CHECK(status_pembayaran IN ('LUNAS', 'HUTANG', 'SEBAGIAN')),
+  tipe_pembelian TEXT NOT NULL DEFAULT 'BARANG' CHECK(tipe_pembelian IN ('BARANG', 'MAKLON')),
+  penjualan_id_sumber TEXT,
+  status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('DRAFT', 'POSTED', 'VOIDED')),
+  voided_at TIMESTAMPTZ,
+  voided_by TEXT,
+  void_reason TEXT,
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1,
   FOREIGN KEY (vendor_id) REFERENCES vendor(id),
-  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+  FOREIGN KEY (dibuat_oleh) REFERENCES profil(id),
+  FOREIGN KEY (penjualan_id_sumber) REFERENCES penjualan(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_pembelian_sync_status ON pembelian(sync_status);
+CREATE INDEX IF NOT EXISTS idx_pembelian_penjualan_sumber ON pembelian(penjualan_id_sumber);
+CREATE INDEX IF NOT EXISTS idx_pembelian_tipe ON pembelian(tipe_pembelian);
+CREATE INDEX IF NOT EXISTS idx_pembelian_status_transaksi ON pembelian(status_transaksi);
 
 -- Table: item_pembelian (Purchase Items)
 CREATE TABLE IF NOT EXISTS item_pembelian (
@@ -554,12 +622,17 @@ CREATE TABLE IF NOT EXISTS keuangan (
   override_bagi_hasil_anwar INTEGER DEFAULT 0,
   override_bagi_hasil_suri INTEGER DEFAULT 0,
   override_bagi_hasil_gemi INTEGER DEFAULT 0,
+  status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED', 'VOIDED')),
+  voided_at TIMESTAMPTZ,
+  voided_by TEXT,
+  void_reason TEXT,
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1
 );
 
 CREATE INDEX IF NOT EXISTS idx_keuangan_sync_status ON keuangan(sync_status);
+CREATE INDEX IF NOT EXISTS idx_keuangan_status_transaksi ON keuangan(status_transaksi);
 
 -- Flexible finance configuration tables
 CREATE TABLE IF NOT EXISTS finance_category_definitions (

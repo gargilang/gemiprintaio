@@ -36,6 +36,15 @@ interface CartItem {
   billedLebar?: number;
   subtotalRaw: number;
   finishing?: FinishingItem[];
+  // Maklon (subcontract) fields. When tipe_item === 'MAKLON' the cart line
+  // represents work outsourced to a partner shop; the cart row shows a
+  // distinct badge + vendor name + per-line margin so the kasir can sanity-
+  // check the deal at a glance.
+  tipe_item?: "BARANG" | "MAKLON";
+  vendor_subkontrak_nama?: string;
+  biaya_subkontrak?: number;
+  metode_bayar_vendor?: "CASH" | "NET30";
+  deskripsi_pekerjaan?: string;
 }
 
 interface FinishingOption {
@@ -242,11 +251,30 @@ export default function POSCart({
               className={`bg-white rounded-lg p-3 border transition-all ${
                 editingCartIndex === index
                   ? "border-amber-400 ring-2 ring-amber-200/50 shadow-sm"
-                  : "border-gray-200 hover:border-[#00afef]/50"
+                  : item.tipe_item === "MAKLON"
+                    ? "border-[#00afef]/50 hover:border-[#00afef]"
+                    : "border-gray-200 hover:border-[#00afef]/50"
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
+                  {item.tipe_item === "MAKLON" && (
+                    <div className="mb-1 flex items-center gap-2 flex-wrap">
+                      <span className="inline-block text-[9px] px-1.5 py-0.5 bg-[#00afef]/20 text-[#0a1b3d] font-bold rounded uppercase tracking-wide">
+                        Maklon
+                      </span>
+                      {item.vendor_subkontrak_nama && (
+                        <span className="text-[10px] text-[#2266ff] truncate">
+                          → {item.vendor_subkontrak_nama}
+                        </span>
+                      )}
+                      {item.metode_bayar_vendor && (
+                        <span className="text-[9px] px-1 py-0.5 bg-blue-50 text-[#2266ff] border border-blue-200 rounded">
+                          {item.metode_bayar_vendor}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="font-semibold text-sm text-gray-800 truncate">
                     {item.barang_nama}
                   </div>
@@ -277,6 +305,27 @@ export default function POSCart({
                     Rp{" "}
                     {lineCharges[index].toLocaleString("id-ID")}
                   </div>
+                  {item.tipe_item === "MAKLON" &&
+                    typeof item.biaya_subkontrak === "number" && (
+                      <div className="text-[10px] text-[#2266ff] mt-0.5">
+                        Bayar vendor: Rp{" "}
+                        {item.biaya_subkontrak.toLocaleString("id-ID")}
+                        {(() => {
+                          const margin =
+                            lineCharges[index] - (item.biaya_subkontrak || 0);
+                          return margin >= 0 ? (
+                            <span className="ml-1 text-emerald-700">
+                              (margin +Rp {margin.toLocaleString("id-ID")})
+                            </span>
+                          ) : (
+                            <span className="ml-1 text-amber-700">
+                              (rugi −Rp{" "}
+                              {Math.abs(margin).toLocaleString("id-ID")})
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {onEditItem && (

@@ -140,6 +140,103 @@ fn init_schema(conn: &Connection) -> SqlResult<()> {
 }
 
 fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS inventory_movements (
+          id TEXT PRIMARY KEY,
+          barang_id TEXT NOT NULL,
+          tanggal TEXT NOT NULL,
+          movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT')),
+          qty_delta REAL NOT NULL,
+          unit_cost REAL NOT NULL DEFAULT 0,
+          value_delta REAL NOT NULL DEFAULT 0,
+          qty_before REAL NOT NULL DEFAULT 0,
+          qty_after REAL NOT NULL DEFAULT 0,
+          avg_cost_before REAL NOT NULL DEFAULT 0,
+          avg_cost_after REAL NOT NULL DEFAULT 0,
+          source_type TEXT NOT NULL,
+          source_id TEXT NOT NULL,
+          source_line_id TEXT,
+          reversal_of_id TEXT,
+          catatan TEXT,
+          dibuat_oleh TEXT,
+          dibuat_pada TEXT NOT NULL DEFAULT (datetime('now')),
+          diperbarui_pada TEXT NOT NULL DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 1,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT,
+          FOREIGN KEY (barang_id) REFERENCES barang(id),
+          FOREIGN KEY (reversal_of_id) REFERENCES inventory_movements(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_inventory_movements_barang ON inventory_movements(barang_id, dibuat_pada);
+        CREATE INDEX IF NOT EXISTS idx_inventory_movements_source ON inventory_movements(source_type, source_id);
+        CREATE INDEX IF NOT EXISTS idx_inventory_movements_line ON inventory_movements(source_line_id);
+        CREATE INDEX IF NOT EXISTS idx_inventory_movements_type ON inventory_movements(movement_type);
+        CREATE INDEX IF NOT EXISTS idx_inventory_movements_sync_status ON inventory_movements(sync_status);"
+    )?;
+    let _ = conn.execute_batch(
+        "INSERT OR IGNORE INTO inventory_movements (
+          id, barang_id, tanggal, movement_type, qty_delta, unit_cost, value_delta,
+          qty_before, qty_after, avg_cost_before, avg_cost_after,
+          source_type, source_id, catatan, dibuat_oleh, sync_status,
+          updated_by_device, change_version, is_deleted
+        )
+        SELECT
+          'opening-' || id,
+          id,
+          date('now'),
+          'OPENING_BALANCE',
+          COALESCE(jumlah_stok, 0),
+          COALESCE(average_cost_per_base_unit, 0),
+          COALESCE(jumlah_stok, 0) * COALESCE(average_cost_per_base_unit, 0),
+          0,
+          COALESCE(jumlah_stok, 0),
+          0,
+          COALESCE(average_cost_per_base_unit, 0),
+          'OPENING',
+          id,
+          'Backfill stok awal sebelum ledger aktif',
+          NULL,
+          'synced',
+          'tauri',
+          1,
+          0
+        FROM barang
+        WHERE COALESCE(lacak_inventori_status, 1) <> 0
+          AND COALESCE(jumlah_stok, 0) <> 0;"
+    );
+
+    for table in ["pembelian", "penjualan"] {
+        let _ = conn.execute(
+            &format!("ALTER TABLE {} ADD COLUMN status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('DRAFT','POSTED','VOIDED'))", table),
+            [],
+        );
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN voided_at TEXT", table), []);
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN voided_by TEXT", table), []);
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN void_reason TEXT", table), []);
+        let _ = conn.execute(
+            &format!("CREATE INDEX IF NOT EXISTS idx_{}_status_transaksi ON {}(status_transaksi)", table, table),
+            [],
+        );
+    }
+
+    let _ = conn.execute(
+        "ALTER TABLE keuangan ADD COLUMN status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED','VOIDED'))",
+        [],
+    );
+    let _ = conn.execute("ALTER TABLE keuangan ADD COLUMN voided_at TEXT", []);
+    let _ = conn.execute("ALTER TABLE keuangan ADD COLUMN voided_by TEXT", []);
+    let _ = conn.execute("ALTER TABLE keuangan ADD COLUMN void_reason TEXT", []);
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_keuangan_status_transaksi ON keuangan(status_transaksi)",
+        [],
+    );
+
     let tables = [
         "kategori_barang",
         "subkategori_barang",
@@ -156,6 +253,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         "item_penjualan",
         "pembelian",
         "item_pembelian",
+        "inventory_movements",
         "piutang_penjualan",
         "pelunasan_piutang",
         "hutang_pembelian",

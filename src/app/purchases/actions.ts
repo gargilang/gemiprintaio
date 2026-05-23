@@ -12,10 +12,15 @@ import {
   getPurchases,
   getInitData,
   deletePurchase,
+  voidPurchase,
   revertPayment,
   getDebts,
   payDebt,
 } from "@/lib/services/purchases-service";
+import {
+  createInventoryAdjustment,
+  getInventoryMovements,
+} from "@/lib/services/inventory-service";
 import {
   getCategories,
   getSubcategories,
@@ -126,6 +131,47 @@ export async function deletePurchaseAction(id: string) {
     return await deletePurchase(id);
   } catch (error) {
     console.error("Error in deletePurchaseAction:", error);
+    throw error;
+  }
+}
+
+export async function voidPurchaseAction(
+  id: string,
+  reason = "Pembelian dibatalkan"
+) {
+  try {
+    return await voidPurchase(id, reason);
+  } catch (error) {
+    console.error("Error in voidPurchaseAction:", error);
+    throw error;
+  }
+}
+
+export async function createInventoryAdjustmentAction(data: {
+  barang_id: string;
+  qty_delta: number;
+  reason: string;
+  unit_cost?: number | null;
+  tanggal?: string;
+  dibuat_oleh?: string | null;
+}) {
+  try {
+    return await createInventoryAdjustment(data);
+  } catch (error) {
+    console.error("Error in createInventoryAdjustmentAction:", error);
+    throw error;
+  }
+}
+
+export async function getInventoryMovementsAction(filters: {
+  barang_id?: string;
+  source_id?: string;
+  source_type?: string;
+}) {
+  try {
+    return await getInventoryMovements(filters);
+  } catch (error) {
+    console.error("Error in getInventoryMovementsAction:", error);
     throw error;
   }
 }

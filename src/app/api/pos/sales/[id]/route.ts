@@ -17,7 +17,7 @@ export async function DELETE(
     const uid = request.headers.get("x-session-uid");
     await logAudit({
       userId: uid,
-      action: "delete_sale",
+      action: "void_sale",
       resourceType: "penjualan",
       resourceId: id,
       ipAddress:
@@ -27,14 +27,14 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "Transaksi berhasil dihapus dan stok dikembalikan",
+      message: "Transaksi berhasil dibatalkan dan stok dikembalikan",
     });
   } catch (error: unknown) {
     const msg =
-      error instanceof Error ? error.message : "Gagal menghapus transaksi";
+      error instanceof Error ? error.message : "Gagal membatalkan transaksi";
     if (msg.includes("tidak ditemukan")) {
       return NextResponse.json({ error: msg }, { status: 404 });
     }
-    return apiError("Gagal menghapus transaksi", 500, error);
+    return apiError("Gagal membatalkan transaksi", 500, error);
   }
 }

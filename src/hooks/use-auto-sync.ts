@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { isTauriApp } from "@/lib/client-utils";
 import { getBrowserSupabaseForTauri } from "@/lib/supabase";
 import { REALTIME_PULL_ENABLED } from "@/lib/sync-config";
 import {
@@ -29,6 +30,13 @@ export function useAutoSync() {
   const lastSyncRef = useRef<number>(0);
 
   useEffect(() => {
+    // Auto-sync only makes sense on Tauri desktop, where SQLite is the
+    // primary store and Supabase is a cloud mirror. Web users (Vercel /
+    // localhost dev) hit Supabase directly via server actions, so there
+    // is no local queue to push and no offline cache to pull into.
+    if (typeof window === "undefined") return;
+    if (!isTauriApp()) return;
+
     let timer: number | null = null;
     const startIntervalSync = () => {
       if (timer) window.clearInterval(timer);

@@ -46,8 +46,18 @@ const VendorRow = memo(
           <div className="font-semibold text-gray-800">
             {vendor.nama_perusahaan}
           </div>
-          <div className="text-xs text-gray-800 mt-1">
-            CP: {vendor.kontak_person || "-"}
+          <div className="text-xs text-gray-800 mt-1 flex items-center gap-1.5 flex-wrap">
+            <span>CP: {vendor.kontak_person || "-"}</span>
+            {vendor.tipe_vendor === "SUBKONTRAKTOR" && (
+              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-fuchsia-100 text-fuchsia-800 font-bold rounded uppercase tracking-wide">
+                Subkontraktor
+              </span>
+            )}
+            {vendor.tipe_vendor === "KEDUANYA" && (
+              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-purple-100 text-purple-800 font-bold rounded uppercase tracking-wide">
+                Supplier + Maklon
+              </span>
+            )}
           </div>
         </td>
         <td className="px-4 py-3 text-sm text-gray-700">{vendor.email}</td>
@@ -163,6 +173,7 @@ export default function VendorsPage() {
     ketentuan_bayar: "",
     aktif_status: 1,
     catatan: "",
+    tipe_vendor: "SUPPLIER" as "SUPPLIER" | "SUBKONTRAKTOR" | "KEDUANYA",
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState<
@@ -317,6 +328,7 @@ export default function VendorsPage() {
       ketentuan_bayar: "",
       aktif_status: 1,
       catatan: "",
+      tipe_vendor: "SUPPLIER",
     });
     setShowModal(true);
   };
@@ -332,6 +344,12 @@ export default function VendorsPage() {
       ketentuan_bayar: vendor.ketentuan_bayar || "",
       aktif_status: vendor.aktif_status,
       catatan: vendor.catatan || "",
+      tipe_vendor:
+        (vendor.tipe_vendor as
+          | "SUPPLIER"
+          | "SUBKONTRAKTOR"
+          | "KEDUANYA"
+          | undefined) || "SUPPLIER",
     });
     setShowModal(true);
   };
@@ -778,6 +796,60 @@ export default function VendorsPage() {
                     rows={3}
                     className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tipe Vendor
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        {
+                          value: "SUPPLIER",
+                          label: "Supplier",
+                          hint: "Bahan / barang",
+                        },
+                        {
+                          value: "SUBKONTRAKTOR",
+                          label: "Subkontraktor",
+                          hint: "Maklon cetak",
+                        },
+                        {
+                          value: "KEDUANYA",
+                          label: "Keduanya",
+                          hint: "Bahan + maklon",
+                        },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, tipe_vendor: opt.value })
+                        }
+                        className={`px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                          formData.tipe_vendor === opt.value
+                            ? "bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white border-[#2266ff] shadow-sm"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-[#2266ff]"
+                        }`}
+                      >
+                        <div>{opt.label}</div>
+                        <div
+                          className={`text-[10px] ${
+                            formData.tipe_vendor === opt.value
+                              ? "text-white/80"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {opt.hint}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Subkontraktor muncul di POS sebagai pilihan vendor maklon.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

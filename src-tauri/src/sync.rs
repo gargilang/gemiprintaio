@@ -369,6 +369,7 @@ const WAVE1_TABLES: &[&str] = &[
     "item_penjualan",
     "pembelian",
     "item_pembelian",
+    "inventory_movements",
     "keuangan",
     // Authentication-critical tables must always sync even at wave 1.
     "profil",

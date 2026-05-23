@@ -25,6 +25,7 @@ interface Sale {
   jumlah_dibayar?: number;
   metode_pembayaran: string;
   status_pembayaran: string;
+  status_transaksi?: string;
   sisa_piutang: number;
   dibuat_pada: string;
   kasir_nama: string | null;
@@ -403,6 +404,11 @@ export default function SalesHistoryTable({
                       <div className="font-bold text-gray-800">
                         {sale.nomor_invoice}
                       </div>
+                      {sale.status_transaksi === "VOIDED" && (
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                          VOID
+                        </span>
+                      )}
                       {sale.kasir_nama && (
                         <div className="text-xs text-gray-500 mt-1">
                           Kasir: {sale.kasir_nama}
@@ -493,7 +499,9 @@ export default function SalesHistoryTable({
                             - This means the transaction had piutang and received payment(s)
                             - Clicking revert will delete all pelunasan records and reset to original piutang
                         */}
-                        {sale.has_pelunasan === 1 && onRevert && (
+                        {sale.status_transaksi !== "VOIDED" &&
+                          sale.has_pelunasan === 1 &&
+                          onRevert && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -539,9 +547,12 @@ export default function SalesHistoryTable({
                                 invoiceNumber: sale.nomor_invoice,
                               });
                             }}
-                            disabled={deletingId === sale.id}
+                            disabled={
+                              deletingId === sale.id ||
+                              sale.status_transaksi === "VOIDED"
+                            }
                             className="p-2 hover:bg-red-100 rounded-lg transition-all disabled:opacity-50"
-                            title="Hapus Transaksi"
+                            title="Batalkan Transaksi"
                           >
                             {deletingId === sale.id ? (
                               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
@@ -631,8 +642,8 @@ export default function SalesHistoryTable({
       {confirmDialog && (
         <ConfirmDialog
           show={confirmDialog.show}
-          title="Hapus Transaksi"
-          message={`Apakah Anda yakin ingin menghapus transaksi ${confirmDialog.invoiceNumber}?\n\nStok barang akan dikembalikan dan data keuangan akan dihapus.`}
+          title="Batalkan Transaksi"
+          message={`Apakah Anda yakin ingin membatalkan transaksi ${confirmDialog.invoiceNumber}?\n\nTransaksi tidak akan dihapus permanen. Stok akan dikembalikan lewat jurnal pembalik, dan data keuangan terkait ditandai VOID.`}
           onConfirm={async () => {
             setConfirmDialog(null);
             setDeletingId(confirmDialog.saleId);

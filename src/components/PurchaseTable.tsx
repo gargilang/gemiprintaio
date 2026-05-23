@@ -15,12 +15,17 @@ interface Purchase {
   vendor_kontak_person?: string | null;
   metode_pembayaran?: string;
   status_pembayaran?: string;
+  status_transaksi?: string;
   catatan: string | null;
   diterima_oleh?: string | null;
   created_by_name?: string | null;
   total_harga: number;
   jumlah_dibayar?: number;
   dibuat_pada?: string;
+  /** Type of purchase (BARANG default, MAKLON for subcontract jobs). */
+  tipe_pembelian?: "BARANG" | "MAKLON";
+  /** Sale ID that triggered this maklon PO (for back-link to invoice). */
+  penjualan_id_sumber?: string | null;
   items: {
     id: string;
     id_barang: string;
@@ -122,8 +127,21 @@ const PurchaseRow = memo(
             {tanggalFormatted}
           </td>
           <td className="px-4 py-3">
-            <div className="font-semibold text-gray-800">
-              {purchase.nomor_faktur}
+            <div className="font-semibold text-gray-800 flex items-center gap-2 flex-wrap">
+              <span>{purchase.nomor_faktur}</span>
+              {purchase.tipe_pembelian === "MAKLON" && (
+                <span
+                  className="inline-block text-[9px] px-1.5 py-0.5 bg-blue-100 text-[#0a1b3d] font-bold rounded uppercase tracking-wide"
+                  title="Pembelian otomatis dari pekerjaan maklon"
+                >
+                  Maklon
+                </span>
+              )}
+              {purchase.status_transaksi === "VOIDED" && (
+                <span className="inline-block text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 font-bold rounded uppercase tracking-wide">
+                  Void
+                </span>
+              )}
             </div>
             {purchase.catatan && (
               <div className="text-xs text-gray-500 mt-1 line-clamp-1">
@@ -185,8 +203,9 @@ const PurchaseRow = memo(
                 </svg>
               </button>
               {/* Show Edit button for HUTANG or CASH purchases */}
-              {(purchase.status_pembayaran !== "LUNAS" ||
-                purchase.metode_pembayaran === "CASH") && (
+              {purchase.status_transaksi !== "VOIDED" &&
+                (purchase.status_pembayaran !== "LUNAS" ||
+                  purchase.metode_pembayaran === "CASH") && (
                 <button
                   onClick={() => onEdit(purchase)}
                   className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -208,7 +227,8 @@ const PurchaseRow = memo(
                 </button>
               )}
               {/* Show Revert button only for LUNAS purchases that were paid (not CASH) */}
-              {purchase.status_pembayaran === "LUNAS" &&
+              {purchase.status_transaksi !== "VOIDED" &&
+                purchase.status_pembayaran === "LUNAS" &&
                 purchase.metode_pembayaran !== "CASH" &&
                 onRevert && (
                   <button
@@ -233,8 +253,9 @@ const PurchaseRow = memo(
                 )}
               <button
                 onClick={() => onDelete(purchase)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Hapus"
+                disabled={purchase.status_transaksi === "VOIDED"}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Batalkan"
               >
                 <svg
                   className="w-5 h-5"

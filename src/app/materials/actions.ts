@@ -12,6 +12,10 @@ import {
   deleteMaterial,
   type Material,
 } from "@/lib/services/materials-service";
+import {
+  createInventoryAdjustment,
+  getInventoryMovements,
+} from "@/lib/services/inventory-service";
 
 export async function getMaterialsAction() {
   try {
@@ -57,6 +61,35 @@ export async function deleteMaterialAction(id: string) {
     return await deleteMaterial(id);
   } catch (error) {
     console.error("Error in deleteMaterialAction:", error);
+    throw error;
+  }
+}
+
+export async function getInventoryMovementsAction(filters: {
+  barang_id?: string;
+  source_id?: string;
+  source_type?: string;
+}) {
+  try {
+    return await getInventoryMovements(filters);
+  } catch (error) {
+    console.error("Error in getInventoryMovementsAction:", error);
+    throw error;
+  }
+}
+
+export async function createInventoryAdjustmentAction(data: {
+  barang_id: string;
+  qty_delta: number;
+  reason: string;
+  unit_cost?: number | null;
+  tanggal?: string;
+  dibuat_oleh?: string | null;
+}) {
+  try {
+    return await createInventoryAdjustment(data);
+  } catch (error) {
+    console.error("Error in createInventoryAdjustmentAction:", error);
     throw error;
   }
 }

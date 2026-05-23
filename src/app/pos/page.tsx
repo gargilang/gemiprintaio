@@ -20,6 +20,9 @@ import {
 import POSCart, { type PrintType } from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
 import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
+import MaklonLineModal, {
+  type MaklonLineFormValue,
+} from "@/components/MaklonLineModal";
 import SalesHistoryTable from "@/components/SalesHistoryTable";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
@@ -28,7 +31,7 @@ import NotificationToast, {
 import {
   getPOSInitDataAction,
   createSaleAction,
-  deleteSaleAction,
+  voidSaleAction,
   revertSalePaymentAction,
   createCustomerAction,
   getReceivablesAction,
@@ -94,18 +97,34 @@ interface CartItem {
   billedLebar?: number;
   subtotalRaw: number;
   finishing?: FinishingItem[];
+  // Maklon (subcontract) line. When set, this cart entry represents work
+  // outsourced to a partner shop instead of a regular catalog item.
+  tipe_item?: "BARANG" | "MAKLON";
+  vendor_subkontrak_id?: string;
+  vendor_subkontrak_nama?: string;
+  biaya_subkontrak?: number;
+  metode_bayar_vendor?: "CASH" | "NET30";
+  deskripsi_pekerjaan?: string;
+}
+
+interface SubkontraktorOption {
+  id: string;
+  nama_perusahaan: string;
+  kontak_person?: string | null;
 }
 
 type POSInitData = {
   customers: Customer[];
   materials: Material[];
   sales: any[];
+  subkontraktor: SubkontraktorOption[];
 };
 
 const EMPTY_POS_INIT: POSInitData = {
   customers: [],
   materials: [],
   sales: [],
+  subkontraktor: [],
 };
 
 /** Category display order (aligned with default kategori_barang). */
@@ -135,12 +154,15 @@ export default function POSPage() {
       customers: (data.customers as Customer[]) || [],
       materials: (data.materials as Material[]) || [],
       sales: (data.sales as any[]) || [],
+      subkontraktor:
+        (data.subkontraktor as SubkontraktorOption[] | undefined) || [],
     };
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
   const customers = safePos.customers;
   const materials = safePos.materials;
   const sales = safePos.sales;
+  const subkontraktor = safePos.subkontraktor;
   const [refreshing, setRefreshing] = useState(false);
   const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
@@ -226,6 +248,10 @@ export default function POSPage() {
   // Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showReceivableModal, setShowReceivableModal] = useState(false);
+  const [showMaklonModal, setShowMaklonModal] = useState(false);
+  const [editingMaklonIndex, setEditingMaklonIndex] = useState<number | null>(
+    null
+  );
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -563,6 +589,13 @@ export default function POSPage() {
     const item = cart[index];
     if (!item) return;
 
+    // Maklon lines are edited through the dedicated MaklonLineModal — they
+    // don't belong to the regular barang-driven product form.
+    if (item.tipe_item === "MAKLON") {
+      handleOpenMaklonModal(index);
+      return;
+    }
+
     const material = materials.find((m) => m.id === item.barang_id);
     if (!material) {
       showMsg("error", "Barang tidak ditemukan di katalog");
@@ -639,16 +672,65 @@ export default function POSPage() {
     setCart(newCart);
   };
 
+  /**
+   * Open the maklon modal — either for adding a new maklon line or editing
+   * an existing one. Editing only works for cart lines that already have
+   * tipe_item === 'MAKLON'.
+   */
+  const handleOpenMaklonModal = (index: number | null = null) => {
+    setEditingMaklonIndex(index);
+    setShowMaklonModal(true);
+  };
+
+  const handleSaveMaklonLine = (value: MaklonLineFormValue) => {
+    const vendor = subkontraktor.find(
+      (v) => v.id === value.vendor_subkontrak_id
+    );
+    const newItem: CartItem = {
+      // Placeholder ids — server uses 'barang-jasa-maklon' regardless, these
+      // are just enough to satisfy the existing CartItem shape.
+      barang_id: "barang-jasa-maklon",
+      barang_nama: value.deskripsi_pekerjaan,
+      harga_satuan_id: "harga-jasa-maklon-pcs",
+      nama_satuan: value.nama_satuan || "pcs",
+      faktor_konversi: 1,
+      harga_satuan: value.harga_satuan,
+      jumlah: value.jumlah,
+      subtotalRaw: value.subtotal,
+      tipe_item: "MAKLON",
+      vendor_subkontrak_id: value.vendor_subkontrak_id,
+      vendor_subkontrak_nama: vendor?.nama_perusahaan,
+      biaya_subkontrak: value.biaya_subkontrak,
+      metode_bayar_vendor: value.metode_bayar_vendor,
+      deskripsi_pekerjaan: value.deskripsi_pekerjaan,
+    };
+
+    setCart((prev) => {
+      if (editingMaklonIndex !== null) {
+        const next = [...prev];
+        next[editingMaklonIndex] = {
+          ...newItem,
+          finishing: prev[editingMaklonIndex]?.finishing,
+        };
+        return next;
+      }
+      return [...prev, newItem];
+    });
+
+    setShowMaklonModal(false);
+    setEditingMaklonIndex(null);
+  };
+
   const handleDeleteSale = async (saleId: string) => {
     try {
-      await deleteSaleAction(saleId);
-      showMsg("success", "Transaksi berhasil dihapus");
+      await voidSaleAction(saleId, "Penjualan dibatalkan dari Riwayat POS");
+      showMsg("success", "Transaksi berhasil dibatalkan");
       await loadAllData();
     } catch (error: any) {
       console.error("Error deleting sale:", error);
       showMsg(
         "error",
-        error.message || "Terjadi kesalahan saat menghapus transaksi"
+        error.message || "Terjadi kesalahan saat membatalkan transaksi"
       );
     }
   };
@@ -776,6 +858,11 @@ export default function POSPage() {
         panjang: item.panjang,
         lebar: item.lebar,
         finishing: item.finishing,
+        tipe_item: item.tipe_item || "BARANG",
+        vendor_subkontrak_id: item.vendor_subkontrak_id || null,
+        biaya_subkontrak: item.biaya_subkontrak ?? null,
+        metode_bayar_vendor: item.metode_bayar_vendor ?? null,
+        deskripsi_pekerjaan: item.deskripsi_pekerjaan ?? null,
       }));
 
       const result = await createSaleAction({
@@ -818,7 +905,10 @@ export default function POSPage() {
           pelanggan_telepon: selectedCustomer?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
           items: cart.map((item, index) => ({
-            nama: item.barang_nama,
+            nama:
+              item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+                ? item.deskripsi_pekerjaan
+                : item.barang_nama,
             jumlah: item.jumlah,
             satuan: item.nama_satuan,
             harga:
@@ -856,7 +946,13 @@ export default function POSPage() {
               selectedCustomer?.nama || walkInFaktur?.nama || "",
             kota: walkInFaktur?.kota || "Bekasi",
             items: cart.map((item, index) => ({
-              nama: item.barang_nama,
+              // For maklon lines, the customer-facing item name is the
+              // deskripsi_pekerjaan; the placeholder barang name should
+              // never reach the printed faktur.
+              nama:
+                item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+                  ? item.deskripsi_pekerjaan
+                  : item.barang_nama,
               ukuran:
                 item.butuh_dimensi && item.panjang && item.lebar
                   ? item.useRounding &&
@@ -1134,6 +1230,28 @@ export default function POSPage() {
                     </button>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenMaklonModal(null)}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg text-xs font-bold hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all shadow-sm"
+                  title="Tambah pekerjaan yang dikerjakan vendor subkontraktor"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Maklon
+                </button>
 
                 <div className="shrink-0 text-xs text-gray-500 bg-cyan-50 px-3 py-1 rounded-full whitespace-nowrap">
                   <svg
@@ -1589,6 +1707,36 @@ export default function POSPage() {
         currentUserId={currentUser?.id || null}
         onGetReceivables={getReceivablesAction}
         onPayReceivable={payReceivableAction}
+      />
+
+      <MaklonLineModal
+        show={showMaklonModal}
+        subkontraktor={subkontraktor}
+        isEditing={editingMaklonIndex !== null}
+        initialValue={
+          editingMaklonIndex !== null && cart[editingMaklonIndex]
+            ? {
+                deskripsi_pekerjaan:
+                  cart[editingMaklonIndex].deskripsi_pekerjaan ||
+                  cart[editingMaklonIndex].barang_nama,
+                jumlah: cart[editingMaklonIndex].jumlah,
+                nama_satuan: cart[editingMaklonIndex].nama_satuan,
+                harga_satuan: cart[editingMaklonIndex].harga_satuan,
+                vendor_subkontrak_id:
+                  cart[editingMaklonIndex].vendor_subkontrak_id,
+                biaya_subkontrak:
+                  cart[editingMaklonIndex].biaya_subkontrak,
+                metode_bayar_vendor:
+                  cart[editingMaklonIndex].metode_bayar_vendor,
+              }
+            : null
+        }
+        onClose={() => {
+          setShowMaklonModal(false);
+          setEditingMaklonIndex(null);
+        }}
+        onSave={handleSaveMaklonLine}
+        onShowMessage={showMsg}
       />
 
       {confirmDialog && (

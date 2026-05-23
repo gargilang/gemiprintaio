@@ -9,6 +9,7 @@ import {
   getPOSInitData,
   createSale,
   deleteSale,
+  voidSale,
   revertSalePayment,
   getReceivables,
   payReceivable,
@@ -53,6 +54,18 @@ export async function deleteSaleAction(id: string): Promise<boolean> {
     return await deleteSale(id);
   } catch (error) {
     console.error("Error in deleteSaleAction:", error);
+    throw error;
+  }
+}
+
+export async function voidSaleAction(
+  id: string,
+  reason = "Penjualan dibatalkan"
+): Promise<boolean> {
+  try {
+    return await voidSale(id, reason);
+  } catch (error) {
+    console.error("Error in voidSaleAction:", error);
     throw error;
   }
 }

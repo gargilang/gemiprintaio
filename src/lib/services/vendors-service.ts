@@ -17,6 +17,13 @@ export interface Vendor {
   ketentuan_bayar?: string | null;
   aktif_status: number;
   catatan?: string | null;
+  /**
+   * Vendor classification — controls where the vendor appears in the UI.
+   *   - SUPPLIER (default): material supplier, shows in Pembelian vendor picker only.
+   *   - SUBKONTRAKTOR: partner print shop, shows in POS Maklon picker only.
+   *   - KEDUANYA: shows in both pickers.
+   */
+  tipe_vendor?: "SUPPLIER" | "SUBKONTRAKTOR" | "KEDUANYA";
   dibuat_pada?: string;
   diperbarui_pada?: string;
 }

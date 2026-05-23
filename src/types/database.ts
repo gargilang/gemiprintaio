@@ -24,6 +24,7 @@ export type KategoriTransaksi =
   | "PIUTANG" // Receivable
   | "PRIBADI-A" // Personal Add
   | "PRIBADI-S"
+  | "MAKLON" // Subcontract printing payout (outbound subcontracted job)
   | (string & {}); // allow dynamic categories per company
 
 export interface Profile {
@@ -89,6 +90,10 @@ export interface Sale {
   payment_method?: string;
   cashier_id?: string;
   notes?: string;
+  status_transaksi?: "DRAFT" | "POSTED" | "VOIDED";
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +123,10 @@ export interface Purchase {
   payment_method?: string;
   notes?: string;
   created_by?: string;
+  status_transaksi?: "DRAFT" | "POSTED" | "VOIDED";
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -144,6 +153,10 @@ export interface FinancialTransaction {
   description: string;
   is_paid: boolean;
   payment_date?: string;
+  status_transaksi?: "POSTED" | "VOIDED";
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -163,14 +176,31 @@ export interface OtherTransaction {
 
 export interface InventoryMovement {
   id: string;
-  material_id: string;
-  movement_type: "in" | "out" | "adjustment";
-  quantity: number;
-  reference_type?: string;
-  reference_id?: string;
-  notes?: string;
-  created_by?: string;
-  created_at: string;
+  barang_id: string;
+  tanggal: string;
+  movement_type:
+    | "OPENING_BALANCE"
+    | "PURCHASE_RECEIPT"
+    | "SALE_ISSUE"
+    | "SALE_VOID"
+    | "PURCHASE_VOID"
+    | "PURCHASE_RETURN"
+    | "ADJUSTMENT";
+  qty_delta: number;
+  unit_cost: number;
+  value_delta: number;
+  qty_before: number;
+  qty_after: number;
+  avg_cost_before: number;
+  avg_cost_after: number;
+  source_type: string;
+  source_id: string;
+  source_line_id?: string | null;
+  reversal_of_id?: string | null;
+  catatan?: string | null;
+  dibuat_oleh?: string | null;
+  dibuat_pada: string;
+  diperbarui_pada?: string;
 }
 
 export interface CashBook {

@@ -36,7 +36,13 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
     if (typeof window === "undefined") return;
 
     // Check if running in Tauri
-    setIsTauri(isTauriApp());
+    const tauri = isTauriApp();
+    setIsTauri(tauri);
+
+    // Web mode: skip all polling. The widget renders nothing and there's
+    // no local queue / cache to surface — Supabase is the source of truth.
+    if (!tauri) return;
+
     setLastSync(getLastSyncSuccessAt());
 
     const checkOnline = () => setIsOnline(navigator.onLine);
@@ -110,6 +116,12 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
 
   // Don't show in SSR
   if (typeof window === "undefined") return null;
+
+  // Web users (Vercel / localhost browser) write directly to Supabase via
+  // server actions — there is no local queue, no offline cache, and no
+  // sync cycle to surface. Hide the widget entirely. The Tauri desktop
+  // build still shows it because SQLite ↔ Supabase sync is meaningful there.
+  if (!isTauri) return null;
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
