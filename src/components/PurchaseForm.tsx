@@ -32,6 +32,7 @@ interface PurchaseFormData {
   id_vendor: string | null;
   metode_pembayaran: "CASH" | "NET30" | "COD";
   catatan: string;
+  diterima_oleh: string;
   items: PurchaseItem[];
 }
 
@@ -93,6 +94,7 @@ export default function PurchaseForm({
     id_vendor: null,
     metode_pembayaran: "CASH",
     catatan: "",
+    diterima_oleh: "",
     items: [
       {
         id_barang: "",
@@ -147,6 +149,7 @@ export default function PurchaseForm({
         id_vendor: editData.vendor_id || editData.id_vendor || null,
         metode_pembayaran: editData.metode_pembayaran || "CASH",
         catatan: editData.catatan || "",
+        diterima_oleh: editData.diterima_oleh || "",
         items: (editData.items || []).map((item: any) => ({
           id_barang: item.barang_id || item.id_barang,
           nama_barang: item.nama_barang,
@@ -337,6 +340,7 @@ export default function PurchaseForm({
           formData.nomor_faktur,
         vendor_id: formData.id_vendor,
         catatan: formData.catatan,
+        diterima_oleh: formData.diterima_oleh,
         metode_pembayaran: formData.metode_pembayaran,
         items: formData.items.map((item) => {
           const material = materials.find((m) => m.id === item.id_barang);
@@ -374,6 +378,7 @@ export default function PurchaseForm({
           id_vendor: null,
           metode_pembayaran: "CASH",
           catatan: "",
+          diterima_oleh: "",
           items: [
             {
               id_barang: "",
@@ -467,7 +472,7 @@ export default function PurchaseForm({
           </button>
         </div>
 
-        <div className="border border-gray-300 rounded-lg max-h-[400px] overflow-y-auto">
+        <div className="border border-gray-300 rounded-lg max-h-[600px] overflow-y-auto">
           <table className="w-full table-fixed">
             <colgroup>
               <col className="w-[28%]" />
@@ -787,6 +792,26 @@ export default function PurchaseForm({
                     }
                     placeholder="Catatan tambahan (opsional)"
                     rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </td>
+              </tr>
+              {/* Diterima Oleh Row */}
+              <tr className="bg-white border-t border-gray-200">
+                <td colSpan={6} className="px-4 py-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Diterima Oleh
+                    <span className="ml-1 text-xs font-normal text-gray-400">
+                      (nama penerima barang di gudang)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.diterima_oleh}
+                    onChange={(e) =>
+                      handleInputChange("diterima_oleh", e.target.value)
+                    }
+                    placeholder="Nama penerima barang (opsional)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </td>

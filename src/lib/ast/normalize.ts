@@ -23,7 +23,7 @@ import type { ASTNode } from "./types";
  * map is robust to half-migrated data.
  */
 export function buildLetterToKeyMap(
-  formulas: Array<{ column?: string; formulaKey?: string | null; dbColumn?: string }>
+  formulas: Array<{ column?: string; formulaKey?: string | null; dbColumn?: string | null }>
 ): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of formulas) {

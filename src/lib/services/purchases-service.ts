@@ -7,17 +7,7 @@ import "server-only";
 
 import { db, getServerSupabaseClient } from "../db-unified";
 import { fetchLastNomorPembelian } from "../server-data-supabase";
-
-async function recalculateCashbookIfAvailable(): Promise<void> {
-  try {
-    const sqlite = await db.getNativeSQLite();
-    if (!sqlite) return;
-    const { recalculateCashbook } = await import("@/lib/ast/cashbook-recalc");
-    await recalculateCashbook(sqlite);
-  } catch (e) {
-    console.warn("recalculateCashbook skipped:", e);
-  }
-}
+import { recalculateCashbookIfAvailable } from "./finance-service";
 
 /**
  * Build purchase DTOs from pembelian rows using db-unified (Supabase / SQLite).
@@ -35,15 +25,26 @@ async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase[]> {
   const vendorIds = [
     ...new Set(pembelianRows.map((p) => p.vendor_id).filter(Boolean)),
   ] as string[];
-  const vendorMap = new Map<string, string>();
+  const vendorMap = new Map<
+    string,
+    {
+      nama_perusahaan: string;
+      alamat?: string;
+      telepon?: string;
+      kontak_person?: string;
+    }
+  >();
   await Promise.all(
     vendorIds.map(async (vid) => {
-      const v = await db.queryOne<{ nama_perusahaan: string }>("vendor", {
+      const v = await db.queryOne<{
+        nama_perusahaan: string;
+        alamat?: string;
+        telepon?: string;
+        kontak_person?: string;
+      }>("vendor", {
         where: { id: vid },
-        select: "nama_perusahaan",
       });
-      if (v.data?.nama_perusahaan)
-        vendorMap.set(vid, v.data.nama_perusahaan);
+      if (v.data?.nama_perusahaan) vendorMap.set(vid, v.data);
     })
   );
 
@@ -101,10 +102,14 @@ async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase[]> {
 
     const vid = purchase.vendor_id;
     const cid = purchase.dibuat_oleh;
+    const vendor = vid ? vendorMap.get(vid) : undefined;
 
     return {
       ...purchase,
-      vendor_name: vid ? vendorMap.get(vid) : undefined,
+      vendor_name: vendor?.nama_perusahaan,
+      vendor_alamat: vendor?.alamat,
+      vendor_telepon: vendor?.telepon,
+      vendor_kontak_person: vendor?.kontak_person,
       created_by_name: cid ? creatorMap.get(cid) : undefined,
       items,
       total_harga,
@@ -282,6 +287,9 @@ export interface Purchase {
   nomor_faktur: string;
   vendor_id: string;
   vendor_name?: string;
+  vendor_alamat?: string;
+  vendor_telepon?: string;
+  vendor_kontak_person?: string;
   tanggal: string;
   metode_pembayaran: string;
   total_harga: number;
@@ -290,6 +298,7 @@ export interface Purchase {
   catatan?: string;
   dibuat_oleh?: string;
   created_by_name?: string;
+  diterima_oleh?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
   items?: PurchaseItem[];
@@ -333,6 +342,9 @@ export async function getPurchases(): Promise<Purchase[]> {
         SELECT
           p.*,
           v.nama_perusahaan as vendor_name,
+          v.alamat as vendor_alamat,
+          v.telepon as vendor_telepon,
+          v.kontak_person as vendor_kontak_person,
           profil.nama_lengkap as created_by_name
         FROM pembelian p
         LEFT JOIN vendor v ON p.vendor_id = v.id
@@ -447,6 +459,7 @@ export async function createPurchase(data: {
   metode_pembayaran: string;
   catatan?: string;
   dibuat_oleh?: string;
+  diterima_oleh?: string;
   items: Array<{
     barang_id: string;
     harga_satuan_id?: string | null;
@@ -506,6 +519,7 @@ export async function createPurchase(data: {
         status_pembayaran: statusPembayaran,
         catatan: data.catatan?.trim() || null,
         dibuat_oleh: data.dibuat_oleh || null,
+        diterima_oleh: data.diterima_oleh?.trim() || null,
       };
 
       const purchaseResult = await db.insert("pembelian", purchase);
@@ -560,7 +574,13 @@ export async function createPurchase(data: {
               (catatanTrim.length > 25 ? "..." : "")
             : null;
 
-        let keperluan = `Pembelian ${nomorPembelian} (${nomorFakturNorm})`;
+        // Build keperluan: show PO number only when it differs from the
+        // vendor's faktur number to avoid "inv-002 (inv-002)" duplication.
+        const poLabel =
+          nomorPembelian && nomorPembelian !== nomorFakturNorm
+            ? `${nomorPembelian} / Faktur ${nomorFakturNorm}`
+            : `Faktur ${nomorFakturNorm}`;
+        let keperluan = `Pembelian ${poLabel}`;
         if (vendorName) {
           keperluan += ` - ${vendorName}`;
         } else if (catatanExcerpt) {
@@ -707,6 +727,7 @@ export async function updatePurchase(
     tanggal: string;
     metode_pembayaran: string;
     catatan?: string;
+    diterima_oleh?: string;
     items: Array<{
       barang_id: string;
       harga_satuan_id: string;
@@ -772,6 +793,7 @@ export async function updatePurchase(
       metode_pembayaran: metodePembayaran,
       status_pembayaran: statusPembayaran,
       catatan: data.catatan?.trim() || null,
+      diterima_oleh: data.diterima_oleh?.trim() || null,
     };
 
     const updateResult = await db.update("pembelian", id, purchaseUpdate);
@@ -809,9 +831,12 @@ export async function updatePurchase(
     }
 
     // Update keuangan entry if exists (for LUNAS purchases)
-    const keperluanText = `Pembelian ${data.nomor_pembelian} (${
-      data.nomor_faktur || data.nomor_pembelian
-    }) [REF:${id}]`;
+    const nomorFakturUpdate = data.nomor_faktur || data.nomor_pembelian;
+    const poLabelUpdate =
+      data.nomor_pembelian && data.nomor_pembelian !== nomorFakturUpdate
+        ? `${data.nomor_pembelian} / Faktur ${nomorFakturUpdate}`
+        : `Faktur ${nomorFakturUpdate}`;
+    const keperluanText = `Pembelian ${poLabelUpdate} [REF:${id}]`;
 
     const keuAllForRef = await db.query<any>("keuangan", {});
     const matchingKeu = (keuAllForRef.data || []).filter((e: any) =>

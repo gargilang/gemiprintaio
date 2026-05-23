@@ -128,12 +128,24 @@ const astBiayaBahan: ASTNode = iff(
 
 /**
  * J: SALDO
- *   =IF(ROW()=2, D - E, J_prev + D - E)
+ *   Running cash balance. HPP is a non-cash journal entry (it records the
+ *   cost of goods sold for profit calculation but does NOT represent actual
+ *   cash leaving the register — the cash outflow already happened when
+ *   materials were purchased via SUPPLY). So HPP rows are excluded from
+ *   the saldo movement.
+ *
+ *   =IF(C == "HPP",
+ *        IF(ROW() == 2, 0, J_prev),          ← HPP: saldo unchanged
+ *        IF(ROW() == 2, D - E, J_prev + D - E))  ← all others: normal
  */
 const astSaldo: ASTNode = iff(
-  isFirstRow(),
-  op("-", col("D"), col("E")),
-  op("-", op("+", prev("J"), col("D")), col("E"))
+  op("=", col("C"), lit("HPP")),
+  iff(isFirstRow(), lit(0), prev("J")),
+  iff(
+    isFirstRow(),
+    op("-", col("D"), col("E")),
+    op("-", op("+", prev("J"), col("D")), col("E"))
+  )
 );
 
 /**
@@ -267,7 +279,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     id: "formula-modal-kas",
     name: "Modal Kas",
     column: "modal_kas",
-    dbColumn: "modal_kas",
+    dbColumn: null,
     formulaKey: "modal_kas",
     formulaGroup: "summary",
     actorId: null,
@@ -281,7 +293,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     id: "formula-piutang-kas",
     name: "Piutang Kas",
     column: "piutang_kas",
-    dbColumn: "piutang_kas",
+    dbColumn: null,
     formulaKey: "piutang_kas",
     formulaGroup: "summary",
     actorId: null,
@@ -295,7 +307,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     id: "formula-kas",
     name: "Kas",
     column: "kas",
-    dbColumn: "kas",
+    dbColumn: null,
     formulaKey: "kas",
     formulaGroup: "summary",
     actorId: null,

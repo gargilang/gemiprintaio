@@ -81,6 +81,8 @@ export interface Sale {
   id: string;
   invoice_number: string;
   customer_id?: string;
+  customer_name_snapshot?: string;
+  customer_city?: string;
   total_amount: number;
   paid_amount: number;
   change_amount: number;
@@ -102,6 +104,8 @@ export interface SaleItem {
   hpp_total?: number;
   gross_profit?: number;
   gross_margin?: number;
+  panjang?: number | null;
+  lebar?: number | null;
   created_at: string;
 }
 

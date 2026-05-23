@@ -293,6 +293,7 @@ export default function FinancePage() {
   const [showPengaturanModal, setShowPengaturanModal] = useState(false);
   const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("pengurus");
   const [actorSummaryTick, setActorSummaryTick] = useState(0);
+  const [lastCashBookLoadAt, setLastCashBookLoadAt] = useState(0);
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -324,12 +325,15 @@ export default function FinancePage() {
   // Archive viewing state
   const [viewingArchive, setViewingArchive] = useState<string | null>(null);
 
-  // Fetch system metrics (Modal Kas, Piutang Kas, Kas) from summary-v2.
+  // Fetch system metrics (Modal Kas, Piutang Kas, Kas) for archive view only.
+  // For active view, /api/finance/cash-book already returns systemMetrics
+  // alongside the rows so we avoid a second round-trip.
   // These come from cashbook_formula via transaction_computed and aren't
   // available on the raw `keuangan` rows.
   useEffect(() => {
+    if (!viewingArchive) return;
     let cancelled = false;
-    const url = `/api/finance/summary-v2${viewingArchive ? `?month=${encodeURIComponent(viewingArchive)}` : ""}`;
+    const url = `/api/finance/summary-v2?month=${encodeURIComponent(viewingArchive)}`;
     fetch(url)
       .then((r) => r.json())
       .then((body: { systemMetrics?: { modal_kas: number; piutang_kas: number; kas: number } }) => {
@@ -593,6 +597,17 @@ export default function FinancePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
+      // /api/finance/cash-book also returns systemMetrics (kas, modal_kas,
+      // piutang_kas) computed by the AST engine via transaction_computed.
+      // Reading them from the same response avoids a separate /summary-v2
+      // round-trip and keeps the Kas card in sync with the table data.
+      if (data.systemMetrics) {
+        setSystemMetrics({
+          modal_kas: data.systemMetrics.modal_kas ?? 0,
+          piutang_kas: data.systemMetrics.piutang_kas ?? 0,
+          kas: data.systemMetrics.kas ?? 0,
+        });
+      }
 
       // Set viewing archive state
       setViewingArchive(archiveLabel || null);
@@ -1421,7 +1436,7 @@ export default function FinancePage() {
           <DynamicActorSummary
             formatRupiah={formatRupiah}
             month={viewingArchive ?? undefined}
-            refreshKey={`${cashBooks.length}-${actorSummaryTick}`}
+            refreshKey={`${actorSummaryTick}-${lastCashBookLoadAt}`}
             onOpenPeopleSettings={() => {
               setPengaturanDefaultTab("pengurus");
               setShowPengaturanModal(true);

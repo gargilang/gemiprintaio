@@ -265,6 +265,121 @@ function migrateActorRolesLegacyCheckConstraint(db: {
   );
 }
 
+/**
+ * SQLite cannot ALTER a column to drop NOT NULL. Older installs created
+ * cashbook_formula with `db_column TEXT NOT NULL`, which blocks seeding
+ * formulas like modal_kas/piutang_kas/kas that legitimately have no
+ * keuangan column (they only flow through transaction_computed).
+ *
+ * Recreate the table with a nullable db_column. The data is preserved.
+ */
+function migrateCashbookFormulaDbColumnNullable(db: {
+  prepare: (sql: string) => {
+    get: () => { sql?: string } | undefined;
+    all: () => unknown[];
+  };
+  pragma: (s: string) => void;
+  exec: (sql: string) => void;
+}): void {
+  const row = db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cashbook_formula'"
+    )
+    .get();
+  // Detect the legacy NOT NULL constraint. Match both `db_column TEXT NOT NULL`
+  // and any whitespace variations that better-sqlite3 might emit.
+  if (!row?.sql || !/db_column\s+TEXT\s+NOT\s+NULL/i.test(row.sql)) return;
+
+  db.pragma("foreign_keys = OFF");
+  db.exec(`
+    CREATE TABLE cashbook_formula_v2 (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      column_key TEXT NOT NULL UNIQUE,
+      db_column TEXT,
+      ast TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      is_system INTEGER NOT NULL DEFAULT 0,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Copy preserving any extra columns that may have been added by earlier
+  // additive migrations (formula_key, actor_id, formula_group, is_visible_in_summary).
+  const cols = (
+    db.prepare("PRAGMA table_info(cashbook_formula)").all() as Array<{
+      name: string;
+    }>
+  ).map((c) => c.name);
+  const extraCols = [
+    "formula_key",
+    "actor_id",
+    "formula_group",
+    "is_visible_in_summary",
+  ].filter((c) => cols.includes(c));
+
+  // Add the extra columns to v2 first.
+  for (const col of extraCols) {
+    if (col === "formula_group") {
+      db.exec(
+        `ALTER TABLE cashbook_formula_v2 ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+      );
+    } else if (col === "is_visible_in_summary") {
+      db.exec(
+        `ALTER TABLE cashbook_formula_v2 ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+      );
+    } else {
+      db.exec(`ALTER TABLE cashbook_formula_v2 ADD COLUMN ${col} TEXT`);
+    }
+  }
+
+  const baseColList = [
+    "id",
+    "name",
+    "column_key",
+    "db_column",
+    "ast",
+    "enabled",
+    "is_system",
+    "display_order",
+    "description",
+    "created_at",
+    "updated_at",
+    ...extraCols,
+  ].join(", ");
+
+  db.exec(`
+    INSERT INTO cashbook_formula_v2 (${baseColList})
+    SELECT ${baseColList} FROM cashbook_formula;
+
+    DROP TABLE cashbook_formula;
+    ALTER TABLE cashbook_formula_v2 RENAME TO cashbook_formula;
+  `);
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_order ON cashbook_formula(display_order);`
+  );
+  if (extraCols.includes("formula_key")) {
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key ON cashbook_formula(formula_key);`
+    );
+  }
+  if (extraCols.includes("actor_id")) {
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);`
+    );
+  }
+  if (extraCols.includes("formula_group")) {
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`
+    );
+  }
+  db.pragma("foreign_keys = ON");
+  console.log("✅ Migrated cashbook_formula: db_column is now nullable");
+}
+
 function ensureServerSQLiteSyncV2Schema(db: any) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS finance_category_definitions (
@@ -334,11 +449,13 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     );
 
     -- AST-backed user-editable formulas (new visual-builder system).
+    -- db_column is nullable: formulas like modal_kas/piutang_kas/kas have no
+    -- corresponding column in keuangan and only write to transaction_computed.
     CREATE TABLE IF NOT EXISTS cashbook_formula (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       column_key TEXT NOT NULL UNIQUE,
-      db_column TEXT NOT NULL,
+      db_column TEXT,
       ast TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
       is_system INTEGER NOT NULL DEFAULT 0,
@@ -430,6 +547,10 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
 
   // Recreate actor_roles when an older CHECK constraint blocks new group values.
   migrateActorRolesLegacyCheckConstraint(db);
+
+  // Recreate cashbook_formula when older db_column NOT NULL constraint blocks
+  // formulas like modal_kas/piutang_kas/kas that have no keuangan column.
+  migrateCashbookFormulaDbColumnNullable(db);
 
   // Upsert seed roles so existing installs get updated role_group values.
   // role_group is a display-only category; it does not restrict formula types.

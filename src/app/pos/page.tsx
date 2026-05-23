@@ -17,7 +17,7 @@ import {
   getRollPrintLength,
   roundUpToThousand,
 } from "@/lib/money-rounding";
-import POSCart from "@/components/POSCart";
+import POSCart, { type PrintType } from "@/components/POSCart";
 import PayReceivableModal from "@/components/PayReceivableModal";
 import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
 import SalesHistoryTable from "@/components/SalesHistoryTable";
@@ -211,6 +211,17 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
+  const [printType, setPrintType] = useState<PrintType>("thermal");
+  // Walk-in faktur info captured when user picks faktur but no customer is selected
+  const [walkInFaktur, setWalkInFaktur] = useState<{
+    nama: string;
+    kota: string;
+  } | null>(null);
+  const [showWalkInFakturModal, setShowWalkInFakturModal] = useState(false);
+  const [walkInFakturInput, setWalkInFakturInput] = useState({
+    nama: "",
+    kota: "Bekasi",
+  });
 
   // Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -693,6 +704,15 @@ export default function POSPage() {
       return;
     }
 
+    // If user wants to print faktur but is a walk-in (no customer selected) and
+    // hasn't filled the walk-in info yet, prompt for "Kepada Yth" + "Kota" first.
+    const wantsFaktur = printType === "faktur" || printType === "both";
+    if (wantsFaktur && !selectedCustomer && !walkInFaktur) {
+      setWalkInFakturInput({ nama: "", kota: "Bekasi" });
+      setShowWalkInFakturModal(true);
+      return;
+    }
+
     const total = getCartChargeTotal(cart, roundCartPrices);
     const bayar = parseFloat(jumlahBayar) || 0;
 
@@ -760,6 +780,11 @@ export default function POSPage() {
 
       const result = await createSaleAction({
         pelanggan_id: selectedCustomer?.id,
+        pelanggan_nama_snapshot:
+          !selectedCustomer && walkInFaktur?.nama
+            ? walkInFaktur.nama
+            : undefined,
+        pelanggan_kota: walkInFaktur?.kota || undefined,
         items: saleItems,
         total_jumlah: total,
         jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
@@ -781,14 +806,15 @@ export default function POSPage() {
         `Transaksi berhasil! Invoice: ${result.nomor_invoice} | SPK: ${result.spk_number}`
       );
 
-      // Print thermal invoice
-      try {
-        const { printThermalInvoice } = await import("@/lib/thermal-print");
+      // Print receipt and/or faktur based on user's choice
+      if (printType !== "none") {
+        const tanggalIso = new Date().toISOString();
 
-        const printed = printThermalInvoice({
+        const buildThermalData = () => ({
           nomor_invoice: result.nomor_invoice,
-          tanggal: new Date().toISOString(),
-          pelanggan_nama: selectedCustomer?.nama,
+          tanggal: tanggalIso,
+          pelanggan_nama:
+            selectedCustomer?.nama || walkInFaktur?.nama || undefined,
           pelanggan_telepon: selectedCustomer?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
           items: cart.map((item, index) => ({
@@ -816,18 +842,75 @@ export default function POSPage() {
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || undefined,
         });
-        if (!printed) {
+
+        const buildFakturData = async () => {
+          const { formatUkuran } = await import("@/lib/faktur-print");
+          const sisa = Math.max(
+            0,
+            total - (paymentMethod === "NET30" ? 0 : bayar)
+          );
+          return {
+            nomor_invoice: result.nomor_invoice,
+            tanggal: tanggalIso,
+            pelanggan_nama:
+              selectedCustomer?.nama || walkInFaktur?.nama || "",
+            kota: walkInFaktur?.kota || "Bekasi",
+            items: cart.map((item, index) => ({
+              nama: item.barang_nama,
+              ukuran:
+                item.butuh_dimensi && item.panjang && item.lebar
+                  ? item.useRounding &&
+                    item.billedPanjang != null &&
+                    item.billedLebar != null
+                    ? formatUkuran(item.billedPanjang, item.billedLebar)
+                    : formatUkuran(item.panjang, item.lebar)
+                  : "",
+              qty: item.jumlah,
+              satuan: item.nama_satuan,
+              harga:
+                item.jumlah > 0
+                  ? lineCharges[index] / item.jumlah
+                  : item.harga_satuan,
+              jumlah: lineCharges[index],
+            })),
+            total,
+            bayar: paymentMethod === "NET30" ? 0 : bayar,
+            sisa,
+            catatan: catatan.trim() || undefined,
+          };
+        };
+
+        try {
+          if (printType === "thermal" || printType === "both") {
+            const { printThermalInvoice } = await import(
+              "@/lib/thermal-print"
+            );
+            const printed = printThermalInvoice(buildThermalData());
+            if (!printed) {
+              showMsg(
+                "error",
+                "Transaksi tersimpan, tetapi struk tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+              );
+            }
+          }
+          if (printType === "faktur" || printType === "both") {
+            const { printFaktur } = await import("@/lib/faktur-print");
+            const fakturData = await buildFakturData();
+            const printed = printFaktur(fakturData);
+            if (!printed) {
+              showMsg(
+                "error",
+                "Transaksi tersimpan, tetapi faktur tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+              );
+            }
+          }
+        } catch (printError) {
+          console.error("Error printing invoice:", printError);
           showMsg(
             "error",
-            "Transaksi tersimpan, tetapi struk tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+            "Transaksi tersimpan, tetapi gagal menyiapkan dokumen untuk dicetak."
           );
         }
-      } catch (printError) {
-        console.error("Error printing invoice:", printError);
-        showMsg(
-          "error",
-          "Transaksi tersimpan, tetapi gagal menyiapkan struk untuk dicetak."
-        );
       }
 
       // Reset form
@@ -841,6 +924,7 @@ export default function POSPage() {
       setUseRounding(false);
       setSelectedRollSize(null);
       setRoundCartPrices(true);
+      setWalkInFaktur(null);
 
       // Reload data
       await loadAllData();
@@ -1427,6 +1511,7 @@ export default function POSPage() {
               jumlahBayar={jumlahBayar}
               catatan={catatan}
               prioritas={prioritas}
+              printType={printType}
               onRemoveItem={handleRemoveFromCart}
               editingCartIndex={editingCartIndex}
               onEditItem={handleEditCartItem}
@@ -1434,6 +1519,7 @@ export default function POSPage() {
               onJumlahBayarChange={setJumlahBayar}
               onCatatanChange={setCatatan}
               onPrioritasChange={setPrioritas}
+              onPrintTypeChange={setPrintType}
               onCheckout={handleCheckout}
               onEditFinishing={handleEditFinishing}
               onGetFinishingOptions={getFinishingOptionsAction}
@@ -1514,6 +1600,83 @@ export default function POSPage() {
           onCancel={() => setConfirmDialog(null)}
           type="pos"
         />
+      )}
+
+      {showWalkInFakturModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
+              <h3 className="text-white font-bold text-lg">
+                Info untuk Faktur
+              </h3>
+              <p className="text-white/90 text-xs mt-0.5">
+                Pelanggan tidak dipilih. Isi data berikut untuk dicetak di
+                faktur.
+              </p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Kepada Yth.
+                </label>
+                <input
+                  type="text"
+                  value={walkInFakturInput.nama}
+                  onChange={(e) =>
+                    setWalkInFakturInput((prev) => ({
+                      ...prev,
+                      nama: e.target.value,
+                    }))
+                  }
+                  placeholder="Nama / nama perusahaan"
+                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Kota
+                </label>
+                <input
+                  type="text"
+                  value={walkInFakturInput.kota}
+                  onChange={(e) =>
+                    setWalkInFakturInput((prev) => ({
+                      ...prev,
+                      kota: e.target.value,
+                    }))
+                  }
+                  placeholder="Bekasi"
+                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWalkInFakturModal(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWalkInFaktur({
+                      nama: walkInFakturInput.nama.trim(),
+                      kota: walkInFakturInput.kota.trim() || "Bekasi",
+                    });
+                    setShowWalkInFakturModal(false);
+                    // re-trigger checkout now that the info is captured
+                    setTimeout(() => handleCheckout(), 0);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee]"
+                >
+                  Lanjut Bayar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {notice && (

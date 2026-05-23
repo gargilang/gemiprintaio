@@ -207,7 +207,18 @@ export function computeCashbookRecalculationUpdates(
     }
 
     out.push({ id: row.id, updates, computed, outputs: currentOutputs });
-    prevOutputs = currentOutputs;
+
+    // Build prevOutputs for the next row. Index by both the legacy letter
+    // (formula.column) AND the semantic formulaKey so that AST nodes using
+    // prevOut("kasbon_suri") resolve correctly alongside prevOut("J").
+    const nextPrevOutputs: OutputRow = { ...currentOutputs };
+    for (const formula of ordered) {
+      const fKey = resolveFormulaKey(formula);
+      if (fKey && fKey !== formula.column) {
+        nextPrevOutputs[fKey] = currentOutputs[formula.column];
+      }
+    }
+    prevOutputs = nextPrevOutputs;
   }
 
   return out;

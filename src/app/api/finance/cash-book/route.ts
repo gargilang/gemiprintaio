@@ -4,12 +4,31 @@ export const dynamic = "force-dynamic";
 import { db, getServerSupabaseClient } from "@/lib/db-unified";
 import { createCashBookEntry } from "@/lib/services/finance-service";
 import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
+import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
 export async function GET() {
   try {
     if (getServerSupabaseClient()) {
-      const cashBooks = await fetchKeuanganCashBookListActive();
-      return NextResponse.json({ cashBooks });
+      // Fetch cashbook rows + computed metrics in parallel — both queries
+      // hit Supabase so they share the same network latency. systemMetrics
+      // exposes the v2 transaction_computed values (kas, modal_kas, etc.)
+      // alongside the legacy keuangan columns so the UI can render every
+      // summary card from a single endpoint instead of two.
+      const [cashBooks, latestMap] = await Promise.all([
+        fetchKeuanganCashBookListActive(),
+        getLatestPerFormulaKey(),
+      ]);
+      const systemMetrics = {
+        omzet: latestMap.omzet ?? 0,
+        biaya_operasional: latestMap.biaya_operasional ?? 0,
+        biaya_bahan: latestMap.biaya_bahan ?? 0,
+        saldo: latestMap.saldo ?? 0,
+        laba_bersih: latestMap.laba_bersih ?? 0,
+        modal_kas: latestMap.modal_kas ?? 0,
+        piutang_kas: latestMap.piutang_kas ?? 0,
+        kas: latestMap.kas ?? 0,
+      };
+      return NextResponse.json({ cashBooks, systemMetrics });
     }
 
     const cashBooks =
@@ -19,8 +38,19 @@ export async function GET() {
          ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
         []
       )) || [];
+    const latestMap = await getLatestPerFormulaKey();
+    const systemMetrics = {
+      omzet: latestMap.omzet ?? 0,
+      biaya_operasional: latestMap.biaya_operasional ?? 0,
+      biaya_bahan: latestMap.biaya_bahan ?? 0,
+      saldo: latestMap.saldo ?? 0,
+      laba_bersih: latestMap.laba_bersih ?? 0,
+      modal_kas: latestMap.modal_kas ?? 0,
+      piutang_kas: latestMap.piutang_kas ?? 0,
+      kas: latestMap.kas ?? 0,
+    };
 
-    return NextResponse.json({ cashBooks });
+    return NextResponse.json({ cashBooks, systemMetrics });
   } catch (error) {
     console.error("GET /api/finance/cash-book error:", error);
     return NextResponse.json(

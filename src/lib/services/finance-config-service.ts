@@ -944,11 +944,47 @@ export async function createFinanceCategory(input: {
   category_code: string;
   display_name: string;
 }) {
-  const id = `fin-cat-${Date.now()}`;
+  const code = input.category_code.toUpperCase().trim();
   const displayOrder = await nextDisplayOrderCategories();
+
+  // If a soft-deleted row with the same category_code already exists,
+  // reactivate it instead of inserting a new row (avoids unique constraint
+  // violation on category_code).
+  const sb = getServerSupabaseClient();
+  if (sb) {
+    const { data: existing } = await sb
+      .from("finance_category_definitions")
+      .select("id")
+      .eq("category_code", code)
+      .limit(1)
+      .single();
+    if (existing?.id) {
+      return db.update("finance_category_definitions", existing.id, {
+        display_name: input.display_name.trim(),
+        is_active: 1,
+        display_order: displayOrder,
+      });
+    }
+  } else {
+    // SQLite path
+    const rows = await db.query("finance_category_definitions", {
+      where: { category_code: code },
+      limit: 1,
+    });
+    const existingRow = rows.data?.[0] as { id: string } | undefined;
+    if (existingRow?.id) {
+      return db.update("finance_category_definitions", existingRow.id, {
+        display_name: input.display_name.trim(),
+        is_active: 1,
+        display_order: displayOrder,
+      });
+    }
+  }
+
+  const id = `fin-cat-${Date.now()}`;
   return db.insert("finance_category_definitions", {
     id,
-    category_code: input.category_code.toUpperCase().trim(),
+    category_code: code,
     display_name: input.display_name.trim(),
     color_bg: "bg-gray-100",
     color_text: "text-gray-800",

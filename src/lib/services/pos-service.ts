@@ -8,17 +8,7 @@
 import "server-only";
 
 import { db, generateId, getCurrentTimestamp } from "../db-unified";
-import { recalculateCashbook } from "@/lib/ast/cashbook-recalc";
-
-async function recalculateCashbookIfAvailable(): Promise<void> {
-  try {
-    const sqlite = await db.getNativeSQLite();
-    if (!sqlite) return;
-    await recalculateCashbook(sqlite);
-  } catch (e) {
-    console.warn("recalculateCashbook skipped:", e);
-  }
-}
+import { recalculateCashbookIfAvailable } from "./finance-service";
 
 // ============================================================================
 // TYPES
@@ -29,6 +19,8 @@ export interface Sale {
   nomor_invoice: string;
   pelanggan_id?: string | null;
   pelanggan_nama?: string;
+  pelanggan_nama_snapshot?: string | null;
+  pelanggan_kota?: string | null;
   total_jumlah: number;
   jumlah_dibayar: number;
   jumlah_kembalian: number;
@@ -93,6 +85,8 @@ export interface POSInitData {
 
 export interface CreateSaleData {
   pelanggan_id?: string;
+  pelanggan_nama_snapshot?: string;
+  pelanggan_kota?: string;
   items: Array<{
     barang_id: string;
     harga_satuan_id?: string;
@@ -384,6 +378,8 @@ export async function createSale(data: CreateSaleData): Promise<{
         id: saleId,
         nomor_invoice: invoiceNumber,
         pelanggan_id: data.pelanggan_id || null,
+        pelanggan_nama_snapshot: data.pelanggan_nama_snapshot?.trim() || null,
+        pelanggan_kota: data.pelanggan_kota?.trim() || null,
         total_jumlah: data.total_jumlah,
         jumlah_dibayar: actualPaid,
         jumlah_kembalian: data.jumlah_kembalian || 0,
@@ -431,6 +427,8 @@ export async function createSale(data: CreateSaleData): Promise<{
           hpp_total: hppTotal,
           gross_profit: grossProfit,
           gross_margin: grossMargin,
+          panjang: item.panjang ?? null,
+          lebar: item.lebar ?? null,
         };
 
         const itemResult = await db.insert("item_penjualan", saleItem);

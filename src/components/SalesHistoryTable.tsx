@@ -4,18 +4,32 @@ import React, { useState } from "react";
 import { TrashIcon } from "./icons/ContentIcons";
 import ConfirmDialog from "./ConfirmDialog";
 
+interface SaleItemRow {
+  barang_nama?: string;
+  nama_satuan?: string;
+  jumlah?: number;
+  harga_satuan?: number;
+  subtotal?: number;
+  hpp_total?: number;
+  panjang?: number | null;
+  lebar?: number | null;
+}
+
 interface Sale {
   id: string;
   nomor_invoice: string;
   pelanggan_nama: string | null;
+  pelanggan_nama_snapshot?: string | null;
+  pelanggan_kota?: string | null;
   total_jumlah: number;
+  jumlah_dibayar?: number;
   metode_pembayaran: string;
   status_pembayaran: string;
   sisa_piutang: number;
   dibuat_pada: string;
   kasir_nama: string | null;
   has_pelunasan?: number; // 1 if has payment records, 0 if not
-  items?: any[];
+  items?: SaleItemRow[];
 }
 
 interface SalesHistoryTableProps {
@@ -36,11 +50,17 @@ export default function SalesHistoryTable({
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [printingId, setPrintingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     saleId: string;
     invoiceNumber: string;
   } | null>(null);
+  const [fakturPromptSale, setFakturPromptSale] = useState<Sale | null>(null);
+  const [fakturPromptInput, setFakturPromptInput] = useState({
+    nama: "",
+    kota: "Bekasi",
+  });
 
   const filteredSales = sales.filter(
     (sale) =>
@@ -156,6 +176,97 @@ export default function SalesHistoryTable({
       </div>
     );
   }
+
+  const reprintThermal = async (sale: Sale) => {
+    setPrintingId(sale.id);
+    try {
+      const { printThermalInvoice } = await import("@/lib/thermal-print");
+      const items = (sale.items || []).map((item) => {
+        const dimensi =
+          item.panjang && item.lebar
+            ? `${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m`
+            : undefined;
+        return {
+          nama: item.barang_nama || "-",
+          jumlah: Number(item.jumlah || 0),
+          satuan: item.nama_satuan || "",
+          harga: Number(item.harga_satuan || 0),
+          subtotal: Number(item.subtotal || 0),
+          dimensi,
+        };
+      });
+      const total = sale.total_jumlah;
+      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      printThermalInvoice({
+        nomor_invoice: sale.nomor_invoice,
+        tanggal: sale.dibuat_pada,
+        pelanggan_nama:
+          sale.pelanggan_nama || sale.pelanggan_nama_snapshot || undefined,
+        kasir_nama: sale.kasir_nama || "Kasir",
+        items,
+        total,
+        jumlah_bayar: bayar,
+        kembalian: Math.max(0, bayar - total),
+        metode_pembayaran: sale.metode_pembayaran,
+      });
+    } catch (e) {
+      console.error("reprintThermal error:", e);
+      alert("Gagal menyiapkan struk untuk dicetak.");
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
+  const reprintFaktur = async (
+    sale: Sale,
+    overrideNama?: string,
+    overrideKota?: string
+  ) => {
+    const nama =
+      overrideNama ||
+      sale.pelanggan_nama ||
+      sale.pelanggan_nama_snapshot ||
+      "";
+    if (!nama) {
+      // Open prompt for old sales without snapshot data
+      setFakturPromptInput({
+        nama: "",
+        kota: sale.pelanggan_kota || "Bekasi",
+      });
+      setFakturPromptSale(sale);
+      return;
+    }
+    setPrintingId(sale.id);
+    try {
+      const { printFaktur, formatUkuran } = await import("@/lib/faktur-print");
+      const items = (sale.items || []).map((item) => ({
+        nama: item.barang_nama || "-",
+        ukuran: formatUkuran(item.panjang, item.lebar),
+        qty: Number(item.jumlah || 0),
+        satuan: item.nama_satuan || "",
+        harga: Number(item.harga_satuan || 0),
+        jumlah: Number(item.subtotal || 0),
+      }));
+      const total = sale.total_jumlah;
+      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      const sisa = Math.max(0, total - bayar);
+      printFaktur({
+        nomor_invoice: sale.nomor_invoice,
+        tanggal: sale.dibuat_pada,
+        pelanggan_nama: nama,
+        kota: overrideKota || sale.pelanggan_kota || "Bekasi",
+        items,
+        total,
+        bayar,
+        sisa,
+      });
+    } catch (e) {
+      console.error("reprintFaktur error:", e);
+      alert("Gagal menyiapkan faktur untuk dicetak.");
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   const totalPenjualan = filteredSales.reduce(
     (sum, sale) => sum + sale.total_jumlah,
@@ -331,6 +442,52 @@ export default function SalesHistoryTable({
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            reprintThermal(sale);
+                          }}
+                          disabled={printingId === sale.id}
+                          className="p-2 hover:bg-cyan-100 rounded-lg transition-all disabled:opacity-50"
+                          title="Cetak ulang struk thermal (80mm)"
+                        >
+                          <svg
+                            className="w-5 h-5 text-cyan-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            reprintFaktur(sale);
+                          }}
+                          disabled={printingId === sale.id}
+                          className="p-2 hover:bg-blue-100 rounded-lg transition-all disabled:opacity-50"
+                          title="Cetak faktur A5"
+                        >
+                          <svg
+                            className="w-5 h-5 text-blue-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </button>
                         {/* Revert button logic:
                             - Only show if has_pelunasan = 1 (meaning there are payment records to revert)
                             - This means the transaction had piutang and received payment(s)
@@ -430,14 +587,17 @@ export default function SalesHistoryTable({
                                   <span>
                                     Rp{" "}
                                     <span className="font-semibold">
-                                      {item.harga_satuan.toLocaleString(
+                                      {(item.harga_satuan ?? 0).toLocaleString(
                                         "id-ID"
                                       )}
                                     </span>
                                   </span>
                                   <span>=</span>
                                   <span className="font-semibold text-[#00afef]">
-                                    Rp {item.subtotal.toLocaleString("id-ID")}
+                                    Rp{" "}
+                                    {(item.subtotal ?? 0).toLocaleString(
+                                      "id-ID"
+                                    )}
                                   </span>
                                   {typeof item.hpp_total === "number" && (
                                     <span className="text-slate-500">
@@ -487,6 +647,84 @@ export default function SalesHistoryTable({
           onCancel={() => setConfirmDialog(null)}
           type="danger"
         />
+      )}
+
+      {fakturPromptSale && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
+              <h3 className="text-white font-bold text-lg">
+                Info untuk Faktur
+              </h3>
+              <p className="text-white/90 text-xs mt-0.5">
+                Transaksi {fakturPromptSale.nomor_invoice} tidak menyimpan data
+                pelanggan. Isi info untuk dicetak di faktur.
+              </p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Kepada Yth.
+                </label>
+                <input
+                  type="text"
+                  value={fakturPromptInput.nama}
+                  onChange={(e) =>
+                    setFakturPromptInput((prev) => ({
+                      ...prev,
+                      nama: e.target.value,
+                    }))
+                  }
+                  placeholder="Nama / nama perusahaan"
+                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Kota
+                </label>
+                <input
+                  type="text"
+                  value={fakturPromptInput.kota}
+                  onChange={(e) =>
+                    setFakturPromptInput((prev) => ({
+                      ...prev,
+                      kota: e.target.value,
+                    }))
+                  }
+                  placeholder="Bekasi"
+                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFakturPromptSale(null)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sale = fakturPromptSale;
+                    const nama = fakturPromptInput.nama.trim();
+                    const kota = fakturPromptInput.kota.trim() || "Bekasi";
+                    setFakturPromptSale(null);
+                    if (sale && nama) {
+                      reprintFaktur(sale, nama, kota);
+                    }
+                  }}
+                  disabled={!fakturPromptInput.nama.trim()}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cetak Faktur
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -82,8 +82,11 @@ export interface FormulaDefinition {
   name: string;
   /** Logical output column (e.g. "G"); kept for legacy graph + UI code. */
   column: OutputColumn;
-  /** keuangan DB column to write into (legacy hardcoded columns). */
-  dbColumn: string;
+  /**
+   * keuangan DB column to write into (legacy hardcoded columns).
+   * Set to null for formulas that only use transaction_computed (no keuangan column).
+   */
+  dbColumn: string | null;
   /** Semantic identifier ("omzet", "kasbon_andi"). Falls back to `dbColumn`. */
   formulaKey?: string;
   /** Linked business_actor when the formula was auto-generated for a person. */

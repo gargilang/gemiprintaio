@@ -160,7 +160,16 @@ async function calculateRunningTotals(
   }
 
   // SALDO
-  const saldo = isFirstEntry ? debit - kredit : prev.saldo + debit - kredit;
+  // HPP is a non-cash journal entry — exclude it from cash balance.
+  // The actual cash outflow happened at purchase time (SUPPLY entry).
+  const saldo =
+    kategori_transaksi === "HPP"
+      ? isFirstEntry
+        ? 0
+        : prev.saldo
+      : isFirstEntry
+        ? debit - kredit
+        : prev.saldo + debit - kredit;
 
   // LABA BERSIH
   const laba_bersih = omzet - (biaya_operasional + biaya_bahan);
@@ -351,22 +360,36 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
 }
 
 /**
- * Runs full cashbook cascade (overrides, LUNAS, order).
- * Uses native SQLite when present; otherwise applies the same rules via Supabase (serverless web).
+ * Recalculate every cashbook row using AST formulas + partners.
+ * Uses native SQLite when present AND Supabase when present, so the v2
+ * `transaction_computed` mirror stays consistent with the legacy `keuangan`
+ * columns regardless of which DB the UI reads from.
+ *
+ * Returns true if at least one recalc path succeeded.
  */
 export async function recalculateCashbookIfAvailable(): Promise<boolean> {
+  let didAny = false;
+  // 1. Local SQLite (offline-first cache + Tauri / native dev mode).
   try {
     const sqlite = await db.getNativeSQLite();
     if (sqlite) {
       const { recalculateCashbook } = await import("@/lib/ast/cashbook-recalc");
       await recalculateCashbook(sqlite);
-      return true;
+      didAny = true;
     }
-    return await recalculateCashbookViaSupabase();
   } catch (e) {
-    console.warn("recalculateCashbook skipped:", e);
-    return false;
+    console.warn("[recalculateCashbookIfAvailable] SQLite path failed:", e);
   }
+  // 2. Supabase (cloud-of-record). Always run when Supabase is configured,
+  // even if SQLite already ran, because the UI reads transaction_computed
+  // from Supabase via getLatestPerFormulaKey.
+  try {
+    const ok = await recalculateCashbookViaSupabase();
+    didAny = didAny || ok;
+  } catch (e) {
+    console.warn("[recalculateCashbookIfAvailable] Supabase path failed:", e);
+  }
+  return didAny;
 }
 
 async function nextUrutanTampilanKeuangan(): Promise<number> {
@@ -466,7 +489,11 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
         .upsert(computedRows, {
           onConflict: "transaction_id,formula_key",
         });
-      if (tcErr && !tcErr.message.includes("does not exist") && !tcErr.message.includes("schema cache")) {
+      if (
+        tcErr &&
+        !tcErr.message.includes("does not exist") &&
+        !tcErr.message.includes("schema cache")
+      ) {
         console.warn("transaction_computed upsert:", tcErr.message);
       }
     } catch (e) {

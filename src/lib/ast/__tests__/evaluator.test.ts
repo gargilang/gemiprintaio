@@ -350,8 +350,12 @@ describe("Default formula dataset — reproduces current cashbook logic", () => 
         I = C === "HPP" ? I + E : I;
       }
 
-      // J
-      J = isFirst ? D - E : J + D - E;
+      // J — HPP is non-cash, exclude from saldo
+      if (C === "HPP") {
+        J = isFirst ? 0 : J;
+      } else {
+        J = isFirst ? D - E : J + D - E;
+      }
 
       // K
       const K = G - (H + I);

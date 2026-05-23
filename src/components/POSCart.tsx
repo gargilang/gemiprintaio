@@ -44,6 +44,8 @@ interface FinishingOption {
   urutan_tampilan: number;
 }
 
+export type PrintType = "thermal" | "faktur" | "both" | "none";
+
 interface POSCartProps {
   cart: CartItem[];
   roundCartPrices: boolean;
@@ -52,6 +54,7 @@ interface POSCartProps {
   jumlahBayar: string;
   catatan: string;
   prioritas: "NORMAL" | "KILAT";
+  printType: PrintType;
   onRemoveItem: (index: number) => void;
   editingCartIndex?: number | null;
   onEditItem?: (index: number) => void;
@@ -59,6 +62,7 @@ interface POSCartProps {
   onJumlahBayarChange: (jumlah: string) => void;
   onCatatanChange: (catatan: string) => void;
   onPrioritasChange: (prioritas: "NORMAL" | "KILAT") => void;
+  onPrintTypeChange: (printType: PrintType) => void;
   onCheckout: () => void;
   onEditFinishing?: (index: number, finishing: FinishingItem[]) => void;
   onGetFinishingOptions: () => Promise<FinishingOption[]>;
@@ -104,6 +108,7 @@ export default function POSCart({
   jumlahBayar,
   catatan,
   prioritas,
+  printType,
   onRemoveItem,
   editingCartIndex = null,
   onEditItem,
@@ -111,6 +116,7 @@ export default function POSCart({
   onJumlahBayarChange,
   onCatatanChange,
   onPrioritasChange,
+  onPrintTypeChange,
   onCheckout,
   onEditFinishing,
   onGetFinishingOptions,
@@ -530,6 +536,47 @@ export default function POSCart({
               className="mt-1.5 w-full px-3 py-2 text-sm bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
             />
           )}
+        </div>
+
+        {/* Jenis cetak */}
+        <div>
+          <label className="block text-xs font-bold text-gray-600 mb-1">
+            Cetak setelah transaksi
+          </label>
+          <div className="grid grid-cols-4 gap-1">
+            {(
+              [
+                { value: "thermal", label: "Struk", hint: "80mm" },
+                { value: "faktur", label: "Faktur", hint: "A5" },
+                { value: "both", label: "Keduanya", hint: "" },
+                { value: "none", label: "Tidak", hint: "" },
+              ] as { value: PrintType; label: string; hint: string }[]
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onPrintTypeChange(opt.value)}
+                className={`py-1.5 px-1 rounded-lg border-2 text-[11px] font-semibold transition-all flex flex-col items-center justify-center leading-tight ${
+                  printType === opt.value
+                    ? "bg-[#00afef] text-white border-[#00afef]"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-[#00afef]"
+                }`}
+              >
+                <span>{opt.label}</span>
+                {opt.hint && (
+                  <span
+                    className={`text-[9px] ${
+                      printType === opt.value
+                        ? "text-white/80"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {opt.hint}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button

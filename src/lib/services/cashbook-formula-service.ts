@@ -29,7 +29,7 @@ interface FormulaRow {
   id: string;
   name: string;
   column_key: string;
-  db_column: string;
+  db_column: string | null;
   ast: string | object;
   enabled: number | boolean;
   is_system: number | boolean;
@@ -75,7 +75,7 @@ function rowToFormula(r: FormulaRow): FormulaDefinition {
     name: r.name,
     column: r.column_key,
     dbColumn: r.db_column,
-    formulaKey: r.formula_key ?? r.db_column,
+    formulaKey: r.formula_key ?? r.db_column ?? r.column_key,
     actorId: r.actor_id ?? null,
     formulaGroup: group,
     isVisibleInSummary:

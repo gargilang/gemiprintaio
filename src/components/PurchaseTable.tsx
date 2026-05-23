@@ -6,13 +6,20 @@ import { ClockIcon, CheckIcon } from "./icons/ContentIcons";
 interface Purchase {
   id: string;
   tanggal: string;
+  nomor_pembelian?: string;
   nomor_faktur: string;
   id_vendor: string | null;
   vendor_name: string | null;
+  vendor_alamat?: string | null;
+  vendor_telepon?: string | null;
+  vendor_kontak_person?: string | null;
   metode_pembayaran?: string;
   status_pembayaran?: string;
   catatan: string | null;
+  diterima_oleh?: string | null;
+  created_by_name?: string | null;
   total_harga: number;
+  jumlah_dibayar?: number;
   dibuat_pada?: string;
   items: {
     id: string;
@@ -23,6 +30,8 @@ interface Purchase {
     faktor_konversi: number;
     jumlah: number;
     harga_beli: number;
+    panjang?: number | null;
+    lebar?: number | null;
   }[];
 }
 
@@ -49,6 +58,46 @@ const PurchaseRow = memo(
     onRevert?: (purchase: Purchase) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false);
+    const [printing, setPrinting] = useState(false);
+
+    const handlePrint = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setPrinting(true);
+      try {
+        const { printFakturPembelian, formatUkuranPembelian } = await import(
+          "@/lib/faktur-pembelian-print"
+        );
+        printFakturPembelian({
+          nomor_pembelian:
+            purchase.nomor_pembelian || purchase.nomor_faktur,
+          nomor_faktur_vendor: purchase.nomor_faktur,
+          tanggal: purchase.tanggal,
+          vendor_nama: purchase.vendor_name || undefined,
+          vendor_alamat: purchase.vendor_alamat || undefined,
+          vendor_telepon: purchase.vendor_telepon || undefined,
+          vendor_kontak: purchase.vendor_kontak_person || undefined,
+          dibuat_oleh: purchase.created_by_name || undefined,
+          diterima_oleh: purchase.diterima_oleh || undefined,
+          catatan: purchase.catatan || undefined,
+          items: purchase.items.map((item) => ({
+            nama: item.nama_barang,
+            ukuran: formatUkuranPembelian(item.panjang, item.lebar),
+            qty: item.jumlah,
+            satuan: item.nama_satuan,
+            harga: item.harga_beli,
+            jumlah: item.jumlah * item.harga_beli,
+          })),
+          total: purchase.total_harga,
+          jumlah_dibayar: purchase.jumlah_dibayar ?? purchase.total_harga,
+          status_pembayaran: purchase.status_pembayaran || "LUNAS",
+        });
+      } catch (e) {
+        console.error("printFakturPembelian error:", e);
+        alert("Gagal menyiapkan dokumen untuk dicetak.");
+      } finally {
+        setPrinting(false);
+      }
+    };
     // Parse date as local date (YYYY-MM-DD format from database)
     // Don't use new Date() directly as it treats YYYY-MM-DD as UTC midnight
     const [year, month, day] = purchase.tanggal.split("-").map(Number);
@@ -114,6 +163,27 @@ const PurchaseRow = memo(
           </td>
           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-2">
+              {/* Print button */}
+              <button
+                onClick={handlePrint}
+                disabled={printing}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Cetak Bukti Penerimaan Barang"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
+                </svg>
+              </button>
               {/* Show Edit button for HUTANG or CASH purchases */}
               {(purchase.status_pembayaran !== "LUNAS" ||
                 purchase.metode_pembayaran === "CASH") && (
