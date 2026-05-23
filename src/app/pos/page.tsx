@@ -23,6 +23,9 @@ import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
 import MaklonLineModal, {
   type MaklonLineFormValue,
 } from "@/components/MaklonLineModal";
+import PpnFakturModal, {
+  type PpnFakturData,
+} from "@/components/PpnFakturModal";
 import SalesHistoryTable from "@/components/SalesHistoryTable";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
@@ -249,6 +252,9 @@ export default function POSPage() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showReceivableModal, setShowReceivableModal] = useState(false);
   const [showMaklonModal, setShowMaklonModal] = useState(false);
+  const [showPpnModal, setShowPpnModal] = useState(false);
+  // PPN data untuk transaksi yang sedang disusun. Null = tidak kena PPN.
+  const [ppnFaktur, setPpnFaktur] = useState<PpnFakturData | null>(null);
   const [editingMaklonIndex, setEditingMaklonIndex] = useState<number | null>(
     null
   );
@@ -886,6 +892,23 @@ export default function POSPage() {
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
+        ...(ppnFaktur
+          ? {
+              kena_ppn: true,
+              ppn_persen: ppnFaktur.ppn_persen,
+              ppn_metode: ppnFaktur.ppn_metode,
+              nsfp_kode_transaksi: ppnFaktur.nsfp_kode_transaksi,
+              nsfp_tahun: ppnFaktur.nsfp_tahun,
+              nsfp_nomor_seri: ppnFaktur.nsfp_nomor_seri.padStart(8, "0"),
+              tanggal_faktur_pajak: ppnFaktur.tanggal_faktur_pajak,
+              pelanggan_npwp_snapshot:
+                ppnFaktur.pelanggan_npwp_snapshot || undefined,
+              pelanggan_alamat_npwp_snapshot:
+                ppnFaktur.pelanggan_alamat_npwp_snapshot || undefined,
+              pelanggan_nama_npwp_snapshot:
+                ppnFaktur.pelanggan_nama_npwp_snapshot || undefined,
+            }
+          : {}),
       });
 
       showMsg(
@@ -1019,6 +1042,7 @@ export default function POSPage() {
       setPrioritas("NORMAL");
       setUseRounding(false);
       setSelectedRollSize(null);
+      setPpnFaktur(null);
       setRoundCartPrices(true);
       setWalkInFaktur(null);
 
@@ -1620,7 +1644,26 @@ export default function POSPage() {
           </div>
 
           {/* Right: Cart */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowPpnModal(true)}
+              className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                ppnFaktur
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-emerald-400"
+              }`}
+            >
+              {ppnFaktur ? (
+                <>
+                  ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
+                  {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
+                  {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
+                </>
+              ) : (
+                <>+ Tambah Faktur Pajak (PPN)</>
+              )}
+            </button>
             <POSCart
               cart={cart}
               roundCartPrices={roundCartPrices}
@@ -1737,6 +1780,43 @@ export default function POSPage() {
         }}
         onSave={handleSaveMaklonLine}
         onShowMessage={showMsg}
+      />
+
+      <PpnFakturModal
+        open={showPpnModal}
+        initial={
+          ppnFaktur ?? {
+            kena_ppn: false,
+            ppn_persen: 11,
+            ppn_metode: "EKSKLUSIF",
+            nsfp_kode_transaksi: "01",
+            nsfp_tahun: String(new Date().getFullYear()).slice(-2),
+            nsfp_nomor_seri: "",
+            tanggal_faktur_pajak: new Date().toISOString().split("T")[0],
+            pelanggan_npwp_snapshot: "",
+            pelanggan_alamat_npwp_snapshot: "",
+            pelanggan_nama_npwp_snapshot: "",
+          }
+        }
+        defaultPpnPersen={11}
+        defaultPpnMetode="EKSKLUSIF"
+        defaultKodeTransaksi="01"
+        pelanggan={
+          selectedCustomer
+            ? {
+                nama: selectedCustomer.nama,
+                npwp: (selectedCustomer as any).npwp,
+                alamat_npwp: (selectedCustomer as any).alamat_npwp,
+                nama_di_npwp: (selectedCustomer as any).nama_di_npwp,
+              }
+            : null
+        }
+        onSave={(data) => {
+          setPpnFaktur(data);
+          setShowPpnModal(false);
+        }}
+        onClear={() => setPpnFaktur(null)}
+        onClose={() => setShowPpnModal(false)}
       />
 
       {confirmDialog && (

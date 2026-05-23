@@ -145,7 +145,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           id TEXT PRIMARY KEY,
           barang_id TEXT NOT NULL,
           tanggal TEXT NOT NULL,
-          movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT')),
+          movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT','WASTE')),
           qty_delta REAL NOT NULL,
           unit_cost REAL NOT NULL DEFAULT 0,
           value_delta REAL NOT NULL DEFAULT 0,
@@ -237,6 +237,131 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         [],
     );
 
+    // ── PPN columns ────────────────────────────────────────────────────────
+    let ppn_party_cols: &[(&str, &[&str])] = &[
+        (
+            "pelanggan",
+            &[
+                "ALTER TABLE pelanggan ADD COLUMN alamat_npwp TEXT",
+                "ALTER TABLE pelanggan ADD COLUMN nama_di_npwp TEXT",
+            ],
+        ),
+        (
+            "vendor",
+            &[
+                "ALTER TABLE vendor ADD COLUMN npwp TEXT",
+                "ALTER TABLE vendor ADD COLUMN alamat_npwp TEXT",
+                "ALTER TABLE vendor ADD COLUMN nama_di_npwp TEXT",
+            ],
+        ),
+    ];
+    for (_t, sqls) in ppn_party_cols {
+        for sql in *sqls {
+            let _ = conn.execute(sql, []);
+        }
+    }
+
+    let ppn_sales_cols = [
+        "ALTER TABLE penjualan ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE penjualan ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE penjualan ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))",
+        "ALTER TABLE penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE penjualan ADD COLUMN nsfp_kode_transaksi TEXT",
+        "ALTER TABLE penjualan ADD COLUMN nsfp_tahun TEXT",
+        "ALTER TABLE penjualan ADD COLUMN nsfp_nomor_seri TEXT",
+        "ALTER TABLE penjualan ADD COLUMN tanggal_faktur_pajak TEXT",
+        "ALTER TABLE penjualan ADD COLUMN pelanggan_npwp_snapshot TEXT",
+        "ALTER TABLE penjualan ADD COLUMN pelanggan_alamat_npwp_snapshot TEXT",
+        "ALTER TABLE penjualan ADD COLUMN pelanggan_nama_npwp_snapshot TEXT",
+        "ALTER TABLE item_penjualan ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_penjualan ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+        "CREATE INDEX IF NOT EXISTS idx_penjualan_kena_ppn ON penjualan(kena_ppn)",
+        "CREATE INDEX IF NOT EXISTS idx_penjualan_tanggal_faktur_pajak ON penjualan(tanggal_faktur_pajak)",
+    ];
+    for sql in ppn_sales_cols {
+        let _ = conn.execute(sql, []);
+    }
+
+    let ppn_purchase_cols = [
+        "ALTER TABLE pembelian ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE pembelian ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE pembelian ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))",
+        "ALTER TABLE pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE pembelian ADD COLUMN dapat_dikreditkan INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE pembelian ADD COLUMN nomor_faktur_pajak_vendor TEXT",
+        "ALTER TABLE pembelian ADD COLUMN tanggal_faktur_pajak TEXT",
+        "ALTER TABLE pembelian ADD COLUMN vendor_npwp_snapshot TEXT",
+        "ALTER TABLE item_pembelian ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_pembelian ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE item_pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+        "CREATE INDEX IF NOT EXISTS idx_pembelian_kena_ppn ON pembelian(kena_ppn)",
+        "CREATE INDEX IF NOT EXISTS idx_pembelian_dapat_dikreditkan ON pembelian(dapat_dikreditkan)",
+        "CREATE INDEX IF NOT EXISTS idx_pembelian_tanggal_faktur_pajak ON pembelian(tanggal_faktur_pajak)",
+    ];
+    for sql in ppn_purchase_cols {
+        let _ = conn.execute(sql, []);
+    }
+
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS pengaturan_toko (
+          id TEXT PRIMARY KEY DEFAULT 'default',
+          nama_toko TEXT NOT NULL DEFAULT 'Toko',
+          alamat TEXT,
+          telepon TEXT,
+          email TEXT,
+          npwp TEXT,
+          alamat_npwp TEXT,
+          status_pkp INTEGER NOT NULL DEFAULT 0,
+          ppn_persen_default REAL NOT NULL DEFAULT 11,
+          ppn_metode_default TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode_default IN ('EKSKLUSIF','INKLUSIF')),
+          ppn_default_aktif INTEGER NOT NULL DEFAULT 0,
+          nsfp_kode_transaksi_default TEXT NOT NULL DEFAULT '01',
+          nsfp_tahun_aktif TEXT,
+          nsfp_seri_terakhir TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 1,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT
+        );
+        INSERT OR IGNORE INTO pengaturan_toko (id, nama_toko) VALUES ('default', 'Gemiprint');
+
+        CREATE TABLE IF NOT EXISTS nsfp_pool (
+          id TEXT PRIMARY KEY,
+          tahun TEXT NOT NULL,
+          kode_transaksi TEXT NOT NULL DEFAULT '01',
+          nomor_seri TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'TERSEDIA' CHECK(status IN ('TERSEDIA','TERPAKAI','BATAL')),
+          penjualan_id TEXT,
+          catatan TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 1,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT,
+          UNIQUE (tahun, kode_transaksi, nomor_seri)
+        );
+        CREATE INDEX IF NOT EXISTS idx_nsfp_pool_status ON nsfp_pool(status, tahun, nomor_seri);
+        CREATE INDEX IF NOT EXISTS idx_nsfp_pool_penjualan ON nsfp_pool(penjualan_id);"
+    )?;
+
     let tables = [
         "kategori_barang",
         "subkategori_barang",
@@ -262,6 +387,8 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         "item_produksi",
         "item_finishing",
         "keuangan",
+        "pengaturan_toko",
+        "nsfp_pool",
     ];
 
     for table in tables {

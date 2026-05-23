@@ -9,7 +9,8 @@ export type InventoryMovementType =
   | "SALE_VOID"
   | "PURCHASE_VOID"
   | "PURCHASE_RETURN"
-  | "ADJUSTMENT";
+  | "ADJUSTMENT"
+  | "WASTE";
 
 export interface InventoryMovement {
   id: string;
@@ -200,6 +201,41 @@ export async function createInventoryAdjustment(input: {
     qty_delta: input.qty_delta,
     unit_cost: input.unit_cost ?? null,
     source_type: "ADJUSTMENT",
+    source_id: generateId(),
+    catatan: input.reason.trim(),
+    dibuat_oleh: input.dibuat_oleh || null,
+  });
+}
+
+/**
+ * Catat material rusak/scrap (misprint, sisa potongan yang tidak terpakai,
+ * dll). Selalu mengurangi stok (qty_delta negatif). Tidak revalue AVCO —
+ * material dianggap hilang dengan nilai average cost saat ini, sehingga
+ * sisa stok tetap pada cost yang sama dan biaya scrap masuk ke value_delta
+ * untuk laporan biaya operasional.
+ */
+export async function createWasteMovement(input: {
+  barang_id: string;
+  qty: number;
+  reason: string;
+  tanggal?: string;
+  dibuat_oleh?: string | null;
+}): Promise<InventoryMovement | null> {
+  if (!input.reason?.trim()) {
+    throw new Error("Alasan/keterangan material rusak wajib diisi");
+  }
+  const qty = Number(input.qty);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    throw new Error("Jumlah material rusak harus lebih dari 0");
+  }
+
+  return postInventoryMovement({
+    barang_id: input.barang_id,
+    tanggal: input.tanggal || new Date().toISOString().split("T")[0],
+    movement_type: "WASTE",
+    qty_delta: -qty,
+    unit_cost: null, // pakai avg cost current — service akan pick avgBefore
+    source_type: "WASTE",
     source_id: generateId(),
     catatan: input.reason.trim(),
     dibuat_oleh: input.dibuat_oleh || null,

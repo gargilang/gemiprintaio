@@ -331,6 +331,84 @@ export async function getSyncStatusAction() {
 // Database Operations for Sync Status
 import { db } from "@/lib/db-unified";
 
+import {
+  getShopSettings,
+  updateShopSettings,
+} from "@/lib/services/shop-settings-service";
+import {
+  importNsfpRange,
+  listNsfpPool,
+  getNextAvailableNsfp,
+  cancelNsfp,
+} from "@/lib/services/nsfp-service";
+
+export async function getShopSettingsAction() {
+  try {
+    return await getShopSettings();
+  } catch (error) {
+    console.error("Error in getShopSettingsAction:", error);
+    throw error;
+  }
+}
+
+export async function updateShopSettingsAction(patch: any) {
+  try {
+    return await updateShopSettings(patch);
+  } catch (error) {
+    console.error("Error in updateShopSettingsAction:", error);
+    throw error;
+  }
+}
+
+export async function importNsfpRangeAction(input: {
+  tahun: string;
+  kode_transaksi?: string;
+  nomor_awal: number;
+  nomor_akhir: number;
+  catatan?: string | null;
+}) {
+  try {
+    return await importNsfpRange(input);
+  } catch (error) {
+    console.error("Error in importNsfpRangeAction:", error);
+    throw error;
+  }
+}
+
+export async function listNsfpPoolAction(filters: {
+  status?: "TERSEDIA" | "TERPAKAI" | "BATAL";
+  tahun?: string;
+  limit?: number;
+} = {}) {
+  try {
+    return await listNsfpPool(filters);
+  } catch (error) {
+    console.error("Error in listNsfpPoolAction:", error);
+    throw error;
+  }
+}
+
+export async function getNextAvailableNsfpAction(
+  tahun?: string,
+  kodeTransaksi?: string
+) {
+  try {
+    return await getNextAvailableNsfp(tahun, kodeTransaksi);
+  } catch (error) {
+    console.error("Error in getNextAvailableNsfpAction:", error);
+    throw error;
+  }
+}
+
+export async function cancelNsfpAction(id: string, alasan: string) {
+  try {
+    return await cancelNsfp(id, alasan);
+  } catch (error) {
+    console.error("Error in cancelNsfpAction:", error);
+    throw error;
+  }
+}
+
 export async function getPendingSyncCountAction() {
   try {
     return await db.getPendingSyncCount();

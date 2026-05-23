@@ -393,6 +393,8 @@ const WAVE3_TABLES: &[&str] = &[
     "satuan_barang",
     "spesifikasi_cepat_barang",
     "opsi_finishing",
+    "pengaturan_toko",
+    "nsfp_pool",
 ];
 
 fn active_sync_tables() -> HashSet<String> {

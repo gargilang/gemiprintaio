@@ -9,6 +9,7 @@ import NotificationToast, {
 } from "@/components/NotificationToast";
 import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import PpnTab from "./PpnTab";
 import {
   getCategoriesAction as getCategories,
   createCategoryAction as createCategory,
@@ -67,7 +68,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type TabType = "company" | "setup" | "system";
+type TabType = "company" | "setup" | "system" | "ppn";
 
 interface Category {
   id: string;
@@ -102,7 +103,10 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<TabType>(
-    tabParam === "setup" || tabParam === "company" || tabParam === "system"
+    tabParam === "setup" ||
+      tabParam === "company" ||
+      tabParam === "system" ||
+      tabParam === "ppn"
       ? (tabParam as TabType)
       : tabParam === "materials"
       ? "setup"
@@ -113,6 +117,7 @@ export default function SettingsPage() {
     { id: "system" as TabType, label: "System" },
     { id: "company" as TabType, label: "Company Info" },
     { id: "setup" as TabType, label: "Master Data" },
+    { id: "ppn" as TabType, label: "PPN / Pajak" },
   ];
 
   return (
@@ -147,6 +152,7 @@ export default function SettingsPage() {
         {activeTab === "company" && <CompanyTab />}
         {activeTab === "setup" && <SetupTab />}
         {activeTab === "system" && <SystemTab />}
+        {activeTab === "ppn" && <PpnTab />}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   revertPayment,
   getDebts,
   payDebt,
+  createPurchaseReturn,
 } from "@/lib/services/purchases-service";
 import {
   createInventoryAdjustment,
@@ -143,6 +144,20 @@ export async function voidPurchaseAction(
     return await voidPurchase(id, reason);
   } catch (error) {
     console.error("Error in voidPurchaseAction:", error);
+    throw error;
+  }
+}
+
+export async function createPurchaseReturnAction(input: {
+  purchase_id: string;
+  reason: string;
+  actor_id?: string | null;
+  items: Array<{ item_pembelian_id: string; qty: number }>;
+}) {
+  try {
+    return await createPurchaseReturn(input);
+  } catch (error) {
+    console.error("Error in createPurchaseReturnAction:", error);
     throw error;
   }
 }

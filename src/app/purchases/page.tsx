@@ -11,6 +11,7 @@ import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
 import PayDebtModal from "@/components/PayDebtModal";
+import PurchaseReturnModal from "@/components/PurchaseReturnModal";
 import {
   createVendorAction,
   createMaterialAction,
@@ -24,6 +25,7 @@ import {
   getSubcategoriesAction,
   getUnitsAction,
   voidPurchaseAction,
+  createPurchaseReturnAction,
   revertPaymentAction,
   getDebtsAction,
   payDebtAction,
@@ -129,6 +131,7 @@ export default function PurchasesPage() {
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showPayDebtModal, setShowPayDebtModal] = useState(false);
+  const [returPurchase, setReturPurchase] = useState<any>(null);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -444,6 +447,7 @@ export default function PurchasesPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onRevert={handleRevert}
+            onRetur={(purchase) => setReturPurchase(purchase)}
           />
         </div>
       </div>
@@ -471,14 +475,47 @@ export default function PurchasesPage() {
       {/* Pay Debt Modal */}
       <PayDebtModal
         isOpen={showPayDebtModal}
-        onClose={() => setShowPayDebtModal(false)}
-        onSuccess={() => {
+        onClose={() => setShowPayDebtModal(false)}        onSuccess={() => {
           showMsg("success", "Pembayaran tagihan berhasil dicatat!");
           loadPurchases();
         }}
         currentUserId={currentUser?.id || null}
         onGetDebts={getDebtsAction}
         onPayDebt={payDebtAction}
+      />
+
+      {/* Retur Vendor Modal */}
+      <PurchaseReturnModal
+        open={!!returPurchase}
+        purchase={
+          returPurchase
+            ? {
+                id: returPurchase.id,
+                nomor_faktur: returPurchase.nomor_faktur,
+                nomor_pembelian: returPurchase.nomor_pembelian,
+                items: (returPurchase.items || []).map((it: any) => ({
+                  id: it.id,
+                  barang_id: it.barang_id,
+                  nama_barang: it.nama_barang || it.barang_id,
+                  jumlah: Number(it.jumlah || 0),
+                  nama_satuan: it.nama_satuan || "",
+                  faktor_konversi: Number(it.faktor_konversi || 1),
+                  harga_satuan: Number(it.harga_satuan || 0),
+                })),
+              }
+            : null
+        }
+        onClose={() => setReturPurchase(null)}
+        onSubmit={async ({ reason, items }) => {
+          await createPurchaseReturnAction({
+            purchase_id: returPurchase!.id,
+            reason,
+            actor_id: currentUser?.id || null,
+            items,
+          });
+          showMsg("success", "Retur ke vendor berhasil dicatat");
+          loadPurchases();
+        }}
       />
 
       {/* Confirm Dialog */}

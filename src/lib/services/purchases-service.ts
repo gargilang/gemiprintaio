@@ -12,6 +12,7 @@ import {
   getInventoryMovements,
   postInventoryMovement,
 } from "./inventory-service";
+import { hitungPpn } from "../ppn-helpers";
 
 /**
  * Build purchase DTOs from pembelian rows using db-unified (Supabase / SQLite).
@@ -494,6 +495,14 @@ export async function createPurchase(data: {
   catatan?: string;
   dibuat_oleh?: string;
   diterima_oleh?: string;
+  // PPN masukan (opsional — kalau tidak ada, kena_ppn=0)
+  kena_ppn?: boolean;
+  ppn_persen?: number;
+  ppn_metode?: "EKSKLUSIF" | "INKLUSIF";
+  dapat_dikreditkan?: boolean;
+  nomor_faktur_pajak_vendor?: string | null;
+  tanggal_faktur_pajak?: string | null;
+  vendor_npwp_snapshot?: string | null;
   items: Array<{
     barang_id: string;
     harga_satuan_id?: string | null;
@@ -529,11 +538,22 @@ export async function createPurchase(data: {
     // Generate ID
     const purchaseId = generateId("purchase");
 
-    // Calculate total
+    // Calculate total (subtotal sum). Kalau metode INKLUSIF, total ini
+    // sudah termasuk PPN. RPC/path TS yang akan extract DPP dari total ini.
     const total_harga = data.items.reduce(
       (sum, item) => sum + item.jumlah * item.harga_satuan,
       0
     );
+
+    const kenaPpn = data.kena_ppn ? 1 : 0;
+    const ppnPersen = kenaPpn === 1 ? Number(data.ppn_persen || 0) : 0;
+    const ppnMetode: "EKSKLUSIF" | "INKLUSIF" =
+      data.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF";
+    const dapatDikreditkan = data.dapat_dikreditkan === false ? 0 : 1;
+    const ppnBreakdown =
+      kenaPpn === 1 && ppnPersen > 0
+        ? hitungPpn(total_harga, ppnPersen, ppnMetode)
+        : { dpp: total_harga, ppn: 0, total: total_harga };
 
     const metodePembayaran = normalizePaymentMethod(data.metode_pembayaran);
     const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
@@ -642,6 +662,13 @@ export async function createPurchase(data: {
             dibuat_oleh: data.dibuat_oleh || null,
             diterima_oleh: data.diterima_oleh?.trim() || null,
             tipe_pembelian: "BARANG",
+            kena_ppn: kenaPpn,
+            ppn_persen: ppnPersen,
+            ppn_metode: ppnMetode,
+            dapat_dikreditkan: dapatDikreditkan,
+            nomor_faktur_pajak_vendor: data.nomor_faktur_pajak_vendor || null,
+            tanggal_faktur_pajak: data.tanggal_faktur_pajak || null,
+            vendor_npwp_snapshot: data.vendor_npwp_snapshot || null,
           },
           items: preparedItems,
           finance,
@@ -672,6 +699,15 @@ export async function createPurchase(data: {
         catatan: data.catatan?.trim() || null,
         dibuat_oleh: data.dibuat_oleh || null,
         diterima_oleh: data.diterima_oleh?.trim() || null,
+        kena_ppn: kenaPpn,
+        ppn_persen: ppnPersen,
+        ppn_metode: ppnMetode,
+        dpp_total: ppnBreakdown.dpp,
+        ppn_total: ppnBreakdown.ppn,
+        dapat_dikreditkan: dapatDikreditkan,
+        nomor_faktur_pajak_vendor: data.nomor_faktur_pajak_vendor || null,
+        tanggal_faktur_pajak: data.tanggal_faktur_pajak || null,
+        vendor_npwp_snapshot: data.vendor_npwp_snapshot || null,
       };
 
       const purchaseResult = await db.insert("pembelian", purchase);
@@ -683,6 +719,17 @@ export async function createPurchase(data: {
       for (const item of data.items) {
         const itemId = generateId("pi");
         const subtotal = item.jumlah * item.harga_satuan;
+
+        // Per-line PPN breakdown — pakai subtotal line, tarif sama dengan
+        // header. Kalau kena_ppn=0 maka semua kolom PPN line = 0.
+        const lineBreakdown =
+          kenaPpn === 1 && ppnPersen > 0
+            ? hitungPpn(subtotal, ppnPersen, ppnMetode)
+            : { dpp: subtotal, ppn: 0, total: subtotal };
+        const lineDppSatuan =
+          item.jumlah !== 0 ? lineBreakdown.dpp / item.jumlah : 0;
+        const linePpnSatuan =
+          item.jumlah !== 0 ? lineBreakdown.ppn / item.jumlah : 0;
 
         const purchaseItem = {
           id: itemId,
@@ -696,6 +743,10 @@ export async function createPurchase(data: {
           subtotal,
           panjang: item.panjang ?? null,
           lebar: item.lebar ?? null,
+          dpp_satuan: lineDppSatuan,
+          ppn_satuan: linePpnSatuan,
+          dpp_total: lineBreakdown.dpp,
+          ppn_total: lineBreakdown.ppn,
         };
 
         const itemResult = await db.insert("item_pembelian", purchaseItem);
@@ -703,14 +754,19 @@ export async function createPurchase(data: {
           throw itemResult.error;
         }
 
+        // Inventory unit cost pakai DPP per unit base, supaya HPP bersih
+        // dari PPN. PPN masukan akan dikreditkan terpisah saat lapor pajak.
         const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+        const qtyBase = item.jumlah * faktorKonversi;
+        const unitCostDpp =
+          qtyBase !== 0 ? lineBreakdown.dpp / qtyBase : 0;
         await postInventoryMovement({
           id: `mov-${itemId}`,
           barang_id: item.barang_id,
           tanggal: data.tanggal,
           movement_type: "PURCHASE_RECEIPT",
-          qty_delta: item.jumlah * faktorKonversi,
-          unit_cost: positiveNumber(item.harga_satuan) / faktorKonversi,
+          qty_delta: qtyBase,
+          unit_cost: unitCostDpp,
           source_type: "PURCHASE",
           source_id: purchaseId,
           source_line_id: itemId,
@@ -1677,4 +1733,107 @@ export async function payDebt(data: {
     console.error("Error paying debt:", error);
     throw error;
   }
+}
+
+/**
+ * Retur Vendor: kembalikan sebagian (atau seluruh) qty dari pembelian POSTED
+ * ke vendor. Membuat movement PURCHASE_RETURN (qty negatif) per line yang
+ * dipilih user.
+ *
+ * Berbeda dari void:
+ *   - Pembelian tetap POSTED, tidak di-flip ke VOIDED.
+ *   - Hanya line yang user pilih yang dikembalikan, partial allowed.
+ *   - Stok yang dikembalikan dievaluasi pakai movement asli (PURCHASE_RECEIPT)
+ *     untuk dapat unit_cost yang dipakai saat receipt.
+ *   - Kalau qty current < qty retur (sudah dipakai jual), throw friendly error.
+ *
+ * Belum di-handle (out of scope v1):
+ *   - Pengurangan kewajiban hutang vendor (user lakukan manual via revert).
+ *   - Penyesuaian PPN masukan (kalau pembelian kena PPN, retur juga harus
+ *     bikin nota retur PPN. Untuk sekarang user lakukan manual lewat Coretax).
+ */
+export async function createPurchaseReturn(input: {
+  purchase_id: string;
+  reason: string;
+  actor_id?: string | null;
+  /** Per line: id_item_pembelian + qty yang akan di-retur (dalam satuan jumlah, bukan base unit). */
+  items: Array<{ item_pembelian_id: string; qty: number }>;
+}): Promise<{ ok: true; total_retur_value: number }> {
+  if (!input.reason?.trim()) {
+    throw new Error("Alasan retur wajib diisi");
+  }
+  if (!input.items?.length) {
+    throw new Error("Minimal satu line untuk retur");
+  }
+
+  const purchase = await getPurchaseById(input.purchase_id);
+  if (!purchase) {
+    throw new Error("Pembelian tidak ditemukan");
+  }
+  if ((purchase as any).status_transaksi === "VOIDED") {
+    throw new Error("Pembelian sudah dibatalkan, tidak bisa di-retur");
+  }
+
+  // Load items + movements pembelian
+  const itemsRes = await db.query<any>("item_pembelian", {
+    where: { pembelian_id: input.purchase_id },
+  });
+  if (itemsRes.error) throw itemsRes.error;
+  const items = itemsRes.data || [];
+  const movements = await getInventoryMovements({
+    source_type: "PURCHASE",
+    source_id: input.purchase_id,
+  });
+
+  let totalReturValue = 0;
+
+  for (const reqLine of input.items) {
+    if (!reqLine.qty || reqLine.qty <= 0) continue;
+    const item = items.find((it: any) => it.id === reqLine.item_pembelian_id);
+    if (!item) {
+      throw new Error(`Item pembelian ${reqLine.item_pembelian_id} tidak ditemukan`);
+    }
+    const original = movements.find(
+      (m) =>
+        m.source_line_id === item.id && m.movement_type === "PURCHASE_RECEIPT"
+    );
+    const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+    const qtyBaseRetur = reqLine.qty * faktorKonversi;
+    if (qtyBaseRetur > Math.abs(Number(original?.qty_delta || 0))) {
+      throw new Error(
+        `Retur ${item.id}: qty ${reqLine.qty} melebihi qty pembelian ${
+          (Number(original?.qty_delta || 0) / faktorKonversi).toFixed(2)
+        }`
+      );
+    }
+    const unitCost = original
+      ? Number(original.unit_cost || 0)
+      : positiveNumber(item.harga_satuan) / faktorKonversi;
+
+    try {
+      await postInventoryMovement({
+        id: `ret-${item.id}-${Date.now()}`,
+        barang_id: item.barang_id,
+        tanggal: new Date().toISOString().split("T")[0],
+        movement_type: "PURCHASE_RETURN",
+        qty_delta: -qtyBaseRetur,
+        unit_cost: unitCost,
+        source_type: "PURCHASE_RETURN",
+        source_id: input.purchase_id,
+        source_line_id: item.id,
+        reversal_of_id: original?.id || null,
+        catatan: `Retur ke vendor: ${input.reason.trim()}`,
+        dibuat_oleh: input.actor_id || null,
+      });
+      totalReturValue += qtyBaseRetur * unitCost;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Retur ${item.id}: stok tidak cukup. ${msg}. Stok dari pembelian ini sudah dipakai untuk penjualan; batalkan transaksi penjualan terkait dulu, atau retur lebih sedikit.`
+      );
+    }
+  }
+
+  await recalculateCashbookIfAvailable();
+  return { ok: true, total_retur_value: totalReturValue };
 }

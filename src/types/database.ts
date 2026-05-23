@@ -94,6 +94,19 @@ export interface Sale {
   voided_at?: string | null;
   voided_by?: string | null;
   void_reason?: string | null;
+  // PPN keluaran
+  kena_ppn?: number;
+  ppn_persen?: number;
+  ppn_metode?: PpnMetode;
+  dpp_total?: number;
+  ppn_total?: number;
+  nsfp_kode_transaksi?: string | null;
+  nsfp_tahun?: string | null;
+  nsfp_nomor_seri?: string | null;
+  tanggal_faktur_pajak?: string | null;
+  pelanggan_npwp_snapshot?: string | null;
+  pelanggan_alamat_npwp_snapshot?: string | null;
+  pelanggan_nama_npwp_snapshot?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -127,6 +140,16 @@ export interface Purchase {
   voided_at?: string | null;
   voided_by?: string | null;
   void_reason?: string | null;
+  // PPN masukan
+  kena_ppn?: number;
+  ppn_persen?: number;
+  ppn_metode?: PpnMetode;
+  dpp_total?: number;
+  ppn_total?: number;
+  dapat_dikreditkan?: number;
+  nomor_faktur_pajak_vendor?: string | null;
+  tanggal_faktur_pajak?: string | null;
+  vendor_npwp_snapshot?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -185,7 +208,8 @@ export interface InventoryMovement {
     | "SALE_VOID"
     | "PURCHASE_VOID"
     | "PURCHASE_RETURN"
-    | "ADJUSTMENT";
+    | "ADJUSTMENT"
+    | "WASTE";
   qty_delta: number;
   unit_cost: number;
   value_delta: number;
@@ -226,4 +250,52 @@ export interface CashBook {
   dibuat_oleh?: string;
   dibuat_pada: string;
   diperbarui_pada: string;
+}
+
+export type PpnMetode = "EKSKLUSIF" | "INKLUSIF";
+
+export interface PengaturanToko {
+  id: string;
+  nama_toko: string;
+  alamat?: string | null;
+  telepon?: string | null;
+  email?: string | null;
+  npwp?: string | null;
+  alamat_npwp?: string | null;
+  status_pkp: number;
+  ppn_persen_default: number;
+  ppn_metode_default: PpnMetode;
+  ppn_default_aktif: number;
+  nsfp_kode_transaksi_default: string;
+  nsfp_tahun_aktif?: string | null;
+  nsfp_seri_terakhir?: string | null;
+  dibuat_pada?: string;
+  diperbarui_pada?: string;
+}
+
+export interface NsfpPool {
+  id: string;
+  tahun: string;
+  kode_transaksi: string;
+  nomor_seri: string;
+  status: "TERSEDIA" | "TERPAKAI" | "BATAL";
+  penjualan_id?: string | null;
+  catatan?: string | null;
+  dibuat_pada?: string;
+  diperbarui_pada?: string;
+}
+
+/**
+ * Format NSFP komposit: "010.000-25.00000001". Pertimbangkan ini cuma cara
+ * tampil; field nsfp_kode_transaksi/nsfp_tahun/nsfp_nomor_seri adalah sumber
+ * kebenaran di database.
+ */
+export function formatNsfp(
+  kodeTransaksi: string | null | undefined,
+  tahun: string | null | undefined,
+  nomorSeri: string | null | undefined
+): string {
+  if (!kodeTransaksi || !tahun || !nomorSeri) return "";
+  const seri8 = String(nomorSeri).padStart(8, "0");
+  return `${kodeTransaksi}0.000-${tahun}.${seri8}`;
 }

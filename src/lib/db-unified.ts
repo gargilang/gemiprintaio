@@ -198,6 +198,8 @@ const SYNC_V2_TABLES = [
   "finance_category_definitions",
   "finance_participants",
   "finance_metric_mappings",
+  "pengaturan_toko",
+  "nsfp_pool",
 ];
 
 async function getServerSQLite(): Promise<any> {
@@ -788,7 +790,7 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       id TEXT PRIMARY KEY,
       barang_id TEXT NOT NULL,
       tanggal TEXT NOT NULL,
-      movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT')),
+      movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT','WASTE')),
       qty_delta REAL NOT NULL,
       unit_cost REAL NOT NULL DEFAULT 0,
       value_delta REAL NOT NULL DEFAULT 0,
@@ -886,6 +888,114 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       `CREATE INDEX IF NOT EXISTS idx_${table}_status_transaksi ON ${table}(status_transaksi)`
     );
   }
+
+  // ── PPN columns ───────────────────────────────────────────────────────────
+  // Identitas + status PKP toko (singleton 'default').
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pengaturan_toko (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      nama_toko TEXT NOT NULL DEFAULT 'Toko',
+      alamat TEXT,
+      telepon TEXT,
+      email TEXT,
+      npwp TEXT,
+      alamat_npwp TEXT,
+      status_pkp INTEGER NOT NULL DEFAULT 0,
+      ppn_persen_default REAL NOT NULL DEFAULT 11,
+      ppn_metode_default TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode_default IN ('EKSKLUSIF','INKLUSIF')),
+      ppn_default_aktif INTEGER NOT NULL DEFAULT 0,
+      nsfp_kode_transaksi_default TEXT NOT NULL DEFAULT '01',
+      nsfp_tahun_aktif TEXT,
+      nsfp_seri_terakhir TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+    INSERT OR IGNORE INTO pengaturan_toko (id, nama_toko) VALUES ('default', 'Gemiprint');
+
+    CREATE TABLE IF NOT EXISTS nsfp_pool (
+      id TEXT PRIMARY KEY,
+      tahun TEXT NOT NULL,
+      kode_transaksi TEXT NOT NULL DEFAULT '01',
+      nomor_seri TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'TERSEDIA' CHECK(status IN ('TERSEDIA','TERPAKAI','BATAL')),
+      penjualan_id TEXT,
+      catatan TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      UNIQUE (tahun, kode_transaksi, nomor_seri)
+    );
+    CREATE INDEX IF NOT EXISTS idx_nsfp_pool_status ON nsfp_pool(status, tahun, nomor_seri);
+    CREATE INDEX IF NOT EXISTS idx_nsfp_pool_penjualan ON nsfp_pool(penjualan_id);
+  `);
+
+  // PPN columns on existing tables — additive, idempotent.
+  const ppnAdditiveCols: Array<{ table: string; column: string; ddl: string }> = [
+    { table: "pelanggan", column: "alamat_npwp", ddl: "ALTER TABLE pelanggan ADD COLUMN alamat_npwp TEXT" },
+    { table: "pelanggan", column: "nama_di_npwp", ddl: "ALTER TABLE pelanggan ADD COLUMN nama_di_npwp TEXT" },
+    { table: "vendor", column: "npwp", ddl: "ALTER TABLE vendor ADD COLUMN npwp TEXT" },
+    { table: "vendor", column: "alamat_npwp", ddl: "ALTER TABLE vendor ADD COLUMN alamat_npwp TEXT" },
+    { table: "vendor", column: "nama_di_npwp", ddl: "ALTER TABLE vendor ADD COLUMN nama_di_npwp TEXT" },
+
+    { table: "penjualan", column: "kena_ppn", ddl: "ALTER TABLE penjualan ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0" },
+    { table: "penjualan", column: "ppn_persen", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0" },
+    { table: "penjualan", column: "ppn_metode", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))" },
+    { table: "penjualan", column: "dpp_total", ddl: "ALTER TABLE penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
+    { table: "penjualan", column: "ppn_total", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
+    { table: "penjualan", column: "nsfp_kode_transaksi", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_kode_transaksi TEXT" },
+    { table: "penjualan", column: "nsfp_tahun", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_tahun TEXT" },
+    { table: "penjualan", column: "nsfp_nomor_seri", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_nomor_seri TEXT" },
+    { table: "penjualan", column: "tanggal_faktur_pajak", ddl: "ALTER TABLE penjualan ADD COLUMN tanggal_faktur_pajak TEXT" },
+    { table: "penjualan", column: "pelanggan_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_npwp_snapshot TEXT" },
+    { table: "penjualan", column: "pelanggan_alamat_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_alamat_npwp_snapshot TEXT" },
+    { table: "penjualan", column: "pelanggan_nama_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_nama_npwp_snapshot TEXT" },
+
+    { table: "item_penjualan", column: "dpp_satuan", ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0" },
+    { table: "item_penjualan", column: "ppn_satuan", ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0" },
+    { table: "item_penjualan", column: "dpp_total", ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
+    { table: "item_penjualan", column: "ppn_total", ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
+
+    { table: "pembelian", column: "kena_ppn", ddl: "ALTER TABLE pembelian ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0" },
+    { table: "pembelian", column: "ppn_persen", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0" },
+    { table: "pembelian", column: "ppn_metode", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))" },
+    { table: "pembelian", column: "dpp_total", ddl: "ALTER TABLE pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
+    { table: "pembelian", column: "ppn_total", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
+    { table: "pembelian", column: "dapat_dikreditkan", ddl: "ALTER TABLE pembelian ADD COLUMN dapat_dikreditkan INTEGER NOT NULL DEFAULT 1" },
+    { table: "pembelian", column: "nomor_faktur_pajak_vendor", ddl: "ALTER TABLE pembelian ADD COLUMN nomor_faktur_pajak_vendor TEXT" },
+    { table: "pembelian", column: "tanggal_faktur_pajak", ddl: "ALTER TABLE pembelian ADD COLUMN tanggal_faktur_pajak TEXT" },
+    { table: "pembelian", column: "vendor_npwp_snapshot", ddl: "ALTER TABLE pembelian ADD COLUMN vendor_npwp_snapshot TEXT" },
+
+    { table: "item_pembelian", column: "dpp_satuan", ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0" },
+    { table: "item_pembelian", column: "ppn_satuan", ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0" },
+    { table: "item_pembelian", column: "dpp_total", ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
+    { table: "item_pembelian", column: "ppn_total", ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
+  ];
+
+  for (const { table, column, ddl } of ppnAdditiveCols) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .get(table);
+    if (!exists) continue;
+    const cols = (
+      db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    ).map((c) => c.name);
+    if (!cols.includes(column)) {
+      db.exec(ddl);
+    }
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_penjualan_kena_ppn ON penjualan(kena_ppn);
+    CREATE INDEX IF NOT EXISTS idx_penjualan_tanggal_faktur_pajak ON penjualan(tanggal_faktur_pajak);
+    CREATE INDEX IF NOT EXISTS idx_pembelian_kena_ppn ON pembelian(kena_ppn);
+    CREATE INDEX IF NOT EXISTS idx_pembelian_dapat_dikreditkan ON pembelian(dapat_dikreditkan);
+    CREATE INDEX IF NOT EXISTS idx_pembelian_tanggal_faktur_pajak ON pembelian(tanggal_faktur_pajak);
+  `);
 
   for (const tableName of SYNC_V2_TABLES) {
     const tableExists = db

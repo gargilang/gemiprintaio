@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   id TEXT PRIMARY KEY,
   barang_id TEXT NOT NULL,
   tanggal TEXT NOT NULL,
-  movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE', 'PURCHASE_RECEIPT', 'SALE_ISSUE', 'SALE_VOID', 'PURCHASE_VOID', 'PURCHASE_RETURN', 'ADJUSTMENT')),
+  movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE', 'PURCHASE_RECEIPT', 'SALE_ISSUE', 'SALE_VOID', 'PURCHASE_VOID', 'PURCHASE_RETURN', 'ADJUSTMENT', 'WASTE')),
   qty_delta REAL NOT NULL,
   unit_cost REAL NOT NULL DEFAULT 0,
   value_delta REAL NOT NULL DEFAULT 0,
@@ -204,6 +204,8 @@ CREATE TABLE IF NOT EXISTS pelanggan (
   nama TEXT NOT NULL,
   nama_perusahaan TEXT,
   npwp TEXT,
+  alamat_npwp TEXT,
+  nama_di_npwp TEXT,
   email TEXT,
   telepon TEXT,
   alamat TEXT,
@@ -228,6 +230,9 @@ CREATE TABLE IF NOT EXISTS vendor (
   ketentuan_bayar TEXT,
   aktif_status INTEGER DEFAULT 1,
   catatan TEXT,
+  npwp TEXT,
+  alamat_npwp TEXT,
+  nama_di_npwp TEXT,
   tipe_vendor TEXT NOT NULL DEFAULT 'SUPPLIER' CHECK(tipe_vendor IN ('SUPPLIER', 'SUBKONTRAKTOR', 'KEDUANYA')),
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
@@ -238,6 +243,49 @@ CREATE TABLE IF NOT EXISTS vendor (
 
 CREATE INDEX IF NOT EXISTS idx_vendor_sync_status ON vendor(sync_status);
 CREATE INDEX IF NOT EXISTS idx_vendor_tipe ON vendor(tipe_vendor);
+
+-- Table: pengaturan_toko (Shop settings + identitas PKP)
+CREATE TABLE IF NOT EXISTS pengaturan_toko (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  nama_toko TEXT NOT NULL DEFAULT 'Toko',
+  alamat TEXT,
+  telepon TEXT,
+  email TEXT,
+  npwp TEXT,
+  alamat_npwp TEXT,
+  status_pkp INTEGER NOT NULL DEFAULT 0,
+  ppn_persen_default REAL NOT NULL DEFAULT 11,
+  ppn_metode_default TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode_default IN ('EKSKLUSIF', 'INKLUSIF')),
+  ppn_default_aktif INTEGER NOT NULL DEFAULT 0,
+  nsfp_kode_transaksi_default TEXT NOT NULL DEFAULT '01',
+  nsfp_tahun_aktif TEXT,
+  nsfp_seri_terakhir TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
+);
+
+-- Table: nsfp_pool (NSFP yang sudah dialokasikan dari Coretax)
+CREATE TABLE IF NOT EXISTS nsfp_pool (
+  id TEXT PRIMARY KEY,
+  tahun TEXT NOT NULL,
+  kode_transaksi TEXT NOT NULL DEFAULT '01',
+  nomor_seri TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'TERSEDIA' CHECK(status IN ('TERSEDIA', 'TERPAKAI', 'BATAL')),
+  penjualan_id TEXT,
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  UNIQUE (tahun, kode_transaksi, nomor_seri)
+);
+
+CREATE INDEX IF NOT EXISTS idx_nsfp_pool_status ON nsfp_pool(status, tahun, nomor_seri);
+CREATE INDEX IF NOT EXISTS idx_nsfp_pool_penjualan ON nsfp_pool(penjualan_id);
 
 -- Table: profil (User Profiles)
 CREATE TABLE IF NOT EXISTS profil (
@@ -299,6 +347,19 @@ CREATE TABLE IF NOT EXISTS penjualan (
   voided_at TIMESTAMPTZ,
   voided_by TEXT,
   void_reason TEXT,
+  -- PPN keluaran
+  kena_ppn INTEGER NOT NULL DEFAULT 0,
+  ppn_persen REAL NOT NULL DEFAULT 0,
+  ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF', 'INKLUSIF')),
+  dpp_total REAL NOT NULL DEFAULT 0,
+  ppn_total REAL NOT NULL DEFAULT 0,
+  nsfp_kode_transaksi TEXT,
+  nsfp_tahun TEXT,
+  nsfp_nomor_seri TEXT,
+  tanggal_faktur_pajak DATE,
+  pelanggan_npwp_snapshot TEXT,
+  pelanggan_alamat_npwp_snapshot TEXT,
+  pelanggan_nama_npwp_snapshot TEXT,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
@@ -310,6 +371,8 @@ CREATE TABLE IF NOT EXISTS penjualan (
 
 CREATE INDEX IF NOT EXISTS idx_penjualan_sync_status ON penjualan(sync_status);
 CREATE INDEX IF NOT EXISTS idx_penjualan_status_transaksi ON penjualan(status_transaksi);
+CREATE INDEX IF NOT EXISTS idx_penjualan_kena_ppn ON penjualan(kena_ppn);
+CREATE INDEX IF NOT EXISTS idx_penjualan_tanggal_faktur_pajak ON penjualan(tanggal_faktur_pajak);
 
 -- Table: item_penjualan (Sales Items)
 CREATE TABLE IF NOT EXISTS item_penjualan (
@@ -334,6 +397,10 @@ CREATE TABLE IF NOT EXISTS item_penjualan (
   metode_bayar_vendor TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH', 'NET30')),
   pembelian_id_terkait TEXT,
   deskripsi_pekerjaan TEXT,
+  dpp_satuan REAL NOT NULL DEFAULT 0,
+  ppn_satuan REAL NOT NULL DEFAULT 0,
+  dpp_total REAL NOT NULL DEFAULT 0,
+  ppn_total REAL NOT NULL DEFAULT 0,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
@@ -371,6 +438,16 @@ CREATE TABLE IF NOT EXISTS pembelian (
   voided_at TIMESTAMPTZ,
   voided_by TEXT,
   void_reason TEXT,
+  -- PPN masukan
+  kena_ppn INTEGER NOT NULL DEFAULT 0,
+  ppn_persen REAL NOT NULL DEFAULT 0,
+  ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF', 'INKLUSIF')),
+  dpp_total REAL NOT NULL DEFAULT 0,
+  ppn_total REAL NOT NULL DEFAULT 0,
+  dapat_dikreditkan INTEGER NOT NULL DEFAULT 1,
+  nomor_faktur_pajak_vendor TEXT,
+  tanggal_faktur_pajak DATE,
+  vendor_npwp_snapshot TEXT,
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
   sync_version INTEGER DEFAULT 1,
@@ -383,6 +460,9 @@ CREATE INDEX IF NOT EXISTS idx_pembelian_sync_status ON pembelian(sync_status);
 CREATE INDEX IF NOT EXISTS idx_pembelian_penjualan_sumber ON pembelian(penjualan_id_sumber);
 CREATE INDEX IF NOT EXISTS idx_pembelian_tipe ON pembelian(tipe_pembelian);
 CREATE INDEX IF NOT EXISTS idx_pembelian_status_transaksi ON pembelian(status_transaksi);
+CREATE INDEX IF NOT EXISTS idx_pembelian_kena_ppn ON pembelian(kena_ppn);
+CREATE INDEX IF NOT EXISTS idx_pembelian_dapat_dikreditkan ON pembelian(dapat_dikreditkan);
+CREATE INDEX IF NOT EXISTS idx_pembelian_tanggal_faktur_pajak ON pembelian(tanggal_faktur_pajak);
 
 -- Table: item_pembelian (Purchase Items)
 CREATE TABLE IF NOT EXISTS item_pembelian (
@@ -397,6 +477,10 @@ CREATE TABLE IF NOT EXISTS item_pembelian (
   subtotal REAL NOT NULL,
   panjang REAL,
   lebar REAL,
+  dpp_satuan REAL NOT NULL DEFAULT 0,
+  ppn_satuan REAL NOT NULL DEFAULT 0,
+  dpp_total REAL NOT NULL DEFAULT 0,
+  ppn_total REAL NOT NULL DEFAULT 0,
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,

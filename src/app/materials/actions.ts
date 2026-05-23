@@ -15,6 +15,7 @@ import {
 import {
   createInventoryAdjustment,
   getInventoryMovements,
+  createWasteMovement,
 } from "@/lib/services/inventory-service";
 
 export async function getMaterialsAction() {
@@ -90,6 +91,21 @@ export async function createInventoryAdjustmentAction(data: {
     return await createInventoryAdjustment(data);
   } catch (error) {
     console.error("Error in createInventoryAdjustmentAction:", error);
+    throw error;
+  }
+}
+
+export async function createWasteMovementAction(data: {
+  barang_id: string;
+  qty: number;
+  reason: string;
+  tanggal?: string;
+  dibuat_oleh?: string | null;
+}) {
+  try {
+    return await createWasteMovement(data);
+  } catch (error) {
+    console.error("Error in createWasteMovementAction:", error);
     throw error;
   }
 }

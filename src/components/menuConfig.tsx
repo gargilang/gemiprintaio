@@ -155,6 +155,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         color: "from-orange-500 to-pink-600",
         allowedRoles: FULL_STAFF,
       },
+      {
+        href: "/aktivitas",
+        icon: <ChartIcon size={18} />,
+        label: "Aktivitas",
+        color: "from-slate-600 to-slate-700",
+        allowedRoles: ADMIN_ONLY,
+      },
     ],
   },
   {
@@ -192,6 +199,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/purchases": "Pembelian",
   "/finance": "Keuangan",
   "/reports": "Laporan",
+  "/aktivitas": "Aktivitas",
   "/users": "Manajemen User",
   "/settings": "Pengaturan",
 };

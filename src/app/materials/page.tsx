@@ -15,6 +15,7 @@ import {
   deleteMaterialAction,
   getInventoryMovementsAction,
   createInventoryAdjustmentAction,
+  createWasteMovementAction,
   getCategoriesAction,
   getSubcategoriesAction,
   getUnitsAction,
@@ -31,6 +32,7 @@ const MaterialRow = memo(
     onDelete,
     onViewMovements,
     onAdjustStock,
+    onWasteMaterial,
   }: {
     material: any;
     index: number;
@@ -38,6 +40,7 @@ const MaterialRow = memo(
     onDelete: (material: any) => void;
     onViewMovements: (material: any) => void;
     onAdjustStock: (material: any) => void;
+    onWasteMaterial: (material: any) => void;
   }) => {
     const defaultUnit = material.unit_prices?.find(
       (up: any) => up.default_status
@@ -192,6 +195,25 @@ const MaterialRow = memo(
                     />
                   </svg>
                 </button>
+                <button
+                  onClick={() => onWasteMaterial(material)}
+                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  title="Catat material rusak"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"
+                    />
+                  </svg>
+                </button>
               </>
             )}
             <button
@@ -279,6 +301,10 @@ export default function MaterialsPage() {
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [savingAdjustment, setSavingAdjustment] = useState(false);
+  const [wasteMaterial, setWasteMaterial] = useState<any>(null);
+  const [wasteQty, setWasteQty] = useState("");
+  const [wasteReason, setWasteReason] = useState("");
+  const [savingWaste, setSavingWaste] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -410,6 +436,7 @@ export default function MaterialsPage() {
         if (showModal) handleCloseModal();
         else if (movementMaterial) setMovementMaterial(null);
         else if (adjustMaterial) setAdjustMaterial(null);
+        else if (wasteMaterial) setWasteMaterial(null);
         else if (confirmDialog?.show) setConfirmDialog(null);
       }
     };
@@ -545,6 +572,44 @@ export default function MaterialsPage() {
       showNotification("error", error.message || "Gagal menyimpan adjustment");
     } finally {
       setSavingAdjustment(false);
+    }
+  };
+
+  const handleWasteMaterial = (material: any) => {
+    setWasteMaterial(material);
+    setWasteQty("");
+    setWasteReason("");
+  };
+
+  const submitWaste = async () => {
+    if (!wasteMaterial) return;
+    const qty = Number(wasteQty);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      showNotification("error", "Jumlah material rusak harus lebih dari 0");
+      return;
+    }
+    if (!wasteReason.trim()) {
+      showNotification("error", "Alasan/keterangan wajib diisi");
+      return;
+    }
+    setSavingWaste(true);
+    try {
+      await createWasteMovementAction({
+        barang_id: wasteMaterial.id,
+        qty,
+        reason: wasteReason.trim(),
+      });
+      setWasteMaterial(null);
+      await loadMaterials();
+      showNotification("success", "Material rusak berhasil dicatat");
+    } catch (error: any) {
+      console.error("Error creating waste:", error);
+      showNotification(
+        "error",
+        error.message || "Gagal menyimpan catatan material rusak"
+      );
+    } finally {
+      setSavingWaste(false);
     }
   };
 
@@ -862,6 +927,7 @@ export default function MaterialsPage() {
                     onDelete={handleDelete}
                     onViewMovements={handleViewMovements}
                     onAdjustStock={handleAdjustStock}
+                    onWasteMaterial={handleWasteMaterial}
                   />
                 ))
               )}
@@ -1029,6 +1095,69 @@ export default function MaterialsPage() {
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
               >
                 {savingAdjustment ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Catat Material Rusak modal */}
+      {wasteMaterial && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-rose-700">
+              Catat Material Rusak
+            </h3>
+            <p className="text-sm text-gray-600">
+              Tercatat sebagai{" "}
+              <span className="font-mono">WASTE</span> di riwayat stok.
+              Mengurangi <span className="font-semibold">{wasteMaterial.nama}</span>{" "}
+              dari stok dengan nilai average cost saat ini.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Jumlah rusak (satuan: {wasteMaterial.satuan_dasar})
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={wasteQty}
+                onChange={(e) => setWasteQty(e.target.value)}
+                placeholder="Contoh: 5"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Stok saat ini:{" "}
+                {Number(wasteMaterial.jumlah_stok || 0).toLocaleString("id-ID")}{" "}
+                {wasteMaterial.satuan_dasar}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Alasan / keterangan <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={wasteReason}
+                onChange={(e) => setWasteReason(e.target.value)}
+                rows={3}
+                placeholder="Misprint mesin Eco-Solvent, batch BCD123 — tinta luntur, dll."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setWasteMaterial(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={submitWaste}
+                disabled={savingWaste}
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
+              >
+                {savingWaste ? "Menyimpan..." : "Catat sebagai Waste"}
               </button>
             </div>
           </div>
