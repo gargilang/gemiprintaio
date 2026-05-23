@@ -10,6 +10,7 @@ import NotificationToast, {
 import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import PpnTab from "./PpnTab";
+import PeriodCloseTab from "./PeriodCloseTab";
 import {
   getCategoriesAction as getCategories,
   createCategoryAction as createCategory,
@@ -68,7 +69,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type TabType = "company" | "setup" | "system" | "ppn";
+type TabType = "company" | "setup" | "system" | "ppn" | "period";
 
 interface Category {
   id: string;
@@ -106,7 +107,8 @@ export default function SettingsPage() {
     tabParam === "setup" ||
       tabParam === "company" ||
       tabParam === "system" ||
-      tabParam === "ppn"
+      tabParam === "ppn" ||
+      tabParam === "period"
       ? (tabParam as TabType)
       : tabParam === "materials"
       ? "setup"
@@ -118,6 +120,7 @@ export default function SettingsPage() {
     { id: "company" as TabType, label: "Company Info" },
     { id: "setup" as TabType, label: "Master Data" },
     { id: "ppn" as TabType, label: "PPN / Pajak" },
+    { id: "period" as TabType, label: "Tutup Periode" },
   ];
 
   return (
@@ -153,6 +156,7 @@ export default function SettingsPage() {
         {activeTab === "setup" && <SetupTab />}
         {activeTab === "system" && <SystemTab />}
         {activeTab === "ppn" && <PpnTab />}
+        {activeTab === "period" && <PeriodCloseTab />}
       </div>
     </div>
   );

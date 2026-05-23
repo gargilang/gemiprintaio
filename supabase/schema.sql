@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS barang (
   level_stok_minimum REAL DEFAULT 0,
   lacak_inventori_status INTEGER DEFAULT 1,
   butuh_dimensi_status INTEGER DEFAULT 0,
+  default_location_id TEXT DEFAULT 'main',
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
   frekuensi_terjual INTEGER DEFAULT 0,
@@ -133,6 +134,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   reversal_of_id TEXT,
   catatan TEXT,
   dibuat_oleh TEXT,
+  location_id TEXT DEFAULT 'main',
   dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
@@ -154,6 +156,41 @@ CREATE INDEX IF NOT EXISTS idx_inventory_movements_source ON inventory_movements
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_line ON inventory_movements(source_line_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_type ON inventory_movements(movement_type);
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_sync_status ON inventory_movements(sync_status);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_location ON inventory_movements(location_id);
+
+-- Table: lokasi (Multi-warehouse, default 'main')
+CREATE TABLE IF NOT EXISTS lokasi (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL,
+  kode TEXT UNIQUE,
+  alamat TEXT,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  aktif_status INTEGER NOT NULL DEFAULT 1,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1
+);
+
+-- Table: accounting_periods (Period close untuk laporan keuangan formal)
+CREATE TABLE IF NOT EXISTS accounting_periods (
+  id TEXT PRIMARY KEY,
+  period_key TEXT NOT NULL UNIQUE,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN', 'CLOSED')),
+  closed_at TIMESTAMPTZ,
+  closed_by TEXT,
+  catatan TEXT,
+  dibuat_pada TIMESTAMPTZ DEFAULT NOW(),
+  diperbarui_pada TIMESTAMPTZ DEFAULT NOW(),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TIMESTAMPTZ,
+  sync_version INTEGER DEFAULT 1,
+  FOREIGN KEY (closed_by) REFERENCES profil(id)
+);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_status ON accounting_periods(status, start_date, end_date);
 
 -- Table: harga_barang_satuan (Material Unit Prices)
 CREATE TABLE IF NOT EXISTS harga_barang_satuan (
@@ -691,6 +728,8 @@ CREATE TABLE IF NOT EXISTS keuangan (
   dibuat_oleh TEXT,
   diarsipkan_pada TEXT,
   label_arsip TEXT,
+  reference_type TEXT,
+  reference_id TEXT,
   dibuat_pada TIMESTAMPTZ NOT NULL,
   diperbarui_pada TIMESTAMPTZ NOT NULL,
   urutan_tampilan INTEGER DEFAULT 0,

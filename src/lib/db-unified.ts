@@ -200,6 +200,8 @@ const SYNC_V2_TABLES = [
   "finance_metric_mappings",
   "pengaturan_toko",
   "nsfp_pool",
+  "lokasi",
+  "accounting_periods",
 ];
 
 async function getServerSQLite(): Promise<any> {
@@ -995,6 +997,67 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     CREATE INDEX IF NOT EXISTS idx_pembelian_kena_ppn ON pembelian(kena_ppn);
     CREATE INDEX IF NOT EXISTS idx_pembelian_dapat_dikreditkan ON pembelian(dapat_dikreditkan);
     CREATE INDEX IF NOT EXISTS idx_pembelian_tanggal_faktur_pajak ON pembelian(tanggal_faktur_pajak);
+  `);
+
+  // ── Long-term hardening: lokasi + accounting_periods + reference_id ─────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS lokasi (
+      id TEXT PRIMARY KEY,
+      nama TEXT NOT NULL,
+      kode TEXT UNIQUE,
+      alamat TEXT,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      aktif_status INTEGER NOT NULL DEFAULT 1,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+    INSERT OR IGNORE INTO lokasi (id, nama, kode, is_default, aktif_status)
+      VALUES ('main', 'Gudang Utama', 'MAIN', 1, 1);
+
+    CREATE TABLE IF NOT EXISTS accounting_periods (
+      id TEXT PRIMARY KEY,
+      period_key TEXT NOT NULL UNIQUE,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','CLOSED')),
+      closed_at TEXT,
+      closed_by TEXT,
+      catatan TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+    CREATE INDEX IF NOT EXISTS idx_accounting_periods_status
+      ON accounting_periods(status, start_date, end_date);
+  `);
+
+  const hardeningCols: Array<{ table: string; column: string; ddl: string }> = [
+    { table: "inventory_movements", column: "location_id", ddl: "ALTER TABLE inventory_movements ADD COLUMN location_id TEXT DEFAULT 'main'" },
+    { table: "barang", column: "default_location_id", ddl: "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'" },
+    { table: "keuangan", column: "reference_type", ddl: "ALTER TABLE keuangan ADD COLUMN reference_type TEXT" },
+    { table: "keuangan", column: "reference_id", ddl: "ALTER TABLE keuangan ADD COLUMN reference_id TEXT" },
+  ];
+  for (const { table, column, ddl } of hardeningCols) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .get(table);
+    if (!exists) continue;
+    const cols = (
+      db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    ).map((c) => c.name);
+    if (!cols.includes(column)) {
+      db.exec(ddl);
+    }
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_inventory_movements_location ON inventory_movements(location_id);
+    CREATE INDEX IF NOT EXISTS idx_keuangan_reference ON keuangan(reference_type, reference_id);
   `);
 
   for (const tableName of SYNC_V2_TABLES) {

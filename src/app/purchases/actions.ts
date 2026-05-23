@@ -4,6 +4,7 @@
  * Server Actions for Purchases Page
  */
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { createVendor, getVendors } from "@/lib/services/vendors-service";
 import { createMaterial, getMaterials } from "@/lib/services/materials-service";
 import {
@@ -129,6 +130,7 @@ export async function getUnitsAction() {
 
 export async function deletePurchaseAction(id: string) {
   try {
+    await requireAdminOrManager();
     return await deletePurchase(id);
   } catch (error) {
     console.error("Error in deletePurchaseAction:", error);
@@ -141,7 +143,8 @@ export async function voidPurchaseAction(
   reason = "Pembelian dibatalkan"
 ) {
   try {
-    return await voidPurchase(id, reason);
+    const s = await requireAdminOrManager();
+    return await voidPurchase(id, reason, s.uid);
   } catch (error) {
     console.error("Error in voidPurchaseAction:", error);
     throw error;
@@ -155,7 +158,8 @@ export async function createPurchaseReturnAction(input: {
   items: Array<{ item_pembelian_id: string; qty: number }>;
 }) {
   try {
-    return await createPurchaseReturn(input);
+    const s = await requireAdminOrManager();
+    return await createPurchaseReturn({ ...input, actor_id: s.uid });
   } catch (error) {
     console.error("Error in createPurchaseReturnAction:", error);
     throw error;
@@ -171,7 +175,8 @@ export async function createInventoryAdjustmentAction(data: {
   dibuat_oleh?: string | null;
 }) {
   try {
-    return await createInventoryAdjustment(data);
+    const s = await requireAdminOrManager();
+    return await createInventoryAdjustment({ ...data, dibuat_oleh: s.uid });
   } catch (error) {
     console.error("Error in createInventoryAdjustmentAction:", error);
     throw error;

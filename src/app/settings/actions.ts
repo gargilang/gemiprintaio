@@ -4,6 +4,7 @@
  * Server Actions for Settings Page
  */
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import {
   getCategories,
   createCategory,
@@ -353,6 +354,7 @@ export async function getShopSettingsAction() {
 
 export async function updateShopSettingsAction(patch: any) {
   try {
+    await requireAdminOrManager();
     return await updateShopSettings(patch);
   } catch (error) {
     console.error("Error in updateShopSettingsAction:", error);
@@ -368,6 +370,7 @@ export async function importNsfpRangeAction(input: {
   catatan?: string | null;
 }) {
   try {
+    await requireAdminOrManager();
     return await importNsfpRange(input);
   } catch (error) {
     console.error("Error in importNsfpRangeAction:", error);
@@ -402,6 +405,7 @@ export async function getNextAvailableNsfpAction(
 
 export async function cancelNsfpAction(id: string, alasan: string) {
   try {
+    await requireAdminOrManager();
     return await cancelNsfp(id, alasan);
   } catch (error) {
     console.error("Error in cancelNsfpAction:", error);

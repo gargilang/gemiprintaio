@@ -718,6 +718,8 @@ export async function createSale(data: CreateSaleData): Promise<{
           omzet: data.total_jumlah,
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
+          reference_type: "SALE",
+          reference_id: saleId,
         });
       }
 
@@ -732,6 +734,8 @@ export async function createSale(data: CreateSaleData): Promise<{
           biaya_bahan: totalHpp,
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
+          reference_type: "SALE_HPP",
+          reference_id: saleId,
         });
       }
 
@@ -796,6 +800,8 @@ export async function createSale(data: CreateSaleData): Promise<{
             omzet: jumlahTerbayar,
             catatan: data.catatan,
             dibuat_oleh: data.kasir_id,
+            reference_type: "SALE_RECEIVABLE_DP",
+            reference_id: saleId,
           });
         }
       }
@@ -1492,6 +1498,8 @@ export async function payReceivable(data: {
       omzet: data.jumlah_bayar,
       catatan: data.catatan,
       dibuat_oleh: data.dibuat_oleh,
+      reference_type: "SALE_RECEIVABLE_PAYMENT",
+      reference_id: piutang.id_penjualan,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1653,6 +1661,8 @@ async function createFinanceEntry(data: {
   biaya_bahan?: number;
   catatan?: string | null;
   dibuat_oleh?: string | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
 }) {
   // Get max urutan_tampilan
   const maxOrderResult = await db.query("keuangan", {
@@ -1682,6 +1692,8 @@ async function createFinanceEntry(data: {
     catatan: data.catatan || null,
     dibuat_oleh: data.dibuat_oleh || null,
     urutan_tampilan: nextDisplayOrder,
+    reference_type: data.reference_type || null,
+    reference_id: data.reference_id || null,
   };
 
   const result = await db.insert("keuangan", finance);

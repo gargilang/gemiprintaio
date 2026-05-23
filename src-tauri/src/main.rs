@@ -307,6 +307,67 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute(sql, []);
     }
 
+    // ── Long-term hardening ──────────────────────────────────────────────
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS lokasi (
+          id TEXT PRIMARY KEY,
+          nama TEXT NOT NULL,
+          kode TEXT UNIQUE,
+          alamat TEXT,
+          is_default INTEGER NOT NULL DEFAULT 0,
+          aktif_status INTEGER NOT NULL DEFAULT 1,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 1,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT
+        );
+        INSERT OR IGNORE INTO lokasi (id, nama, kode, is_default, aktif_status)
+          VALUES ('main', 'Gudang Utama', 'MAIN', 1, 1);
+
+        CREATE TABLE IF NOT EXISTS accounting_periods (
+          id TEXT PRIMARY KEY,
+          period_key TEXT NOT NULL UNIQUE,
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','CLOSED')),
+          closed_at TEXT,
+          closed_by TEXT,
+          catatan TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 1,
+          is_deleted INTEGER DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_accounting_periods_status
+          ON accounting_periods(status, start_date, end_date);"
+    );
+
+    let hardening_cols = [
+        "ALTER TABLE inventory_movements ADD COLUMN location_id TEXT DEFAULT 'main'",
+        "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'",
+        "ALTER TABLE keuangan ADD COLUMN reference_type TEXT",
+        "ALTER TABLE keuangan ADD COLUMN reference_id TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_inventory_movements_location ON inventory_movements(location_id)",
+        "CREATE INDEX IF NOT EXISTS idx_keuangan_reference ON keuangan(reference_type, reference_id)",
+    ];
+    for sql in hardening_cols {
+        let _ = conn.execute(sql, []);
+    }
+
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS pengaturan_toko (
           id TEXT PRIMARY KEY DEFAULT 'default',
@@ -389,6 +450,8 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         "keuangan",
         "pengaturan_toko",
         "nsfp_pool",
+        "lokasi",
+        "accounting_periods",
     ];
 
     for table in tables {

@@ -22,6 +22,7 @@ CREATE TABLE barang (
       level_stok_minimum REAL DEFAULT 0,
       lacak_inventori_status INTEGER DEFAULT 1,
       butuh_dimensi_status INTEGER DEFAULT 0,
+      default_location_id TEXT DEFAULT 'main',
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')), frekuensi_terjual INTEGER DEFAULT 0, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
@@ -61,9 +62,11 @@ CREATE TABLE inventory_movements (
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
+      location_id TEXT DEFAULT 'main',
       FOREIGN KEY (barang_id) REFERENCES barang(id),
       FOREIGN KEY (reversal_of_id) REFERENCES inventory_movements(id),
-      FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+      FOREIGN KEY (dibuat_oleh) REFERENCES profil(id),
+      FOREIGN KEY (location_id) REFERENCES lokasi(id)
     );
 
 -- Indexes for inventory_movements
@@ -72,6 +75,41 @@ CREATE INDEX idx_inventory_movements_source ON inventory_movements(source_type, 
 CREATE INDEX idx_inventory_movements_line ON inventory_movements(source_line_id);
 CREATE INDEX idx_inventory_movements_type ON inventory_movements(movement_type);
 CREATE INDEX idx_inventory_movements_sync_status ON inventory_movements(sync_status);
+CREATE INDEX idx_inventory_movements_location ON inventory_movements(location_id);
+
+-- Table: lokasi
+CREATE TABLE lokasi (
+      id TEXT PRIMARY KEY,
+      nama TEXT NOT NULL,
+      kode TEXT UNIQUE,
+      alamat TEXT,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      aktif_status INTEGER NOT NULL DEFAULT 1,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+
+-- Table: accounting_periods
+CREATE TABLE accounting_periods (
+      id TEXT PRIMARY KEY,
+      period_key TEXT NOT NULL UNIQUE,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN', 'CLOSED')),
+      closed_at TEXT,
+      closed_by TEXT,
+      catatan TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (closed_by) REFERENCES profil(id)
+    );
+CREATE INDEX idx_accounting_periods_status ON accounting_periods(status, start_date, end_date);
 
 -- Table: harga_barang_satuan
 CREATE TABLE "harga_barang_satuan" (
@@ -265,6 +303,8 @@ CREATE TABLE keuangan (
       dibuat_oleh TEXT,
       diarsipkan_pada TEXT,
       label_arsip TEXT,
+      reference_type TEXT,
+      reference_id TEXT,
       dibuat_pada TEXT NOT NULL,
       diperbarui_pada TEXT NOT NULL,
       urutan_tampilan INTEGER DEFAULT 0,

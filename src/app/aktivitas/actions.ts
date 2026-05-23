@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { getAuditLog } from "@/lib/services/audit-log-service";
 
 export async function getAuditLogAction(filters: {
@@ -8,6 +9,7 @@ export async function getAuditLogAction(filters: {
   to?: string;
 } = {}) {
   try {
+    await requireAdminOrManager();
     return await getAuditLog(filters);
   } catch (error) {
     console.error("Error in getAuditLogAction:", error);

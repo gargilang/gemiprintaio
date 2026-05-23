@@ -624,6 +624,8 @@ export async function createPurchase(data: {
           catatan: data.catatan?.trim() || null,
           dibuat_oleh: data.dibuat_oleh || null,
           urutan_tampilan: nextOrder,
+          reference_type: "PURCHASE",
+          reference_id: purchaseId,
         };
       } else {
         const jatuhTempo =
@@ -820,6 +822,8 @@ export async function createPurchase(data: {
           catatan: data.catatan?.trim() || null,
           dibuat_oleh: data.dibuat_oleh || null,
           urutan_tampilan: nextOrder,
+          reference_type: "PURCHASE",
+          reference_id: purchaseId,
         });
         if (financeResult.error) {
           throw financeResult.error;
@@ -1000,6 +1004,8 @@ export async function createMaklonPurchase(input: {
           input.catatan?.trim() || `Maklon ke ${vendorName}`,
         dibuat_oleh: input.dibuatOleh || null,
         urutan_tampilan: nextOrder,
+        reference_type: "PURCHASE_MAKLON",
+        reference_id: purchaseId,
       });
       if (financeResult.error) throw financeResult.error;
     } else {
@@ -1721,6 +1727,9 @@ export async function payDebt(data: {
         data.catatan || `Pelunasan ${newStatus} - ${purchase.nomor_faktur}`,
       dibuat_oleh: data.dibuat_oleh || null,
       urutan_tampilan: nextOrder,
+      reference_type:
+        kategoriPembayaran === "MAKLON" ? "PURCHASE_MAKLON_PAYMENT" : "PURCHASE_PAYMENT",
+      reference_id: data.purchase_id,
     });
 
     await recalculateCashbookIfAvailable();

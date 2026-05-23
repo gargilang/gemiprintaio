@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
+import { isDateInClosedPeriod } from "./accounting-periods-service";
 
 export type InventoryMovementType =
   | "OPENING_BALANCE"
@@ -90,6 +91,15 @@ export async function postInventoryMovement(
   }
   if (!Number.isFinite(Number(input.qty_delta)) || Number(input.qty_delta) === 0) {
     throw new Error("Jumlah pergerakan stok tidak boleh 0");
+  }
+
+  // Period guard: tolak movement yang tanggalnya jatuh di periode CLOSED.
+  // Postgres RPC sudah cek lewat `assert_period_open`, tapi path SQLite/
+  // Tauri tidak melalui RPC, jadi cek di TS supaya offline-mode juga aman.
+  if (input.tanggal && (await isDateInClosedPeriod(input.tanggal))) {
+    throw new Error(
+      `Tanggal ${input.tanggal} jatuh di periode yang sudah ditutup. Gunakan jurnal pembalik di periode berjalan.`
+    );
   }
 
   const materialResult = await db.queryOne<any>("barang", {

@@ -4,6 +4,7 @@
  * Server Actions for Materials Page
  */
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import {
   getMaterials,
   getMaterialById,
@@ -88,7 +89,8 @@ export async function createInventoryAdjustmentAction(data: {
   dibuat_oleh?: string | null;
 }) {
   try {
-    return await createInventoryAdjustment(data);
+    const s = await requireAdminOrManager();
+    return await createInventoryAdjustment({ ...data, dibuat_oleh: s.uid });
   } catch (error) {
     console.error("Error in createInventoryAdjustmentAction:", error);
     throw error;
@@ -103,7 +105,8 @@ export async function createWasteMovementAction(data: {
   dibuat_oleh?: string | null;
 }) {
   try {
-    return await createWasteMovement(data);
+    const s = await requireAdminOrManager();
+    return await createWasteMovement({ ...data, dibuat_oleh: s.uid });
   } catch (error) {
     console.error("Error in createWasteMovementAction:", error);
     throw error;

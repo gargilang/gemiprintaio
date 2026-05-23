@@ -32,6 +32,8 @@ export const MASTER_SYNC_TABLES = [
   "opsi_finishing",
   "pengaturan_toko",
   "nsfp_pool",
+  "lokasi",
+  "accounting_periods",
 ] as const;
 
 export const ALL_SYNC_TABLES = [
