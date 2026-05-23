@@ -2602,6 +2602,15 @@ class UnifiedDatabase {
                 continue;
               }
 
+              // For tables with additional UNIQUE constraints beyond the PK
+              // (penjualan.nomor_invoice, order_produksi.nomor_spk, etc.),
+              // the row already exists locally — skip silently rather than
+              // crashing the entire sync pass.
+              if (isUniqueError) {
+                // Row already present locally; nothing to do.
+                continue;
+              }
+
               throw rowError;
             }
           }

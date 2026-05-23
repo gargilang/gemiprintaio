@@ -37,10 +37,12 @@ export async function GET(request: NextRequest) {
     // Biaya, Saldo, Laba Bersih, Modal Kas, Piutang Kas, Kas) without
     // touching existing rows. When new formulas are added, recalc populates
     // their values in transaction_computed so the cards show real numbers.
-    await seedDefaultsIfEmpty();
-    // Always recalc so transaction_computed stays fresh for DynamicActorSummary
-    // (kasbon, bagi hasil) after every POS sale, purchase, or manual entry.
-    await recalculateCashbookIfAvailable();
+    const seeded = await seedDefaultsIfEmpty();
+    if (seeded.formulasInserted > 0) {
+      // Only recalc when fresh formulas were added — otherwise values are
+      // already up-to-date from the last create/update/delete cascade.
+      await recalculateCashbookIfAvailable();
+    }
 
     // Recovery: if any active actor has no linked formulas (e.g. after a
     // "Kembalikan ke bawaan" wipe), re-sync their formulas automatically.
