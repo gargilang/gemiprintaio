@@ -156,6 +156,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FULL_STAFF,
       },
       {
+        href: "/laporan-ppn",
+        icon: <ChartIcon size={18} />,
+        label: "Laporan PPN",
+        color: "from-emerald-500 to-emerald-700",
+        allowedRoles: ADMIN_ONLY,
+      },
+      {
         href: "/aktivitas",
         icon: <ChartIcon size={18} />,
         label: "Aktivitas",
@@ -199,6 +206,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/purchases": "Pembelian",
   "/finance": "Keuangan",
   "/reports": "Laporan",
+  "/laporan-ppn": "Laporan PPN",
   "/aktivitas": "Aktivitas",
   "/users": "Manajemen User",
   "/settings": "Pengaturan",

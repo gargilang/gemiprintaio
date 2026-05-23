@@ -958,10 +958,73 @@ export default function POSPage() {
 
         const buildFakturData = async () => {
           const { formatUkuran } = await import("@/lib/faktur-print");
+          const { formatNsfpString, formatNpwp } = await import(
+            "@/lib/ppn-helpers"
+          );
           const sisa = Math.max(
             0,
             total - (paymentMethod === "NET30" ? 0 : bayar)
           );
+
+          // Ambil shop info kalau transaksi kena PPN. Untuk transaksi non-PPN,
+          // shop info tidak ditampilkan di faktur (hardcoded SHOP_INFO sudah
+          // di template).
+          let shop:
+            | {
+                nama_toko?: string | null;
+                alamat?: string | null;
+                npwp?: string | null;
+                alamat_npwp?: string | null;
+              }
+            | undefined;
+          if (ppnFaktur) {
+            try {
+              const { getShopSettingsAction } = await import(
+                "@/app/settings/actions"
+              );
+              const settings = await getShopSettingsAction();
+              shop = {
+                nama_toko: settings.nama_toko,
+                alamat: settings.alamat,
+                npwp: settings.npwp ? formatNpwp(settings.npwp) : null,
+                alamat_npwp: settings.alamat_npwp,
+              };
+            } catch (err) {
+              console.warn("Shop settings tidak bisa dimuat:", err);
+            }
+          }
+
+          // Hitung DPP per faktur dari data yang sudah di-set di RPC.
+          // Untuk safety di client side, hitung ulang dari ppnFaktur input.
+          const ppn = ppnFaktur
+            ? (() => {
+                const { hitungPpn } = require("@/lib/ppn-helpers") as typeof import("@/lib/ppn-helpers");
+                const breakdown = hitungPpn(
+                  total,
+                  ppnFaktur.ppn_persen,
+                  ppnFaktur.ppn_metode
+                );
+                return {
+                  nsfp: formatNsfpString(
+                    ppnFaktur.nsfp_kode_transaksi,
+                    ppnFaktur.nsfp_tahun,
+                    ppnFaktur.nsfp_nomor_seri.padStart(8, "0")
+                  ),
+                  kode_transaksi: ppnFaktur.nsfp_kode_transaksi,
+                  dpp_total: breakdown.dpp,
+                  persen: ppnFaktur.ppn_persen,
+                  ppn_total: breakdown.ppn,
+                  pelanggan_npwp: ppnFaktur.pelanggan_npwp_snapshot
+                    ? formatNpwp(ppnFaktur.pelanggan_npwp_snapshot)
+                    : null,
+                  pelanggan_alamat_npwp:
+                    ppnFaktur.pelanggan_alamat_npwp_snapshot || null,
+                  pelanggan_nama_npwp:
+                    ppnFaktur.pelanggan_nama_npwp_snapshot || null,
+                };
+              })()
+            : undefined;
+
           return {
             nomor_invoice: result.nomor_invoice,
             tanggal: tanggalIso,
@@ -996,6 +1059,8 @@ export default function POSPage() {
             bayar: paymentMethod === "NET30" ? 0 : bayar,
             sisa,
             catatan: catatan.trim() || undefined,
+            ppn,
+            shop,
           };
         };
 

@@ -47,6 +47,32 @@ export interface FakturData {
   sisa: number;
   /** Optional footer note (e.g. catatan). Currently unused by template but kept for future. */
   catatan?: string;
+  /** PPN section. Tampil hanya kalau kena_ppn dan ppn_total > 0. */
+  ppn?: {
+    /** Komposit NSFP, mis. "010.000-25.00000001". Wajib kalau kena_ppn. */
+    nsfp: string;
+    /** "010" / "020" / dst — kode transaksi 2 digit. */
+    kode_transaksi: string;
+    /** DPP (Dasar Pengenaan Pajak) total faktur ini. */
+    dpp_total: number;
+    /** Tarif PPN, mis. 11 untuk 11%. */
+    persen: number;
+    /** Nilai PPN. */
+    ppn_total: number;
+    /** Snapshot NPWP pembeli (sudah di-format ke "01.234.567.8-901.234"). */
+    pelanggan_npwp?: string | null;
+    /** Snapshot alamat NPWP pembeli untuk faktur pajak. */
+    pelanggan_alamat_npwp?: string | null;
+    /** Snapshot nama sesuai NPWP. */
+    pelanggan_nama_npwp?: string | null;
+  };
+  /** Override SHOP_INFO untuk multi-tenant masa depan; saat ini fallback ke gemiprint. */
+  shop?: {
+    nama_toko?: string | null;
+    alamat?: string | null;
+    npwp?: string | null;
+    alamat_npwp?: string | null;
+  };
 }
 
 /** Number of body rows always rendered, padded with empty rows if needed. */
@@ -122,6 +148,8 @@ export function generateFakturHTML(data: FakturData): string {
     total,
     bayar,
     sisa,
+    ppn,
+    shop,
   } = data;
 
   const kotaDisplay = (kota?.trim() || "Bekasi") + ", " + formatJakartaDate(tanggal);
@@ -130,6 +158,79 @@ export function generateFakturHTML(data: FakturData): string {
   const emptyRowsHTML = Array.from({ length: padCount }, (_, i) =>
     renderEmptyRow(items.length + i + 1)
   ).join("");
+
+  // PPN-aware totals: kalau kena_ppn, tampil DPP + PPN row sebelum TOTAL.
+  const hasPpn = ppn && ppn.ppn_total > 0;
+  const totalsHTML = hasPpn
+    ? `
+      <div class="totals-row">
+        <div class="totals-label">DPP Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(ppn!.dpp_total)}</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">PPN ${ppn!.persen}% Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(ppn!.ppn_total)}</div>
+      </div>
+      <div class="totals-row totals-grand">
+        <div class="totals-label">TOTAL Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(total)}</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">BAYAR Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(bayar)}</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">SISA Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(sisa)}</div>
+      </div>`
+    : `
+      <div class="totals-row">
+        <div class="totals-label">TOTAL Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(total)}</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">BAYAR Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(bayar)}</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">SISA Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(sisa)}</div>
+      </div>`;
+
+  // Optional faktur pajak header strip — hanya kalau kena PPN dan punya NSFP.
+  const fakturPajakHTML = hasPpn
+    ? `
+    <div class="ppn-header">
+      <div class="ppn-row">
+        <span class="ppn-label">FAKTUR PAJAK</span>
+        <span class="ppn-nsfp">${escapeHtml(ppn!.nsfp)}</span>
+      </div>
+      <div class="ppn-grid">
+        <div class="ppn-block">
+          <div class="ppn-block-title">Pengusaha Kena Pajak</div>
+          <div class="ppn-block-line"><b>${escapeHtml(shop?.nama_toko || "Gemiprint")}</b></div>
+          ${shop?.alamat_npwp ? `<div class="ppn-block-line">${escapeHtml(shop.alamat_npwp)}</div>` : ""}
+          ${shop?.npwp ? `<div class="ppn-block-line">NPWP: <b>${escapeHtml(shop.npwp)}</b></div>` : ""}
+        </div>
+        <div class="ppn-block">
+          <div class="ppn-block-title">Pembeli Barang Kena Pajak</div>
+          <div class="ppn-block-line"><b>${escapeHtml(
+            ppn!.pelanggan_nama_npwp || pelanggan_nama || "—"
+          )}</b></div>
+          ${
+            ppn!.pelanggan_alamat_npwp
+              ? `<div class="ppn-block-line">${escapeHtml(ppn!.pelanggan_alamat_npwp)}</div>`
+              : ""
+          }
+          ${
+            ppn!.pelanggan_npwp
+              ? `<div class="ppn-block-line">NPWP: <b>${escapeHtml(ppn!.pelanggan_npwp)}</b></div>`
+              : ""
+          }
+        </div>
+      </div>
+    </div>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="id">
@@ -376,7 +477,7 @@ export function generateFakturHTML(data: FakturData): string {
     .totals-box {
       border: 1.5px solid #0a1b3d;
       display: grid;
-      grid-template-rows: repeat(3, 1fr);
+      grid-auto-rows: 1fr;
       font-size: 10pt;
     }
     .totals-row {
@@ -386,6 +487,10 @@ export function generateFakturHTML(data: FakturData): string {
       border-bottom: 1px solid #0a1b3d;
     }
     .totals-row:last-child { border-bottom: none; }
+    .totals-row.totals-grand .totals-label,
+    .totals-row.totals-grand .totals-value {
+      background: #cfeafa;
+    }
     .totals-label {
       background: transparent;
       padding: 4px 8px;
@@ -397,6 +502,44 @@ export function generateFakturHTML(data: FakturData): string {
       text-align: right;
       font-weight: bold;
       min-height: 1.6em;
+    }
+
+    /* ============ FAKTUR PAJAK STRIP ============ */
+    .ppn-header {
+      border: 1.2px solid #0a1b3d;
+      margin-top: 6px;
+      padding: 6px 8px;
+      font-size: 9pt;
+      background: #fff;
+    }
+    .ppn-header .ppn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #0a1b3d;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+    }
+    .ppn-header .ppn-label {
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    .ppn-header .ppn-nsfp {
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+    }
+    .ppn-header .ppn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .ppn-header .ppn-block-title {
+      font-style: italic;
+      color: #0a1b3d;
+      margin-bottom: 2px;
+    }
+    .ppn-header .ppn-block-line {
+      line-height: 1.35;
     }
 
     .legal-note {
@@ -530,20 +673,11 @@ export function generateFakturHTML(data: FakturData): string {
     </div>
 
     <div class="totals-box">
-      <div class="totals-row">
-        <div class="totals-label">TOTAL Rp.</div>
-        <div class="totals-value">${formatRupiahPlain(total)}</div>
-      </div>
-      <div class="totals-row">
-        <div class="totals-label">BAYAR Rp.</div>
-        <div class="totals-value">${formatRupiahPlain(bayar)}</div>
-      </div>
-      <div class="totals-row">
-        <div class="totals-label">SISA Rp.</div>
-        <div class="totals-value">${formatRupiahPlain(sisa)}</div>
-      </div>
+      ${totalsHTML}
     </div>
   </div>
+
+  ${fakturPajakHTML}
 
   <div class="legal-note">
     <span class="bullet">&#9679;</span>
