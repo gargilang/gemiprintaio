@@ -1956,7 +1956,7 @@ export default function POSPage() {
                     }))
                   }
                   placeholder="Nama / nama perusahaan"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                   autoFocus
                 />
               </div>
@@ -1974,7 +1974,7 @@ export default function POSPage() {
                     }))
                   }
                   placeholder="Bekasi"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">

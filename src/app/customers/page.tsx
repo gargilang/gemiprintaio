@@ -413,7 +413,7 @@ export default function CustomersPage() {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white dark:bg-slate-900/20 rounded-xl">
+            <div className="p-3 bg-white/20 rounded-xl">
               <UsersIcon size={32} className="text-white" />
             </div>
             <div>
@@ -433,7 +433,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -449,7 +449,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -465,7 +465,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -614,7 +614,7 @@ export default function CustomersPage() {
         header={
           <div className="bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
                 <UsersIcon size={28} className="text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white truncate">

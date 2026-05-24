@@ -6,6 +6,7 @@
 import "server-only";
 
 import { db } from "../db-unified";
+import { getShopSettings } from "./shop-settings-service";
 
 export interface ProductionOrder {
   id: string;
@@ -304,19 +305,58 @@ export async function createProductionOrder(data: {
       throw new Error("Minimal harus ada 1 item produksi");
     }
 
-    // Generate SPK number
+    // Generate SPK number using configurable settings
+    const spkSettings = await getShopSettings();
+    const spkPrefix = spkSettings.spk_prefix || "SPK";
+    const spkFormat = spkSettings.spk_format || "PREFIX-SEQ";
+    const spkReset = spkSettings.spk_reset || "never";
+    const spkPadding = spkSettings.spk_padding ?? 4;
+    const spkStartSeq = spkSettings.spk_start_seq ?? 1;
+
+    const today = new Date().toISOString().slice(0, 10);
+    let spkDatePart = "";
+    if (spkFormat === "PREFIX-DATE-SEQ") {
+      const d = today.replace(/-/g, "");
+      if (spkReset === "daily") spkDatePart = d;
+      else if (spkReset === "monthly") spkDatePart = d.slice(0, 6);
+      else if (spkReset === "yearly") spkDatePart = d.slice(0, 4);
+      else spkDatePart = d;
+    }
+
     const lastOrderResult = await db.query("order_produksi", {
       orderBy: { column: "dibuat_pada", ascending: false },
       limit: 1,
     });
 
-    let spkNumber = "SPK-0001";
+    let spkSeq = spkStartSeq;
     if (lastOrderResult.data && lastOrderResult.data.length > 0) {
       const lastOrder = lastOrderResult.data[0] as any;
-      if (lastOrder.nomor_spk) {
-        const lastNum = parseInt(lastOrder.nomor_spk.split("-")[1]);
-        spkNumber = `SPK-${String(lastNum + 1).padStart(4, "0")}`;
+      const lastNomor: string = lastOrder.nomor_spk || "";
+      try {
+        if (spkFormat === "PREFIX-DATE-SEQ") {
+          const expectedStart = `${spkPrefix}-${spkDatePart}-`;
+          if (lastNomor.startsWith(expectedStart)) {
+            const n = parseInt(lastNomor.slice(expectedStart.length), 10);
+            if (!isNaN(n)) spkSeq = n + 1;
+          }
+        } else {
+          const expectedStart = `${spkPrefix}-`;
+          if (lastNomor.startsWith(expectedStart)) {
+            const n = parseInt(lastNomor.slice(expectedStart.length), 10);
+            if (!isNaN(n)) spkSeq = n + 1;
+          }
+        }
+      } catch {
+        spkSeq = spkStartSeq;
       }
+    }
+
+    const spkSeqStr = String(spkSeq).padStart(Math.max(1, spkPadding), "0");
+    let spkNumber: string;
+    if (spkFormat === "PREFIX-DATE-SEQ") {
+      spkNumber = `${spkPrefix}-${spkDatePart}-${spkSeqStr}`;
+    } else {
+      spkNumber = `${spkPrefix}-${spkSeqStr}`;
     }
 
     // Get pelanggan_nama from penjualan

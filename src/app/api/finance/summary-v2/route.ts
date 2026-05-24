@@ -19,8 +19,14 @@ import {
   syncAllActiveActorFormulas,
 } from "@/lib/services/formula-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
-import { seedDefaultsIfEmpty, listFormulas } from "@/lib/services/cashbook-formula-service";
-import { listBusinessActors } from "@/lib/services/business-actor-service";
+import {
+  seedDefaultsIfEmpty,
+  listFormulasRaw,
+} from "@/lib/services/cashbook-formula-service";
+import {
+  listBusinessActors,
+  listActorRoles,
+} from "@/lib/services/business-actor-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 
 export const runtime = "nodejs";
@@ -30,13 +36,7 @@ export async function GET(request: NextRequest) {
   try {
     const month = request.nextUrl.searchParams.get("month") || undefined;
 
-    // Old seed formulas without Kelola Orang link are disabled automatically.
-    await disableLegacyOrphanActorFormulas();
-
-    // Idempotent system formula seed — re-inserts missing defaults (Omzet,
-    // Biaya, Saldo, Laba Bersih, Modal Kas, Piutang Kas, Kas) without
-    // touching existing rows. When new formulas are added, recalc populates
-    // their values in transaction_computed so the cards show real numbers.
+    // 1. Seed system formulas once. Only writes when rows are actually missing.
     const seeded = await seedDefaultsIfEmpty();
     if (seeded.formulasInserted > 0) {
       // Only recalc when fresh formulas were added — otherwise values are
@@ -44,12 +44,22 @@ export async function GET(request: NextRequest) {
       await recalculateCashbookIfAvailable();
     }
 
-    // Recovery: if any active actor has no linked formulas (e.g. after a
-    // "Kembalikan ke bawaan" wipe), re-sync their formulas automatically.
-    const [actors, formulas] = await Promise.all([
+    // 2. Fetch actors, roles, formulas and latest computed values in parallel.
+    //    listFormulasRaw skips the redundant seedDefaultsIfEmpty call inside
+    //    listFormulas() since we already seeded above.
+    const [actors, roles, formulas, latestMap] = await Promise.all([
       listBusinessActors({ includeInactive: false }),
-      listFormulas(),
+      listActorRoles(),
+      listFormulasRaw(),
+      getLatestPerFormulaKey(month),
     ]);
+
+    // 3. Disable legacy orphan actor formulas (no actor_id) using the
+    //    already-fetched formula list — no extra DB read.
+    await disableLegacyOrphanActorFormulas(formulas);
+
+    // 4. Recovery: if any active actor has no linked formulas (e.g. after a
+    //    "Kembalikan ke bawaan" wipe), re-sync their formulas automatically.
     const actorIdsWithFormulas = new Set(
       formulas.filter((f) => f.actorId).map((f) => f.actorId as string)
     );
@@ -61,8 +71,13 @@ export async function GET(request: NextRequest) {
       await recalculateCashbookIfAvailable();
     }
 
-    const latestMap = await getLatestPerFormulaKey(month);
-    const summary = await getActorFinanceSummary(latestMap);
+    // 5. Build summary, passing pre-fetched data to avoid redundant DB calls
+    //    inside getActorFinanceSummary.
+    const summary = await getActorFinanceSummary(latestMap, {
+      actors,
+      roles,
+      formulas,
+    });
 
     // Surface key system metrics so the page can render summary cards
     // without computing them client-side. The values come from the

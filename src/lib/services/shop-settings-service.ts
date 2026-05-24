@@ -27,6 +27,17 @@ const DEFAULT_SHOP_SETTINGS: PengaturanToko = {
   nsfp_kode_transaksi_default: "01",
   nsfp_tahun_aktif: null,
   nsfp_seri_terakhir: null,
+  // Nomor urut defaults — matches the migration defaults
+  inv_prefix: "INV",
+  inv_format: "PREFIX-DATE-SEQ",
+  inv_reset: "daily",
+  inv_padding: 3,
+  inv_start_seq: 1,
+  spk_prefix: "SPK",
+  spk_format: "PREFIX-SEQ",
+  spk_reset: "never",
+  spk_padding: 4,
+  spk_start_seq: 1,
 };
 
 /**

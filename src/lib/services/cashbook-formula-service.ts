@@ -116,13 +116,12 @@ async function withSqlite<T>(
 
 // ── Formulas ───────────────────────────────────────────────────────────────
 
-export async function listFormulas(): Promise<FormulaDefinition[]> {
-  // seedDefaultsIfEmpty is idempotent (INSERT OR IGNORE) and cheap, so we
-  // call it on every list. This guarantees the 5 system formulas (Omzet,
-  // Biaya Operasional, Biaya Bahan, Saldo, Laba Bersih) exist even when
-  // the table already contains user-created actor formulas.
-  await seedDefaultsIfEmpty();
-
+/**
+ * Fetch formulas from DB without triggering seedDefaultsIfEmpty.
+ * Use this when the caller has already seeded (e.g. the summary-v2 route)
+ * to avoid redundant DB writes on every request.
+ */
+export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
   const sb = getServerSupabaseClient();
   if (sb) {
     const { data, error } = await sb
@@ -148,6 +147,13 @@ export async function listFormulas(): Promise<FormulaDefinition[]> {
   }
 
   return cloneDefaults(DEFAULT_FORMULAS);
+}
+
+export async function listFormulas(): Promise<FormulaDefinition[]> {
+  // Ensure system formulas exist before reading. seedDefaultsIfEmpty is
+  // idempotent — it only writes when rows are actually missing.
+  await seedDefaultsIfEmpty();
+  return listFormulasRaw();
 }
 
 export async function listActiveFormulas(): Promise<FormulaDefinition[]> {

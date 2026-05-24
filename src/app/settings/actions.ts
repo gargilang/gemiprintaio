@@ -362,6 +362,36 @@ export async function updateShopSettingsAction(patch: any) {
   }
 }
 
+export async function getNomorUrutSettingsAction() {
+  try {
+    return await getShopSettings();
+  } catch (error) {
+    console.error("Error in getNomorUrutSettingsAction:", error);
+    throw error;
+  }
+}
+
+export async function updateNomorUrutSettingsAction(patch: {
+  inv_prefix?: string;
+  inv_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
+  inv_reset?: "daily" | "monthly" | "yearly" | "never";
+  inv_padding?: number;
+  inv_start_seq?: number;
+  spk_prefix?: string;
+  spk_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
+  spk_reset?: "daily" | "monthly" | "yearly" | "never";
+  spk_padding?: number;
+  spk_start_seq?: number;
+}) {
+  try {
+    await requireAdminOrManager();
+    return await updateShopSettings(patch);
+  } catch (error) {
+    console.error("Error in updateNomorUrutSettingsAction:", error);
+    throw error;
+  }
+}
+
 export async function importNsfpRangeAction(input: {
   tahun: string;
   kode_transaksi?: string;

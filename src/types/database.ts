@@ -276,6 +276,18 @@ export interface PengaturanToko {
   nsfp_kode_transaksi_default: string;
   nsfp_tahun_aktif?: string | null;
   nsfp_seri_terakhir?: string | null;
+  // Nomor urut faktur (invoice)
+  inv_prefix?: string | null;
+  inv_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ" | null;
+  inv_reset?: "daily" | "monthly" | "yearly" | "never" | null;
+  inv_padding?: number | null;
+  inv_start_seq?: number | null;
+  // Nomor urut SPK
+  spk_prefix?: string | null;
+  spk_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ" | null;
+  spk_reset?: "daily" | "monthly" | "yearly" | "never" | null;
+  spk_padding?: number | null;
+  spk_start_seq?: number | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
 }

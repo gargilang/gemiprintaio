@@ -658,7 +658,7 @@ export default function MaterialsPage() {
         <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <BoxIcon size={20} className="text-white" />
               </div>
               <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -678,7 +678,7 @@ export default function MaterialsPage() {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -713,7 +713,7 @@ export default function MaterialsPage() {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -733,7 +733,7 @@ export default function MaterialsPage() {
               </h3>
             </div>
             {showLowStockOnly && (
-              <div className="bg-white dark:bg-slate-900/20 rounded-full px-2 py-1">
+              <div className="bg-white/20 rounded-full px-2 py-1">
                 <svg
                   className="w-4 h-4"
                   fill="currentColor"

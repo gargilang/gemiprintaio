@@ -324,6 +324,11 @@ export default function PengaturanKeuanganModal({
     if (open) {
       setTab(defaultTab);
       setNotice(null);
+    } else {
+      // Reset loaded flags when modal closes so next open re-fetches fresh data.
+      setRumusLoaded(false);
+      setKatLoaded(false);
+      setOrangLoaded(false);
     }
   }, [open, defaultTab]);
 
@@ -355,13 +360,13 @@ export default function PengaturanKeuanganModal({
   }, [showInactive, showMsg]);
 
   useEffect(() => {
-    if (open && tab === "pengurus" && !orangLoaded) {
+    if (open && !orangLoaded) {
       void reloadOrang();
       apiJSON<{ categories: FinanceCatOption[] }>("/api/finance/categories")
         .then((r) => setFinCats(r.categories ?? []))
         .catch(() => {});
     }
-  }, [open, tab, orangLoaded, reloadOrang]);
+  }, [open, orangLoaded, reloadOrang]);
 
   useEffect(() => {
     if (orangLoaded) void reloadOrang(showInactive);
@@ -497,8 +502,8 @@ export default function PengaturanKeuanganModal({
   }, [showMsg]);
 
   useEffect(() => {
-    if (open && tab === "kategori" && !katLoaded) void reloadKat();
-  }, [open, tab, katLoaded, reloadKat]);
+    if (open && !katLoaded) void reloadKat();
+  }, [open, katLoaded, reloadKat]);
 
   const filteredCats = useMemo(() => {
     const q = katSearch.trim().toLowerCase();
@@ -550,8 +555,8 @@ export default function PengaturanKeuanganModal({
   }, [showMsg]);
 
   useEffect(() => {
-    if (open && tab === "kolom" && !rumusLoaded) void reloadRumus();
-  }, [open, tab, rumusLoaded, reloadRumus]);
+    if (open && !rumusLoaded) void reloadRumus();
+  }, [open, rumusLoaded, reloadRumus]);
 
   const editingFormula = useMemo(
     () => formulas.find((f) => f.id === editingFormulaId) ?? null,
@@ -987,7 +992,8 @@ export default function PengaturanKeuanganModal({
         <InlineNotice notice={notice} />
 
         {/* ── Tab: Kolom ──────────────────────────────────────────────────── */}
-        {tab === "kolom" && (
+        {/* All tab panels stay mounted; CSS hidden keeps them out of view */}
+        <div className={tab === "kolom" ? undefined : "hidden"}>
           <KolomTab
             formulas={formulas}
             rumusSaving={rumusSaving}
@@ -999,10 +1005,10 @@ export default function PengaturanKeuanganModal({
             onNewFormula={createCustomFormula}
             onOpenKategori={() => setTab("kategori")}
           />
-        )}
+        </div>
 
         {/* ── Tab: Orang ──────────────────────────────────────────────────── */}
-        {tab === "pengurus" && (
+        <div className={tab === "pengurus" ? undefined : "hidden"}>
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
@@ -1104,10 +1110,10 @@ export default function PengaturanKeuanganModal({
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* ── Tab: Kategori ───────────────────────────────────────────────── */}
-        {tab === "kategori" && (
+        <div className={tab === "kategori" ? undefined : "hidden"}>
           <div className="p-4 space-y-4">
             {/* Add form */}
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 p-4">
@@ -1178,7 +1184,7 @@ export default function PengaturanKeuanganModal({
               </div>
             )}
           </div>
-        )}
+        </div>
 
       </ModalFormShell>
 

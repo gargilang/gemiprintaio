@@ -1436,7 +1436,7 @@ export default function FinancePage() {
           <DynamicActorSummary
             formatRupiah={formatRupiah}
             month={viewingArchive ?? undefined}
-            refreshKey={`${actorSummaryTick}-${lastCashBookLoadAt}`}
+            refreshKey={actorSummaryTick}
             onOpenPeopleSettings={() => {
               setPengaturanDefaultTab("pengurus");
               setShowPengaturanModal(true);

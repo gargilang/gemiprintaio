@@ -9,12 +9,13 @@
  * di-finalize.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   listAccountingPeriodsAction,
   closePeriodAction,
   reopenPeriodAction,
 } from "./period-actions";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface Period {
   id: string;
@@ -44,8 +45,14 @@ const MONTHS = [
 
 export default function PeriodCloseTab() {
   const today = new Date();
-  const [periods, setPeriods] = useState<Period[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: periods = [],
+    isLoading: loading,
+    mutate: mutatePeriods,
+  } = useCachedData<Period[]>(
+    "settings:accounting-periods",
+    () => listAccountingPeriodsAction() as Promise<Period[]>
+  );
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [catatan, setCatatan] = useState("");
@@ -53,22 +60,6 @@ export default function PeriodCloseTab() {
     kind: "success" | "error";
     msg: string;
   } | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const rows = await listAccountingPeriodsAction();
-      setPeriods(rows as Period[]);
-    } catch (e: any) {
-      setNotice({ kind: "error", msg: e?.message || "Gagal memuat periode" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   const showMsg = (kind: "success" | "error", msg: string) => {
     setNotice({ kind, msg });
@@ -90,7 +81,7 @@ export default function PeriodCloseTab() {
       });
       showMsg("success", "Periode berhasil ditutup");
       setCatatan("");
-      await load();
+      await mutatePeriods();
     } catch (e: any) {
       showMsg("error", e?.message || "Gagal menutup periode");
     }
@@ -105,7 +96,7 @@ export default function PeriodCloseTab() {
       const [y, m] = period.period_key.split("-").map(Number);
       await reopenPeriodAction({ year: y, month: m, alasan: alasan.trim() });
       showMsg("success", `Periode ${period.period_key} dibuka kembali`);
-      await load();
+      await mutatePeriods();
     } catch (e: any) {
       showMsg("error", e?.message || "Gagal membuka kembali periode");
     }

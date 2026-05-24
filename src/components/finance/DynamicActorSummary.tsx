@@ -87,7 +87,14 @@ export default function DynamicActorSummary({
   const [collapsed, setCollapsed] = useState(true);
 
   const url = `/api/finance/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
-  const swrKey = `${url}__${refreshKey ?? ""}`;
+  // Use a stable SWR key based only on the URL + explicit refresh tick.
+  // Avoid embedding lastCashBookLoadAt here — that changes on every cashbook
+  // reload and would bust the cache unnecessarily, causing a visible spinner
+  // on every transaction add/edit. refreshKey (actorSummaryTick) only
+  // increments when actor/formula settings actually change.
+  const swrKey = refreshKey != null && refreshKey !== "" && refreshKey !== 0
+    ? `${url}__r${refreshKey}`
+    : url;
 
   const { data, error, isLoading } = useSWR<SummaryV2Response>(
     swrKey,
@@ -150,12 +157,12 @@ export default function DynamicActorSummary({
 
   return (
     <div className="mb-6 space-y-2">
-      <div className="rounded-xl border-2 border-slate-200 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+      <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-600 transition-colors"
+            className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             <svg
               className={`w-4 h-4 text-slate-500 transition-transform ${collapsed ? "-rotate-90" : ""}`}
@@ -166,7 +173,7 @@ export default function DynamicActorSummary({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
             Pengurus Usaha
-            <span className="text-xs font-normal text-slate-500">
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
               ({actorRows.length} pengurus)
             </span>
           </button>
@@ -174,7 +181,7 @@ export default function DynamicActorSummary({
             <button
               type="button"
               onClick={onOpenPeopleSettings}
-              className="p-1.5 rounded-md text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+              className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               title="Pengaturan → Pengurus"
               aria-label="Pengaturan Pengurus"
             >
@@ -203,14 +210,14 @@ export default function DynamicActorSummary({
                     <th className="px-4 py-2 text-right text-amber-700 dark:text-amber-300">Bagi Hasil</th>
                   )}
                   {hasGroup.cash_advance && (
-                    <th className="px-4 py-2 text-right text-violet-700">Kasbon</th>
+                    <th className="px-4 py-2 text-right text-violet-700 dark:text-violet-300">Kasbon</th>
                   )}
                   {hasGroup.bonus && (
                     <th className="px-4 py-2 text-right text-emerald-700 dark:text-emerald-300">Bonus</th>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {actorRows.map((row) => {
                   const ps = sumGroup(row.metrics, columns, "profit_share");
                   const ca = sumGroup(row.metrics, columns, "cash_advance");
@@ -219,7 +226,7 @@ export default function DynamicActorSummary({
                   return (
                     <tr
                       key={row.actorId ?? row.displayName}
-                      className="hover:bg-slate-50/80 transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors"
                     >
                       <td className="px-4 py-3 align-top min-w-0">
                         <div className="font-semibold text-gray-900 dark:text-slate-100 truncate">{row.displayName}</div>
@@ -239,12 +246,12 @@ export default function DynamicActorSummary({
                       )}
                       {hasGroup.cash_advance && (
                         <td className="px-4 py-3 align-top text-right whitespace-nowrap">
-                          <CellValue value={ca} formatRupiah={formatRupiah} tone="text-violet-800" />
+                          <CellValue value={ca} formatRupiah={formatRupiah} tone="text-violet-800 dark:text-violet-200" />
                         </td>
                       )}
                       {hasGroup.bonus && (
                         <td className="px-4 py-3 align-top text-right whitespace-nowrap">
-                          <CellValue value={bn} formatRupiah={formatRupiah} tone="text-emerald-800" />
+                          <CellValue value={bn} formatRupiah={formatRupiah} tone="text-emerald-800 dark:text-emerald-200" />
                         </td>
                       )}
                     </tr>

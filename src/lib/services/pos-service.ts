@@ -23,6 +23,7 @@ import {
   postInventoryMovement,
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
+import { getShopSettings } from "./shop-settings-service";
 
 // ============================================================================
 // TYPES
@@ -202,40 +203,129 @@ async function fallbackAverageCostPerBaseUnit(
   return positiveNumber(unit?.harga_beli) / factor;
 }
 
+/**
+ * Hitung date-part string berdasarkan format reset.
+ * daily   → YYYYMMDD
+ * monthly → YYYYMM
+ * yearly  → YYYY
+ * never   → "" (tidak pakai tanggal)
+ */
+function getDatePart(
+  tanggal: string,
+  reset: string,
+  format: string
+): string {
+  if (format === "PREFIX-SEQ") return "";
+  const d = tanggal.replace(/-/g, "");
+  if (reset === "daily") return d;                    // 20260524
+  if (reset === "monthly") return d.slice(0, 6);      // 202605
+  if (reset === "yearly") return d.slice(0, 4);       // 2026
+  return d;                                           // never → still embed full date
+}
+
+/**
+ * Cek apakah nomor terakhir masih dalam periode yang sama.
+ * Kalau iya, ambil urutan terakhirnya; kalau tidak, mulai dari start_seq.
+ */
+function extractSeqFromNumber(
+  lastNumber: string,
+  prefix: string,
+  format: string,
+  datePart: string,
+  padding: number,
+  startSeq: number
+): number {
+  if (!lastNumber) return startSeq;
+  try {
+    if (format === "PREFIX-DATE-SEQ") {
+      // Expected: PREFIX-DATEPART-SEQ
+      const expectedStart = `${prefix}-${datePart}-`;
+      if (!lastNumber.startsWith(expectedStart)) return startSeq;
+      const seqStr = lastNumber.slice(expectedStart.length);
+      const seq = parseInt(seqStr, 10);
+      return isNaN(seq) ? startSeq : seq + 1;
+    } else {
+      // PREFIX-SEQ: PREFIX-SEQ
+      const expectedStart = `${prefix}-`;
+      if (!lastNumber.startsWith(expectedStart)) return startSeq;
+      const seqStr = lastNumber.slice(expectedStart.length);
+      const seq = parseInt(seqStr, 10);
+      return isNaN(seq) ? startSeq : seq + 1;
+    }
+  } catch {
+    return startSeq;
+  }
+}
+
 async function generateInvoiceNumber(tanggal: string): Promise<string> {
-  const dateStr = tanggal.replace(/-/g, "");
+  const settings = await getShopSettings();
+  const prefix = settings.inv_prefix || "INV";
+  const format = settings.inv_format || "PREFIX-DATE-SEQ";
+  const reset = settings.inv_reset || "daily";
+  const padding = settings.inv_padding ?? 3;
+  const startSeq = settings.inv_start_seq ?? 1;
+
+  const datePart = getDatePart(tanggal, reset, format);
 
   const lastInvoiceResult = await db.query("penjualan", {
     orderBy: { column: "nomor_invoice", ascending: false },
     limit: 1,
   });
 
+  let seq = startSeq;
   if (lastInvoiceResult.data && lastInvoiceResult.data.length > 0) {
     const lastInvoice = lastInvoiceResult.data[0] as any;
-    if (lastInvoice.nomor_invoice?.startsWith(`INV-${dateStr}`)) {
-      const lastNum = parseInt(lastInvoice.nomor_invoice.split("-")[2]);
-      return `INV-${dateStr}-${String(lastNum + 1).padStart(3, "0")}`;
-    }
+    seq = extractSeqFromNumber(
+      lastInvoice.nomor_invoice || "",
+      prefix,
+      format,
+      datePart,
+      padding,
+      startSeq
+    );
   }
 
-  return `INV-${dateStr}-001`;
+  const seqStr = String(seq).padStart(Math.max(1, padding), "0");
+  if (format === "PREFIX-DATE-SEQ") {
+    return `${prefix}-${datePart}-${seqStr}`;
+  }
+  return `${prefix}-${seqStr}`;
 }
 
 async function generateSPKNumber(): Promise<string> {
+  const settings = await getShopSettings();
+  const prefix = settings.spk_prefix || "SPK";
+  const format = settings.spk_format || "PREFIX-SEQ";
+  const reset = settings.spk_reset || "never";
+  const padding = settings.spk_padding ?? 4;
+  const startSeq = settings.spk_start_seq ?? 1;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const datePart = getDatePart(today, reset, format);
+
   const lastOrderResult = await db.query("order_produksi", {
     orderBy: { column: "dibuat_pada", ascending: false },
     limit: 1,
   });
 
+  let seq = startSeq;
   if (lastOrderResult.data && lastOrderResult.data.length > 0) {
     const lastOrder = lastOrderResult.data[0] as any;
-    if (lastOrder.nomor_spk) {
-      const lastNum = parseInt(lastOrder.nomor_spk.split("-")[1]);
-      return `SPK-${String(lastNum + 1).padStart(4, "0")}`;
-    }
+    seq = extractSeqFromNumber(
+      lastOrder.nomor_spk || "",
+      prefix,
+      format,
+      datePart,
+      padding,
+      startSeq
+    );
   }
 
-  return "SPK-0001";
+  const seqStr = String(seq).padStart(Math.max(1, padding), "0");
+  if (format === "PREFIX-DATE-SEQ") {
+    return `${prefix}-${datePart}-${seqStr}`;
+  }
+  return `${prefix}-${seqStr}`;
 }
 
 // ============================================================================

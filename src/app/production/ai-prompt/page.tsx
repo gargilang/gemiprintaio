@@ -501,7 +501,7 @@ export default function AiPromptPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-[#00afef]">
-              Design Prompt Maker
+              Pembuat Prompt AI Design
             </p>
             <h2 className="mt-1 text-2xl font-bold text-[#0a1b3d] dark:text-slate-100">
               Ubah imajinasi pelanggan menjadi prompt gambar siap pakai untuk Generative AI

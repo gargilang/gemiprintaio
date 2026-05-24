@@ -324,9 +324,7 @@ export async function syncFormulasForActor(
 export async function syncAllActiveActorFormulas(
   actorIds: string[]
 ): Promise<void> {
-  for (const id of actorIds) {
-    await syncFormulasForActor(id);
-  }
+  await Promise.all(actorIds.map((id) => syncFormulasForActor(id)));
 }
 
 /** Base display_order so groups sort consistently in the formula list. */
@@ -428,14 +426,22 @@ export interface ActorFinanceSummary {
  * `is_visible_in_summary = true` formulas plus a stable canonical ordering
  * (Bagi Hasil → Kasbon → Bonus → Kustom). Rows with `actor_id` go in the
  * actor block; visible custom rows without an actor become "(global)" rows.
+ *
+ * Pass pre-fetched `actors`, `roles`, and `formulas` to avoid redundant DB
+ * round-trips when the caller already has this data (e.g. summary-v2 route).
  */
 export async function getActorFinanceSummary(
-  valuesByKey: Record<string, number>
+  valuesByKey: Record<string, number>,
+  prefetched?: {
+    actors?: import("@/lib/services/business-actor-service").BusinessActor[];
+    roles?: import("@/lib/services/business-actor-service").ActorRole[];
+    formulas?: import("@/lib/ast/types").FormulaDefinition[];
+  }
 ): Promise<ActorFinanceSummary> {
   const [actors, roles, formulas] = await Promise.all([
-    listBusinessActors({ includeInactive: false }),
-    listActorRoles(),
-    listFormulas(),
+    prefetched?.actors ?? listBusinessActors({ includeInactive: false }),
+    prefetched?.roles ?? listActorRoles(),
+    prefetched?.formulas ?? listFormulas(),
   ]);
 
   const roleLabelByCode = new Map(roles.map((r) => [r.role_code, r.role_label]));
@@ -600,9 +606,15 @@ export async function countLegacyOrphanActorFormulas(): Promise<number> {
  * Turn off per-person formulas from the old hardcoded schema (no actor_id).
  * Kelola Orang is the only supported path for bagi hasil / kasbon / bonus.
  * Idempotent — safe to call on each summary load.
+ *
+ * Pass a pre-fetched `formulas` list to avoid an extra DB round-trip when
+ * the caller already has the full formula list.
  */
-export async function disableLegacyOrphanActorFormulas(): Promise<number> {
-  const orphans = (await listFormulas()).filter(
+export async function disableLegacyOrphanActorFormulas(
+  formulas?: FormulaDefinition[]
+): Promise<number> {
+  const all = formulas ?? (await listFormulas());
+  const orphans = all.filter(
     (f) =>
       f.enabled &&
       !f.actorId &&

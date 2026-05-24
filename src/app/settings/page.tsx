@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useCachedData } from "@/lib/use-cached-data";
 import { useSearchParams } from "next/navigation";
 import { BoxIcon } from "@/components/icons/ContentIcons";
-import { PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
+import { HashIcon, PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
 import NotificationToast, {
   NotificationToastProps,
 } from "@/components/NotificationToast";
@@ -11,6 +12,7 @@ import ModalFormShell from "@/components/ModalFormShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import PpnTab from "./PpnTab";
 import PeriodCloseTab from "./PeriodCloseTab";
+import NomorUrutTab from "./NomorUrutTab";
 import {
   getCategoriesAction as getCategories,
   createCategoryAction as createCategory,
@@ -180,42 +182,34 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Tab Content - fixed min height so the window doesn't jump when
-          switching between tabs that have very different content lengths. */}
+      {/* Tab Content - all tabs stay mounted (CSS hidden) so components are
+          never unmounted on tab switch — this prevents re-fetching data every
+          time the user switches tabs. */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-6 min-h-[calc(100vh-220px)]">
-        {activeTab === "company" && <CompanyTab />}
-        {activeTab === "setup" && <SetupTab />}
-        {activeTab === "system" && <SystemTab />}
-        {activeTab === "ppn" && <PpnTab />}
-        {activeTab === "period" && <PeriodCloseTab />}
+        <div className={activeTab === "system" ? undefined : "hidden"}><SystemTab /></div>
+        <div className={activeTab === "company" ? undefined : "hidden"}><CompanyTab /></div>
+        <div className={activeTab === "setup" ? undefined : "hidden"}><SetupTab /></div>
+        <div className={activeTab === "ppn" ? undefined : "hidden"}><PpnTab /></div>
+        <div className={activeTab === "period" ? undefined : "hidden"}><PeriodCloseTab /></div>
       </div>
     </div>
   );
 }
 
 function CompanyTab() {
+  const {
+    data: shopSettings,
+    isLoading: loading,
+    mutate: mutateShopSettings,
+  } = useCachedData<PengaturanToko>("settings:shop", () => getShopSettingsAction() as Promise<PengaturanToko>);
   const [form, setForm] = useState<Partial<PengaturanToko>>({});
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
+  // Sync SWR data into local form state (only when data first arrives or changes externally)
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const settings = await getShopSettingsAction();
-        if (!cancelled) setForm(settings);
-      } catch (error) {
-        console.error("Gagal memuat data usaha:", error);
-        if (!cancelled) setNotice({ type: "error", message: "Gagal memuat data usaha" });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (shopSettings) setForm(shopSettings);
+  }, [shopSettings]);
 
   const updateField = (field: keyof PengaturanToko, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -240,6 +234,9 @@ function CompanyTab() {
         npwp: (form.npwp || "").trim() || null,
         alamat_npwp: (form.alamat_npwp || "").trim() || null,
       });
+      // Update SWR cache with the saved value so PpnTab (which shares the
+      // same "settings:shop" key) also sees the latest data without re-fetching.
+      await mutateShopSettings(updated as PengaturanToko, { revalidate: false });
       setForm(updated);
       setNotice({ type: "success", message: "Data usaha berhasil disimpan" });
     } catch (error) {
@@ -357,7 +354,7 @@ function TextArea({ label, value, onChange, placeholder }: { label: string; valu
 }
 
 function SetupTab() {
-  type SetupSubTab = "materials" | "pricing" | "finishing" | "rollsizes";
+  type SetupSubTab = "materials" | "pricing" | "finishing" | "rollsizes" | "nomorurut";
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const subtabParam = searchParams.get("subtab");
@@ -365,14 +362,21 @@ function SetupTab() {
     subtabParam === "materials" ||
       subtabParam === "pricing" ||
       subtabParam === "finishing" ||
-      subtabParam === "rollsizes"
+      subtabParam === "rollsizes" ||
+      subtabParam === "nomorurut"
       ? (subtabParam as SetupSubTab)
       : tabParam === "materials"
       ? "materials"
-      : "pricing"
+      : "nomorurut"
   );
 
   const setupTabs = [
+    {
+      id: "nomorurut" as SetupSubTab,
+      label: "Nomor Urut",
+      icon: HashIcon,
+      gradient: "from-blue-500 to-cyan-500",
+    },
     {
       id: "pricing" as SetupSubTab,
       label: "Pricing",
@@ -434,6 +438,7 @@ function SetupTab() {
         {activeSetupTab === "rollsizes" && <RollSizesTab />}
         {activeSetupTab === "materials" && <MaterialsTab />}
         {activeSetupTab === "finishing" && <FinishingOptionsTab />}
+        {activeSetupTab === "nomorurut" && <NomorUrutTab />}
       </div>
     </div>
   );
@@ -4357,9 +4362,9 @@ function ThemePanel() {
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border-2 border-indigo-200 dark:border-slate-700">
       <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-50 dark:bg-slate-8000 rounded-xl">
+          <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
             <svg
-              className="w-6 h-6 text-white"
+              className="w-6 h-6 text-indigo-600 dark:text-indigo-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -4404,15 +4409,15 @@ function ThemePanel() {
               onClick={() => setTheme(opt.value)}
               className={`text-left rounded-xl border-2 p-4 transition-all duration-150 flex items-start gap-3 ${
                 selected
-                  ? "border-indigo-500 bg-white dark:bg-slate-900 dark:bg-slate-800 shadow-md ring-2 ring-indigo-500/30"
-                  : "border-gray-200 dark:border-slate-800 dark:border-slate-700 bg-white dark:bg-slate-900/70 dark:bg-slate-800/50 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-white dark:hover:bg-slate-800"
+                  ? "border-indigo-500 bg-white dark:bg-slate-800 shadow-md ring-2 ring-indigo-500/50 dark:ring-indigo-400/50"
+                  : "border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800/50 hover:border-indigo-300 dark:hover:border-indigo-400 hover:bg-white dark:hover:bg-slate-800"
               }`}
             >
               <span
                 className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
                   selected
-                    ? "bg-indigo-50 dark:bg-slate-8000 text-white"
-                    : "bg-gray-100 dark:bg-slate-800 dark:bg-slate-700 text-gray-600 dark:text-slate-300 dark:text-slate-300"
+                    ? "bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300"
+                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300"
                 }`}
               >
                 {opt.icon}

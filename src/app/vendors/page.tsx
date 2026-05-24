@@ -432,7 +432,7 @@ export default function VendorsPage() {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white dark:bg-slate-900/20 rounded-xl">
+            <div className="p-3 bg-white/20 rounded-xl">
               <UsersIcon size={32} className="text-white" />
             </div>
             <div>
@@ -452,7 +452,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -468,7 +468,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -486,7 +486,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+                <div className="p-2 bg-white/20 rounded-lg">
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -647,7 +647,7 @@ export default function VendorsPage() {
         header={
           <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
                 <svg
                   className="w-7 h-7 text-white"
                   fill="none"

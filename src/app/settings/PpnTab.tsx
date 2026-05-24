@@ -14,7 +14,7 @@
  * tandai BATAL dengan alasan.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   getShopSettingsAction,
   updateShopSettingsAction,
@@ -23,6 +23,7 @@ import {
   cancelNsfpAction,
 } from "@/app/settings/actions";
 import { formatNsfpString, formatNpwp, isValidNpwp } from "@/lib/ppn-helpers";
+import { useCachedData } from "@/lib/use-cached-data";
 
 interface ShopSettings {
   id: string;
@@ -52,9 +53,28 @@ interface NsfpRow {
 }
 
 export default function PpnTab() {
-  const [settings, setSettings] = useState<ShopSettings | null>(null);
-  const [pool, setPool] = useState<NsfpRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use SWR-backed cache so switching away and back to this tab does not
+  // trigger a fresh network fetch — the cached value is shown instantly.
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    mutate: mutateSettings,
+  } = useCachedData<ShopSettings>(
+    "settings:shop",
+    () => getShopSettingsAction() as Promise<ShopSettings>
+  );
+
+  const {
+    data: pool = [],
+    isLoading: poolLoading,
+    mutate: mutatePool,
+  } = useCachedData<NsfpRow[]>(
+    "settings:nsfp-pool",
+    () => listNsfpPoolAction({ limit: 1000 }) as Promise<NsfpRow[]>
+  );
+
+  const loading = settingsLoading || poolLoading;
+
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{
     kind: "success" | "error";
@@ -69,27 +89,6 @@ export default function PpnTab() {
   const [importAwal, setImportAwal] = useState("");
   const [importAkhir, setImportAkhir] = useState("");
 
-  const loadAll = async () => {
-    setLoading(true);
-    try {
-      const [s, p] = await Promise.all([
-        getShopSettingsAction(),
-        listNsfpPoolAction({ limit: 1000 }),
-      ]);
-      setSettings(s as ShopSettings);
-      setPool(p as NsfpRow[]);
-    } catch (e) {
-      console.error(e);
-      setNotice({ kind: "error", msg: "Gagal memuat pengaturan PPN" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAll();
-  }, []);
-
   const showMsg = (kind: "success" | "error", msg: string) => {
     setNotice({ kind, msg });
     setTimeout(() => setNotice(null), 4000);
@@ -100,7 +99,7 @@ export default function PpnTab() {
     setSaving(true);
     try {
       const updated = await updateShopSettingsAction(patch);
-      setSettings(updated as ShopSettings);
+      await mutateSettings(updated as ShopSettings, { revalidate: false });
       showMsg("success", "Pengaturan disimpan");
     } catch (e: any) {
       showMsg("error", e?.message || "Gagal menyimpan pengaturan");
@@ -135,7 +134,8 @@ export default function PpnTab() {
       );
       setImportAwal("");
       setImportAkhir("");
-      await loadAll();
+      // Revalidate pool cache after import
+      await mutatePool();
     } catch (e: any) {
       showMsg("error", e?.message || "Gagal import NSFP");
     }
@@ -149,7 +149,8 @@ export default function PpnTab() {
     try {
       await cancelNsfpAction(id, alasan.trim());
       showMsg("success", "NSFP ditandai BATAL");
-      await loadAll();
+      // Revalidate pool cache after cancellation
+      await mutatePool();
     } catch (e: any) {
       showMsg("error", e?.message || "Gagal membatalkan NSFP");
     }
