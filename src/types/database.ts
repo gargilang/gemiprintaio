@@ -257,9 +257,16 @@ export type PpnMetode = "EKSKLUSIF" | "INKLUSIF";
 export interface PengaturanToko {
   id: string;
   nama_toko: string;
+  slogan?: string | null;
   alamat?: string | null;
   telepon?: string | null;
   email?: string | null;
+  website?: string | null;
+  bank_nama?: string | null;
+  bank_nomor?: string | null;
+  bank_atas_nama?: string | null;
+  catatan_faktur?: string | null;
+  catatan_struk?: string | null;
   npwp?: string | null;
   alamat_npwp?: string | null;
   status_pkp: number;

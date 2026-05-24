@@ -6,7 +6,7 @@
  * dimensions, and payment summary.
  *
  * Same HTML + window.print() pattern as faktur-print.ts and thermal-print.ts.
- * A5 landscape, popup-window with iframe fallback.
+ * A4, popup-window with iframe fallback.
  */
 
 import { formatJakartaDate, formatRupiahPlain } from "@/lib/format-id";
@@ -24,6 +24,10 @@ export interface FakturPembelianData {
   nomor_pembelian: string;
   nomor_faktur_vendor?: string; // vendor's own invoice number
   tanggal: string; // ISO date
+  shop?: {
+    nama_toko?: string | null;
+    slogan?: string | null;
+  };
   // Vendor info
   vendor_nama?: string;
   vendor_alamat?: string;
@@ -38,8 +42,6 @@ export interface FakturPembelianData {
   jumlah_dibayar: number;
   status_pembayaran: string; // LUNAS | HUTANG | SEBAGIAN
 }
-
-const FIXED_ROW_COUNT = 10;
 
 const LOGO_SVG_PATHS = `
   <path fill-rule="evenodd" clip-rule="evenodd" d="M11.1519 0.00085052H29.1766C38.4569 0.00085052 42.4009 44.1129 24.9542 44.1006H9.98877C27.0196 43.0487 25.6697 -0.221045 11.1484 0.00085052H11.1519Z" fill="#0a1b3d"/>
@@ -76,18 +78,6 @@ function renderItemRow(item: FakturPembelianItem, index: number): string {
     </tr>`;
 }
 
-function renderEmptyRow(): string {
-  return `
-    <tr class="empty-row">
-      <td class="col-no">&nbsp;</td>
-      <td class="col-nama">&nbsp;</td>
-      <td class="col-ukuran">&nbsp;</td>
-      <td class="col-qty">&nbsp;</td>
-      <td class="col-harga">&nbsp;</td>
-      <td class="col-jumlah">&nbsp;</td>
-    </tr>`;
-}
-
 export function generateFakturPembelianHTML(
   data: FakturPembelianData
 ): string {
@@ -95,6 +85,7 @@ export function generateFakturPembelianHTML(
     nomor_pembelian,
     nomor_faktur_vendor,
     tanggal,
+    shop,
     vendor_nama,
     vendor_alamat,
     vendor_telepon,
@@ -111,10 +102,8 @@ export function generateFakturPembelianHTML(
   const sisa = Math.max(0, total - jumlah_dibayar);
   const tanggalDisplay = formatJakartaDate(tanggal);
   const itemsHTML = items.map(renderItemRow).join("");
-  const padCount = Math.max(0, FIXED_ROW_COUNT - items.length);
-  const emptyRowsHTML = Array.from({ length: padCount }, renderEmptyRow).join(
-    ""
-  );
+  const shopName = shop?.nama_toko?.trim() || "Gemiprint";
+  const shopSlogan = shop?.slogan?.trim() || "Digital Printing & Advertising";
 
   const statusColor =
     status_pembayaran === "LUNAS"
@@ -144,7 +133,7 @@ export function generateFakturPembelianHTML(
       font-weight: bold;
     }
 
-    @page { size: A5 landscape; margin: 8mm; }
+    @page { size: A4 landscape; margin: 8mm; }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -155,39 +144,59 @@ export function generateFakturPembelianHTML(
       print-color-adjust: exact;
       background: #fff;
     }
-    body { width: 194mm; margin: 0 auto; font-size: 10pt; line-height: 1.25; }
+    body { width: 278mm; margin: 0 auto; font-size: 10pt; line-height: 1.25; }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 135mm;
+      height: 135mm;
+      opacity: 0.055;
+      pointer-events: none;
+      z-index: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 38 45' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M11.1519 0.00085052H29.1766C38.4569 0.00085052 42.4009 44.1129 24.9542 44.1006H9.98877C27.0196 43.0487 25.6697 -0.221045 11.1484 0.00085052H11.1519Z' fill='%230a1b3d'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M9.08292 1.29121C-0.976261 1.29121 -2.18167 22.7863 3.02062 29.2213C4.54324 31.1074 5.59357 31.054 7.54972 30.1171C9.44595 29.209 11.0496 27.4215 11.395 24.0725C11.885 18.6237 9.79841 16.7993 6.86595 13.5119H14.5707C15.0042 11.1574 15.7197 8.8932 16.6925 6.9701C14.9267 3.54304 12.3714 1.31176 9.07587 1.31176V1.29943L9.08292 1.29121Z' fill='%2300AFEF'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M7.17259 43.4268C2.76685 43.02 1.19136 40.7312 0.377177 36.396L16.9181 36.2028C14.8139 40.2052 11.3633 43.0118 7.17259 43.4268Z' fill='%2300AFEF'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M10.4293 14.868C14.5284 18.3608 14.3733 28.8885 9.61513 30.7582C9.31554 30.8773 8.32513 31.0088 8.66349 31.0088L10.4399 31.0129H19.0011C20.2488 27.7831 20.3757 18.8744 19.5756 14.868H10.4293Z' fill='%2300AFEF'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
 
     /* ── HEADER ── */
     .header {
       display: grid;
-      grid-template-columns: 130px 1fr;
+      grid-template-columns: 180px 1fr;
       gap: 12px;
       align-items: start;
       margin-bottom: 6px;
       border-bottom: 2px solid #0a1b3d;
       padding-bottom: 6px;
     }
-    .brand { display: flex; flex-direction: column; align-items: flex-start; }
-    .brand-logo { display: flex; align-items: center; gap: 6px; }
-    .brand-logo svg { width: 32px; height: 38px; flex-shrink: 0; }
+    .brand { display: flex; flex-direction: column; align-items: center; }
+    .brand-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .brand-logo svg { width: 44px; height: 52px; flex-shrink: 0; }
     .brand-wordmark {
       font-family: 'Bauhaus 93', serif;
-      font-size: 22pt;
+      font-size: 29pt;
       font-style: italic;
       line-height: 1;
+      letter-spacing: -1px;
     }
     .brand-wordmark .gemi { color: #00AFEF; }
     .brand-wordmark .print { color: #0a1b3d; }
-    .brand-sub { font-size: 7.5pt; color: #555; margin-top: 2px; }
+    .brand-sub { font-size: 9.2pt; color: #555; margin-top: 4px; }
 
     .doc-title {
       text-align: right;
     }
     .doc-title h1 {
-      font-size: 14pt;
+      font-size: 16pt;
       font-weight: bold;
       color: #0a1b3d;
       letter-spacing: 0.5px;
+      white-space: nowrap;
     }
     .doc-meta {
       font-size: 9pt;
@@ -198,9 +207,10 @@ export function generateFakturPembelianHTML(
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      white-space: nowrap;
     }
-    .doc-meta .meta-label { color: #555; }
-    .doc-meta .meta-value { font-weight: bold; min-width: 120px; text-align: right; }
+    .doc-meta .meta-label { color: #555; flex: 0 0 auto; }
+    .doc-meta .meta-value { font-weight: bold; min-width: 140px; text-align: right; }
     .status-badge {
       display: inline-block;
       padding: 1px 8px;
@@ -215,39 +225,33 @@ export function generateFakturPembelianHTML(
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 6px;
-      font-size: 9pt;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 9.5pt;
     }
     .info-box {
       border: 1px solid #c8dce8;
       border-radius: 4px;
-      padding: 5px 8px;
+      padding: 6px 10px;
       background: #f0f8ff;
     }
     .info-box .info-title {
       font-weight: bold;
-      font-size: 8pt;
+      font-size: 8.5pt;
       color: #00AFEF;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
       margin-bottom: 3px;
       border-bottom: 1px solid #c8dce8;
       padding-bottom: 2px;
     }
-    .info-box .info-line { line-height: 1.45; }
-    .info-box .info-line span { color: #555; font-size: 8.5pt; }
+    .info-box .info-line { line-height: 1.5; }
+    .info-box .info-line span { color: #555; font-size: 9pt; }
 
     /* ── TABLE ── */
-    .table-wrapper { position: relative; margin-bottom: 8px; }
+    .table-wrapper { position: relative; margin-bottom: 8px; z-index: 1; }
     .watermark {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 100mm; height: 100mm;
-      opacity: 0.05;
-      pointer-events: none;
-      z-index: 0;
+      display: none;
     }
     .watermark svg { width: 100%; height: 100%; }
 
@@ -257,21 +261,22 @@ export function generateFakturPembelianHTML(
       table-layout: fixed;
       position: relative;
       z-index: 1;
-      font-size: 9pt;
+      font-size: 9.5pt;
     }
     table.items thead th {
       background: #cfeafa;
       color: #0a1b3d;
       border: 1px solid #0a1b3d;
-      padding: 4px;
+      padding: 5px 4px;
       font-weight: bold;
-      font-size: 9pt;
+      font-size: 9.5pt;
+      letter-spacing: 0.3px;
     }
     table.items tbody td {
       border: 1px solid #0a1b3d;
       padding: 3px 5px;
       vertical-align: middle;
-      height: 20px;
+      height: 22px;
     }
     .col-no     { width: 6%;  text-align: center; }
     .col-nama   { width: 34%; text-align: left; }
@@ -283,9 +288,24 @@ export function generateFakturPembelianHTML(
     /* ── FOOTER ── */
     .footer {
       display: grid;
-      grid-template-columns: 1fr 200px;
-      gap: 10px;
+      grid-template-columns: 1fr 260px;
+      gap: 12px;
       align-items: end;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      position: relative;
+      z-index: 1;
+    }
+    .footer::before {
+      content: "RINGKASAN PEMBAYARAN";
+      display: block;
+      grid-column: 1 / -1;
+      border-top: 1px dashed #0a1b3d;
+      padding-top: 6px;
+      font-size: 8pt;
+      font-weight: bold;
+      letter-spacing: 0.8px;
+      color: rgba(10, 27, 61, 0.62);
     }
     .footer-left { font-size: 9pt; }
     .footer-left .catatan {
@@ -304,10 +324,11 @@ export function generateFakturPembelianHTML(
 
     .totals-box {
       border: 1.5px solid #0a1b3d;
+      font-size: 10pt;
     }
     .totals-row {
       display: grid;
-      grid-template-columns: 100px 1fr;
+      grid-template-columns: 110px 1fr;
       align-items: center;
       border-bottom: 1px solid #0a1b3d;
     }
@@ -316,13 +337,12 @@ export function generateFakturPembelianHTML(
       padding: 4px 8px;
       font-weight: bold;
       border-right: 1px solid #0a1b3d;
-      font-size: 9.5pt;
     }
     .totals-value {
       padding: 4px 10px;
       text-align: right;
       font-weight: bold;
-      font-size: 9.5pt;
+      min-height: 1.6em;
     }
 
     /* ── TOOLBAR (screen only) ── */
@@ -341,7 +361,7 @@ export function generateFakturPembelianHTML(
 
     @media print {
       .toolbar { display: none !important; }
-      body { width: 194mm; }
+      body { width: 278mm; }
     }
   </style>
 </head>
@@ -357,10 +377,10 @@ export function generateFakturPembelianHTML(
       <div class="brand-logo">
         <svg viewBox="0 0 38 45" xmlns="http://www.w3.org/2000/svg">${LOGO_SVG_PATHS}</svg>
         <div class="brand-wordmark">
-          <span class="gemi">gemi</span><span class="print">print</span>
+          ${escapeHtml(shopName)}
         </div>
       </div>
-      <div class="brand-sub">Digital Printing &amp; Advertising</div>
+      <div class="brand-sub">${escapeHtml(shopSlogan)}</div>
     </div>
     <div class="doc-title">
       <h1>BUKTI PENERIMAAN BARANG</h1>
@@ -428,7 +448,6 @@ export function generateFakturPembelianHTML(
       </thead>
       <tbody>
         ${itemsHTML}
-        ${emptyRowsHTML}
       </tbody>
     </table>
   </div>
@@ -467,11 +486,25 @@ function writeFakturToWindow(target: Window, html: string): void {
   target.focus();
 }
 
+function printAfterAssetsReady(target: Window): void {
+  const print = () => {
+    try {
+      target.focus();
+      target.print();
+    } catch {
+      // print() may be blocked; preview is still available in the target document
+    }
+  };
+
+  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
+  fontsReady.then(print).catch(print);
+}
+
 /** Returns true if a print preview window or iframe was opened. */
 export function printFakturPembelian(data: FakturPembelianData): boolean {
   const html = generateFakturPembelianHTML(data);
 
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
+  const printWindow = window.open("", "_blank");
   if (printWindow) {
     writeFakturToWindow(printWindow, html);
     return true;
@@ -490,11 +523,7 @@ export function printFakturPembelian(data: FakturPembelianData): boolean {
   }
 
   writeFakturToWindow(frameWindow, html);
-  try {
-    frameWindow.print();
-  } catch {
-    // print() may be blocked; preview is still in the iframe
-  }
+  printAfterAssetsReady(frameWindow);
 
   window.setTimeout(() => {
     if (iframe.parentNode) document.body.removeChild(iframe);

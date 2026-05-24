@@ -58,6 +58,9 @@ interface Customer {
   nama: string;
   member_status: number;
   telepon?: string;
+  alamat?: string;
+  email?: string;
+  kontak_person?: string;
 }
 
 interface Material {
@@ -921,10 +924,52 @@ export default function POSPage() {
       // Print receipt and/or faktur based on user's choice
       if (printType !== "none") {
         const tanggalIso = new Date().toISOString();
+        let shopSettings:
+          | {
+              nama_toko?: string | null;
+              slogan?: string | null;
+              alamat?: string | null;
+              telepon?: string | null;
+              email?: string | null;
+              website?: string | null;
+              bank_nama?: string | null;
+              bank_nomor?: string | null;
+              bank_atas_nama?: string | null;
+              catatan_faktur?: string | null;
+              catatan_struk?: string | null;
+              npwp?: string | null;
+              alamat_npwp?: string | null;
+            }
+          | undefined;
+
+        try {
+          const { getShopSettingsAction } = await import(
+            "@/app/settings/actions"
+          );
+          const settings = await getShopSettingsAction();
+          shopSettings = {
+            nama_toko: settings.nama_toko,
+            slogan: settings.slogan,
+            alamat: settings.alamat,
+            telepon: settings.telepon,
+            email: settings.email,
+            website: settings.website,
+            bank_nama: settings.bank_nama,
+            bank_nomor: settings.bank_nomor,
+            bank_atas_nama: settings.bank_atas_nama,
+            catatan_faktur: settings.catatan_faktur,
+            catatan_struk: settings.catatan_struk,
+            npwp: settings.npwp,
+            alamat_npwp: settings.alamat_npwp,
+          };
+        } catch (err) {
+          console.warn("Data usaha tidak bisa dimuat untuk print:", err);
+        }
 
         const buildThermalData = () => ({
           nomor_invoice: result.nomor_invoice,
           tanggal: tanggalIso,
+          shop: shopSettings,
           pelanggan_nama:
             selectedCustomer?.nama || walkInFaktur?.nama || undefined,
           pelanggan_telepon: selectedCustomer?.telepon,
@@ -968,33 +1013,12 @@ export default function POSPage() {
             total - (paymentMethod === "NET30" ? 0 : bayar)
           );
 
-          // Ambil shop info kalau transaksi kena PPN. Untuk transaksi non-PPN,
-          // shop info tidak ditampilkan di faktur (hardcoded SHOP_INFO sudah
-          // di template).
-          let shop:
-            | {
-                nama_toko?: string | null;
-                alamat?: string | null;
-                npwp?: string | null;
-                alamat_npwp?: string | null;
+          const shop = shopSettings
+            ? {
+                ...shopSettings,
+                npwp: shopSettings.npwp ? formatNpwp(shopSettings.npwp) : null,
               }
-            | undefined;
-          if (ppnFaktur) {
-            try {
-              const { getShopSettingsAction } = await import(
-                "@/app/settings/actions"
-              );
-              const settings = await getShopSettingsAction();
-              shop = {
-                nama_toko: settings.nama_toko,
-                alamat: settings.alamat,
-                npwp: settings.npwp ? formatNpwp(settings.npwp) : null,
-                alamat_npwp: settings.alamat_npwp,
-              };
-            } catch (err) {
-              console.warn("Shop settings tidak bisa dimuat:", err);
-            }
-          }
+            : undefined;
 
           // Hitung DPP per faktur dari data yang sudah di-set di RPC.
           // Untuk safety di client side, hitung ulang dari ppnFaktur input.
@@ -1032,6 +1056,14 @@ export default function POSPage() {
             tanggal: tanggalIso,
             pelanggan_nama:
               selectedCustomer?.nama || walkInFaktur?.nama || "",
+            pelanggan_detail: [
+              selectedCustomer?.kontak_person
+                ? `Kontak: ${selectedCustomer.kontak_person}`
+                : "",
+              selectedCustomer?.telepon ? `Telp: ${selectedCustomer.telepon}` : "",
+              selectedCustomer?.email ? `Email: ${selectedCustomer.email}` : "",
+              selectedCustomer?.alamat || "",
+            ].filter(Boolean),
             kota: walkInFaktur?.kota || "Bekasi",
             items: cart.map((item, index) => ({
               // For maklon lines, the customer-facing item name is the

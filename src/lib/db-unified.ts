@@ -897,9 +897,16 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     CREATE TABLE IF NOT EXISTS pengaturan_toko (
       id TEXT PRIMARY KEY DEFAULT 'default',
       nama_toko TEXT NOT NULL DEFAULT 'Toko',
+      slogan TEXT,
       alamat TEXT,
       telepon TEXT,
       email TEXT,
+      website TEXT,
+      bank_nama TEXT,
+      bank_nomor TEXT,
+      bank_atas_nama TEXT,
+      catatan_faktur TEXT,
+      catatan_struk TEXT,
       npwp TEXT,
       alamat_npwp TEXT,
       status_pkp INTEGER NOT NULL DEFAULT 0,
@@ -915,7 +922,15 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       last_synced_at TEXT,
       sync_version INTEGER DEFAULT 1
     );
-    INSERT OR IGNORE INTO pengaturan_toko (id, nama_toko) VALUES ('default', 'Gemiprint');
+    INSERT OR IGNORE INTO pengaturan_toko (
+      id, nama_toko, slogan, bank_nama, bank_nomor, bank_atas_nama,
+      catatan_faktur, catatan_struk
+    ) VALUES (
+      'default', 'Gemiprint', 'Digital Printing & Advertising', 'BCA',
+      '6881276507', 'Grafika Estetika Media Internusa',
+      'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.',
+      'Barang yang sudah dibeli tidak dapat dikembalikan'
+    );
 
     CREATE TABLE IF NOT EXISTS nsfp_pool (
       id TEXT PRIMARY KEY,
@@ -1221,6 +1236,64 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
     db.exec(
       `CREATE INDEX IF NOT EXISTS idx_item_penjualan_pembelian_terkait ON item_penjualan(pembelian_id_terkait)`
     );
+  }
+
+  const pengaturanTokoExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pengaturan_toko' LIMIT 1"
+    )
+    .get();
+  if (pengaturanTokoExists) {
+    const pengaturanTokoCols = (
+      db.prepare("PRAGMA table_info(pengaturan_toko)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (!pengaturanTokoCols.includes("slogan")) {
+      db.exec(`ALTER TABLE pengaturan_toko ADD COLUMN slogan TEXT`);
+      db.exec(`
+        UPDATE pengaturan_toko
+        SET slogan = COALESCE(slogan, 'Digital Printing & Advertising')
+        WHERE id = 'default'
+      `);
+    }
+    const pengaturanTokoExtraColumns: Array<{
+      name: string;
+      sql: string;
+      defaultValue?: string;
+    }> = [
+      { name: "website", sql: "website TEXT" },
+      { name: "bank_nama", sql: "bank_nama TEXT", defaultValue: "BCA" },
+      { name: "bank_nomor", sql: "bank_nomor TEXT", defaultValue: "6881276507" },
+      {
+        name: "bank_atas_nama",
+        sql: "bank_atas_nama TEXT",
+        defaultValue: "Grafika Estetika Media Internusa",
+      },
+      {
+        name: "catatan_faktur",
+        sql: "catatan_faktur TEXT",
+        defaultValue: "Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.",
+      },
+      {
+        name: "catatan_struk",
+        sql: "catatan_struk TEXT",
+        defaultValue: "Barang yang sudah dibeli tidak dapat dikembalikan",
+      },
+    ];
+    for (const column of pengaturanTokoExtraColumns) {
+      if (!pengaturanTokoCols.includes(column.name)) {
+        db.exec(`ALTER TABLE pengaturan_toko ADD COLUMN ${column.sql}`);
+        if (column.defaultValue) {
+          const escapedDefault = column.defaultValue.replace(/'/g, "''");
+          db.exec(`
+            UPDATE pengaturan_toko
+            SET ${column.name} = COALESCE(${column.name}, '${escapedDefault}')
+            WHERE id = 'default'
+          `);
+        }
+      }
+    }
   }
 
   // Maklon: pembelian back-link to the sale that triggered it.

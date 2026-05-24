@@ -75,11 +75,27 @@ const PurchaseRow = memo(
         const { printFakturPembelian, formatUkuranPembelian } = await import(
           "@/lib/faktur-pembelian-print"
         );
+        let shop:
+          | { nama_toko?: string | null; slogan?: string | null }
+          | undefined;
+        try {
+          const { getShopSettingsAction } = await import(
+            "@/app/settings/actions"
+          );
+          const settings = await getShopSettingsAction();
+          shop = {
+            nama_toko: settings.nama_toko,
+            slogan: settings.slogan,
+          };
+        } catch (settingsError) {
+          console.warn("Data usaha tidak bisa dimuat untuk print pembelian:", settingsError);
+        }
         printFakturPembelian({
           nomor_pembelian:
             purchase.nomor_pembelian || purchase.nomor_faktur,
           nomor_faktur_vendor: purchase.nomor_faktur,
           tanggal: purchase.tanggal,
+          shop,
           vendor_nama: purchase.vendor_name || undefined,
           vendor_alamat: purchase.vendor_alamat || undefined,
           vendor_telepon: purchase.vendor_telepon || undefined,

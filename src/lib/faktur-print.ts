@@ -1,8 +1,8 @@
 /**
- * A5-landscape sales invoice ("Faktur") generator.
+ * A4 sales invoice ("Faktur") generator.
  *
  * Mirrors the physical Gemiprint nota: cyan/navy header with logo + contact
- * info, a fixed-height table with NO/NAMA BARANG/UKURAN/QTY/HARGA/JUMLAH
+ * info, an item table with NO/NAMA BARANG/UKURAN/QTY/HARGA/JUMLAH
  * columns and a faint logo watermark behind it, then a footer with
  * "Hormat Kami" signature, BCA transfer info, and TOTAL/BAYAR/SISA totals.
  *
@@ -39,6 +39,8 @@ export interface FakturData {
   tanggal: string;
   /** Customer "Kepada Yth" name. Empty string if walk-in with no name. */
   pelanggan_nama: string;
+  /** Optional customer detail lines shown below the name. */
+  pelanggan_detail?: string[];
   /** City line for the "<Kota>, <tanggal>" header. Defaults to "Bekasi". */
   kota?: string;
   items: FakturItem[];
@@ -69,22 +71,31 @@ export interface FakturData {
   /** Override SHOP_INFO untuk multi-tenant masa depan; saat ini fallback ke gemiprint. */
   shop?: {
     nama_toko?: string | null;
+    slogan?: string | null;
     alamat?: string | null;
+    telepon?: string | null;
+    email?: string | null;
+    website?: string | null;
+    bank_nama?: string | null;
+    bank_nomor?: string | null;
+    bank_atas_nama?: string | null;
+    catatan_faktur?: string | null;
     npwp?: string | null;
     alamat_npwp?: string | null;
   };
 }
 
-/** Number of body rows always rendered, padded with empty rows if needed. */
-const FIXED_ROW_COUNT = 11;
-
 const SHOP_INFO = {
+  nama_toko: "Gemiprint",
+  slogan: "Digital Printing & Advertising",
   alamat:
     "Cifest Walk, Ruko Pasadena Blok RA No. 18A,<br>Kel. Ciantra, Cikarang Selatan - Bekasi, 17531",
   telepon: "0812 3456 0525",
   email: "cs@gemiprint.com",
-  bankNomor: "BCA 6881276507",
+  bankNama: "BCA",
+  bankNomor: "6881276507",
   bankAtasNama: "Grafika Estetika Media Internusa",
+  catatanFaktur: "Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.",
 };
 
 const LOGO_SVG_PATHS = `
@@ -126,23 +137,12 @@ function renderItemRow(item: FakturItem, index: number): string {
     </tr>`;
 }
 
-function renderEmptyRow(displayIndex: number | null): string {
-  return `
-    <tr class="empty-row">
-      <td class="col-no">${displayIndex ?? "&nbsp;"}</td>
-      <td class="col-nama">&nbsp;</td>
-      <td class="col-ukuran">&nbsp;</td>
-      <td class="col-qty">&nbsp;</td>
-      <td class="col-harga">&nbsp;</td>
-      <td class="col-jumlah">&nbsp;</td>
-    </tr>`;
-}
-
 export function generateFakturHTML(data: FakturData): string {
   const {
     nomor_invoice,
     tanggal,
     pelanggan_nama,
+    pelanggan_detail,
     kota,
     items,
     total,
@@ -152,12 +152,28 @@ export function generateFakturHTML(data: FakturData): string {
     shop,
   } = data;
 
+  const shopInfo = {
+    nama_toko: shop?.nama_toko?.trim() || SHOP_INFO.nama_toko,
+    slogan: shop?.slogan?.trim() || SHOP_INFO.slogan,
+    alamat: shop?.alamat?.trim()
+      ? escapeHtml(shop.alamat).replace(/\n/g, "<br>")
+      : SHOP_INFO.alamat,
+    telepon: shop?.telepon?.trim() || SHOP_INFO.telepon,
+    email: shop?.email?.trim() || SHOP_INFO.email,
+    website: shop?.website?.trim() || "",
+    bankNama: shop?.bank_nama?.trim() || SHOP_INFO.bankNama,
+    bankNomor: shop?.bank_nomor?.trim() || SHOP_INFO.bankNomor,
+    bankAtasNama: shop?.bank_atas_nama?.trim() || SHOP_INFO.bankAtasNama,
+    catatanFaktur: shop?.catatan_faktur?.trim() || SHOP_INFO.catatanFaktur,
+  };
+
   const kotaDisplay = (kota?.trim() || "Bekasi") + ", " + formatJakartaDate(tanggal);
   const itemsHTML = items.map(renderItemRow).join("");
-  const padCount = Math.max(0, FIXED_ROW_COUNT - items.length);
-  const emptyRowsHTML = Array.from({ length: padCount }, (_, i) =>
-    renderEmptyRow(items.length + i + 1)
-  ).join("");
+  const pelangganDetailHTML = (pelanggan_detail || [])
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<div class="info-line"><span>${escapeHtml(line)}</span></div>`)
+    .join("");
 
   // PPN-aware totals: kalau kena_ppn, tampil DPP + PPN row sebelum TOTAL.
   const hasPpn = ppn && ppn.ppn_total > 0;
@@ -208,7 +224,7 @@ export function generateFakturHTML(data: FakturData): string {
       <div class="ppn-grid">
         <div class="ppn-block">
           <div class="ppn-block-title">Pengusaha Kena Pajak</div>
-          <div class="ppn-block-line"><b>${escapeHtml(shop?.nama_toko || "Gemiprint")}</b></div>
+          <div class="ppn-block-line"><b>${escapeHtml(shopInfo.nama_toko)}</b></div>
           ${shop?.alamat_npwp ? `<div class="ppn-block-line">${escapeHtml(shop.alamat_npwp)}</div>` : ""}
           ${shop?.npwp ? `<div class="ppn-block-line">NPWP: <b>${escapeHtml(shop.npwp)}</b></div>` : ""}
         </div>
@@ -258,7 +274,7 @@ export function generateFakturHTML(data: FakturData): string {
     }
 
     @page {
-      size: A5 landscape;
+      size: A4 landscape;
       margin: 8mm;
     }
 
@@ -272,123 +288,146 @@ export function generateFakturHTML(data: FakturData): string {
       background: #fff;
     }
     body {
-      width: 194mm;
+      width: 278mm;
       margin: 0 auto;
       font-size: 10pt;
       line-height: 1.25;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 135mm;
+      height: 135mm;
+      opacity: 0.055;
+      pointer-events: none;
+      z-index: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 38 45' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M11.1519 0.00085052H29.1766C38.4569 0.00085052 42.4009 44.1129 24.9542 44.1006H9.98877C27.0196 43.0487 25.6697 -0.221045 11.1484 0.00085052H11.1519Z' fill='%230a1b3d'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M9.08292 1.29121C-0.976261 1.29121 -2.18167 22.7863 3.02062 29.2213C4.54324 31.1074 5.59357 31.054 7.54972 30.1171C9.44595 29.209 11.0496 27.4215 11.395 24.0725C11.885 18.6237 9.79841 16.7993 6.86595 13.5119H14.5707C15.0042 11.1574 15.7197 8.8932 16.6925 6.9701C14.9267 3.54304 12.3714 1.31176 9.07587 1.31176V1.29943L9.08292 1.29121Z' fill='%2300AFEF'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M7.17259 43.4268C2.76685 43.02 1.19136 40.7312 0.377177 36.396L16.9181 36.2028C14.8139 40.2052 11.3633 43.0118 7.17259 43.4268Z' fill='%2300AFEF'/%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M10.4293 14.868C14.5284 18.3608 14.3733 28.8885 9.61513 30.7582C9.31554 30.8773 8.32513 31.0088 8.66349 31.0088L10.4399 31.0129H19.0011C20.2488 27.7831 20.3757 18.8744 19.5756 14.868H10.4293Z' fill='%2300AFEF'/%3E%3C/svg%3E") center / contain no-repeat;
     }
 
     /* ============ HEADER ============ */
     .header {
       display: grid;
-      grid-template-columns: 130px 1fr 230px;
-      gap: 12px;
+      grid-template-columns: minmax(0, 1fr) 255px;
+      gap: 18px;
       align-items: start;
       margin-bottom: 6px;
+      border-bottom: 2px solid #0a1b3d;
+      padding-bottom: 6px;
     }
     .brand {
       display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .brand-identity {
+      display: flex;
+      flex: 0 0 auto;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: center;
     }
     .brand-logo {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
     }
     .brand-logo svg {
-      width: 38px;
-      height: 45px;
+      width: 44px;
+      height: 52px;
       flex-shrink: 0;
     }
     .brand-wordmark {
       font-family: 'Bauhaus 93', serif;
-      font-size: 28pt;
+      font-size: 29pt;
       font-style: italic;
       line-height: 1;
       letter-spacing: -1px;
     }
     .brand-wordmark .gemi { color: #00AFEF; }
     .brand-wordmark .print { color: #0a1b3d; }
-
-    .contacts {
-      font-size: 9pt;
-      line-height: 1.45;
+    .brand-sub { font-size: 9.2pt; color: #555; margin-top: 4px; }
+    .brand-address {
+      border-left: 1px solid #c8dce8;
+      padding-left: 12px;
       color: #0a1b3d;
-      padding-top: 4px;
+      font-size: 9.6pt;
+      line-height: 1.42;
+      max-width: 118mm;
+      min-width: 0;
+      align-self: center;
     }
-    .contact-row {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin-bottom: 2px;
-    }
-    .contact-icon {
-      color: #00AFEF;
-      flex-shrink: 0;
-      width: 14px;
-      text-align: center;
-      font-weight: bold;
+    .brand-address span {
+      display: block;
+      color: #555;
     }
 
-    .header-right {
-      font-size: 10pt;
-      line-height: 1.6;
-      padding-top: 4px;
-    }
-    .header-right .field-line {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-    .header-right .field-label {
+    .doc-title { text-align: right; }
+    .doc-title h1 {
+      font-size: 16pt;
       font-weight: bold;
-      flex-shrink: 0;
+      color: #0a1b3d;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
     }
-    .header-right .field-value {
-      flex: 1;
-      border-bottom: 1px solid #0a1b3d;
-      min-height: 1.1em;
-      padding-bottom: 1px;
+    .doc-meta {
+      font-size: 9pt;
+      margin-top: 4px;
+      line-height: 1.55;
     }
-
-    .invoice-no-row {
+    .doc-meta .meta-row {
       display: flex;
       justify-content: flex-end;
-      align-items: center;
       gap: 8px;
-      margin-top: 8px;
+      white-space: nowrap;
     }
-    .invoice-no-label {
+    .doc-meta .meta-label { color: #555; flex: 0 0 auto; }
+    .doc-meta .meta-value { font-weight: bold; min-width: 140px; text-align: right; }
+
+    /* ============ INFO GRID ============ */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      margin-bottom: 8px;
+      font-size: 9.5pt;
+    }
+    .info-box {
+      border: 1px solid #c8dce8;
+      border-radius: 4px;
+      padding: 6px 10px;
+      background: #f0f8ff;
+      width: 50%;
+    }
+    .info-box .info-title {
+      font-weight: bold;
+      font-size: 8.5pt;
       color: #00AFEF;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 3px;
+      border-bottom: 1px solid #c8dce8;
+      padding-bottom: 2px;
+    }
+    .info-box .info-line { line-height: 1.5; }
+    .info-box .info-line span { color: #555; font-size: 9pt; }
+    .info-box .bank-number {
+      color: #0a1b3d;
       font-weight: bold;
       font-size: 11pt;
-      letter-spacing: 0.3px;
-    }
-    .invoice-no-box {
-      border: 1px solid #0a1b3d;
-      padding: 3px 10px;
-      min-width: 110px;
-      text-align: center;
-      font-weight: bold;
+      letter-spacing: 0.5px;
     }
 
     /* ============ ITEMS TABLE ============ */
     .table-wrapper {
       position: relative;
       margin-top: 6px;
+      z-index: 1;
     }
     .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 130mm;
-      height: 130mm;
-      opacity: 0.06;
-      pointer-events: none;
-      z-index: 0;
+      display: none;
     }
     .watermark svg {
       width: 100%;
@@ -419,9 +458,6 @@ export function generateFakturHTML(data: FakturData): string {
       vertical-align: middle;
       height: 22px;
     }
-    table.items tr.empty-row td {
-      color: #0a1b3d;
-    }
     .col-no      { width: 6%;  text-align: center; }
     .col-nama    { width: 32%; text-align: left; }
     .col-ukuran  { width: 12%; text-align: center; }
@@ -432,57 +468,67 @@ export function generateFakturHTML(data: FakturData): string {
     /* ============ FOOTER ============ */
     .footer {
       display: grid;
-      grid-template-columns: 1fr 1.2fr 1fr;
-      gap: 10px;
+      grid-template-columns: 220px 1fr 260px;
+      gap: 12px;
       margin-top: 10px;
-      align-items: stretch;
+      align-items: end;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      position: relative;
+      z-index: 1;
     }
-    .signature {
-      font-size: 9.5pt;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-height: 60px;
-    }
-    .signature-name {
-      margin-top: 28px;
-    }
-
-    .bank-box {
-      background: #cfeafa;
-      border: 1.5px solid #0a1b3d;
-      border-radius: 6px;
-      padding: 6px 10px;
+    .payment-section {
+      justify-self: center;
       font-size: 9pt;
-      text-align: center;
-      align-self: center;
-      line-height: 1.35;
     }
-    .bank-box .bank-title {
-      font-weight: normal;
-      margin-bottom: 2px;
+    .payment-box {
+      border: 1px solid #c8dce8;
+      border-radius: 4px;
+      padding: 6px 10px;
+      background: #f0f8ff;
+      min-width: 78mm;
+      line-height: 1.45;
     }
-    .bank-box .bank-number {
+    .payment-box .bank-number {
       color: #0a1b3d;
       font-weight: bold;
       font-size: 11pt;
       letter-spacing: 0.5px;
     }
-    .bank-box .bank-owner {
-      font-style: italic;
+    .payment-box span {
+      color: #555;
+    }
+    .payment-section .legal-note {
       font-size: 8.5pt;
-      margin-top: 1px;
+      color: #0a1b3d;
+      font-style: italic;
+      margin-top: 6px;
+    }
+    .payment-section .legal-note .bullet { color: #00AFEF; font-style: normal; margin-right: 4px; }
+    .signature {
+      font-size: 9.5pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 26px;
+      margin-top: 10px;
+    }
+    .signature-name {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #0a1b3d;
+      padding-top: 4px;
+      width: 220px;
     }
 
     .totals-box {
       border: 1.5px solid #0a1b3d;
-      display: grid;
-      grid-auto-rows: 1fr;
       font-size: 10pt;
     }
     .totals-row {
       display: grid;
-      grid-template-columns: 95px 1fr;
+      grid-template-columns: 110px 1fr;
       align-items: center;
       border-bottom: 1px solid #0a1b3d;
     }
@@ -585,7 +631,7 @@ export function generateFakturHTML(data: FakturData): string {
 
     @media print {
       .toolbar { display: none !important; }
-      body { width: 194mm; }
+      body { width: 278mm; }
     }
   </style>
 </head>
@@ -598,41 +644,41 @@ export function generateFakturHTML(data: FakturData): string {
   <!-- HEADER -->
   <div class="header">
     <div class="brand">
-      <div class="brand-logo">
-        <svg viewBox="0 0 38 45" xmlns="http://www.w3.org/2000/svg">${LOGO_SVG_PATHS}</svg>
+      <div class="brand-identity">
+        <div class="brand-logo">
+          <svg viewBox="0 0 38 45" xmlns="http://www.w3.org/2000/svg">${LOGO_SVG_PATHS}</svg>
+          <div class="brand-wordmark">
+            ${escapeHtml(shopInfo.nama_toko)}
+          </div>
+        </div>
+        <div class="brand-sub">${escapeHtml(shopInfo.slogan)}</div>
       </div>
-      <div class="brand-wordmark">
-        <span class="gemi">gemi</span><span class="print">print</span>
-      </div>
-    </div>
-
-    <div class="contacts">
-      <div class="contact-row">
-        <span class="contact-icon">&#9679;</span>
-        <span>${SHOP_INFO.alamat}</span>
-      </div>
-      <div class="contact-row">
-        <span class="contact-icon">&#9742;</span>
-        <span>${SHOP_INFO.telepon}</span>
-      </div>
-      <div class="contact-row">
-        <span class="contact-icon">&#9993;</span>
-        <span>${SHOP_INFO.email}</span>
+      <div class="brand-address">
+        <span>${shopInfo.alamat}</span>
+        <span>Telp: ${escapeHtml(shopInfo.telepon)}${shopInfo.email ? ` &middot; ${escapeHtml(shopInfo.email)}` : ""}${shopInfo.website ? ` &middot; ${escapeHtml(shopInfo.website)}` : ""}</span>
       </div>
     </div>
+    <div class="doc-title">
+      <h1>FAKTUR PENJUALAN</h1>
+      <div class="doc-meta">
+        <div class="meta-row">
+          <span class="meta-label">No. Invoice :</span>
+          <span class="meta-value">${escapeHtml(nomor_invoice)}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Tanggal :</span>
+          <span class="meta-value">${escapeHtml(kotaDisplay)}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <div class="header-right">
-      <div class="field-line">
-        <span class="field-value">${escapeHtml(kotaDisplay)}</span>
-      </div>
-      <div class="field-line">
-        <span class="field-label">Kepada Yth,</span>
-        <span class="field-value">${escapeHtml(pelanggan_nama || "")}</span>
-      </div>
-      <div class="invoice-no-row">
-        <span class="invoice-no-label">INVOICE NO :</span>
-        <span class="invoice-no-box">${escapeHtml(nomor_invoice)}</span>
-      </div>
+  <!-- INFO GRID -->
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-title">Kepada Yth.</div>
+      <div class="info-line"><strong>${escapeHtml(pelanggan_nama || "—")}</strong></div>
+      ${pelangganDetailHTML}
     </div>
   </div>
 
@@ -654,7 +700,6 @@ export function generateFakturHTML(data: FakturData): string {
       </thead>
       <tbody>
         ${itemsHTML}
-        ${emptyRowsHTML}
       </tbody>
     </table>
   </div>
@@ -662,27 +707,26 @@ export function generateFakturHTML(data: FakturData): string {
   <!-- FOOTER -->
   <div class="footer">
     <div class="signature">
-      <div>Hormat Kami</div>
-      <div class="signature-name">(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</div>
+      <div>Hormat Kami,</div>
+      <div class="signature-name"><span>(</span><span>)</span></div>
     </div>
-
-    <div class="bank-box">
-      <div class="bank-title">Pembayaran via transfer ke Rekening :</div>
-      <div class="bank-number">${SHOP_INFO.bankNomor}</div>
-      <div class="bank-owner">an ${SHOP_INFO.bankAtasNama}</div>
+    <div class="payment-section">
+      <div class="payment-box">
+        <div><strong>${escapeHtml(shopInfo.nama_toko)}</strong></div>
+        <div class="bank-number">${escapeHtml(shopInfo.bankNama)} ${escapeHtml(shopInfo.bankNomor)}</div>
+        <div><span>a.n. ${escapeHtml(shopInfo.bankAtasNama)}</span></div>
+      </div>
+      <div class="legal-note">
+        <span class="bullet">&#9679;</span>
+        ${escapeHtml(shopInfo.catatanFaktur)}
+      </div>
     </div>
-
     <div class="totals-box">
       ${totalsHTML}
     </div>
   </div>
 
   ${fakturPajakHTML}
-
-  <div class="legal-note">
-    <span class="bullet">&#9679;</span>
-    Barang yang sudah dibawa tidak bisa ditukar/dikembalikan
-  </div>
 </body>
 </html>
   `;
@@ -695,11 +739,25 @@ function writeFakturToWindow(target: Window, html: string): void {
   target.focus();
 }
 
+function printAfterAssetsReady(target: Window): void {
+  const print = () => {
+    try {
+      target.focus();
+      target.print();
+    } catch {
+      // print() may be blocked; preview is still available in the target document
+    }
+  };
+
+  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
+  fontsReady.then(print).catch(print);
+}
+
 /** Returns true if a print preview window or iframe was opened. */
 export function printFaktur(data: FakturData): boolean {
   const html = generateFakturHTML(data);
 
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
+  const printWindow = window.open("", "_blank");
   if (printWindow) {
     writeFakturToWindow(printWindow, html);
     return true;
@@ -718,11 +776,7 @@ export function printFaktur(data: FakturData): boolean {
   }
 
   writeFakturToWindow(frameWindow, html);
-  try {
-    frameWindow.print();
-  } catch {
-    // print() may be blocked; preview is still in the iframe
-  }
+  printAfterAssetsReady(frameWindow);
 
   window.setTimeout(() => {
     if (iframe.parentNode) {
