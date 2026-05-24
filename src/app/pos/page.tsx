@@ -1171,9 +1171,9 @@ export default function POSPage() {
           {/* Left: Product Selection */}
           <div className="lg:col-span-2 space-y-4">
             {/* Customer Selection */}
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
               <div className="flex items-center gap-3">
-                <h3 className="shrink-0 text-base font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap">
+                <h3 className="shrink-0 text-base font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2 whitespace-nowrap">
                   <svg
                     className="w-5 h-5 text-[#00afef]"
                     fill="none"
@@ -1202,26 +1202,26 @@ export default function POSPage() {
                   onFocus={() => setShowCustomerDropdown(true)}
                   onKeyDown={handleCustomerKeyDown}
                   placeholder="Cari atau Walk-in Customer..."
-                  className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                 />
 
                 {showCustomerDropdown && filteredCustomers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-2 bg-white border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                     {filteredCustomers.map((customer, index) => (
                       <div
                         key={customer.id}
                         onClick={() => handleSelectCustomer(customer)}
-                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
+                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
                           index === selectedCustomerIndex
                             ? "bg-[#00afef] text-white"
-                            : "hover:bg-cyan-50"
+                            : "hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
                         <div
                           className={`font-semibold ${
                             index === selectedCustomerIndex
                               ? "text-white"
-                              : "text-gray-800"
+                              : "text-gray-800 dark:text-slate-100"
                           }`}
                         >
                           {customer.nama}
@@ -1230,8 +1230,8 @@ export default function POSPage() {
                           <span
                             className={`text-xs px-2 py-1 rounded ${
                               index === selectedCustomerIndex
-                                ? "bg-white text-[#00afef]"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-white dark:bg-slate-900 text-[#00afef]"
+                                : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                             }`}
                           >
                             MEMBER
@@ -1252,14 +1252,14 @@ export default function POSPage() {
               </div>
 
               {selectedCustomer && (
-                <div className="mt-3 p-3 bg-white rounded-lg border-2 border-[#00afef]/50">
+                <div className="mt-3 p-3 bg-white dark:bg-slate-900 rounded-lg border-2 border-[#00afef]/50">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-gray-800">
+                      <div className="font-bold text-gray-800 dark:text-slate-100">
                         {selectedCustomer.nama}
                       </div>
                       {selectedCustomer.telepon && (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 dark:text-slate-300">
                           {selectedCustomer.telepon}
                         </div>
                       )}
@@ -1291,9 +1291,9 @@ export default function POSPage() {
             </div>
 
             {/* Material Selection */}
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
               <div className="flex items-center gap-3 mb-3">
-                <h3 className="shrink-0 text-base font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap">
+                <h3 className="shrink-0 text-base font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2 whitespace-nowrap">
                   <svg
                     className="w-5 h-5 text-[#00afef]"
                     fill="none"
@@ -1329,7 +1329,7 @@ export default function POSPage() {
                     value={materialSearch}
                     onChange={(e) => setMaterialSearch(e.target.value)}
                     placeholder="Filter barang..."
-                    className="w-full pl-9 pr-8 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                    className="w-full pl-9 pr-8 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                   />
                   {materialSearch && (
                     <button
@@ -1376,7 +1376,7 @@ export default function POSPage() {
                   Maklon
                 </button>
 
-                <div className="shrink-0 text-xs text-gray-500 bg-cyan-50 px-3 py-1 rounded-full whitespace-nowrap">
+                <div className="shrink-0 text-xs text-gray-500 dark:text-slate-400 bg-cyan-50 dark:bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">
                   <svg
                     className="w-3 h-3 inline mr-1"
                     fill="currentColor"
@@ -1403,7 +1403,7 @@ export default function POSPage() {
                       className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
                         materialCategoryFilter === "ALL"
                           ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-[#00afef]/50 hover:bg-cyan-50/80"
+                          : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
                       }`}
                     >
                       Semua
@@ -1416,7 +1416,7 @@ export default function POSPage() {
                         className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
                           materialCategoryFilter === cat
                             ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
-                            : "border-gray-200 bg-white text-gray-700 hover:border-[#00afef]/50 hover:bg-cyan-50/80"
+                            : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
                         {cat}
@@ -1441,8 +1441,8 @@ export default function POSPage() {
                         onClick={() => handleMaterialGridClick(material)}
                         className={`cursor-pointer p-3 rounded-lg border-2 transition-all text-left select-none ${
                           selectedMaterial?.id === material.id
-                            ? "border-[#00afef] bg-cyan-50 shadow-md scale-[1.02] ring-2 ring-[#00afef]/30"
-                            : "border-gray-200 hover:border-[#00afef]/50 hover:bg-cyan-50/50 hover:shadow-sm active:scale-[0.98]"
+                            ? "border-[#00afef] bg-cyan-50 dark:bg-slate-800 shadow-md scale-[1.02] ring-2 ring-[#00afef]/30"
+                            : "border-gray-200 dark:border-slate-700 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5 dark:hover:bg-slate-700/50 hover:shadow-sm active:scale-[0.98]"
                         }`}
                       >
                         <div className="flex-1 min-w-0">
@@ -1450,13 +1450,13 @@ export default function POSPage() {
                             className={`font-bold text-sm truncate ${
                               selectedMaterial?.id === material.id
                                 ? "text-[#00afef]"
-                                : "text-gray-800"
+                                : "text-gray-800 dark:text-slate-100"
                             }`}
                           >
                             {material.nama}
                           </div>
                           {material.kategori_nama && (
-                            <div className="text-xs text-gray-500 mt-0.5 truncate">
+                            <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">
                               {material.kategori_nama}
                             </div>
                           )}
@@ -1465,7 +1465,7 @@ export default function POSPage() {
                     ))}
                   </div>
                   {filteredMaterials.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-gray-500 dark:text-slate-400">
                       <svg
                         className="w-12 h-12 mx-auto mb-2 opacity-50"
                         fill="none"
@@ -1490,27 +1490,27 @@ export default function POSPage() {
                 {selectedMaterial && (
                   <div
                     ref={productFormRef}
-                    className={`p-3 bg-white rounded-lg border-2 shadow-sm ${
+                    className={`p-3 bg-white dark:bg-slate-900 rounded-lg border-2 shadow-sm ${
                       editingCartIndex !== null
                         ? "border-amber-400 ring-2 ring-amber-200/60"
                         : "border-[#00afef]/30"
                     }`}
                   >
                     {editingCartIndex !== null && (
-                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-amber-200">
-                        <p className="text-xs font-semibold text-amber-800">
+                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-amber-200 dark:border-amber-800/50">
+                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
                           Mengedit item keranjang
                         </p>
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="text-xs font-semibold text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
+                          className="text-xs font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
                         >
                           Batal
                         </button>
                       </div>
                     )}
-                    <div className="font-bold text-gray-800 text-sm mb-3">
+                    <div className="font-bold text-gray-800 dark:text-slate-100 text-sm mb-3">
                       {selectedMaterial.nama}
                     </div>
 
@@ -1518,7 +1518,7 @@ export default function POSPage() {
                       {/* Left: Material Details & Unit */}
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                             Satuan & Harga
                           </label>
                           <select
@@ -1529,7 +1529,7 @@ export default function POSPage() {
                               );
                               setSelectedUnit(unit || null);
                             }}
-                            className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                            className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                           >
                             {selectedMaterial.unit_prices.map((unit) => (
                               <option key={unit.id} value={unit.id}>
@@ -1546,7 +1546,7 @@ export default function POSPage() {
                         {/* Dimensions for materials that need it */}
                         {selectedMaterial.butuh_dimensi_status === 1 && (
                           <div className="space-y-2">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                               Dimensi (m)
                             </label>
                             <div className="grid grid-cols-2 gap-2">
@@ -1562,7 +1562,7 @@ export default function POSPage() {
                                       handleAddToCart();
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="Panjang"
                                 />
                               </div>
@@ -1578,7 +1578,7 @@ export default function POSPage() {
                                       handleAddToCart();
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef]"
+                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="Lebar"
                                 />
                               </div>
@@ -1587,14 +1587,14 @@ export default function POSPage() {
                             {/* Roll billing — show when both dimensions have values */}
                             {panjang && lebar && (
                               <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
                                   <input
                                     type="checkbox"
                                     checked={useRounding}
                                     onChange={(e) =>
                                       setUseRounding(e.target.checked)
                                     }
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    className="w-4 h-4 text-blue-600 dark:text-blue-300 border-gray-300 rounded focus:ring-blue-500"
                                   />
                                   <span className="font-medium">
                                     Gunakan Pembulatan Ukuran Roll
@@ -1609,7 +1609,7 @@ export default function POSPage() {
                       {/* Right: quantity, roll, add button */}
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                             Jumlah
                           </label>
                           <div className="flex items-center gap-2">
@@ -1620,7 +1620,7 @@ export default function POSPage() {
                                   setQuantity((current - 1).toString());
                                 }
                               }}
-                              className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-gray-300 text-gray-700 font-bold transition-colors"
+                              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 rounded-lg border-2 border-gray-300 text-gray-700 dark:text-slate-300 font-bold transition-colors"
                             >
                               −
                             </button>
@@ -1639,7 +1639,7 @@ export default function POSPage() {
                                   handleAddToCart();
                                 }
                               }}
-                              className="flex-1 px-3 py-2 text-sm text-center border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold"
+                              className="flex-1 px-3 py-2 text-sm text-center border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold dark:bg-slate-800 dark:text-slate-100"
                               placeholder="1"
                             />
                             <button
@@ -1658,7 +1658,7 @@ export default function POSPage() {
                           useRounding &&
                           hasValidDimensions && (
                             <div className="space-y-1.5">
-                              <label className="block text-xs font-semibold text-gray-600">
+                              <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300">
                                 Roll yang dipakai
                               </label>
                               <select
@@ -1666,7 +1666,7 @@ export default function POSPage() {
                                 onChange={(e) =>
                                   setSelectedRollSize(parseFloat(e.target.value))
                                 }
-                                className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white"
+                                className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
                               >
                                 {rollSizes
                                   .filter((size) =>
@@ -1709,7 +1709,7 @@ export default function POSPage() {
                                   })}
                               </select>
                               {rollBillingPreview && selectedRollSize != null && (
-                                <p className="text-xs text-gray-500 leading-snug">
+                                <p className="text-xs text-gray-500 dark:text-slate-400 leading-snug">
                                   Tagih:{" "}
                                   <span className="font-semibold text-[#00afef]">
                                     Rp{" "}
@@ -1749,8 +1749,8 @@ export default function POSPage() {
               onClick={() => setShowPpnModal(true)}
               className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
                 ppnFaktur
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-emerald-400"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
+                  : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
               }`}
             >
               {ppnFaktur ? (
@@ -1788,13 +1788,13 @@ export default function POSPage() {
         </div>
 
         {/* Sales History */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-1">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
                 Riwayat Penjualan
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-slate-400">
                 Riwayat semua transaksi penjualan
               </p>
             </div>
@@ -1931,7 +1931,7 @@ export default function POSPage() {
 
       {showWalkInFakturModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
               <h3 className="text-white font-bold text-lg">
                 Info untuk Faktur
@@ -1943,7 +1943,7 @@ export default function POSPage() {
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
+                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kepada Yth.
                 </label>
                 <input
@@ -1956,12 +1956,12 @@ export default function POSPage() {
                     }))
                   }
                   placeholder="Nama / nama perusahaan"
-                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
+                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kota
                 </label>
                 <input
@@ -1974,14 +1974,14 @@ export default function POSPage() {
                     }))
                   }
                   placeholder="Bekasi"
-                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowWalkInFakturModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200"
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
                 >
                   Batal
                 </button>

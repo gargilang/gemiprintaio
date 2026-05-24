@@ -382,12 +382,12 @@ export default function PurchasesPage() {
     <>
       <div className="space-y-8">
         {/* Form Section */}
-        <div ref={formSectionRef} className="bg-white rounded-xl shadow-lg p-6">
+        <div ref={formSectionRef} className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
               {editingPurchase ? "Edit Pembelian" : "Tambah Pembelian Baru"}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-slate-400">
               {editingPurchase
                 ? "Update data pembelian yang sudah ada"
                 : "Input data pembelian barang dari vendor atau warung"}
@@ -410,13 +410,13 @@ export default function PurchasesPage() {
         </div>
 
         {/* Table Section */}
-        <div id="purchases-table" className="bg-white rounded-xl shadow-lg p-6">
+        <div id="purchases-table" className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
           <div className="mb-6 flex items-start justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-1">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
                 Daftar Pembelian
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-slate-400">
                 Riwayat semua transaksi pembelian bahan
               </p>
             </div>

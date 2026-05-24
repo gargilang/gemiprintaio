@@ -39,14 +39,14 @@ const VendorRow = memo(
     return (
       <tr
         className={`hover:bg-indigo-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">
+          <div className="font-semibold text-gray-800 dark:text-slate-100">
             {vendor.nama_perusahaan}
           </div>
-          <div className="text-xs text-gray-800 mt-1 flex items-center gap-1.5 flex-wrap">
+          <div className="text-xs text-gray-800 dark:text-slate-100 mt-1 flex items-center gap-1.5 flex-wrap">
             <span>CP: {vendor.kontak_person || "-"}</span>
             {vendor.tipe_vendor === "SUBKONTRAKTOR" && (
               <span className="inline-block text-[9px] px-1.5 py-0.5 bg-fuchsia-100 text-fuchsia-800 font-bold rounded uppercase tracking-wide">
@@ -54,25 +54,25 @@ const VendorRow = memo(
               </span>
             )}
             {vendor.tipe_vendor === "KEDUANYA" && (
-              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-purple-100 text-purple-800 font-bold rounded uppercase tracking-wide">
+              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 font-bold rounded uppercase tracking-wide">
                 Supplier + Maklon
               </span>
             )}
           </div>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700">{vendor.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">{vendor.telepon}</td>
-        <td className="px-4 py-3 text-sm text-gray-600">
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{vendor.email}</td>
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{vendor.telepon}</td>
+        <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">
           {vendor.ketentuan_bayar || "-"}
         </td>
         <td className="px-4 py-3 text-center">
           {vendor.aktif_status === 1 ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded-full text-xs font-semibold">
               <CheckIcon size={14} />
               Aktif
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-semibold">
               Non-Aktif
             </span>
           )}
@@ -81,7 +81,7 @@ const VendorRow = memo(
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => onEdit(vendor)}
-              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
               title="Edit"
             >
               <svg
@@ -100,7 +100,7 @@ const VendorRow = memo(
             </button>
             <button
               onClick={() => onDelete(vendor)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
               title="Hapus"
             >
               <svg
@@ -432,7 +432,7 @@ export default function VendorsPage() {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-xl">
+            <div className="p-3 bg-white dark:bg-slate-900/20 rounded-xl">
               <UsersIcon size={32} className="text-white" />
             </div>
             <div>
@@ -452,7 +452,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-[#0a1b3d] to-[#2266ff] rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -468,7 +468,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -486,7 +486,7 @@ export default function VendorsPage() {
           <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -512,7 +512,7 @@ export default function VendorsPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
@@ -543,7 +543,7 @@ export default function VendorsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama, email, telepon..."
-                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <svg
                   className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -563,7 +563,7 @@ export default function VendorsPage() {
               <select
                 value={filterActive}
                 onChange={(e) => setFilterActive(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-gray-700"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
               >
                 <option value="all">Semua Status</option>
                 <option value="active">Aktif</option>
@@ -574,7 +574,7 @@ export default function VendorsPage() {
         </div>
 
         {/* Vendors Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
           <div
             ref={tableContainerRef}
             className="overflow-x-auto max-h-[600px] overflow-y-auto"
@@ -609,7 +609,7 @@ export default function VendorsPage() {
                     <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400">
                         <UsersIcon size={48} className="mb-3 opacity-50" />
-                        <p className="text-lg font-semibold text-gray-600">
+                        <p className="text-lg font-semibold text-gray-600 dark:text-slate-300">
                           {searchQuery || filterActive !== "all"
                             ? "Tidak ada data yang sesuai"
                             : "Belum ada data vendor"}
@@ -647,7 +647,7 @@ export default function VendorsPage() {
         header={
           <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
                 <svg
                   className="w-7 h-7 text-white"
                   fill="none"
@@ -690,12 +690,12 @@ export default function VendorsPage() {
           </div>
         }
         footer={
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={() => setShowModal(false)}
               disabled={saving}
-              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
             >
               Batal
             </button>
@@ -717,7 +717,7 @@ export default function VendorsPage() {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Nama Perusahaan <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -730,13 +730,13 @@ export default function VendorsPage() {
                       })
                     }
                     placeholder="Contoh: PT. Supplier Indonesia"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Contact Person
                   </label>
                   <input
@@ -749,12 +749,12 @@ export default function VendorsPage() {
                       })
                     }
                     placeholder="Nama PIC"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Telepon
                   </label>
                   <input
@@ -764,12 +764,12 @@ export default function VendorsPage() {
                       setFormData({ ...formData, telepon: e.target.value })
                     }
                     placeholder="08xx-xxxx-xxxx"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Email
                   </label>
                   <input
@@ -779,12 +779,12 @@ export default function VendorsPage() {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     placeholder="vendor@example.com"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Alamat
                   </label>
                   <textarea
@@ -794,12 +794,12 @@ export default function VendorsPage() {
                     }
                     placeholder="Alamat lengkap vendor"
                     rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Tipe Vendor
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -831,7 +831,7 @@ export default function VendorsPage() {
                         className={`px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
                           formData.tipe_vendor === opt.value
                             ? "bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white border-[#2266ff] shadow-sm"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-[#2266ff]"
+                            : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 hover:border-[#2266ff]"
                         }`}
                       >
                         <div>{opt.label}</div>
@@ -839,7 +839,7 @@ export default function VendorsPage() {
                           className={`text-[10px] ${
                             formData.tipe_vendor === opt.value
                               ? "text-white/80"
-                              : "text-gray-500"
+                              : "text-gray-500 dark:text-slate-400"
                           }`}
                         >
                           {opt.hint}
@@ -847,13 +847,13 @@ export default function VendorsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     Subkontraktor muncul di POS sebagai pilihan vendor maklon.
                   </p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Ketentuan Bayar
                   </label>
                   <input
@@ -866,16 +866,16 @@ export default function VendorsPage() {
                       })
                     }
                     placeholder="Contoh: NET 30, COD, TOP 14 hari"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     Syarat pembayaran (contoh: NET 30 = bayar 30 hari setelah
                     invoice)
                   </p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Catatan
                   </label>
                   <textarea
@@ -885,12 +885,12 @@ export default function VendorsPage() {
                     }
                     placeholder="Catatan tambahan (opsional)"
                     rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-slate-800 rounded-lg border-2 border-green-200 dark:border-slate-700">
                     <input
                       type="checkbox"
                       id="aktif_status"

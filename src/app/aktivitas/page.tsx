@@ -44,22 +44,22 @@ const KIND_META: Record<
   },
   SALE_VOID: {
     label: "Penjualan dibatalkan",
-    color: "bg-orange-100 text-orange-800",
+    color: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200",
     icon: "💳",
   },
   ADJUSTMENT: {
     label: "Adjustment stok",
-    color: "bg-amber-100 text-amber-800",
+    color: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
     icon: "⚖️",
   },
   WASTE: {
     label: "Material rusak",
-    color: "bg-red-100 text-red-800",
+    color: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
     icon: "🗑",
   },
   NSFP_CANCEL: {
     label: "NSFP batal",
-    color: "bg-gray-200 text-gray-700",
+    color: "bg-gray-200 text-gray-700 dark:text-slate-300",
     icon: "📄",
   },
 };
@@ -126,17 +126,17 @@ export default function AktivitasPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Aktivitas</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Aktivitas</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             Catatan permanen pembatalan, adjustment, dan event sensitif lainnya.
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Jenis
             </label>
             <select
@@ -153,7 +153,7 @@ export default function AktivitasPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Dari tanggal
             </label>
             <input
@@ -164,7 +164,7 @@ export default function AktivitasPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Sampai tanggal
             </label>
             <input
@@ -184,14 +184,14 @@ export default function AktivitasPage() {
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 dark:text-slate-400">
           {filtered.length} event{from || to ? " dalam rentang tanggal" : ""}
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">
         {loading ? (
-          <div className="text-gray-500 py-12 text-center">Memuat aktivitas...</div>
+          <div className="text-gray-500 dark:text-slate-400 py-12 text-center">Memuat aktivitas...</div>
         ) : filtered.length === 0 ? (
           <div className="text-gray-400 py-12 text-center">
             Tidak ada event dalam rentang ini.
@@ -213,7 +213,7 @@ export default function AktivitasPage() {
                         >
                           {meta.label}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-slate-400">
                           {formatDateTime(event.occurred_at)}
                         </span>
                         {event.actor_id && (
@@ -222,11 +222,11 @@ export default function AktivitasPage() {
                           </span>
                         )}
                       </div>
-                      <p className="font-medium text-gray-800 mt-1 truncate">
+                      <p className="font-medium text-gray-800 dark:text-slate-100 mt-1 truncate">
                         {event.title}
                       </p>
                       {event.amount_label && (
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                           {event.amount_label}
                           {event.amount != null &&
                           (event.kind === "PURCHASE_VOID" ||
@@ -236,7 +236,7 @@ export default function AktivitasPage() {
                         </p>
                       )}
                       {event.reason && (
-                        <p className="text-sm text-gray-600 mt-1 italic border-l-4 border-gray-200 pl-3">
+                        <p className="text-sm text-gray-600 dark:text-slate-300 mt-1 italic border-l-4 border-gray-200 dark:border-slate-800 pl-3">
                           “{event.reason}”
                         </p>
                       )}

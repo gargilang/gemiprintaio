@@ -176,9 +176,9 @@ export default function POSCart({
   ];
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl shadow-2xl border-2 border-gray-200 sticky top-6 flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-900 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-slate-800 sticky top-6 flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden">
       {/* Header — satu baris ringkas */}
-      <div className="shrink-0 flex items-center gap-2 px-4 pt-4 pb-3 border-b border-gray-200">
+      <div className="shrink-0 flex items-center gap-2 px-4 pt-4 pb-3 border-b border-gray-200 dark:border-slate-800">
         <div className="bg-gradient-to-br from-[#00afef] to-[#0088cc] p-2 rounded-lg shadow-sm">
           <svg
             className="w-5 h-5 text-white"
@@ -195,13 +195,13 @@ export default function POSCart({
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-bold text-gray-800 leading-tight">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 leading-tight">
             Keranjang
           </h3>
-          <p className="text-xs text-gray-500">{cart.length} item</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">{cart.length} item</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+          <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
             Total
           </p>
           <p className="text-lg font-bold text-[#00afef] leading-tight">
@@ -211,8 +211,8 @@ export default function POSCart({
       </div>
 
       {cart.length > 0 && hasRoundingChoice && (
-        <div className="shrink-0 px-4 py-2.5 border-b border-gray-200/80 bg-white/60">
-          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+        <div className="shrink-0 px-4 py-2.5 border-b border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60">
+          <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
             <input
               type="checkbox"
               checked={roundCartPrices}
@@ -227,7 +227,7 @@ export default function POSCart({
       {/* Item list — only scrollable area */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2">
         {cart.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-slate-400">
             <svg
               className="w-12 h-12 mx-auto mb-2 opacity-50"
               fill="none"
@@ -248,19 +248,19 @@ export default function POSCart({
           cart.map((item, index) => (
             <div
               key={index}
-              className={`bg-white rounded-lg p-3 border transition-all ${
+              className={`bg-white dark:bg-slate-900 rounded-lg p-3 border transition-all ${
                 editingCartIndex === index
                   ? "border-amber-400 ring-2 ring-amber-200/50 shadow-sm"
                   : item.tipe_item === "MAKLON"
                     ? "border-[#00afef]/50 hover:border-[#00afef]"
-                    : "border-gray-200 hover:border-[#00afef]/50"
+                    : "border-gray-200 dark:border-slate-800 hover:border-[#00afef]/50"
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   {item.tipe_item === "MAKLON" && (
                     <div className="mb-1 flex items-center gap-2 flex-wrap">
-                      <span className="inline-block text-[9px] px-1.5 py-0.5 bg-[#00afef]/20 text-[#0a1b3d] font-bold rounded uppercase tracking-wide">
+                      <span className="inline-block text-[9px] px-1.5 py-0.5 bg-[#00afef]/20 text-[#0a1b3d] dark:text-slate-100 font-bold rounded uppercase tracking-wide">
                         Maklon
                       </span>
                       {item.vendor_subkontrak_nama && (
@@ -269,16 +269,16 @@ export default function POSCart({
                         </span>
                       )}
                       {item.metode_bayar_vendor && (
-                        <span className="text-[9px] px-1 py-0.5 bg-blue-50 text-[#2266ff] border border-blue-200 rounded">
+                        <span className="text-[9px] px-1 py-0.5 bg-blue-50 dark:bg-slate-800 text-[#2266ff] border border-blue-200 dark:border-slate-700 rounded">
                           {item.metode_bayar_vendor}
                         </span>
                       )}
                     </div>
                   )}
-                  <div className="font-semibold text-sm text-gray-800 truncate">
+                  <div className="font-semibold text-sm text-gray-800 dark:text-slate-100 truncate">
                     {item.barang_nama}
                   </div>
-                  <div className="text-xs text-gray-600 mt-0.5">
+                  <div className="text-xs text-gray-600 dark:text-slate-300 mt-0.5">
                     {item.butuh_dimensi && item.panjang && item.lebar ? (
                       <span>
                         {item.useRounding &&
@@ -314,11 +314,11 @@ export default function POSCart({
                           const margin =
                             lineCharges[index] - (item.biaya_subkontrak || 0);
                           return margin >= 0 ? (
-                            <span className="ml-1 text-emerald-700">
+                            <span className="ml-1 text-emerald-700 dark:text-emerald-300">
                               (margin +Rp {margin.toLocaleString("id-ID")})
                             </span>
                           ) : (
-                            <span className="ml-1 text-amber-700">
+                            <span className="ml-1 text-amber-700 dark:text-amber-300">
                               (rugi −Rp{" "}
                               {Math.abs(margin).toLocaleString("id-ID")})
                             </span>
@@ -354,7 +354,7 @@ export default function POSCart({
                   <button
                     type="button"
                     onClick={() => onRemoveItem(index)}
-                    className="bg-red-500/80 hover:bg-red-500 p-1.5 rounded-md transition-all text-white"
+                    className="bg-red-50 dark:bg-red-950/400/80 hover:bg-red-500 p-1.5 rounded-md transition-all text-white"
                     aria-label="Hapus item"
                     title="Hapus item"
                   >
@@ -376,12 +376,12 @@ export default function POSCart({
               </div>
 
               {item.finishing && item.finishing.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
+                <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800">
                   <div className="flex flex-wrap gap-1">
                     {item.finishing.map((fin, finIndex) => (
                       <span
                         key={finIndex}
-                        className="inline-block text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded"
+                        className="inline-block text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 rounded"
                       >
                         {fin.jenis_finishing}
                         {fin.keterangan && ` (${fin.keterangan})`}
@@ -395,7 +395,7 @@ export default function POSCart({
                 <button
                   type="button"
                   onClick={() => setEditingFinishingIndex(index)}
-                  className="w-full mt-2 px-2 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded text-[10px] font-semibold hover:bg-amber-100 transition-all"
+                  className="w-full mt-2 px-2 py-1 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 rounded text-[10px] font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
                 >
                   {item.finishing && item.finishing.length > 0
                     ? "Edit Finishing"
@@ -408,10 +408,10 @@ export default function POSCart({
       </div>
 
       {/* Payment + checkout — always visible at bottom */}
-      <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-200 bg-gradient-to-br from-slate-50 to-gray-100 space-y-2.5">
+      <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-900 space-y-2.5">
         {/* Payment method — horizontal scroll */}
         <div>
-          <label className="block text-xs font-bold text-gray-600 mb-1.5">
+          <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1.5">
             Metode Pembayaran
           </label>
           <div
@@ -427,7 +427,7 @@ export default function POSCart({
                 className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border-2 ${
                   paymentMethod === method.value
                     ? "bg-[#00afef] text-white border-[#00afef] shadow-sm"
-                    : "bg-white text-gray-700 border-gray-200 hover:border-[#00afef]/50"
+                    : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:border-[#00afef]/50"
                 }`}
               >
                 <div
@@ -446,7 +446,7 @@ export default function POSCart({
         {/* Jumlah bayar + kilat — satu baris */}
         <div className="flex items-end gap-2">
           <div className="flex-1 min-w-0">
-            <label className="block text-xs font-bold text-gray-600 mb-1">
+            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
               Jumlah Dibayar (Rp)
             </label>
             <input
@@ -461,19 +461,19 @@ export default function POSCart({
                 }
               }}
               placeholder="0"
-              className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
             />
           </div>
-          <label className="shrink-0 flex items-center gap-1.5 cursor-pointer px-2 py-2 bg-white rounded-lg border-2 border-gray-200 hover:border-amber-600 transition-all h-[42px]">
+          <label className="shrink-0 flex items-center gap-1.5 cursor-pointer px-2 py-2 bg-white dark:bg-slate-900 rounded-lg border-2 border-gray-200 dark:border-slate-800 hover:border-amber-600 transition-all h-[42px]">
             <input
               type="checkbox"
               checked={prioritas === "KILAT"}
               onChange={(e) =>
                 onPrioritasChange(e.target.checked ? "KILAT" : "NORMAL")
               }
-              className="w-4 h-4 text-amber-700 rounded focus:ring-amber-700 cursor-pointer"
+              className="w-4 h-4 text-amber-700 dark:text-amber-300 rounded focus:ring-amber-700 cursor-pointer"
             />
-            <span className="text-xs font-bold text-gray-700 whitespace-nowrap">
+            <span className="text-xs font-bold text-gray-700 dark:text-slate-300 whitespace-nowrap">
               Kilat
             </span>
           </label>
@@ -489,7 +489,7 @@ export default function POSCart({
                 const current = parseFloat(jumlahBayar) || 0;
                 onJumlahBayarChange(String(current + amount));
               }}
-              className="px-1 py-1 bg-white hover:bg-gray-100 text-gray-700 rounded border border-gray-200 text-[10px] font-semibold transition-all"
+              className="px-1 py-1 bg-white dark:bg-slate-900 hover:bg-gray-100 text-gray-700 dark:text-slate-300 rounded border border-gray-200 dark:border-slate-800 text-[10px] font-semibold transition-all"
             >
               {amount >= 1000 ? `${amount / 1000}rb` : amount}
             </button>
@@ -501,10 +501,10 @@ export default function POSCart({
           <div
             className={`rounded-lg px-3 py-2 text-sm border-2 ${
               kembalian > 0
-                ? "bg-green-50 border-green-300"
+                ? "bg-green-50 dark:bg-slate-800 border-green-300"
                 : kurang > 0
-                  ? "bg-yellow-50 border-yellow-300"
-                  : "bg-green-50 border-green-300"
+                  ? "bg-yellow-50 dark:bg-slate-800 border-yellow-300"
+                  : "bg-green-50 dark:bg-slate-800 border-green-300"
             }`}
           >
             <div className="flex items-center justify-between gap-2">
@@ -551,7 +551,7 @@ export default function POSCart({
                 {changeBreakdown.map(({ denom, label, count }) => (
                   <div
                     key={denom}
-                    className="flex justify-between bg-green-100/80 rounded px-1.5 py-0.5"
+                    className="flex justify-between bg-green-100 dark:bg-green-900/30/80 rounded px-1.5 py-0.5"
                   >
                     <span>{label}</span>
                     <span className="font-bold">{count}×</span>
@@ -572,7 +572,7 @@ export default function POSCart({
           <button
             type="button"
             onClick={() => setShowNotes(!showNotes)}
-            className="text-xs font-semibold text-gray-500 hover:text-[#00afef] transition-colors"
+            className="text-xs font-semibold text-gray-500 dark:text-slate-400 hover:text-[#00afef] transition-colors"
           >
             {showNotes ? "− Sembunyikan catatan" : "+ Catatan (opsional)"}
           </button>
@@ -582,14 +582,14 @@ export default function POSCart({
               value={catatan}
               onChange={(e) => onCatatanChange(e.target.value)}
               placeholder="Catatan transaksi..."
-              className="mt-1.5 w-full px-3 py-2 text-sm bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="mt-1.5 w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
             />
           )}
         </div>
 
         {/* Jenis cetak */}
         <div>
-          <label className="block text-xs font-bold text-gray-600 mb-1">
+          <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
             Cetak setelah transaksi
           </label>
           <div className="grid grid-cols-4 gap-1">
@@ -608,7 +608,7 @@ export default function POSCart({
                 className={`py-1.5 px-1 rounded-lg border-2 text-[11px] font-semibold transition-all flex flex-col items-center justify-center leading-tight ${
                   printType === opt.value
                     ? "bg-[#00afef] text-white border-[#00afef]"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-[#00afef]"
+                    : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 hover:border-[#00afef]"
                 }`}
               >
                 <span>{opt.label}</span>
@@ -617,7 +617,7 @@ export default function POSCart({
                     className={`text-[9px] ${
                       printType === opt.value
                         ? "text-white/80"
-                        : "text-gray-500"
+                        : "text-gray-500 dark:text-slate-400"
                     }`}
                   >
                     {opt.hint}

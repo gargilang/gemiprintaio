@@ -500,12 +500,12 @@ export default function AddMaterialModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
+            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -548,9 +548,9 @@ export default function AddMaterialModal({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Section 1: Informasi Dasar */}
-            <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-gray-200 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 bg-emerald-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                   1
                 </span>
                 Informasi Dasar
@@ -559,7 +559,7 @@ export default function AddMaterialModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nama Bahan */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Nama Bahan <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -571,14 +571,14 @@ export default function AddMaterialModal({
                       setFormData({ ...formData, name: e.target.value })
                     }
                     placeholder="Contoh: Pulpen Pilot"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 {/* Category */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-semibold text-gray-700">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                       Kategori <span className="text-red-500">*</span>
                     </label>
                     <button
@@ -592,7 +592,7 @@ export default function AddMaterialModal({
                           "/settings?tab=setup&subtab=materials&manage=category"
                         );
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-semibold"
+                      className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
                     >
                       Kelola
                     </button>
@@ -601,7 +601,7 @@ export default function AddMaterialModal({
                     required
                     value={formData.category}
                     onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     disabled={loadingMaster}
                   >
                     {loadingMaster ? (
@@ -620,7 +620,7 @@ export default function AddMaterialModal({
 
                 {/* Subcategory */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Subkategori
                   </label>
                   <select
@@ -628,7 +628,7 @@ export default function AddMaterialModal({
                     onChange={(e) =>
                       setFormData({ ...formData, subcategory: e.target.value })
                     }
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     disabled={loadingMaster}
                   >
                     {loadingMaster ? (
@@ -647,7 +647,7 @@ export default function AddMaterialModal({
 
                 {/* Satuan Dasar (Base Unit) */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Satuan Dasar (untuk tracking stok){" "}
                     <span className="text-red-500">*</span>
                   </label>
@@ -655,7 +655,7 @@ export default function AddMaterialModal({
                     required
                     value={formData.base_unit}
                     onChange={(e) => handleBaseUnitChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100"
                     disabled={loadingMaster || formData.requires_dimension}
                   >
                     {loadingMaster ? (
@@ -670,7 +670,7 @@ export default function AddMaterialModal({
                       ))
                     )}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     {formData.requires_dimension
                       ? "Dikunci ke m² karena dimensi diaktifkan. Stok dihitung total area."
                       : "Satuan terkecil untuk menghitung stok (contoh: pcs, meter, lembar)"}
@@ -679,7 +679,7 @@ export default function AddMaterialModal({
 
                 {/* Track Inventory */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Pengaturan POS
                   </label>
                   <div className="space-y-2 mt-3">
@@ -695,7 +695,7 @@ export default function AddMaterialModal({
                         }
                         className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
                       />
-                      <span className="text-sm text-gray-700">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">
                         Track stok barang ini
                       </span>
                     </label>
@@ -708,12 +708,12 @@ export default function AddMaterialModal({
                         }
                         className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">
                         Perlu input dimensi (Panjang × Lebar) saat penjualan
                       </span>
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                     • Track stok: Nonaktifkan untuk barang konsumsi (lem, tinta,
                     dll)
                     <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi.
@@ -724,14 +724,14 @@ export default function AddMaterialModal({
 
                 {/* Spesifikasi */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Spesifikasi
                   </label>
 
                   {/* Quick Specs Helper - Pindah ke ATAS */}
                   {currentSpecs.length > 0 && (
-                    <div className="mb-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                      <p className="text-xs font-semibold text-emerald-800 mb-2">
+                    <div className="mb-3 p-3 bg-emerald-50 dark:bg-slate-800 rounded-lg border border-emerald-200 dark:border-slate-700">
+                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200 mb-2">
                         Pilih Spesifikasi Cepat:
                       </p>
                       <div className="flex gap-2 flex-wrap">
@@ -761,7 +761,7 @@ export default function AddMaterialModal({
                               }
                             }}
                             tabIndex={0}
-                            className="px-3 py-1.5 text-sm border-2 border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white hover:border-emerald-400 transition-colors"
+                            className="px-3 py-1.5 text-sm border-2 border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-900 hover:border-emerald-400 transition-colors"
                           >
                             <option value="">+ {type}</option>
                             {specs.map((spec: any) => (
@@ -788,13 +788,13 @@ export default function AddMaterialModal({
                     }
                     placeholder="Contoh: Warna hitam | Grip karet | Tinta gel"
                     rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 {/* Deskripsi */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Deskripsi
                   </label>
                   <textarea
@@ -804,17 +804,17 @@ export default function AddMaterialModal({
                     }
                     placeholder="Catatan tambahan tentang bahan ini..."
                     rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
               </div>
             </div>
 
             {/* Section 2: Harga Per Satuan */}
-            <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+            <div className="bg-blue-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-blue-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-blue-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                     2
                   </span>
                   Harga Per Satuan Jual
@@ -822,7 +822,7 @@ export default function AddMaterialModal({
                 <button
                   type="button"
                   onClick={addUnitPrice}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
+                  className="px-3 py-1.5 bg-blue-50 dark:bg-slate-8000 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
                 >
                   <svg
                     className="w-4 h-4"
@@ -845,11 +845,11 @@ export default function AddMaterialModal({
                 {unitPrices.map((up, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-lg p-4 border-2 border-gray-200"
+                    className="bg-white dark:bg-slate-900 rounded-lg p-4 border-2 border-gray-200 dark:border-slate-800"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-600">
+                        <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
                           #{index + 1}
                         </span>
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -862,7 +862,7 @@ export default function AddMaterialModal({
                             }
                             className="w-4 h-4 text-blue-500"
                           />
-                          <span className="text-xs font-semibold text-gray-600">
+                          <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
                             Default
                           </span>
                         </label>
@@ -894,7 +894,7 @@ export default function AddMaterialModal({
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                       {/* Nama Satuan - DROPDOWN */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                           Satuan <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -907,7 +907,7 @@ export default function AddMaterialModal({
                               e.target.value
                             )
                           }
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                           disabled={loadingMaster}
                         >
                           <option value="">Pilih satuan...</option>
@@ -917,7 +917,7 @@ export default function AddMaterialModal({
                             </option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                           Tidak ada?{" "}
                           <button
                             type="button"
@@ -930,7 +930,7 @@ export default function AddMaterialModal({
                                 "/settings?tab=setup&subtab=materials&manage=unit"
                               );
                             }}
-                            className="text-blue-600 hover:underline font-semibold"
+                            className="text-blue-600 dark:text-blue-300 hover:underline font-semibold"
                           >
                             Kelola
                           </button>
@@ -939,7 +939,7 @@ export default function AddMaterialModal({
 
                       {/* Unit conversion */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                           Konversi <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -955,9 +955,9 @@ export default function AddMaterialModal({
                             )
                           }
                           placeholder="1"
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                           1 {up.nama_satuan} = {up.faktor_konversi}{" "}
                           {formData.base_unit}
                         </p>
@@ -965,7 +965,7 @@ export default function AddMaterialModal({
 
                       {/* Harga Beli */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                           HPP Rata-rata Awal
                         </label>
                         <input
@@ -980,16 +980,16 @@ export default function AddMaterialModal({
                             )
                           }
                           placeholder="0"
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                         />
-                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                           {formatRupiah(up.harga_beli)}
                         </p>
                       </div>
 
                       {/* Harga Jual */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                           Harga Jual
                         </label>
                         <input
@@ -1004,16 +1004,16 @@ export default function AddMaterialModal({
                             )
                           }
                           placeholder="0"
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                         />
-                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                           {formatRupiah(up.harga_jual)}
                         </p>
                       </div>
 
                       {/* Harga Member */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                           Harga Member
                         </label>
                         <input
@@ -1028,9 +1028,9 @@ export default function AddMaterialModal({
                             )
                           }
                           placeholder="0"
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                         />
-                        <p className="text-xs text-emerald-600 mt-1 font-medium">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                           {formatRupiah(up.harga_member)}
                         </p>
                       </div>
@@ -1039,11 +1039,11 @@ export default function AddMaterialModal({
                 ))}
               </div>
 
-              <div className="mt-4 bg-blue-100 border border-blue-300 rounded-lg p-3">
-                <p className="text-xs text-blue-800 font-semibold mb-1">
+              <div className="mt-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 rounded-lg p-3">
+                <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold mb-1">
                   💡 Contoh Penggunaan:
                 </p>
-                <ul className="text-xs text-blue-700 space-y-1 ml-4">
+                <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4">
                   <li>
                     • <strong>Pulpen:</strong> Base unit "pcs", tambah satuan
                     "lusin" (konversi 12), "pack" (konversi 144)
@@ -1061,9 +1061,9 @@ export default function AddMaterialModal({
             </div>
 
             {/* Section 3: Stock */}
-            <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-orange-500 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+            <div className="bg-orange-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-orange-200 dark:border-orange-800/50">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 bg-orange-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                   3
                 </span>
                 Stok & Inventory
@@ -1072,7 +1072,7 @@ export default function AddMaterialModal({
               {formData.requires_dimension &&
                 editData &&
                 editData.butuh_dimensi_status !== 1 && (
-                  <div className="mb-4 p-3 bg-amber-100 border-2 border-amber-300 rounded-lg">
+                  <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-800/50 rounded-lg">
                     <p className="text-sm text-amber-900">
                       <strong>⚠ Perhatian:</strong> Mengaktifkan tracking dimensi
                       mengubah satuan stok ke <strong>m²</strong>. Saat
@@ -1086,7 +1086,7 @@ export default function AddMaterialModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Current stock */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Stok Saat Ini ({formData.base_unit})
                   </label>
                   <input
@@ -1100,9 +1100,9 @@ export default function AddMaterialModal({
                       })
                     }
                     placeholder="0"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     Jumlah stok dalam satuan dasar ({formData.base_unit})
                   </p>
                 </div>
@@ -1110,7 +1110,7 @@ export default function AddMaterialModal({
                 {/* Min Stock Level - Hidden if tracking is off */}
                 {formData.track_inventory && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                       Min. Stok Alert ({formData.base_unit})
                     </label>
                     <input
@@ -1124,9 +1124,9 @@ export default function AddMaterialModal({
                         })
                       }
                       placeholder="0"
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                       Warning jika stok di bawah nilai ini
                     </p>
                   </div>
@@ -1137,12 +1137,12 @@ export default function AddMaterialModal({
         </form>
 
         {/* Footer Actions */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>

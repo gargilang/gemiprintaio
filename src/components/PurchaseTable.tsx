@@ -137,65 +137,65 @@ const PurchaseRow = memo(
     return (
       <>
         <tr
-          className={`border-b border-gray-200 hover:bg-indigo-50 transition-all cursor-pointer ${
-            index % 2 === 0 ? "bg-white" : "bg-gray-50"
+          className={`border-b border-gray-200 dark:border-slate-800 hover:bg-indigo-50 transition-all cursor-pointer ${
+            index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
           }`}
           onClick={() => setShowDetails(!showDetails)}
         >
-          <td className="px-4 py-3 text-sm text-gray-700">
+          <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
             {tanggalFormatted}
           </td>
           <td className="px-4 py-3">
-            <div className="font-semibold text-gray-800 flex items-center gap-2 flex-wrap">
+            <div className="font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
               <span>{purchase.nomor_faktur}</span>
               {purchase.tipe_pembelian === "MAKLON" && (
                 <span
-                  className="inline-block text-[9px] px-1.5 py-0.5 bg-blue-100 text-[#0a1b3d] font-bold rounded uppercase tracking-wide"
+                  className="inline-block text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-[#0a1b3d] dark:text-slate-100 font-bold rounded uppercase tracking-wide"
                   title="Pembelian otomatis dari pekerjaan maklon"
                 >
                   Maklon
                 </span>
               )}
               {purchase.status_transaksi === "VOIDED" && (
-                <span className="inline-block text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 font-bold rounded uppercase tracking-wide">
+                <span className="inline-block text-[9px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 font-bold rounded uppercase tracking-wide">
                   Void
                 </span>
               )}
             </div>
             {purchase.catatan && (
-              <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+              <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-1">
                 {purchase.catatan}
               </div>
             )}
           </td>
-          <td className="px-4 py-3 text-sm text-gray-700">
+          <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
             {purchase.vendor_name || (
               <span className="text-gray-400 italic">Tanpa Vendor</span>
             )}
           </td>
           <td className="px-4 py-3 text-center">
-            <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
+            <span className="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-semibold">
               {purchase.items.length} item
             </span>
           </td>
           <td className="px-4 py-3 text-center">
             {purchase.status_pembayaran === "LUNAS" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-xs font-semibold">
                 <CheckIcon size={14} />
                 LUNAS
               </span>
             ) : purchase.status_pembayaran === "HUTANG" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-xs font-semibold">
                 <ClockIcon size={14} className="text-[#2266ff]" />
                 TAGIHAN
               </span>
             ) : (
-              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+              <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
                 {purchase.metode_pembayaran || "CASH"}
               </span>
             )}
           </td>
-          <td className="px-4 py-3 text-right font-semibold text-gray-800">
+          <td className="px-4 py-3 text-right font-semibold text-gray-800 dark:text-slate-100">
             Rp {purchase.total_harga.toLocaleString("id-ID")}
           </td>
           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -204,7 +204,7 @@ const PurchaseRow = memo(
               <button
                 onClick={handlePrint}
                 disabled={printing}
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 text-blue-600 dark:text-blue-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
                 title="Cetak Bukti Penerimaan Barang"
               >
                 <svg
@@ -227,7 +227,7 @@ const PurchaseRow = memo(
                   purchase.metode_pembayaran === "CASH") && (
                 <button
                   onClick={() => onEdit(purchase)}
-                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                   title="Edit"
                 >
                   <svg
@@ -252,7 +252,7 @@ const PurchaseRow = memo(
                 onRevert && (
                   <button
                     onClick={() => onRevert(purchase)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                     title="Kembalikan ke Status TAGIHAN"
                   >
                     <svg
@@ -275,7 +275,7 @@ const PurchaseRow = memo(
               {purchase.status_transaksi !== "VOIDED" && onRetur && (
                 <button
                   onClick={() => onRetur(purchase)}
-                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                  className="p-2 text-amber-600 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                   title="Retur ke vendor"
                 >
                   <svg
@@ -296,7 +296,7 @@ const PurchaseRow = memo(
               <button
                 onClick={() => onDelete(purchase)}
                 disabled={purchase.status_transaksi === "VOIDED"}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Batalkan"
               >
                 <svg
@@ -320,24 +320,24 @@ const PurchaseRow = memo(
           <tr className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
             <td colSpan={6} className="px-4 py-3">
               <div className="text-xs">
-                <div className="font-semibold text-gray-700 mb-2">
+                <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                   Detail Item:
                 </div>
                 <div className="space-y-1">
                   {purchase.items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between py-1 px-2 bg-white/60 rounded"
+                      className="flex items-center justify-between py-1 px-2 bg-white dark:bg-slate-900/60 rounded"
                     >
                       <div className="flex-1">
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-gray-800 dark:text-slate-100">
                           {idx + 1}. {item.nama_barang}
                         </span>
-                        <span className="text-gray-500 ml-2">
+                        <span className="text-gray-500 dark:text-slate-400 ml-2">
                           ({item.nama_satuan})
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-gray-700">
+                      <div className="flex items-center gap-4 text-gray-700 dark:text-slate-300">
                         <span>
                           Qty:{" "}
                           <span className="font-semibold">{item.jumlah}</span>
@@ -350,7 +350,7 @@ const PurchaseRow = memo(
                           </span>
                         </span>
                         <span>=</span>
-                        <span className="font-semibold text-indigo-700">
+                        <span className="font-semibold text-indigo-700 dark:text-indigo-300">
                           Rp{" "}
                           {(
                             item.jumlah * (item.harga_beli || 0)
@@ -464,19 +464,19 @@ export default function PurchaseTable({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nomor faktur, vendor, catatan..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-xs text-gray-500">Total Pembelian</div>
-            <div className="text-lg font-bold text-indigo-700">
+            <div className="text-xs text-gray-500 dark:text-slate-400">Total Pembelian</div>
+            <div className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
               Rp {totalPembelian.toLocaleString("id-ID")}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500">Transaksi</div>
-            <div className="text-lg font-bold text-gray-800">
+            <div className="text-xs text-gray-500 dark:text-slate-400">Transaksi</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
               {filteredPurchases.length}
             </div>
           </div>
@@ -485,7 +485,7 @@ export default function PurchaseTable({
 
       {/* Table */}
       {filteredPurchases.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-800">
           <div className="text-gray-400 mb-2">
             <svg
               className="w-16 h-16 mx-auto"
@@ -501,19 +501,19 @@ export default function PurchaseTable({
               />
             </svg>
           </div>
-          <p className="text-gray-600 font-semibold">
+          <p className="text-gray-600 dark:text-slate-300 font-semibold">
             {searchQuery
               ? "Tidak ada pembelian yang cocok dengan pencarian"
               : "Belum ada data pembelian"}
           </p>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
             {searchQuery
               ? "Coba kata kunci lain"
               : "Tambahkan pembelian pertama Anda menggunakan form di atas"}
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[700px] overflow-y-auto">
+        <div className="overflow-x-auto border border-gray-200 dark:border-slate-800 rounded-lg max-h-[700px] overflow-y-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
               <tr>
@@ -589,7 +589,7 @@ export default function PurchaseTable({
 
       {/* Info Text */}
       {filteredPurchases.length > 0 && (
-        <div className="text-xs text-gray-500 text-center">
+        <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
           Klik baris untuk melihat detail item pembelian
         </div>
       )}

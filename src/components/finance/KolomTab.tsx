@@ -171,7 +171,7 @@ export default function KolomTab({
         <button
           type="button"
           onClick={() => setNewDraft({ name: "", formulaGroup: "custom" })}
-          className="px-3 py-1.5 text-xs rounded border border-blue-400 bg-blue-50 text-blue-800 hover:bg-blue-100 font-semibold"
+          className="px-3 py-1.5 text-xs rounded border border-blue-400 bg-blue-50 dark:bg-slate-800 text-blue-800 dark:text-blue-200 hover:bg-slate-50 dark:hover:bg-white/5 font-semibold"
         >
           + Tambah kolom
         </button>
@@ -179,7 +179,7 @@ export default function KolomTab({
 
       {/* New column draft form */}
       {newDraft && (
-        <div className="border-2 border-blue-200 bg-blue-50 rounded-lg p-3 space-y-2">
+        <div className="border-2 border-blue-200 dark:border-slate-700 bg-blue-50 dark:bg-slate-800 rounded-lg p-3 space-y-2">
           <p className="text-xs font-semibold text-blue-900 uppercase tracking-wider">
             Kolom baru
           </p>
@@ -199,7 +199,7 @@ export default function KolomTab({
             />
             <p className="text-[11px] text-slate-500 mt-1">
               Identifier:{" "}
-              <span className="font-mono text-emerald-700">
+              <span className="font-mono text-emerald-700 dark:text-emerald-300">
                 [{slugifyFormulaKey(newDraft.name || "kolom_baru")}]
               </span>
             </p>
@@ -230,7 +230,7 @@ export default function KolomTab({
       {/* Single flat table — system rows + formula rows */}
       <div className="overflow-hidden rounded-lg border border-slate-200">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <thead className="bg-slate-50 dark:bg-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-3 py-2 text-left">Nama Kolom</th>
               <th className="px-3 py-2 text-left">Tipe</th>
@@ -238,16 +238,16 @@ export default function KolomTab({
               <th className="px-3 py-2 text-right w-24">Aksi</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100">
             {/* System columns — always shown, locked */}
             {SYSTEM_COLUMNS.map((col) => {
               const isKategoriRow = col.key === "kategori_transaksi";
               return (
-              <tr key={col.key} className="bg-slate-50/60">
+              <tr key={col.key} className="bg-slate-50 dark:bg-slate-800/60">
                 <td className="px-3 py-2.5 align-top">
                   <div className="flex items-center gap-2 flex-wrap">
                     <LockIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="font-mono font-semibold text-emerald-700">
+                    <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">
                       [{col.key}]
                     </span>
                     <BadgeTag tone="slate">Sistem</BadgeTag>
@@ -265,7 +265,7 @@ export default function KolomTab({
                     <button
                       type="button"
                       onClick={onOpenKategori}
-                      className="p-1.5 rounded-md transition-colors text-amber-700 hover:bg-amber-50"
+                      className="p-1.5 rounded-md transition-colors text-amber-700 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800"
                       title="Kelola daftar kategori transaksi"
                       aria-label="Kelola kategori"
                     >
@@ -299,7 +299,7 @@ export default function KolomTab({
                     <button
                       type="button"
                       onClick={() => onEditFormula(f.id)}
-                      className="font-mono font-semibold text-emerald-700 hover:underline text-left"
+                      className="font-mono font-semibold text-emerald-700 dark:text-emerald-300 hover:underline text-left"
                     >
                       [{formulaKey}]
                     </button>
@@ -373,8 +373,8 @@ function BadgeTag({
 }) {
   const cls = {
     slate: "bg-slate-100 text-slate-600 border-slate-200",
-    blue: "bg-blue-50 text-blue-700 border-blue-200",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    blue: "bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-slate-700",
+    emerald: "bg-emerald-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-slate-700",
     violet: "bg-violet-50 text-violet-700 border-violet-200",
   }[tone];
   return (
@@ -400,7 +400,7 @@ function IconButton({
   children: React.ReactNode;
 }) {
   const cls = {
-    blue: "text-blue-600 hover:bg-blue-50",
+    blue: "text-blue-600 dark:text-blue-300 hover:bg-slate-50 dark:hover:bg-white/5",
     rose: "text-rose-600 hover:bg-rose-50",
   }[tone];
   return (

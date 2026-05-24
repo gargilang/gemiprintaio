@@ -105,13 +105,13 @@ export default function PurchaseReturnModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">
               Retur Vendor
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Pembelian{" "}
               {purchase.nomor_faktur || purchase.nomor_pembelian || purchase.id}
             </p>
@@ -129,12 +129,12 @@ export default function PurchaseReturnModal({
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+            <div className="px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 rounded text-sm">
               {error}
             </div>
           )}
 
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-slate-300">
             Isi qty yang akan dikembalikan ke vendor di kolom "Retur".
             Stok akan otomatis dikurangi. Kalau stok sudah dipakai untuk
             penjualan, sistem akan menolak retur dengan pesan jelas — kamu
@@ -142,8 +142,8 @@ export default function PurchaseReturnModal({
           </p>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border border-gray-200">
-              <thead className="bg-gray-50 text-xs">
+            <table className="w-full text-sm border border-gray-200 dark:border-slate-800">
+              <thead className="bg-gray-50 dark:bg-slate-800 text-xs">
                 <tr>
                   <th className="px-3 py-2 text-left">Barang</th>
                   <th className="px-3 py-2 text-right">Qty Beli</th>
@@ -154,11 +154,11 @@ export default function PurchaseReturnModal({
               </thead>
               <tbody>
                 {purchase.items.map((line) => (
-                  <tr key={line.id} className="border-t border-gray-200">
+                  <tr key={line.id} className="border-t border-gray-200 dark:border-slate-800">
                     <td className="px-3 py-2 font-medium">{line.nama_barang}</td>
                     <td className="px-3 py-2 text-right">{line.jumlah}</td>
-                    <td className="px-3 py-2 text-gray-600">{line.nama_satuan}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">
+                    <td className="px-3 py-2 text-gray-600 dark:text-slate-300">{line.nama_satuan}</td>
+                    <td className="px-3 py-2 text-right text-gray-600 dark:text-slate-300">
                       Rp {Number(line.harga_satuan).toLocaleString("id-ID")}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -185,7 +185,7 @@ export default function PurchaseReturnModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Alasan retur <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -197,12 +197,12 @@ export default function PurchaseReturnModal({
             />
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-slate-400">
             {filledLines} dari {totalLines} line akan di-retur.
           </p>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-800 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}

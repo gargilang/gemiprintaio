@@ -95,7 +95,7 @@ export default function QuickAddVendorModal({
       header={
         <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -138,12 +138,12 @@ export default function QuickAddVendorModal({
         </div>
       }
       footer={
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -164,7 +164,7 @@ export default function QuickAddVendorModal({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nama Perusahaan <span className="text-red-500">*</span>
           </label>
           <input
@@ -177,14 +177,14 @@ export default function QuickAddVendorModal({
               }))
             }
             placeholder="PT. Contoh Vendor"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
             required
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Kontak Person
           </label>
           <input
@@ -197,12 +197,12 @@ export default function QuickAddVendorModal({
               }))
             }
             placeholder="Nama contact person"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nomor Telepon <span className="text-red-500">*</span>
           </label>
           <input
@@ -212,13 +212,13 @@ export default function QuickAddVendorModal({
               setFormData((prev) => ({ ...prev, telepon: e.target.value }))
             }
             placeholder="08123456789"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Email
           </label>
           <input
@@ -228,12 +228,12 @@ export default function QuickAddVendorModal({
               setFormData((prev) => ({ ...prev, email: e.target.value }))
             }
             placeholder="vendor@email.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Alamat
           </label>
           <textarea
@@ -243,7 +243,7 @@ export default function QuickAddVendorModal({
             }
             placeholder="Alamat lengkap vendor"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
       </form>

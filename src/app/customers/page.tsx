@@ -38,32 +38,32 @@ const CustomerRow = memo(
     return (
       <tr
         className={`hover:bg-teal-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">
+          <div className="font-semibold text-gray-800 dark:text-slate-100">
             {customer.nama || customer.nama_perusahaan}
           </div>
           {customer.nama && customer.nama_perusahaan && (
-            <div className="text-xs text-gray-800 mt-1">
+            <div className="text-xs text-gray-800 dark:text-slate-100 mt-1">
               {customer.nama_perusahaan}
             </div>
           )}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700">{customer.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">{customer.telepon}</td>
-        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{customer.email}</td>
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{customer.telepon}</td>
+        <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-xs truncate">
           {customer.alamat}
         </td>
         <td className="px-4 py-3 text-center">
           {customer.member_status === 1 ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-semibold">
               <CheckIcon size={14} />
               Member
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-semibold">
               Regular
             </span>
           )}
@@ -72,7 +72,7 @@ const CustomerRow = memo(
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => onEdit(customer)}
-              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+              className="p-2 text-teal-600 dark:text-teal-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
               title="Edit"
             >
               <svg
@@ -91,7 +91,7 @@ const CustomerRow = memo(
             </button>
             <button
               onClick={() => onDelete(customer)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
               title="Hapus"
             >
               <svg
@@ -413,7 +413,7 @@ export default function CustomersPage() {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-xl">
+            <div className="p-3 bg-white dark:bg-slate-900/20 rounded-xl">
               <UsersIcon size={32} className="text-white" />
             </div>
             <div>
@@ -433,7 +433,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -449,7 +449,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <CheckIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -465,7 +465,7 @@ export default function CustomersPage() {
           <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white/20 rounded-lg">
+                <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                   <UsersIcon size={20} className="text-white" />
                 </div>
                 <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -479,7 +479,7 @@ export default function CustomersPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
@@ -510,7 +510,7 @@ export default function CustomersPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama, email, telepon..."
-                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-64"
+                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <svg
                   className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -530,7 +530,7 @@ export default function CustomersPage() {
               <select
                 value={filterMember}
                 onChange={(e) => setFilterMember(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-semibold text-gray-700"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
               >
                 <option value="all">Semua Status</option>
                 <option value="member">Member</option>
@@ -541,7 +541,7 @@ export default function CustomersPage() {
         </div>
 
         {/* Customers Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
           <div
             ref={tableContainerRef}
             className="overflow-x-auto max-h-[600px] overflow-y-auto"
@@ -576,7 +576,7 @@ export default function CustomersPage() {
                     <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400">
                         <UsersIcon size={48} className="mb-3 opacity-50" />
-                        <p className="text-lg font-semibold text-gray-600">
+                        <p className="text-lg font-semibold text-gray-600 dark:text-slate-300">
                           {searchQuery || filterMember !== "all"
                             ? "Tidak ada data yang sesuai"
                             : "Belum ada data pelanggan"}
@@ -614,7 +614,7 @@ export default function CustomersPage() {
         header={
           <div className="bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
                 <UsersIcon size={28} className="text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white truncate">
@@ -645,12 +645,12 @@ export default function CustomersPage() {
           </div>
         }
         footer={
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={() => setShowModal(false)}
               disabled={saving}
-              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
             >
               Batal
             </button>
@@ -672,7 +672,7 @@ export default function CustomersPage() {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Nama Lengkap <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -682,13 +682,13 @@ export default function CustomersPage() {
                       setFormData({ ...formData, nama: e.target.value })
                     }
                     placeholder="Contoh: John Doe"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Email
                   </label>
                   <input
@@ -698,12 +698,12 @@ export default function CustomersPage() {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     placeholder="email@example.com"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Telepon
                   </label>
                   <input
@@ -713,12 +713,12 @@ export default function CustomersPage() {
                       setFormData({ ...formData, telepon: e.target.value })
                     }
                     placeholder="08xx-xxxx-xxxx"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Perusahaan / Instansi
                   </label>
                   <input
@@ -731,12 +731,12 @@ export default function CustomersPage() {
                       })
                     }
                     placeholder="Nama perusahaan (opsional)"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Alamat
                   </label>
                   <textarea
@@ -746,12 +746,12 @@ export default function CustomersPage() {
                     }
                     placeholder="Alamat lengkap"
                     rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+                  <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-slate-800 rounded-lg border-2 border-amber-200 dark:border-amber-800/50">
                     <input
                       type="checkbox"
                       id="member_status"
@@ -762,7 +762,7 @@ export default function CustomersPage() {
                           member_status: e.target.checked ? 1 : 0,
                         })
                       }
-                      className="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                      className="w-5 h-5 text-amber-600 dark:text-amber-300 border-gray-300 rounded focus:ring-amber-500"
                     />
                     <label
                       htmlFor="member_status"
@@ -771,7 +771,7 @@ export default function CustomersPage() {
                       <span className="font-semibold text-amber-900 block">
                         Member - Harga Khusus
                       </span>
-                      <span className="text-xs text-amber-700">
+                      <span className="text-xs text-amber-700 dark:text-amber-300">
                         Pelanggan member mendapat diskon khusus untuk semua
                         produk
                       </span>

@@ -442,20 +442,20 @@ export default function PurchaseForm({
       {/* Header Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Tanggal <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             value={formData.tanggal}
             onChange={(e) => handleInputChange("tanggal", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nomor Faktur <span className="text-red-500">*</span>
           </label>
           <input
@@ -463,13 +463,13 @@ export default function PurchaseForm({
             value={formData.nomor_faktur}
             onChange={(e) => handleInputChange("nomor_faktur", e.target.value)}
             placeholder="INV-001"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Vendor
             <button
               type="button"
@@ -498,13 +498,13 @@ export default function PurchaseForm({
       {/* Items Section */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-gray-700 dark:text-slate-300">
             Item Pembelian <span className="text-red-500">*</span>
           </label>
           <button
             type="button"
             onClick={onQuickAddMaterial}
-            className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold"
+            className="text-xs text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:text-emerald-300 font-semibold"
           >
             + Tambah Barang Baru
           </button>
@@ -554,7 +554,7 @@ export default function PurchaseForm({
                   <tr
                     key={index}
                     className={`border-b ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
                     }`}
                   >
                     <td className="px-3 py-2 align-top">
@@ -572,7 +572,7 @@ export default function PurchaseForm({
                         inputClassName="!px-2 !py-1 !h-[30px] text-sm"
                       />
                       {isDimensional && (
-                        <p className="text-xs text-amber-700 mt-1">
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                           Barang dimensi · stok dalam m²
                         </p>
                       )}
@@ -583,7 +583,7 @@ export default function PurchaseForm({
                         onChange={(e) =>
                           handleItemChange(index, "id_satuan", e.target.value)
                         }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 h-[30px]"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 h-[30px] dark:bg-slate-800 dark:text-slate-100"
                         disabled={!item.id_barang}
                         required
                       >
@@ -617,10 +617,10 @@ export default function PurchaseForm({
                               inputMode="decimal"
                               placeholder="P"
                               title="Panjang (m)"
-                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                               required
                             />
-                            <span className="text-xs text-gray-500">×</span>
+                            <span className="text-xs text-gray-500 dark:text-slate-400">×</span>
                             <input
                               type="number"
                               value={item.lebar ?? ""}
@@ -639,11 +639,11 @@ export default function PurchaseForm({
                               inputMode="decimal"
                               placeholder="L"
                               title="Lebar (m)"
-                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="w-16 px-1.5 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                               required
                             />
                           </div>
-                          <p className="text-[11px] text-gray-500 text-center">
+                          <p className="text-[11px] text-gray-500 dark:text-slate-400 text-center">
                             = {item.jumlah.toLocaleString("id-ID")} m²
                           </p>
                         </div>
@@ -670,7 +670,7 @@ export default function PurchaseForm({
                           min="0"
                           step="any"
                           inputMode="decimal"
-                          className="w-full px-2 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-2 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                           required
                         />
                       )}
@@ -693,16 +693,16 @@ export default function PurchaseForm({
                             ? "Harga per m²"
                             : "Harga per satuan"
                         }
-                        className="w-full px-2 py-1 h-[30px] text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-2 py-1 h-[30px] text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                         required
                       />
                       {isDimensional && (
-                        <p className="text-[11px] text-gray-500 text-right mt-0.5">
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 text-right mt-0.5">
                           per m²
                         </p>
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-800 whitespace-nowrap">
+                    <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap">
                       Rp {subtotal.toLocaleString("id-ID")}
                     </td>
                     <td className="px-3 py-2 align-top text-center">
@@ -710,7 +710,7 @@ export default function PurchaseForm({
                         <button
                           type="button"
                           onClick={handleAddItem}
-                          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          className="p-1 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded transition-colors"
                           title="Tambah Item (tekan +)"
                         >
                           <PlusIcon size={16} />
@@ -738,19 +738,19 @@ export default function PurchaseForm({
               <tr className="bg-gradient-to-r from-indigo-50 to-purple-50">
                 <td
                   colSpan={4}
-                  className="px-3 py-2 text-right font-bold text-gray-800"
+                  className="px-3 py-2 text-right font-bold text-gray-800 dark:text-slate-100"
                 >
                   TOTAL:
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-lg text-indigo-700">
+                <td className="px-3 py-2 text-right font-bold text-lg text-indigo-700 dark:text-indigo-300">
                   Rp {totalHarga.toLocaleString("id-ID")}
                 </td>
                 <td></td>
               </tr>
               {/* Payment Method Row */}
-              <tr className="bg-white border-t-2 border-gray-300">
+              <tr className="bg-white dark:bg-slate-900 border-t-2 border-gray-300">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Metode Pembayaran <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-4">
@@ -763,9 +763,9 @@ export default function PurchaseForm({
                         onChange={(e) =>
                           handleInputChange("metode_pembayaran", e.target.value)
                         }
-                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
                         <CashIcon size={16} className="text-green-600" />
                         Cash (Lunas Langsung)
                       </span>
@@ -779,10 +779,10 @@ export default function PurchaseForm({
                         onChange={(e) =>
                           handleInputChange("metode_pembayaran", e.target.value)
                         }
-                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
-                        <CalendarIcon size={16} className="text-amber-600" />
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
+                        <CalendarIcon size={16} className="text-amber-600 dark:text-amber-300" />
                         NET 30 (Jatuh Tempo 30 Hari)
                       </span>
                     </label>
@@ -795,17 +795,17 @@ export default function PurchaseForm({
                         onChange={(e) =>
                           handleInputChange("metode_pembayaran", e.target.value)
                         }
-                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700">
-                        <PackageIcon size={16} className="text-blue-600" />
+                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
+                        <PackageIcon size={16} className="text-blue-600 dark:text-blue-300" />
                         COD (Bayar Saat Terima)
                       </span>
                     </label>
                   </div>
                   {formData.metode_pembayaran !== "CASH" && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <p className="flex items-start gap-2 text-xs text-amber-700">
+                    <div className="mt-2 p-3 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                      <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
                         <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
                         <span>
                           <strong>Catatan:</strong> Pembelian ini akan dicatat
@@ -818,9 +818,9 @@ export default function PurchaseForm({
                 </td>
               </tr>
               {/* Catatan Row */}
-              <tr className="bg-white border-t border-gray-200">
+              <tr className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                     Catatan
                   </label>
                   <textarea
@@ -830,12 +830,12 @@ export default function PurchaseForm({
                     }
                     placeholder="Catatan tambahan (opsional)"
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </td>
               </tr>
               {/* PPN masukan */}
-              <tr className="bg-emerald-50 border-t border-gray-200">
+              <tr className="bg-emerald-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3 space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -844,16 +844,16 @@ export default function PurchaseForm({
                       onChange={(e) =>
                         handleInputChange("kena_ppn", e.target.checked)
                       }
-                      className="w-4 h-4 rounded text-emerald-600"
+                      className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
                     />
-                    <span className="text-sm font-semibold text-emerald-800">
+                    <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
                       Pembelian ini kena PPN (PPN masukan)
                     </span>
                   </label>
                   {formData.kena_ppn && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
                           Tarif PPN (%)
                         </label>
                         <input
@@ -870,7 +870,7 @@ export default function PurchaseForm({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
                           Metode harga
                         </label>
                         <select
@@ -888,7 +888,7 @@ export default function PurchaseForm({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
                           No. Faktur Pajak Vendor
                         </label>
                         <input
@@ -905,7 +905,7 @@ export default function PurchaseForm({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
                           Tanggal Faktur Pajak
                         </label>
                         <input
@@ -931,9 +931,9 @@ export default function PurchaseForm({
                                 e.target.checked
                               )
                             }
-                            className="w-4 h-4 rounded text-emerald-600"
+                            className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
                           />
-                          <span className="text-xs text-gray-700">
+                          <span className="text-xs text-gray-700 dark:text-slate-300">
                             PPN masukan dapat dikreditkan (centang kalau faktur
                             pajak vendor lengkap dan vendor PKP)
                           </span>
@@ -944,9 +944,9 @@ export default function PurchaseForm({
                 </td>
               </tr>
               {/* Diterima Oleh Row */}
-              <tr className="bg-white border-t border-gray-200">
+              <tr className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                     Diterima Oleh
                     <span className="ml-1 text-xs font-normal text-gray-400">
                       (nama penerima barang di gudang)
@@ -959,7 +959,7 @@ export default function PurchaseForm({
                       handleInputChange("diterima_oleh", e.target.value)
                     }
                     placeholder="Nama penerima barang (opsional)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </td>
               </tr>
@@ -986,7 +986,7 @@ export default function PurchaseForm({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Batal
           </button>

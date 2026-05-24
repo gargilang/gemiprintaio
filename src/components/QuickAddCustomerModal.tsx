@@ -94,7 +94,7 @@ export default function QuickAddCustomerModal({
       header={
         <div className="bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -137,12 +137,12 @@ export default function QuickAddCustomerModal({
         </div>
       }
       footer={
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -163,7 +163,7 @@ export default function QuickAddCustomerModal({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Tipe Pelanggan
           </label>
           <div className="flex gap-4">
@@ -175,9 +175,9 @@ export default function QuickAddCustomerModal({
                 onChange={(e) =>
                   setTipePelanggan(e.target.value as "perorangan")
                 }
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-blue-600 dark:text-blue-300"
               />
-              <span className="text-gray-700">Perorangan</span>
+              <span className="text-gray-700 dark:text-slate-300">Perorangan</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -187,15 +187,15 @@ export default function QuickAddCustomerModal({
                 onChange={(e) =>
                   setTipePelanggan(e.target.value as "perusahaan")
                 }
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-blue-600 dark:text-blue-300"
               />
-              <span className="text-gray-700">Perusahaan</span>
+              <span className="text-gray-700 dark:text-slate-300">Perusahaan</span>
             </label>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Nama{" "}
             {tipePelanggan === "perorangan" ? "Lengkap" : "Contact Person"} *
           </label>
@@ -203,7 +203,7 @@ export default function QuickAddCustomerModal({
             type="text"
             value={nama}
             onChange={(e) => setNama(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
             placeholder="Masukkan nama..."
             required
           />
@@ -211,69 +211,69 @@ export default function QuickAddCustomerModal({
 
         {tipePelanggan === "perusahaan" && (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Nama Perusahaan
             </label>
             <input
               type="text"
               value={namaPerusahaan}
               onChange={(e) => setNamaPerusahaan(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
               placeholder="PT. Contoh..."
             />
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Nomor Telepon
           </label>
           <input
             type="tel"
             value={telepon}
             onChange={(e) => setTelepon(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
             placeholder="08xxxxxxxxxx"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Email
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
             placeholder="email@example.com"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Alamat
           </label>
           <textarea
             value={alamat}
             onChange={(e) => setAlamat(e.target.value)}
             rows={3}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
             placeholder="Alamat lengkap..."
           />
         </div>
 
-        <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+        <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-slate-800 rounded-lg border-2 border-amber-200 dark:border-amber-800/50">
           <input
             type="checkbox"
             id="memberStatus"
             checked={memberStatus}
             onChange={(e) => setMemberStatus(e.target.checked)}
-            className="w-5 h-5 text-amber-600"
+            className="w-5 h-5 text-amber-600 dark:text-amber-300"
           />
           <label htmlFor="memberStatus" className="flex-1 cursor-pointer">
-            <span className="font-semibold text-gray-800">Member</span>
-            <p className="text-sm text-gray-600">
+            <span className="font-semibold text-gray-800 dark:text-slate-100">Member</span>
+            <p className="text-sm text-gray-600 dark:text-slate-300">
               Member mendapatkan harga khusus
             </p>
           </label>

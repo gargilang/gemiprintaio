@@ -15,6 +15,15 @@ use std::time::{Duration, Instant};
 use tauri::{Manager, State};
 use uuid::Uuid;
 
+#[derive(serde::Serialize)]
+struct PrinterInfo {
+    name: String,
+    driver: Option<String>,
+    port: Option<String>,
+    status: Option<String>,
+    is_default: bool,
+}
+
 #[cfg(not(debug_assertions))]
 const BUNDLED_NEXT_PORT: u16 = 3000;
 #[cfg(debug_assertions)]
@@ -1290,6 +1299,109 @@ fn get_server_log_path() -> String {
     init_log_dir().join("server.log").display().to_string()
 }
 
+#[cfg(windows)]
+fn parse_windows_printers(stdout: &str) -> Result<Vec<PrinterInfo>, String> {
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let value: serde_json::Value = serde_json::from_str(trimmed).map_err(|e| e.to_string())?;
+    let rows: Vec<serde_json::Value> = match value {
+        serde_json::Value::Array(items) => items,
+        item => vec![item],
+    };
+
+    Ok(rows
+        .into_iter()
+        .filter_map(|row| {
+            let name = row.get("Name")?.as_str()?.trim().to_string();
+            if name.is_empty() {
+                return None;
+            }
+            Some(PrinterInfo {
+                name,
+                driver: row
+                    .get("DriverName")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+                port: row
+                    .get("PortName")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+                status: row
+                    .get("PrinterStatus")
+                    .map(|v| v.to_string().trim_matches('"').to_string())
+                    .filter(|s| !s.is_empty()),
+                is_default: row
+                    .get("Default")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
+            })
+        })
+        .collect())
+}
+
+#[cfg(not(windows))]
+fn parse_lpstat_printers(stdout: &str) -> Vec<PrinterInfo> {
+    stdout
+        .lines()
+        .filter_map(|line| {
+            let rest = line.strip_prefix("printer ")?;
+            let name = rest.split_whitespace().next()?.trim().to_string();
+            if name.is_empty() {
+                return None;
+            }
+            Some(PrinterInfo {
+                name,
+                driver: None,
+                port: None,
+                status: Some(line.to_string()),
+                is_default: false,
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn list_system_printers() -> Result<Vec<PrinterInfo>, String> {
+    #[cfg(windows)]
+    {
+        let output = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "Get-CimInstance Win32_Printer | Select-Object Name,DriverName,PortName,Default,PrinterStatus | ConvertTo-Json -Depth 3",
+            ])
+            .output()
+            .map_err(|e| format!("Tidak bisa membaca printer Windows: {e}"))?;
+
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+
+        return parse_windows_printers(&String::from_utf8_lossy(&output.stdout));
+    }
+
+    #[cfg(not(windows))]
+    {
+        let output = std::process::Command::new("lpstat")
+            .args(["-p"])
+            .output()
+            .map_err(|e| format!("Tidak bisa membaca printer sistem: {e}"))?;
+
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+
+        Ok(parse_lpstat_printers(&String::from_utf8_lossy(&output.stdout)))
+    }
+}
+
 fn main() {
     // Truncate log if it exceeds 1 MB
     let log_file = init_log_dir().join("server.log");
@@ -1364,6 +1476,7 @@ fn main() {
             sync_to_cloud,
             sync_from_cloud,
             get_server_log_path,
+            list_system_printers,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

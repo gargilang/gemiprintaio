@@ -100,7 +100,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-black opacity-10"></div>
 
       {/* Login Card */}
-      <div className="relative z-10 bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border-2 border-[#00afef]/20">
+      <div className="relative z-10 bg-white dark:bg-slate-900 p-10 rounded-2xl shadow-2xl w-full max-w-md border-2 border-[#00afef]/20">
         {/* Logo */}
         <div className="flex justify-center mb-3">
           <Image
@@ -117,9 +117,9 @@ export default function LoginPage() {
           style={{ fontWeight: 400 }}
         >
           <span className="text-[#00afef]">gemi</span>
-          <span className="text-[#0a1b3d]">print</span>
+          <span className="text-[#0a1b3d] dark:text-slate-100">print</span>
         </h1>
-        <p className="text-center text-[#6b7280] mb-6">
+        <p className="text-center text-[#6b7280] dark:text-slate-400 mb-6">
           Sistem Manajemen Internal
         </p>
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
             className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
               mode === "login"
                 ? "bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200"
             }`}
           >
             Login
@@ -150,7 +150,7 @@ export default function LoginPage() {
             className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
               mode === "register"
                 ? "bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200"
             }`}
           >
             Daftar
@@ -158,7 +158,7 @@ export default function LoginPage() {
         </div>
 
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded">
+          <div className="mb-6 p-4 bg-green-50 dark:bg-slate-800 border-l-4 border-green-500 text-green-700 rounded">
             <div className="flex items-center">
               <svg
                 className="w-5 h-5 mr-2 flex-shrink-0"
@@ -177,7 +177,7 @@ export default function LoginPage() {
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded animate-shake">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/40 border-l-4 border-red-500 text-red-700 rounded animate-shake">
             <div className="flex items-center">
               <svg
                 className="w-5 h-5 mr-2 flex-shrink-0"
@@ -200,14 +200,14 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Username
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
-                    className="h-5 w-5 text-[#6b7280]"
+                    className="h-5 w-5 text-[#6b7280] dark:text-slate-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -227,7 +227,7 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full pl-10 pr-4 py-3 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition text-[#1b1f23] placeholder:text-[#6b7280]/50"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                   placeholder="Masukkan username"
                 />
               </div>
@@ -236,14 +236,14 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
-                    className="h-5 w-5 text-[#6b7280]"
+                    className="h-5 w-5 text-[#6b7280] dark:text-slate-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -263,7 +263,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-12 py-3 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition text-[#1b1f23] placeholder:text-[#6b7280]/50"
+                  className="w-full pl-10 pr-12 py-3 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                   placeholder="Masukkan password"
                 />
                 {/* Toggle Show/Hide Password */}
@@ -275,7 +275,7 @@ export default function LoginPage() {
                   {showPassword ? (
                     // Eye Off Icon
                     <svg
-                      className="h-5 w-5 text-[#6b7280] hover:text-[#00afef]"
+                      className="h-5 w-5 text-[#6b7280] dark:text-slate-400 hover:text-[#00afef]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -290,7 +290,7 @@ export default function LoginPage() {
                   ) : (
                     // Eye Icon
                     <svg
-                      className="h-5 w-5 text-[#6b7280] hover:text-[#00afef]"
+                      className="h-5 w-5 text-[#6b7280] dark:text-slate-400 hover:text-[#00afef]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -352,7 +352,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-fullname"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Nama Lengkap
               </label>
@@ -362,7 +362,7 @@ export default function LoginPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                className="w-full px-4 py-3 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                 placeholder="Nama lengkap Anda"
               />
             </div>
@@ -370,7 +370,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-username"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Username
               </label>
@@ -380,7 +380,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                className="w-full px-4 py-3 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                 placeholder="Pilih username"
               />
             </div>
@@ -388,17 +388,17 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-email"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Email{" "}
-                <span className="text-gray-500 font-normal">(opsional)</span>
+                <span className="text-gray-500 dark:text-slate-400 font-normal">(opsional)</span>
               </label>
               <input
                 id="reg-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                className="w-full px-4 py-3 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                 placeholder="email@example.com"
               />
             </div>
@@ -406,7 +406,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-password"
-                className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Password
               </label>
@@ -418,7 +418,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={4}
-                  className="w-full px-4 py-3 pr-12 border-2 border-[#eef2f7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  className="w-full px-4 py-3 pr-12 border-2 border-[#eef2f7] dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition bg-white dark:bg-slate-800 text-[#1b1f23] dark:text-slate-100 placeholder:text-[#6b7280]/50 dark:placeholder:text-slate-500"
                   placeholder="Minimal 4 karakter"
                 />
                 <button
@@ -428,7 +428,7 @@ export default function LoginPage() {
                 >
                   {showPassword ? (
                     <svg
-                      className="h-5 w-5 text-[#6b7280] hover:text-[#00afef]"
+                      className="h-5 w-5 text-[#6b7280] dark:text-slate-400 hover:text-[#00afef]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -442,7 +442,7 @@ export default function LoginPage() {
                     </svg>
                   ) : (
                     <svg
-                      className="h-5 w-5 text-[#6b7280] hover:text-[#00afef]"
+                      className="h-5 w-5 text-[#6b7280] dark:text-slate-400 hover:text-[#00afef]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -501,7 +501,7 @@ export default function LoginPage() {
         )}
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-[#6b7280]">
+          <p className="text-xs text-[#6b7280] dark:text-slate-400">
             © 2025 gemiprint. All rights reserved.
           </p>
         </div>

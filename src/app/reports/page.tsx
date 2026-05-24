@@ -383,7 +383,7 @@ export default function ReportsPage() {
 
       {/* Report Type Selection */}
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
           Pilih Jenis Laporan
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
@@ -396,21 +396,21 @@ export default function ReportsPage() {
                 relative p-5 rounded-xl border-2 text-left transition-all duration-200
                 ${
                   selectedReportType === type.id && type.available
-                    ? "border-purple-500 bg-purple-50 shadow-lg transform scale-105"
+                    ? "border-purple-500 bg-purple-50 dark:bg-slate-800 shadow-lg transform scale-105"
                     : type.available
-                      ? "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md"
-                      : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                      ? "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-300 hover:shadow-md"
+                      : "border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800 cursor-not-allowed opacity-60"
                 }
               `}
             >
               {!type.available && (
-                <span className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">
+                <span className="absolute top-2 right-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs font-bold px-2 py-1 rounded-full">
                   Soon
                 </span>
               )}
-              <div className="mb-2 text-purple-600">{type.icon}</div>
-              <h4 className="font-bold text-gray-800 mb-1">{type.title}</h4>
-              <p className="text-xs text-gray-600">{type.description}</p>
+              <div className="mb-2 text-purple-600 dark:text-purple-300">{type.icon}</div>
+              <h4 className="font-bold text-gray-800 dark:text-slate-100 mb-1">{type.title}</h4>
+              <p className="text-xs text-gray-600 dark:text-slate-300">{type.description}</p>
             </button>
           ))}
         </div>
@@ -418,26 +418,26 @@ export default function ReportsPage() {
 
       {/* Financial Report Section */}
       {selectedReportType === "financial" && (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <CoinIcon size={24} className="text-purple-600" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <CoinIcon size={24} className="text-purple-600 dark:text-purple-300" />
             Laporan Keuangan
           </h3>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Archive Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">
                 Pilih Periode / Arsip
               </label>
 
               {loadingArchives ? (
                 <div className="text-center py-10">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
-                  <p className="mt-2 text-sm text-gray-600">Memuat arsip...</p>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">Memuat arsip...</p>
                 </div>
               ) : archives.length === 0 ? (
-                <div className="text-center py-10 bg-gray-50 rounded-xl">
+                <div className="text-center py-10 bg-gray-50 dark:bg-slate-800 rounded-xl">
                   <svg
                     className="w-20 h-20 mx-auto text-gray-300 mb-3"
                     fill="none"
@@ -451,10 +451,10 @@ export default function ReportsPage() {
                       d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
                     />
                   </svg>
-                  <p className="text-gray-600 font-medium">
+                  <p className="text-gray-600 dark:text-slate-300 font-medium">
                     Belum ada arsip tutup buku
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                     Buat arsip dari halaman Buku Keuangan
                   </p>
                 </div>
@@ -470,21 +470,21 @@ export default function ReportsPage() {
                           selectedArchive?.archived_label ===
                             archive.archived_label &&
                           selectedArchive?.archived_at === archive.archived_at
-                            ? "border-purple-500 bg-purple-50 shadow-md"
-                            : "border-gray-200 hover:border-purple-300 bg-white"
+                            ? "border-purple-500 bg-purple-50 dark:bg-slate-800 shadow-md"
+                            : "border-gray-200 dark:border-slate-800 hover:border-purple-300 bg-white dark:bg-slate-900"
                         }
                       `}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-800">
+                          <h4 className="font-bold text-gray-800 dark:text-slate-100">
                             {archive.archived_label}
                           </h4>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                             {formatDate(archive.start_date)} -{" "}
                             {formatDate(archive.end_date)}
                           </p>
-                          <p className="text-xs text-gray-500 mt-2">
+                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                             {archive.count} transaksi
                           </p>
                         </div>
@@ -515,12 +515,12 @@ export default function ReportsPage() {
 
             {/* Preview & Action */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">
                 Preview & Generate
               </label>
 
               {selectedArchive ? (
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border-2 border-purple-200 dark:border-purple-800/50">
                   <div className="text-center mb-6">
                     <svg
                       className="w-16 h-16 mx-auto text-purple-500 mb-3"
@@ -535,25 +535,25 @@ export default function ReportsPage() {
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       />
                     </svg>
-                    <h4 className="text-xl font-bold text-gray-800 mb-2">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-slate-100 mb-2">
                       {selectedArchive.archived_label}
                     </h4>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">
                       Periode: {formatDate(selectedArchive.start_date)} s/d{" "}
                       {formatDate(selectedArchive.end_date)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                       Total: {selectedArchive.count} transaksi
                     </p>
                   </div>
 
                   <div className="space-y-3">
-                    <div className="bg-white rounded-lg p-4 border border-purple-200">
-                      <h5 className="font-semibold text-gray-700 mb-2 text-sm flex items-center gap-2">
-                        <ClipboardIcon size={16} className="text-purple-600" />
+                    <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-purple-200 dark:border-purple-800/50">
+                      <h5 className="font-semibold text-gray-700 dark:text-slate-300 mb-2 text-sm flex items-center gap-2">
+                        <ClipboardIcon size={16} className="text-purple-600 dark:text-purple-300" />
                         Isi Laporan
                       </h5>
-                      <ul className="text-xs text-gray-600 space-y-1">
+                      <ul className="text-xs text-gray-600 dark:text-slate-300 space-y-1">
                         <li>• Ringkasan Saldo & Omzet</li>
                         <li>• Biaya Operasional & Bahan</li>
                         <li>• Laba Bersih Periode</li>
@@ -595,7 +595,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
+                <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
                   <svg
                     className="w-20 h-20 mx-auto text-gray-300 mb-3"
                     fill="none"
@@ -609,10 +609,10 @@ export default function ReportsPage() {
                       d="M7 11l5-5m0 0l5 5m-5-5v12"
                     />
                   </svg>
-                  <p className="text-gray-600 font-medium">
+                  <p className="text-gray-600 dark:text-slate-300 font-medium">
                     Pilih arsip terlebih dahulu
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                     untuk generate laporan PDF
                   </p>
                 </div>
@@ -675,36 +675,36 @@ function FormalReportPanel({
   const cashReport = report?.cashReport ?? emptyCashReport();
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-bold text-gray-800 mb-1">{title}</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">{title}</h3>
+          <p className="text-sm text-gray-600 dark:text-slate-300">
             Kalkulasi otomatis dari transaksi POS, HPP snapshot, persediaan,
             piutang, hutang, dan buku kas.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">
               Dari
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">
               Sampai
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => onEndDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <button
@@ -718,12 +718,12 @@ function FormalReportPanel({
       </div>
 
       {!report ? (
-        <div className="bg-gray-50 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
+        <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
           <ClipboardIcon size={48} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-700 font-semibold">
+          <p className="text-gray-700 dark:text-slate-300 font-semibold">
             Pilih periode lalu klik Muat Laporan
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
             Laporan dihitung langsung dari transaksi, bukan rumus bebas
             halaman Keuangan.
           </p>
@@ -956,12 +956,12 @@ function MetricCard({
   wide?: boolean;
 }) {
   const classes = {
-    green: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    slate: "border-slate-200 bg-slate-50 text-slate-700",
-    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:text-emerald-300",
+    slate: "border-slate-200 bg-slate-50 dark:bg-slate-800 text-slate-700",
+    blue: "border-blue-200 bg-blue-50 text-blue-700 dark:text-blue-300",
     red: "border-red-200 bg-red-50 text-red-700",
-    purple: "border-purple-200 bg-purple-50 text-purple-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    purple: "border-purple-200 bg-purple-50 text-purple-700 dark:text-purple-300",
+    amber: "border-amber-200 bg-amber-50 text-amber-700 dark:text-amber-300",
   }[color];
 
   return (
@@ -970,9 +970,9 @@ function MetricCard({
         wide ? "md:col-span-2" : ""
       }`}
     >
-      <p className="text-sm text-gray-600 font-semibold">{label}</p>
+      <p className="text-sm text-gray-600 dark:text-slate-300 font-semibold">{label}</p>
       <p className="text-2xl font-bold">{value}</p>
-      {detail && <p className="text-xs text-gray-500 mt-1">{detail}</p>}
+      {detail && <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{detail}</p>}
     </div>
   );
 }
@@ -987,9 +987,9 @@ function FormalTable({
   rows: string[][];
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
       {title && (
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-bold text-gray-800">
+        <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-800 font-bold text-gray-800 dark:text-slate-100">
           {title}
         </div>
       )}
@@ -1009,7 +1009,7 @@ function FormalTable({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-8 text-center text-gray-500"
+                  className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                 >
                   Tidak ada data untuk periode ini.
                 </td>
@@ -1018,10 +1018,10 @@ function FormalTable({
               rows.map((row, rowIndex) => (
                 <tr
                   key={rowIndex}
-                  className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  className={rowIndex % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"}
                 >
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="px-4 py-3 text-gray-700">
+                    <td key={cellIndex} className="px-4 py-3 text-gray-700 dark:text-slate-300">
                       {cell || "-"}
                     </td>
                   ))}

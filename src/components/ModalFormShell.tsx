@@ -59,7 +59,7 @@ export default function ModalFormShell({
     >
       <div
         ref={modalRef}
-        className={`bg-white rounded-2xl shadow-2xl w-full ${maxWidthClass} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full ${maxWidthClass} max-h-[90vh] overflow-hidden flex flex-col`}
       >
         {header}
         <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>

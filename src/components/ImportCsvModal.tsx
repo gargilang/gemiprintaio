@@ -91,9 +91,9 @@ export default function ImportCsvModal({
       allowDismiss={!dismissDisabled}
       maxWidthClass="max-w-md"
       header={
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 shrink-0 flex items-center justify-between gap-3">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-orange-500 to-pink-600 shrink-0 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -136,12 +136,12 @@ export default function ImportCsvModal({
         </div>
       }
       footer={
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={handleClose}
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -161,7 +161,7 @@ export default function ImportCsvModal({
         onSubmit={handleSubmit}
         className="p-6 space-y-4"
       >
-        <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm text-orange-800">
+        <div className="bg-orange-50 dark:bg-slate-800 border-2 border-orange-200 dark:border-orange-800/50 rounded-xl p-4 text-sm text-orange-800 dark:text-orange-200">
           <div className="font-bold mb-2">Format CSV yang Didukung:</div>
           <ul className="list-disc list-inside space-y-1 pl-2">
             <li>
@@ -180,7 +180,7 @@ export default function ImportCsvModal({
         <div>
           <label
             htmlFor="csv-file-input"
-            className="block text-sm font-semibold text-[#0a1b3d] mb-2"
+            className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
           >
             Pilih File CSV
           </label>
@@ -190,12 +190,12 @@ export default function ImportCsvModal({
             accept=".csv"
             onChange={handleFileChange}
             disabled={uploading}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600"
+            className="block w-full text-sm text-gray-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           {file && (
-            <p className="mt-2 text-xs text-gray-600">
+            <p className="mt-2 text-xs text-gray-600 dark:text-slate-300">
               File dipilih:{" "}
-              <span className="font-medium text-gray-800">{file.name}</span>
+              <span className="font-medium text-gray-800 dark:text-slate-100">{file.name}</span>
             </p>
           )}
         </div>
@@ -207,27 +207,27 @@ export default function ImportCsvModal({
             checked={append}
             onChange={(e) => setAppend(e.target.checked)}
             disabled={uploading}
-            className="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-600"
+            className="w-4 h-4 text-pink-600 bg-gray-100 dark:bg-slate-800 border-gray-300 rounded focus:ring-pink-600"
           />
-          <label htmlFor="append" className="ml-3 text-sm text-gray-700">
+          <label htmlFor="append" className="ml-3 text-sm text-gray-700 dark:text-slate-300">
             Tambahkan ke data yang ada (jangan hapus data lama).
           </label>
         </div>
 
         {!append && (
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-3 text-sm text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-slate-800 border-2 border-yellow-200 dark:border-yellow-800/50 rounded-xl p-3 text-sm text-yellow-800 dark:text-yellow-200">
             ⚠️ Tanpa ini, semua data aktif akan dihapus & diganti data CSV.
           </div>
         )}
 
         {progress && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 text-sm text-green-800 font-medium">
+          <div className="bg-green-50 dark:bg-slate-800 border-2 border-green-200 dark:border-slate-700 rounded-xl p-3 text-sm text-green-800 dark:text-green-200 font-medium">
             {progress}
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-3 text-sm text-red-800 font-medium">
+          <div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-3 text-sm text-red-800 dark:text-red-200 font-medium">
             {error}
           </div>
         )}

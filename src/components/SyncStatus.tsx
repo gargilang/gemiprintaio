@@ -128,15 +128,15 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
       <div
         className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
           cloudConnected
-            ? "bg-green-100 text-green-700 border border-green-200"
-            : "bg-red-100 text-red-700 border border-red-200"
+            ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-700/50"
+            : "bg-red-100 text-red-700 border border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-700/50"
         }`}
       >
         {cloudConnected ? "Online" : "Mode Offline"}
       </div>
 
       {pendingOps > 0 && (
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-gray-600 dark:text-slate-300">
           {pendingOps} perubahan menunggu sinkron
         </span>
       )}
@@ -144,18 +144,18 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
       <button
         onClick={handleSync}
         disabled={!cloudConnected || isSyncing}
-        className="px-3 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-1 text-xs bg-amber-50 dark:bg-slate-8000 text-white rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSyncing ? "Menyinkronkan..." : "Sinkronkan"}
       </button>
 
       {lastSync && (
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-500 dark:text-slate-400">
           Sinkron terakhir: {formatLastSyncDayDate(lastSync)}
         </span>
       )}
 
-      <span className="text-xs text-gray-400">
+      <span className="text-xs text-gray-400 dark:text-slate-500">
         {isTauri ? "Desktop" : "Web"}
       </span>
     </div>

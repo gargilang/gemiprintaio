@@ -253,39 +253,39 @@ export function getKategoriTransaksiClasses(kategori: KategoriTransaksi): {
   const colorMap: Record<string, { bg: string; text: string; border: string }> =
     {
       blue: {
-        bg: "bg-blue-100",
-        text: "text-blue-800",
+        bg: "bg-blue-100 dark:bg-blue-900/30",
+        text: "text-blue-800 dark:text-blue-200",
         border: "border-blue-300",
       },
       green: {
-        bg: "bg-green-100",
+        bg: "bg-green-100 dark:bg-green-900/30",
         text: "text-green-800",
         border: "border-green-300",
       },
-      red: { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
+      red: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-800", border: "border-red-300" },
       yellow: {
-        bg: "bg-yellow-100",
+        bg: "bg-yellow-100 dark:bg-yellow-900/30",
         text: "text-yellow-800",
         border: "border-yellow-300",
       },
       purple: {
-        bg: "bg-purple-100",
+        bg: "bg-purple-100 dark:bg-purple-900/30",
         text: "text-purple-800",
         border: "border-purple-300",
       },
       pink: {
-        bg: "bg-pink-100",
+        bg: "bg-pink-100 dark:bg-pink-900/30",
         text: "text-pink-800",
         border: "border-pink-300",
       },
       orange: {
-        bg: "bg-orange-100",
+        bg: "bg-orange-100 dark:bg-orange-900/30",
         text: "text-orange-800",
         border: "border-orange-300",
       },
       gray: {
-        bg: "bg-gray-100",
-        text: "text-gray-800",
+        bg: "bg-gray-100 dark:bg-slate-800",
+        text: "text-gray-800 dark:text-slate-100",
         border: "border-gray-300",
       },
     };

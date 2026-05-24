@@ -184,12 +184,12 @@ export default function PayReceivableModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+            <div className="bg-white dark:bg-slate-900/20 backdrop-blur-sm p-2 rounded-lg">
               <MoneyIcon size={24} className="text-white" />
             </div>
             <h2 className="text-xl font-bold text-white">
@@ -227,12 +227,12 @@ export default function PayReceivableModal({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Receivable list */}
               <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
                   Daftar Penjualan Berpiutang
                 </h3>
 
                 {receivables.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-gray-500 dark:text-slate-400">
                     <svg
                       className="w-16 h-16 mx-auto mb-3 opacity-30"
                       fill="none"
@@ -257,38 +257,38 @@ export default function PayReceivableModal({
                         onClick={() => handleSelectReceivable(receivable)}
                         className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                           selectedReceivable?.id === receivable.id
-                            ? "border-[#00afef] bg-cyan-50"
-                            : "border-gray-200 hover:border-[#00afef]/50 hover:bg-cyan-50/50"
+                            ? "border-[#00afef] bg-cyan-50 dark:bg-slate-800"
+                            : "border-gray-200 dark:border-slate-800 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
-                            <div className="font-bold text-gray-800">
+                            <div className="font-bold text-gray-800 dark:text-slate-100">
                               {receivable.nomor_invoice}
                             </div>
-                            <div className="text-sm text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                               {receivable.pelanggan_nama || "Walk-in Customer"}
                             </div>
                             {receivable.dibuat_pada && (
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                                 {formatDate(receivable.dibuat_pada)}
                               </div>
                             )}
                             <div className="mt-3 space-y-1">
                               <div className="text-sm">
-                                <span className="text-gray-600">Total:</span>{" "}
+                                <span className="text-gray-600 dark:text-slate-300">Total:</span>{" "}
                                 <span className="font-semibold">
                                   {formatRupiah(receivable.jumlah_piutang)}
                                 </span>
                               </div>
                               <div className="text-sm">
-                                <span className="text-gray-600">Terbayar:</span>{" "}
+                                <span className="text-gray-600 dark:text-slate-300">Terbayar:</span>{" "}
                                 <span className="font-semibold text-green-600">
                                   {formatRupiah(receivable.jumlah_terbayar)}
                                 </span>
                               </div>
                               <div className="text-sm">
-                                <span className="text-gray-600">Sisa:</span>{" "}
+                                <span className="text-gray-600 dark:text-slate-300">Sisa:</span>{" "}
                                 <span className="font-bold text-red-600">
                                   {formatRupiah(receivable.sisa_piutang)}
                                 </span>
@@ -298,8 +298,8 @@ export default function PayReceivableModal({
                           <div
                             className={`px-2 py-1 rounded text-xs font-semibold ${
                               receivable.status === "AKTIF"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-yellow-100 text-yellow-700"
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-700"
+                                : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
                             }`}
                           >
                             {receivable.status}
@@ -313,7 +313,7 @@ export default function PayReceivableModal({
 
               {/* Payment form */}
               <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
                   Form Pembayaran
                 </h3>
 
@@ -341,7 +341,7 @@ export default function PayReceivableModal({
                     className="space-y-4"
                   >
                     {error && (
-                      <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                      <div className="p-4 bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/50 rounded-lg">
                         <p className="text-sm text-red-700 font-semibold">
                           {error}
                         </p>
@@ -349,10 +349,10 @@ export default function PayReceivableModal({
                     )}
 
                     <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-[#00afef]/30 rounded-lg">
-                      <div className="text-sm text-gray-600 mb-2">
+                      <div className="text-sm text-gray-600 dark:text-slate-300 mb-2">
                         Invoice: {selectedReceivable.nomor_invoice}
                       </div>
-                      <div className="text-2xl font-bold text-gray-800">
+                      <div className="text-2xl font-bold text-gray-800 dark:text-slate-100">
                         Sisa Piutang
                       </div>
                       <div className="text-3xl font-bold text-[#00afef] mt-1">
@@ -361,7 +361,7 @@ export default function PayReceivableModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Jumlah Pembayaran *
                       </label>
                       <input
@@ -369,7 +369,7 @@ export default function PayReceivableModal({
                         step="0.01"
                         value={jumlahBayar}
                         onChange={(e) => setJumlahBayar(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         required
                       />
                       <div className="mt-2 flex gap-2">
@@ -380,7 +380,7 @@ export default function PayReceivableModal({
                               selectedReceivable.sisa_piutang.toString()
                             )
                           }
-                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
+                          className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
                         >
                           Lunas ({formatRupiah(selectedReceivable.sisa_piutang)}
                           )
@@ -392,7 +392,7 @@ export default function PayReceivableModal({
                               (selectedReceivable.sisa_piutang / 2).toString()
                             )
                           }
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
                         >
                           50% (
                           {formatRupiah(selectedReceivable.sisa_piutang / 2)})
@@ -401,26 +401,26 @@ export default function PayReceivableModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Tanggal Pembayaran *
                       </label>
                       <input
                         type="date"
                         value={tanggalBayar}
                         onChange={(e) => setTanggalBayar(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Metode Pembayaran *
                       </label>
                       <select
                         value={metodePembayaran}
                         onChange={(e) => setMetodePembayaran(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                       >
                         <option value="CASH">Cash</option>
                         <option value="TRANSFER">Transfer</option>
@@ -430,27 +430,27 @@ export default function PayReceivableModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Referensi (No. Transaksi/Bukti)
                       </label>
                       <input
                         type="text"
                         value={referensi}
                         onChange={(e) => setReferensi(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         placeholder="Opsional"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Catatan
                       </label>
                       <textarea
                         value={catatan}
                         onChange={(e) => setCatatan(e.target.value)}
                         rows={3}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         placeholder="Catatan tambahan..."
                       />
                     </div>
@@ -462,12 +462,12 @@ export default function PayReceivableModal({
           )}
         </div>
 
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>

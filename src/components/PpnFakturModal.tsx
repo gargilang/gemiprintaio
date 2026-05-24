@@ -151,9 +151,9 @@ export default function PpnFakturModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-800">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">
             Faktur Pajak (PPN Keluaran)
           </h2>
           <button
@@ -169,14 +169,14 @@ export default function PpnFakturModal({
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+            <div className="px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 rounded text-sm">
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tarif PPN (%)
               </label>
               <input
@@ -190,7 +190,7 @@ export default function PpnFakturModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Metode harga
               </label>
               <select
@@ -211,7 +211,7 @@ export default function PpnFakturModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Kode transaksi
               </label>
               <select
@@ -232,7 +232,7 @@ export default function PpnFakturModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tahun
               </label>
               <input
@@ -246,7 +246,7 @@ export default function PpnFakturModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Nomor seri
               </label>
               <input
@@ -266,7 +266,7 @@ export default function PpnFakturModal({
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               {data.nsfp_kode_transaksi && data.nsfp_tahun && data.nsfp_nomor_seri
                 ? `NSFP: ${formatNsfpString(
                     data.nsfp_kode_transaksi,
@@ -286,11 +286,11 @@ export default function PpnFakturModal({
           </div>
 
           {available.length > 0 && (
-            <details className="text-xs text-gray-600">
+            <details className="text-xs text-gray-600 dark:text-slate-300">
               <summary className="cursor-pointer">
                 Daftar NSFP tersedia ({available.length})
               </summary>
-              <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 space-y-1 font-mono">
+              <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-slate-800 rounded p-2 space-y-1 font-mono">
                 {available.slice(0, 50).map((row) => (
                   <button
                     key={row.id}
@@ -313,7 +313,7 @@ export default function PpnFakturModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tanggal faktur pajak
             </label>
             <input
@@ -326,13 +326,13 @@ export default function PpnFakturModal({
             />
           </div>
 
-          <div className="border-t border-gray-200 pt-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">
+          <div className="border-t border-gray-200 dark:border-slate-800 pt-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
               Data pelanggan untuk faktur pajak
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   Nama (sesuai NPWP)
                 </label>
                 <input
@@ -348,7 +348,7 @@ export default function PpnFakturModal({
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">
+                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                   NPWP pelanggan
                 </label>
                 <input
@@ -371,7 +371,7 @@ export default function PpnFakturModal({
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">
+              <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
                 Alamat sesuai NPWP
               </label>
               <textarea
@@ -389,14 +389,14 @@ export default function PpnFakturModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
               onClear();
               onClose();
             }}
-            className="text-sm text-red-600 hover:text-red-800"
+            className="text-sm text-red-600 hover:text-red-800 dark:text-red-200"
           >
             Hapus PPN dari transaksi
           </button>

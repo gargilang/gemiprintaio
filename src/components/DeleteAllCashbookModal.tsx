@@ -40,11 +40,11 @@ export default function DeleteAllCashbookModal({
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
       >
-        <div className="p-6 border-b border-gray-200 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600 shrink-0 flex items-center justify-between gap-3">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-800 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600 shrink-0 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900/20 flex items-center justify-center shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -100,19 +100,19 @@ export default function DeleteAllCashbookModal({
         </div>
 
         <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
-          <p className="text-base text-gray-600">
+          <p className="text-base text-gray-600 dark:text-slate-300">
             Aksi ini akan menghapus semua transaksi dari buku keuangan aktif
             secara permanen.
           </p>
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 text-sm text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-slate-800 border-2 border-yellow-300 rounded-xl p-4 text-sm text-yellow-800 dark:text-yellow-200">
             <strong>Peringatan:</strong> Aksi ini tidak dapat dibatalkan.
             Pastikan Anda sudah melakukan backup jika diperlukan.
           </div>
-          <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 text-sm">
-            <p className="font-bold text-blue-800 mb-2">
+          <div className="bg-blue-50 dark:bg-slate-800 border-2 border-blue-300 dark:border-slate-700 rounded-xl p-4 text-sm">
+            <p className="font-bold text-blue-800 dark:text-blue-200 mb-2">
               Data berikut TIDAK akan terpengaruh:
             </p>
-            <ul className="list-disc list-inside pl-2 text-blue-700">
+            <ul className="list-disc list-inside pl-2 text-blue-700 dark:text-blue-300">
               <li>Arsip Tutup Buku</li>
               <li>Data Pelanggan, Material, Vendor</li>
               <li>Data Invoice</li>
@@ -121,12 +121,12 @@ export default function DeleteAllCashbookModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
+        <div className="p-6 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>

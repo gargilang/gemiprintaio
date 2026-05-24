@@ -441,7 +441,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
+          <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">Loading...</p>
         </div>
       </div>
     );
@@ -464,7 +464,7 @@ export default function UsersPage() {
               </div>
               <button
                 onClick={() => handleOpenModal()}
-                className="px-6 py-3 bg-white text-[#0a1b3d] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-white dark:bg-slate-900 text-[#0a1b3d] dark:text-slate-100 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <svg
                   className="w-5 h-5"
@@ -485,24 +485,24 @@ export default function UsersPage() {
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-[#0a1b3d]/10 to-[#00afef]/10">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                       User
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                       Email
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                       Role
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d]">
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                       Aksi
                     </th>
                   </tr>
@@ -520,30 +520,30 @@ export default function UsersPage() {
                               user.nama_pengguna.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-semibold text-[#0a1b3d]">
+                            <div className="font-semibold text-[#0a1b3d] dark:text-slate-100">
                               {user.nama_lengkap || user.nama_pengguna}
                             </div>
-                            <div className="text-sm text-[#6b7280]">
+                            <div className="text-sm text-[#6b7280] dark:text-slate-400">
                               @{user.nama_pengguna}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-[#6b7280]">{user.email}</td>
+                      <td className="px-6 py-4 text-[#6b7280] dark:text-slate-400">{user.email}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             user.role === "admin"
-                              ? "bg-purple-100 text-purple-700"
+                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                               : user.role === "manager"
-                              ? "bg-blue-100 text-blue-700"
+                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                               : user.role === "staff"
-                              ? "bg-amber-100 text-amber-700"
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                               : user.role === "kasir"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                               : user.role === "operator"
-                              ? "bg-cyan-100 text-cyan-700"
-                              : "bg-gray-100 text-gray-700"
+                              ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700"
+                              : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
                           }`}
                         >
                           {user.role}
@@ -554,8 +554,8 @@ export default function UsersPage() {
                           onClick={() => handleToggleActive(user.id)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                             user.aktif_status
-                              ? "bg-green-100 text-green-700 hover:bg-green-200"
-                              : "bg-red-100 text-red-700 hover:bg-red-200"
+                              ? "bg-green-100 dark:bg-green-900/30 text-green-700 hover:bg-green-200"
+                              : "bg-red-100 dark:bg-red-900/30 text-red-700 hover:bg-red-200"
                           }`}
                         >
                           {user.aktif_status ? "Aktif" : "Nonaktif"}
@@ -565,7 +565,7 @@ export default function UsersPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenModal(user)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 dark:text-blue-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                             title="Edit"
                           >
                             <svg
@@ -584,7 +584,7 @@ export default function UsersPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(user)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
                             title="Hapus"
                           >
                             <svg
@@ -610,7 +610,7 @@ export default function UsersPage() {
             </div>
 
             {users.length === 0 && (
-              <div className="text-center py-12 text-[#6b7280]">
+              <div className="text-center py-12 text-[#6b7280] dark:text-slate-400">
                 <p>Belum ada user.</p>
               </div>
             )}
@@ -618,32 +618,32 @@ export default function UsersPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-[#00afef]">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-[#00afef]">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] font-semibold">Total Users</h4>
+                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Total Users</h4>
                 <UsersIcon size={28} className="text-[#00afef]" />
               </div>
-              <p className="text-3xl font-bold text-[#0a1b3d]">
+              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 {users.length}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-green-500">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-green-500">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] font-semibold">Aktif</h4>
+                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Aktif</h4>
                 <CheckIcon size={28} className="text-green-600" />
               </div>
-              <p className="text-3xl font-bold text-[#0a1b3d]">
+              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 {users.filter((u) => u.aktif_status).length}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-l-purple-500">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-purple-500">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] font-semibold">Admin</h4>
-                <CrownIcon size={28} className="text-purple-600" />
+                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Admin</h4>
+                <CrownIcon size={28} className="text-purple-600 dark:text-purple-300" />
               </div>
-              <p className="text-3xl font-bold text-[#0a1b3d]">
+              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 {users.filter((u) => u.role === "admin").length}
               </p>
             </div>
@@ -675,7 +675,7 @@ export default function UsersPage() {
               });
               setShowCredModal(true);
             }}
-            className="px-6 py-3 bg-white text-[#0a1b3d] rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+            className="px-6 py-3 bg-white dark:bg-slate-900 text-[#0a1b3d] dark:text-slate-100 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -695,24 +695,24 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-[#0a1b3d]/10 to-[#00afef]/10">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                   Layanan
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                   Akun
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                   Password
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d]">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                   Visibilitas
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d]">
+                <th className="px-6 py-4 text-right text-sm font-semibold text-[#0a1b3d] dark:text-slate-100">
                   Aksi
                 </th>
               </tr>
@@ -720,16 +720,16 @@ export default function UsersPage() {
             <tbody className="divide-y divide-gray-100">
               {credentials.map((c) => (
                 <tr key={c.id} className="hover:bg-sky-50/40 transition-colors">
-                  <td className="px-6 py-4 text-[#0a1b3d] font-semibold">
+                  <td className="px-6 py-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">
                     {c.nama_layanan}
                   </td>
-                  <td className="px-6 py-4 text-[#6b7280]">
+                  <td className="px-6 py-4 text-[#6b7280] dark:text-slate-400">
                     {c.nama_pengguna_akun}
                   </td>
                   <td className="px-6 py-4">
                     {c.dapat_melihat_password ? (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-[#0a1b3d]">
+                        <span className="font-mono text-sm text-[#0a1b3d] dark:text-slate-100">
                           {showingPasswordId === c.id && visiblePasswords[c.id]
                             ? visiblePasswords[c.id]
                             : "••••••••"}
@@ -810,7 +810,7 @@ export default function UsersPage() {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[#6b7280] text-sm italic">
+                      <span className="text-[#6b7280] dark:text-slate-400 text-sm italic">
                         Tidak ada akses
                       </span>
                     )}
@@ -819,8 +819,8 @@ export default function UsersPage() {
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         c.privat_status
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
+                          ? "bg-red-100 dark:bg-red-900/30 text-red-700"
+                          : "bg-green-100 dark:bg-green-900/30 text-green-700"
                       }`}
                     >
                       {c.privat_status ? "Private" : "Tim"}
@@ -864,7 +864,7 @@ export default function UsersPage() {
                               );
                             }
                           }}
-                          className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 text-emerald-700 dark:text-emerald-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                           title="Salin Password"
                         >
                           <svg
@@ -950,7 +950,7 @@ export default function UsersPage() {
                             },
                           });
                         }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
                         title="Hapus"
                       >
                         <svg
@@ -976,7 +976,7 @@ export default function UsersPage() {
         </div>
 
         {credentials.length === 0 && (
-          <div className="text-center py-12 text-[#6b7280]">
+          <div className="text-center py-12 text-[#6b7280] dark:text-slate-400">
             <p>Belum ada kredensial.</p>
           </div>
         )}
@@ -987,9 +987,9 @@ export default function UsersPage() {
         onClose={handleCloseModal}
         maxWidthClass="max-w-md"
         header={
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] flex items-center justify-between shrink-0">
+          <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
                 <UsersIcon size={28} className="text-white" />
               </div>
               <h3 className="text-xl font-bold text-white truncate">
@@ -1019,11 +1019,11 @@ export default function UsersPage() {
           </div>
         }
         footer={
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={handleCloseModal}
-              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
             >
               Batal
             </button>
@@ -1043,7 +1043,7 @@ export default function UsersPage() {
               className="p-6 space-y-4"
             >
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Username
                 </label>
                 <input
@@ -1054,13 +1054,13 @@ export default function UsersPage() {
                   }
                   required
                   disabled={!!editingUser}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100"
                   placeholder="username"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Nama Lengkap
                 </label>
                 <input
@@ -1070,13 +1070,13 @@ export default function UsersPage() {
                     setFormData({ ...formData, nama_lengkap: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Email
                 </label>
                 <input
@@ -1086,13 +1086,13 @@ export default function UsersPage() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="email@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Password {editingUser && "(kosongkan jika tidak diubah)"}
                 </label>
                 <div className="relative">
@@ -1103,13 +1103,13 @@ export default function UsersPage() {
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required={!editingUser}
-                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowUserPassword(!showUserPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00afef] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 hover:text-[#00afef] transition-colors"
                   >
                     {showUserPassword ? (
                       <svg
@@ -1151,7 +1151,7 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Role
                 </label>
                 <select
@@ -1159,7 +1159,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, role: e.target.value as AppRole })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="user">User</option>
                   <option value="operator">Operator</option>
@@ -1185,7 +1185,7 @@ export default function UsersPage() {
                 />
                 <label
                   htmlFor="aktif_status"
-                  className="text-sm font-medium text-[#0a1b3d]"
+                  className="text-sm font-medium text-[#0a1b3d] dark:text-slate-100"
                 >
                   User Aktif
                 </label>
@@ -1199,9 +1199,9 @@ export default function UsersPage() {
         onClose={handleCloseCredModal}
         maxWidthClass="max-w-md"
         header={
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 flex items-center justify-between shrink-0 gap-3">
+          <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 flex items-center justify-between shrink-0 gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-2 bg-white/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
                 <KeyIcon size={24} className="text-white" />
               </div>
               <h3 className="text-xl font-bold text-white truncate">
@@ -1231,11 +1231,11 @@ export default function UsersPage() {
           </div>
         }
         footer={
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={handleCloseCredModal}
-              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
             >
               Batal
             </button>
@@ -1255,7 +1255,7 @@ export default function UsersPage() {
               className="p-6 space-y-4"
             >
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Nama Layanan
                 </label>
                 <input
@@ -1265,12 +1265,12 @@ export default function UsersPage() {
                     setCredForm({ ...credForm, nama_layanan: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="Microsoft, Google, GitHub, BCA, dll."
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Akun (Email/Username)
                 </label>
                 <input
@@ -1283,12 +1283,12 @@ export default function UsersPage() {
                     })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="email@example.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Password {editingCred && "(kosongkan jika tidak diubah)"}
                 </label>
                 <div className="relative">
@@ -1299,13 +1299,13 @@ export default function UsersPage() {
                       setCredForm({ ...credForm, password: e.target.value })
                     }
                     required={!editingCred}
-                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCredPassword(!showCredPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:text-emerald-300 transition-colors"
                   >
                     {showCredPassword ? (
                       <svg
@@ -1346,7 +1346,7 @@ export default function UsersPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Catatan
                 </label>
                 <textarea
@@ -1354,7 +1354,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setCredForm({ ...credForm, catatan: e.target.value })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="Keterangan tambahan"
                 />
               </div>
@@ -1369,11 +1369,11 @@ export default function UsersPage() {
                       privat_status: e.target.checked,
                     })
                   }
-                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  className="w-4 h-4 text-emerald-600 dark:text-emerald-300 border-gray-300 rounded focus:ring-emerald-500"
                 />
                 <label
                   htmlFor="cred_private"
-                  className="text-sm font-medium text-[#0a1b3d]"
+                  className="text-sm font-medium text-[#0a1b3d] dark:text-slate-100"
                 >
                   Sembunyikan dari user lain
                 </label>

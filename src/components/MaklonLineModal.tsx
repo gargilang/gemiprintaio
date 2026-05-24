@@ -166,7 +166,7 @@ export default function MaklonLineModal({
       header={
         <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -213,28 +213,28 @@ export default function MaklonLineModal({
         </div>
       }
       footer={
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-gray-700">
+            <div className="text-xs text-gray-700 dark:text-slate-300">
               <div>
                 Tagih ke customer:{" "}
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-slate-100">
                   Rp {subtotalCustomer.toLocaleString("id-ID")}
                 </span>
               </div>
               <div>
                 Bayar ke vendor:{" "}
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 dark:text-slate-100">
                   Rp {biayaSubkontrak.toLocaleString("id-ID")}
                 </span>
               </div>
               <div
                 className={`mt-0.5 font-semibold ${
                   isLoss
-                    ? "text-amber-700"
+                    ? "text-amber-700 dark:text-amber-300"
                     : margin > 0
-                      ? "text-emerald-700"
-                      : "text-gray-700"
+                      ? "text-emerald-700 dark:text-emerald-300"
+                      : "text-gray-700 dark:text-slate-300"
                 }`}
               >
                 Margin:{" "}
@@ -247,7 +247,7 @@ export default function MaklonLineModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+                className="px-5 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
               >
                 Batal
               </button>
@@ -269,7 +269,7 @@ export default function MaklonLineModal({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Deskripsi Pekerjaan <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -277,17 +277,17 @@ export default function MaklonLineModal({
             onChange={(e) => setDeskripsi(e.target.value)}
             rows={2}
             placeholder='Contoh: "Cetak banner 3 x 2 meter, 5 pcs"'
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
             required
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
             Akan tampil di faktur sebagai nama item.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Jumlah <span className="text-red-500">*</span>
             </label>
             <input
@@ -296,12 +296,12 @@ export default function MaklonLineModal({
               min="0"
               value={jumlahStr}
               onChange={(e) => setJumlahStr(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Satuan
             </label>
             <input
@@ -309,7 +309,7 @@ export default function MaklonLineModal({
               list="maklon-satuan-options"
               value={namaSatuan}
               onChange={(e) => setNamaSatuan(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
             />
             <datalist id="maklon-satuan-options">
               {SATUAN_OPTIONS.map((s) => (
@@ -318,7 +318,7 @@ export default function MaklonLineModal({
             </datalist>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Harga Jual / Satuan <span className="text-red-500">*</span>
             </label>
             <input
@@ -328,26 +328,26 @@ export default function MaklonLineModal({
               value={hargaJualStr}
               onChange={(e) => setHargaJualStr(e.target.value)}
               placeholder="0"
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 dark:border-slate-800 pt-4">
           <div className="text-xs font-bold uppercase tracking-wide text-[#2266ff] mb-2">
             Vendor Subkontraktor (Pengerja)
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                 Vendor <span className="text-red-500">*</span>
               </label>
               <select
                 value={vendorId}
                 onChange={(e) => setVendorId(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] bg-white"
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
                 required
               >
                 <option value="">Pilih vendor...</option>
@@ -359,7 +359,7 @@ export default function MaklonLineModal({
                 ))}
               </select>
               {safeSubkontraktor.length === 0 && (
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                   Belum ada vendor bertipe Subkontraktor. Tambahkan di
                   halaman Vendor terlebih dahulu.
                 </p>
@@ -367,7 +367,7 @@ export default function MaklonLineModal({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                 Biaya ke Vendor (Total){" "}
                 <span className="text-red-500">*</span>
               </label>
@@ -378,17 +378,17 @@ export default function MaklonLineModal({
                 value={biayaSubkontrakStr}
                 onChange={(e) => setBiayaSubkontrakStr(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 Total biaya untuk seluruh jumlah, bukan per satuan.
               </p>
             </div>
           </div>
 
           <div className="mt-3">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Cara Bayar Vendor <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
@@ -413,7 +413,7 @@ export default function MaklonLineModal({
                   className={`flex-1 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
                     metodeBayarVendor === opt.value
                       ? "bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white border-[#2266ff] shadow-sm"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-[#2266ff]"
+                      : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 hover:border-[#2266ff]"
                   }`}
                 >
                   <div>{opt.label}</div>
@@ -421,7 +421,7 @@ export default function MaklonLineModal({
                     className={`text-[10px] ${
                       metodeBayarVendor === opt.value
                         ? "text-white/80"
-                        : "text-gray-500"
+                        : "text-gray-500 dark:text-slate-400"
                     }`}
                   >
                     {opt.sub}
@@ -433,7 +433,7 @@ export default function MaklonLineModal({
         </div>
 
         {isLoss && (
-          <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="rounded-lg border-2 border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-slate-800 p-3 text-sm text-amber-900">
             <strong>Peringatan:</strong> Biaya ke vendor lebih besar dari
             harga jual. Transaksi tetap bisa diproses, tapi pastikan ini
             disengaja.

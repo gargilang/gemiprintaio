@@ -76,10 +76,10 @@ const CashBookRow = memo(
       <tr
         className={`
           hover:bg-orange-50 transition-all cursor-default
-          ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+          ${index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"}
         `}
       >
-        <td className="px-3 py-3 text-sm text-gray-700 whitespace-nowrap">
+        <td className="px-3 py-3 text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">
           {formatDateJakarta(cashBook.tanggal)}
         </td>
         <td className="px-3 py-3">
@@ -102,7 +102,7 @@ const CashBookRow = memo(
             <span className="text-gray-400">-</span>
           )}
         </td>
-        <td className="px-3 py-3 text-sm text-gray-700 max-w-xs truncate">
+        <td className="px-3 py-3 text-sm text-gray-700 dark:text-slate-300 max-w-xs truncate">
           {stripReferenceId(cashBook.keperluan) || "-"}
         </td>
         <td className="px-3 py-3 text-sm text-right font-bold text-pink-600">
@@ -114,7 +114,7 @@ const CashBookRow = memo(
               <>
                 <button
                   onClick={() => onEdit(cashBook)}
-                  className="p-2 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  className="p-2 text-pink-600 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
                   title="Edit Transaction"
                 >
                   <svg
@@ -133,7 +133,7 @@ const CashBookRow = memo(
                 </button>
                 <button
                   onClick={() => onEditManual(cashBook)}
-                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  className="p-2 text-orange-600 dark:text-orange-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
                   title="Edit Manual (Override)"
                 >
                   <svg
@@ -152,7 +152,7 @@ const CashBookRow = memo(
                 </button>
                 <button
                   onClick={() => onDelete(cashBook)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                  className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors inline-flex items-center justify-center"
                   title="Delete"
                 >
                   <svg
@@ -879,37 +879,37 @@ export default function FinancePage() {
       { bg: string; text: string; border: string }
     > = {
       KAS: {
-        bg: "bg-blue-100",
-        text: "text-blue-800",
+        bg: "bg-blue-100 dark:bg-blue-900/30",
+        text: "text-blue-800 dark:text-blue-200",
         border: "border-blue-300",
       },
       BIAYA: {
-        bg: "bg-red-100",
+        bg: "bg-red-100 dark:bg-red-900/30",
         text: "text-red-800",
         border: "border-red-300",
       },
       OMZET: {
-        bg: "bg-green-100",
+        bg: "bg-green-100 dark:bg-green-900/30",
         text: "text-green-800",
         border: "border-green-300",
       },
       INVESTOR: {
-        bg: "bg-purple-100",
+        bg: "bg-purple-100 dark:bg-purple-900/30",
         text: "text-purple-800",
         border: "border-purple-300",
       },
       SUBSIDI: {
-        bg: "bg-yellow-100",
+        bg: "bg-yellow-100 dark:bg-yellow-900/30",
         text: "text-yellow-800",
         border: "border-yellow-300",
       },
       LUNAS: {
-        bg: "bg-teal-100",
+        bg: "bg-teal-100 dark:bg-teal-900/30",
         text: "text-teal-800",
         border: "border-teal-300",
       },
       SUPPLY: {
-        bg: "bg-orange-100",
+        bg: "bg-orange-100 dark:bg-orange-900/30",
         text: "text-orange-800",
         border: "border-orange-300",
       },
@@ -919,17 +919,17 @@ export default function FinancePage() {
         border: "border-slate-300",
       },
       LABA: {
-        bg: "bg-emerald-100",
+        bg: "bg-emerald-100 dark:bg-emerald-900/30",
         text: "text-emerald-800",
         border: "border-emerald-300",
       },
       KOMISI: {
-        bg: "bg-cyan-100",
+        bg: "bg-cyan-100 dark:bg-cyan-900/30",
         text: "text-cyan-800",
         border: "border-cyan-300",
       },
       TABUNGAN: {
-        bg: "bg-indigo-100",
+        bg: "bg-indigo-100 dark:bg-indigo-900/30",
         text: "text-indigo-800",
         border: "border-indigo-300",
       },
@@ -949,15 +949,15 @@ export default function FinancePage() {
         border: "border-sky-300",
       },
       "PRIBADI-S": {
-        bg: "bg-pink-100",
+        bg: "bg-pink-100 dark:bg-pink-900/30",
         text: "text-pink-800",
         border: "border-pink-300",
       },
     };
     return (
       colors[kategori] || {
-        bg: "bg-gray-100",
-        text: "text-gray-800",
+        bg: "bg-gray-100 dark:bg-slate-800",
+        text: "text-gray-800 dark:text-slate-100",
         border: "border-gray-300",
       }
     );
@@ -1243,7 +1243,7 @@ export default function FinancePage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-pink-600 border-t-transparent"></div>
-          <p className="mt-4 text-[#0a1b3d] font-semibold">Loading...</p>
+          <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">Loading...</p>
         </div>
       </div>
     );
@@ -1270,7 +1270,7 @@ export default function FinancePage() {
           {!viewingArchive && (
             <button
               onClick={handleOpenModal}
-              className="px-6 py-3 bg-white text-orange-600 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-300 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
             >
               <svg
                 className="w-5 h-5"
@@ -1295,9 +1295,9 @@ export default function FinancePage() {
         {/* Card 0: Kas (Clickable, expandable to Modal Kas + Piutang Kas) */}
         <div
           onClick={() => setShowKasDetail(!showKasDetail)}
-          className="bg-white rounded-xl shadow-md p-4 border-l-4 border-cyan-500 cursor-pointer hover:shadow-lg transition-all duration-200"
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-cyan-500 cursor-pointer hover:shadow-lg transition-all duration-200"
         >
-          <p className="text-sm text-gray-500 font-semibold mb-1 flex items-center justify-between">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1 flex items-center justify-between">
             <span>Kas</span>
             <svg
               className={`w-5 h-5 transform transition-transform ${
@@ -1319,15 +1319,15 @@ export default function FinancePage() {
             {formatRupiah(systemMetrics.kas)}
           </p>
           {showKasDetail && (
-            <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 space-y-1">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Modal Kas:</span>
+                <span className="text-sm text-gray-600 dark:text-slate-300">Modal Kas:</span>
                 <span className="text-sm font-semibold text-cyan-700">
                   {formatRupiah(systemMetrics.modal_kas)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Piutang Kas:</span>
+                <span className="text-sm text-gray-600 dark:text-slate-300">Piutang Kas:</span>
                 <span className="text-sm font-semibold text-cyan-700">
                   {formatRupiah(systemMetrics.piutang_kas)}
                 </span>
@@ -1337,16 +1337,16 @@ export default function FinancePage() {
         </div>
 
         {/* Card 1: Saldo */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-pink-600">
-          <p className="text-sm text-gray-500 font-semibold mb-1">Saldo</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-pink-600">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">Saldo</p>
           <p className="text-2xl font-bold text-pink-600">
             {formatRupiah(summaryData.saldo)}
           </p>
         </div>
 
         {/* Card 2: Total Omzet */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
-          <p className="text-sm text-gray-500 font-semibold mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-green-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Total Omzet
           </p>
           <p className="text-2xl font-bold text-green-600">
@@ -1357,9 +1357,9 @@ export default function FinancePage() {
         {/* Card 3: Total Biaya (Clickable) */}
         <div
           onClick={() => setShowBiayaDetail(!showBiayaDetail)}
-          className="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500 cursor-pointer hover:shadow-lg transition-all duration-200"
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-red-500 cursor-pointer hover:shadow-lg transition-all duration-200"
         >
-          <p className="text-sm text-gray-500 font-semibold mb-1 flex items-center justify-between">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1 flex items-center justify-between">
             <span>Total Biaya</span>
             <svg
               className={`w-5 h-5 transform transition-transform ${
@@ -1381,15 +1381,15 @@ export default function FinancePage() {
             {formatRupiah(summaryData.totalBiaya)}
           </p>
           {showBiayaDetail && (
-            <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 space-y-1">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Operasional:</span>
+                <span className="text-sm text-gray-600 dark:text-slate-300">Operasional:</span>
                 <span className="text-sm font-semibold text-red-700">
                   {formatRupiah(summaryData.biayaOperasional)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">HPP:</span>
+                <span className="text-sm text-gray-600 dark:text-slate-300">HPP:</span>
                 <span className="text-sm font-semibold text-red-700">
                   {formatRupiah(summaryData.biayaBahan)}
                 </span>
@@ -1399,30 +1399,30 @@ export default function FinancePage() {
         </div>
 
         {/* Card 4: Payables (NEW) */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500">
-          <p className="text-sm text-gray-500 font-semibold mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-amber-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Tagihan Vendor
           </p>
-          <p className="text-2xl font-bold text-amber-600">
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-300">
             {formatRupiah(summaryData.hutang)}
           </p>
           {summaryData.hutangCount > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {summaryData.hutangCount} pembelian
             </p>
           )}
         </div>
 
         {/* Card 5: Receivables */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
-          <p className="text-sm text-gray-500 font-semibold mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Piutang Pelanggan
           </p>
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">
             {formatRupiah(summaryData.piutang)}
           </p>
           {summaryData.piutangCount > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {summaryData.piutangCount} penjualan
             </p>
           )}
@@ -1444,7 +1444,7 @@ export default function FinancePage() {
           />
         )}
       {/* Toolbar for Cash Book Management - Moved here */}
-      <div className="mb-6 bg-white rounded-xl shadow-md p-4 border border-gray-200">
+      <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border border-gray-200 dark:border-slate-800">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Category filter dropdown with checkbox */}
           <div className="relative">
@@ -1485,14 +1485,14 @@ export default function FinancePage() {
               </svg>
             </button>
             {showKategoriDropdown && (
-              <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] max-h-[400px] overflow-y-auto">
-                <div className="p-2 border-b border-gray-200 flex gap-2">
+              <div className="absolute z-50 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-lg min-w-[200px] max-h-[400px] overflow-y-auto">
+                <div className="p-2 border-b border-gray-200 dark:border-slate-800 flex gap-2">
                   <button
                     onClick={() => {
                       const allKats = new Set(kategoriOptions);
                       setSelectedKategoriFilters(allKats);
                     }}
-                    className="flex-1 text-xs px-2 py-1 bg-cyan-50 text-cyan-700 rounded hover:bg-cyan-100 transition-colors"
+                    className="flex-1 text-xs px-2 py-1 bg-cyan-50 dark:bg-slate-800 text-cyan-700 rounded hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                   >
                     Pilih Semua
                   </button>
@@ -1500,7 +1500,7 @@ export default function FinancePage() {
                     onClick={() => {
                       setSelectedKategoriFilters(new Set());
                     }}
-                    className="flex-1 text-xs px-2 py-1 bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                    className="flex-1 text-xs px-2 py-1 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-100 transition-colors"
                   >
                     Bersihkan
                   </button>
@@ -1664,7 +1664,7 @@ export default function FinancePage() {
               </button>
               <button
                 onClick={() => loadCashBooks()}
-                className="bg-white border-2 border-slate-600 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:bg-slate-50"
+                className="bg-white dark:bg-slate-900 border-2 border-slate-600 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:bg-slate-50"
               >
                 <svg
                   className="w-5 h-5"
@@ -1684,10 +1684,10 @@ export default function FinancePage() {
             </>
           )}
           <div className="ml-auto">
-            <div className="bg-gray-100 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
+            <div className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
               {viewingArchive ? (
                 <>
-                  <BoxIcon size={16} className="text-gray-600" />{" "}
+                  <BoxIcon size={16} className="text-gray-600 dark:text-slate-300" />{" "}
                   {viewingArchive} ({filteredCashBooks.length} Transaksi)
                 </>
               ) : (
@@ -1698,7 +1698,7 @@ export default function FinancePage() {
         </div>
       </div>
       {/* Table Section */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden">
         <div
           ref={tableContainerRef}
           className="overflow-x-auto max-h-[600px] overflow-y-auto"
@@ -1732,7 +1732,7 @@ export default function FinancePage() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-8 text-center text-gray-500"
+                    className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                   >
                     {selectedKategoriFilters.size > 0
                       ? `Tidak ada transaksi dengan kategori yang dipilih.`
@@ -1806,7 +1806,7 @@ export default function FinancePage() {
         onClose={handleCloseModal}
         maxWidthClass="max-w-md"
         header={
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-pink-600 flex items-center justify-between shrink-0 gap-3 rounded-t-2xl">
+          <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-orange-500 to-pink-600 flex items-center justify-between shrink-0 gap-3 rounded-t-2xl">
             <h3 className="text-xl font-bold text-white min-w-0">
               {editingCashBook
                 ? "✏️ Edit Transaksi"
@@ -1835,11 +1835,11 @@ export default function FinancePage() {
           </div>
         }
         footer={
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={handleCloseModal}
-              className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-100 transition"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-100 transition"
               tabIndex={8}
             >
               Batal
@@ -1861,7 +1861,7 @@ export default function FinancePage() {
               className="p-6 space-y-4"
             >
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Tanggal
                 </label>
                 <input
@@ -1871,14 +1871,14 @@ export default function FinancePage() {
                     setFormData({ ...formData, tanggal: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition dark:bg-slate-800 dark:text-slate-100"
                   tabIndex={5}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                     Debit (Masuk)
                   </label>
                   <input
@@ -1887,7 +1887,7 @@ export default function FinancePage() {
                     value={formData.debit}
                     onChange={(e) => handleDebitChange(e.target.value)}
                     disabled={!!formData.kredit}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100"
                     placeholder="0"
                     tabIndex={1}
                   />
@@ -1899,7 +1899,7 @@ export default function FinancePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                  <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                     Kredit (Keluar)
                   </label>
                   <input
@@ -1907,7 +1907,7 @@ export default function FinancePage() {
                     value={formData.kredit}
                     onChange={(e) => handleKreditChange(e.target.value)}
                     disabled={!!formData.debit}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100"
                     placeholder="0"
                     tabIndex={2}
                   />
@@ -1920,7 +1920,7 @@ export default function FinancePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Kategori
                 </label>
                 <select
@@ -1931,7 +1931,7 @@ export default function FinancePage() {
                       kategori_transaksi: e.target.value as KategoriTransaksi,
                     })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition dark:bg-slate-800 dark:text-slate-100"
                   tabIndex={3}
                 >
                   {kategoriOptions.map((kat) => (
@@ -1943,7 +1943,7 @@ export default function FinancePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Keperluan
                 </label>
                 <input
@@ -1952,14 +1952,14 @@ export default function FinancePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, keperluan: e.target.value })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition dark:bg-slate-800 dark:text-slate-100"
                   placeholder="Deskripsi transaksi..."
                   tabIndex={4}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] mb-2">
+                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
                   Catatan (Opsional)
                 </label>
                 <textarea
@@ -1968,7 +1968,7 @@ export default function FinancePage() {
                     setFormData({ ...formData, catatan: e.target.value })
                   }
                   rows={3}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition resize-none"
+                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition resize-none dark:bg-slate-800 dark:text-slate-100"
                   placeholder="Catatan tambahan..."
                   tabIndex={6}
                 />

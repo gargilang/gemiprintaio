@@ -1,6 +1,11 @@
 @import "tailwindcss" source(none);
 @source "../**/*.{js,jsx,ts,tsx,mdx}";
 
+/* Tailwind v4: enable class-based dark mode variant.
+   `dark:` utilities apply when <html> (or any ancestor) has the `dark` class.
+   The :where() wrapper keeps specificity at 0 so plain utilities still win. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* gemiprint Brand Fonts - Optimized for Performance */
 @font-face {
   font-family: "Bauhaus 93";
@@ -98,6 +103,14 @@
   --radius: 16px;
   --shadow: 0 4px 12px rgba(10, 27, 61, 0.08); /* Reduced complexity */
   --blur: blur(8px); /* Reduced blur for better performance */
+
+  /* Semantic surface tokens (used by frame components) */
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --border-subtle: #e5e7eb;
+  --accent: #00afef;
+  color-scheme: light;
 }
 
 .dark {
@@ -128,6 +141,31 @@
 
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Reduced complexity */
   --blur: blur(8px); /* Reduced blur */
+
+  /* Semantic surface tokens for dark mode */
+  --surface: #0f172a;
+  --surface-2: #111827;
+  --surface-3: #1f2937;
+  --border-subtle: #1f2937;
+  --accent: #2fd3ff;
+  color-scheme: dark;
+}
+
+/* Print: always force light theme, regardless of UI mode.
+   Business invoices/reports must remain printable on white paper. */
+@media print {
+  :root,
+  .dark {
+    color-scheme: light !important;
+    --background: #ffffff !important;
+    --background-solid: #ffffff !important;
+    --foreground: #0a1b3d !important;
+    --text: #1b1f23 !important;
+    --surface: #ffffff !important;
+    --surface-2: #ffffff !important;
+    --surface-3: #ffffff !important;
+    --border-subtle: #e5e7eb !important;
+  }
 }
 
 body {
@@ -145,4 +183,16 @@ body {
 
 .font-twcenmt {
   font-family: "TwCenMT", system-ui, -apple-system, sans-serif;
+}
+
+/* Dark mode table hover should feel like the sidebar navigation hover:
+   visible, but never bright enough to wash out light table text. */
+.dark table tbody tr:hover {
+  background-color: rgb(51 65 85 / 0.82) !important;
+  box-shadow: inset 3px 0 0 rgb(0 175 239 / 0.75);
+}
+
+.dark table tbody tr:hover > td,
+.dark table tbody tr:hover > th {
+  background-color: transparent !important;
 }

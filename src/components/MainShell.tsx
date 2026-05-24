@@ -22,6 +22,7 @@ import {
 } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
+import FloatingCalculator from "./FloatingCalculator";
 import {
   fetchSessionUser,
   getCachedSessionUser,
@@ -41,6 +42,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     {}
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const navRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -193,12 +195,13 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     "flex gap-2.5 py-2.5 px-2 -mx-2 rounded-lg transition-colors duration-150 w-full text-left";
   const navRowLeaf = `${navRowCore} items-center`;
   const navRowGroupBtn = `${navRowCore} items-start pt-1`;
-  const navRowHover = "hover:bg-slate-50 active:bg-slate-100/80";
+  const navRowHover =
+    "hover:bg-slate-50 active:bg-slate-100/80 dark:hover:bg-slate-800 dark:active:bg-slate-700/80";
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-white dark:bg-slate-950 flex">
       <aside
-        className={`bg-white shadow-lg flex-shrink-0 h-screen sticky top-0 z-40 border-r border-gray-100 overflow-x-visible transition-[width] duration-200 ease-out ${
+        className={`bg-white dark:bg-slate-900 shadow-lg flex-shrink-0 h-screen sticky top-0 z-40 border-r border-gray-100 dark:border-slate-800 overflow-x-visible transition-[width] duration-200 ease-out ${
           sidebarCollapsed ? "w-14" : "w-72"
         }`}
       >
@@ -218,7 +221,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
             {!sidebarCollapsed && (
               <span className="font-bauhaus text-2xl tracking-wide italic min-w-0 truncate">
                 <span className="text-[#00afef]">gemi</span>
-                <span className="text-[#0a1b3d]">print</span>
+                <span className="text-[#0a1b3d] dark:text-slate-100">print</span>
               </span>
             )}
             <button
@@ -233,7 +236,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
               aria-label={
                 sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"
               }
-              className={`rounded-lg p-1 text-[#6b7280] hover:bg-slate-100 hover:text-[#0a1b3d] transition-colors shrink-0 ${sidebarCollapsed ? "" : "ml-auto"}`}
+              className={`rounded-lg p-1 text-[#6b7280] dark:text-slate-400 dark:text-slate-400 hover:bg-slate-100 hover:text-[#0a1b3d] dark:hover:bg-slate-800 dark:hover:text-slate-100 transition-colors shrink-0 ${sidebarCollapsed ? "" : "ml-auto"}`}
             >
               <svg
                 className="w-4 h-4"
@@ -276,9 +279,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     title={item.label}
-                    className={`flex justify-center py-2 rounded-lg border-b border-gray-100 transition-colors ${navRowHover} ${
+                    className={`flex justify-center py-2 rounded-lg border-b border-gray-100 dark:border-slate-800 transition-colors ${navRowHover} ${
                       active
-                        ? "border-b-2 border-b-[#00afef] bg-[#00afef]/5"
+                        ? "border-b-2 border-b-[#00afef] bg-[#00afef]/5 dark:bg-[#00afef]/10"
                         : ""
                     }`}
                   >
@@ -313,7 +316,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                   return (
                     <div
                       key={entry.id}
-                      className="border-b border-gray-100/90 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
+                      className="border-b border-gray-100/90 dark:border-slate-800/80 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
                     >
                       <button
                         type="button"
@@ -339,13 +342,13 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                           className={`font-twcenmt font-semibold text-base flex-1 min-w-0 text-left leading-snug ${
                             groupChildActive
                               ? "text-[#00afef]"
-                              : "text-[#0a1b3d]"
+                              : "text-[#0a1b3d] dark:text-slate-100"
                           }`}
                         >
                           {entry.label}
                         </span>
                         <svg
-                          className={`w-4 h-4 shrink-0 text-[#9ca3af] transition-transform ${
+                          className={`w-4 h-4 shrink-0 text-[#9ca3af] dark:text-slate-500 transition-transform ${
                             expanded ? "rotate-180" : ""
                           }`}
                           fill="none"
@@ -374,7 +377,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                                 className={`${navRowLeaf} ${navRowHover} ${
                                   active
                                     ? "border-b-2 border-b-[#00afef] -mb-px"
-                                    : "border-b border-gray-100"
+                                    : "border-b border-gray-100 dark:border-slate-800"
                                 }`}
                               >
                                 <span
@@ -386,7 +389,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                                   className={`font-twcenmt font-semibold text-base truncate ${
                                     active
                                       ? "text-[#00afef]"
-                                      : "text-[#0a1b3d]"
+                                      : "text-[#0a1b3d] dark:text-slate-100"
                                   }`}
                                 >
                                   {item.label}
@@ -410,7 +413,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 return (
                   <div
                     key={item.href}
-                    className="border-b border-gray-100/90 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
+                    className="border-b border-gray-100/90 dark:border-slate-800/80 pb-0.5 mb-0.5 last:border-b-0 last:mb-0 last:pb-0"
                   >
                     <Link
                       href={item.href}
@@ -427,7 +430,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                       </span>
                       <span
                         className={`font-twcenmt font-semibold text-base truncate ${
-                          active ? "text-[#00afef]" : "text-[#0a1b3d]"
+                          active
+                            ? "text-[#00afef]"
+                            : "text-[#0a1b3d] dark:text-slate-100"
                         }`}
                       >
                         {item.label}
@@ -440,7 +445,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           )}
 
           <div
-            className={`flex-shrink-0 mt-auto pt-3 border-t border-gray-100 ${sidebarCollapsed ? "flex flex-col items-center gap-2" : ""}`}
+            className={`flex-shrink-0 mt-auto pt-3 border-t border-gray-100 dark:border-slate-800 ${sidebarCollapsed ? "flex flex-col items-center gap-2" : ""}`}
           >
             {sidebarCollapsed ? (
               <>
@@ -457,13 +462,13 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                   onClick={handleLogout}
                   title="Logout"
                   aria-label="Logout"
-                  className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                  className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-950/40 dark:hover:bg-red-500/10 transition-colors"
                 >
                   <LogoutIcon size={17} />
                 </button>
               </>
             ) : (
-              <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-cyan-50/80 overflow-hidden">
+              <div className="rounded-xl border border-blue-100 dark:border-slate-700 bg-gradient-to-br from-blue-50/90 to-cyan-50/80 dark:from-slate-800/80 dark:to-slate-900/80 overflow-hidden">
                 <div className="p-2.5 flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00afef] to-[#2266ff] flex items-center justify-center font-bold text-sm text-white shadow-md shrink-0">
                     {user?.nama_lengkap?.charAt(0) ||
@@ -471,14 +476,14 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                       "U"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-[#0a1b3d] truncate leading-tight">
+                    <div className="font-bold text-sm text-[#0a1b3d] dark:text-slate-100 truncate leading-tight">
                       {user?.nama_lengkap || user?.nama_pengguna}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                      <span className="text-xs text-[#6b7280] truncate">
+                      <span className="text-xs text-[#6b7280] dark:text-slate-400 dark:text-slate-400 truncate">
                         @{user?.nama_pengguna}
                       </span>
-                      <span className="text-[10px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white/90 rounded shrink-0">
+                      <span className="text-[10px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white/90 dark:bg-slate-900/80 rounded shrink-0">
                         {user?.role}
                       </span>
                     </div>
@@ -487,7 +492,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 py-2.5 text-base font-semibold border-t border-red-100 transition-colors"
+                  className="w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-950/40 dark:hover:bg-red-500/10 flex items-center justify-center gap-2 py-2.5 text-base font-semibold border-t border-red-100 dark:border-red-900/40 transition-colors"
                 >
                   <LogoutIcon size={20} />
                   Logout
@@ -501,17 +506,42 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       {/* Content Area */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header with indicators */}
-        <header className="bg-white shadow-sm sticky top-0 z-30 border-b border-gray-200">
+        <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-30 border-b border-gray-200 dark:border-slate-800">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3 min-w-0">
-              <h1 className="text-3xl font-bold text-[#0a1b3d] font-twcenmt uppercase tracking-wide truncate">
+              <h1 className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100 font-twcenmt uppercase tracking-wide truncate">
                 {computedTitle}
               </h1>
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCalculatorOpen((open) => !open)}
+                className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-colors ${
+                  calculatorOpen
+                    ? "bg-[#00afef] border-[#00afef] text-white shadow-sm"
+                    : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-[#0a1b3d] dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700"
+                }`}
+                title="Buka kalkulator"
+                aria-label="Buka kalkulator"
+                aria-pressed={calculatorOpen}
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  aria-hidden
+                >
+                  <rect x="5" y="3" width="14" height="18" rx="2" />
+                  <path d="M8 7h8M8 11h2M12 11h2M16 11h.01M8 15h2M12 15h2M16 15h.01M8 18h6" />
+                </svg>
+              </button>
+
               {/* Sync Status Component */}
-              <SyncStatus className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200" />
+              <SyncStatus className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700" />
             </div>
           </div>
         </header>
@@ -520,6 +550,11 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      <FloatingCalculator
+        open={calculatorOpen}
+        onClose={() => setCalculatorOpen(false)}
+      />
     </div>
   );
 }

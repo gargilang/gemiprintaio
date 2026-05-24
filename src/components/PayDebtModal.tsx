@@ -182,12 +182,12 @@ export default function PayDebtModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+            <div className="bg-white dark:bg-slate-900/20 backdrop-blur-sm p-2 rounded-lg">
               <MoneyIcon size={24} className="text-white" />
             </div>
             <h2 className="text-xl font-bold text-white">Pembayaran Tagihan</h2>
@@ -223,11 +223,11 @@ export default function PayDebtModal({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Bill list */}
               <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
                   Daftar Pembelian Bertagihan
                 </h3>
                 {debts.length === 0 ? (
-                  <div className="text-center py-8 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-center py-8 bg-green-50 dark:bg-slate-800 rounded-lg border border-green-200 dark:border-slate-700">
                     <CheckIcon
                       size={48}
                       className="mx-auto text-green-500 mb-2"
@@ -247,24 +247,24 @@ export default function PayDebtModal({
                         onClick={() => handleSelectDebt(debt)}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                           selectedDebt?.id === debt.id
-                            ? "border-indigo-500 bg-indigo-50"
-                            : "border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
+                            ? "border-indigo-500 bg-indigo-50 dark:bg-slate-800"
+                            : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <div className="font-bold text-gray-800">
+                            <div className="font-bold text-gray-800 dark:text-slate-100">
                               {debt.nomor_faktur}
                             </div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-sm text-gray-600 dark:text-slate-300">
                               {debt.nomor_pembelian}
                             </div>
                           </div>
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${
                               debt.status_pembayaran === "SEBAGIAN"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                             }`}
                           >
                             <ClockIcon size={12} className="text-[#2266ff]" />
@@ -273,7 +273,7 @@ export default function PayDebtModal({
                               : debt.status_pembayaran}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 mb-2">
+                        <div className="text-sm text-gray-600 dark:text-slate-300 mb-2">
                           <div>
                             Vendor:{" "}
                             {debt.vendor_name || (
@@ -282,17 +282,17 @@ export default function PayDebtModal({
                           </div>
                           <div>Tanggal: {formatDate(debt.tanggal)}</div>
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-slate-800">
                           <div className="text-sm">
-                            <div className="text-gray-600">
+                            <div className="text-gray-600 dark:text-slate-300">
                               Total: {formatRupiah(debt.total_jumlah)}
                             </div>
-                            <div className="text-gray-600">
+                            <div className="text-gray-600 dark:text-slate-300">
                               Dibayar: {formatRupiah(debt.jumlah_dibayar)}
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-slate-400">
                               Sisa Tagihan
                             </div>
                             <div className="text-lg font-bold text-red-600">
@@ -308,16 +308,16 @@ export default function PayDebtModal({
 
               {/* Payment form */}
               <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
                   Form Pembayaran
                 </h3>
                 {!selectedDebt ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-800">
                     <ClockIcon
                       size={48}
                       className="mx-auto text-gray-400 mb-2"
                     />
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 dark:text-slate-300">
                       Pilih pembelian di sebelah kiri untuk melakukan pembayaran
                     </p>
                   </div>
@@ -328,19 +328,19 @@ export default function PayDebtModal({
                     className="space-y-4"
                   >
                     {error && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                      <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 px-4 py-3 rounded-lg">
                         {error}
                       </div>
                     )}
 
-                    <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg">
-                      <div className="text-sm text-indigo-800 mb-2">
+                    <div className="bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 p-4 rounded-lg">
+                      <div className="text-sm text-indigo-800 dark:text-indigo-200 mb-2">
                         Pembelian Terpilih:
                       </div>
-                      <div className="font-bold text-gray-800">
+                      <div className="font-bold text-gray-800 dark:text-slate-100">
                         {selectedDebt.nomor_faktur}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-slate-300">
                         Sisa Tagihan:{" "}
                         <span className="font-bold text-red-600">
                           {formatRupiah(selectedDebt.sisa_hutang)}
@@ -349,7 +349,7 @@ export default function PayDebtModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Tanggal Pembayaran *
                       </label>
                       <input
@@ -362,7 +362,7 @@ export default function PayDebtModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Jumlah Pembayaran (Rp) *
                       </label>
                       <input
@@ -381,7 +381,7 @@ export default function PayDebtModal({
                           onClick={() =>
                             setJumlahBayar(selectedDebt.sisa_hutang.toString())
                           }
-                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
+                          className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
                         >
                           Lunas ({formatRupiah(selectedDebt.sisa_hutang)})
                         </button>
@@ -392,7 +392,7 @@ export default function PayDebtModal({
                               (selectedDebt.sisa_hutang / 2).toString()
                             )
                           }
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
                         >
                           50% ({formatRupiah(selectedDebt.sisa_hutang / 2)})
                         </button>
@@ -400,7 +400,7 @@ export default function PayDebtModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Metode Pembayaran *
                       </label>
                       <select
@@ -417,7 +417,7 @@ export default function PayDebtModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Referensi (No. Transaksi/Giro/Cek)
                       </label>
                       <input
@@ -430,7 +430,7 @@ export default function PayDebtModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Catatan
                       </label>
                       <textarea
@@ -445,7 +445,7 @@ export default function PayDebtModal({
                     <button
                       type="button"
                       onClick={() => setSelectedDebt(null)}
-                      className="text-sm text-indigo-600 hover:underline font-medium"
+                      className="text-sm text-indigo-600 dark:text-indigo-300 hover:underline font-medium"
                       disabled={loading}
                     >
                       Ubah pilihan pembelian
@@ -457,12 +457,12 @@ export default function PayDebtModal({
           )}
         </div>
 
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 shrink-0">
+        <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>

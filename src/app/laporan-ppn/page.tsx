@@ -196,18 +196,18 @@ export default function LaporanPpnPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Laporan PPN</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Laporan PPN</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             Rekap PPN keluaran (penjualan) dan masukan (pembelian) per bulan,
             untuk cross-check ke Coretax DJP.
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Bulan
             </label>
             <select
@@ -223,7 +223,7 @@ export default function LaporanPpnPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tahun
             </label>
             <input
@@ -244,7 +244,7 @@ export default function LaporanPpnPage() {
             type="button"
             onClick={exportCsv}
             disabled={!report}
-            className="px-4 py-2 border border-emerald-600 text-emerald-700 rounded-lg hover:bg-emerald-50 disabled:opacity-50"
+            className="px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800 disabled:opacity-50"
           >
             Export CSV
           </button>
@@ -252,13 +252,13 @@ export default function LaporanPpnPage() {
       </div>
 
       {error && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+        <div className="px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 rounded-lg">
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="text-gray-500 py-12 text-center">Memuat laporan PPN...</div>
+        <div className="text-gray-500 dark:text-slate-400 py-12 text-center">Memuat laporan PPN...</div>
       )}
 
       {report && !loading && (
@@ -292,18 +292,18 @@ export default function LaporanPpnPage() {
           </div>
 
           {/* PPN keluaran */}
-          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">
+          <section className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 PPN Keluaran ({report.keluaran.length})
               </h2>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-slate-400">
                 Total PPN: Rp {fmt(report.total_ppn_keluaran)}
               </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 dark:text-slate-400">
                   <tr>
                     <th className="px-3 py-2 text-left">Tgl Faktur</th>
                     <th className="px-3 py-2 text-left">NSFP</th>
@@ -327,7 +327,7 @@ export default function LaporanPpnPage() {
                     </tr>
                   ) : (
                     report.keluaran.map((r) => (
-                      <tr key={r.penjualan_id} className="border-t border-gray-100">
+                      <tr key={r.penjualan_id} className="border-t border-gray-100 dark:border-slate-800">
                         <td className="px-3 py-2">
                           {r.tanggal_faktur_pajak || r.tanggal_transaksi}
                         </td>
@@ -347,7 +347,7 @@ export default function LaporanPpnPage() {
                   )}
                 </tbody>
                 {report.keluaran.length > 0 && (
-                  <tfoot className="bg-gray-50 text-sm font-semibold">
+                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-sm font-semibold">
                     <tr>
                       <td colSpan={5} className="px-3 py-2 text-right">
                         Total
@@ -371,19 +371,19 @@ export default function LaporanPpnPage() {
           </section>
 
           {/* PPN masukan */}
-          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">
+          <section className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 PPN Masukan ({report.masukan.length})
               </h2>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-slate-400">
                 Kreditable: Rp {fmt(report.total_ppn_masukan_kreditable)} dari
                 total Rp {fmt(report.total_ppn_masukan)}
               </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 dark:text-slate-400">
                   <tr>
                     <th className="px-3 py-2 text-left">Tgl Faktur</th>
                     <th className="px-3 py-2 text-left">No. Faktur Vendor</th>
@@ -407,7 +407,7 @@ export default function LaporanPpnPage() {
                     </tr>
                   ) : (
                     report.masukan.map((r) => (
-                      <tr key={r.pembelian_id} className="border-t border-gray-100">
+                      <tr key={r.pembelian_id} className="border-t border-gray-100 dark:border-slate-800">
                         <td className="px-3 py-2">
                           {r.tanggal_faktur_pajak || r.tanggal_transaksi}
                         </td>
@@ -423,11 +423,11 @@ export default function LaporanPpnPage() {
                         <td className="px-3 py-2 text-right">{fmt(r.ppn_total)}</td>
                         <td className="px-3 py-2 text-center">
                           {r.dapat_dikreditkan ? (
-                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-800">
+                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200">
                               Kreditable
                             </span>
                           ) : (
-                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-700">
+                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-700 dark:text-slate-300">
                               Non-kreditable
                             </span>
                           )}
@@ -437,7 +437,7 @@ export default function LaporanPpnPage() {
                   )}
                 </tbody>
                 {report.masukan.length > 0 && (
-                  <tfoot className="bg-gray-50 text-sm font-semibold">
+                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-sm font-semibold">
                     <tr>
                       <td colSpan={5} className="px-3 py-2 text-right">
                         Total
@@ -471,10 +471,10 @@ function SummaryCard({
   tone: "emerald" | "blue" | "amber" | "slate";
 }) {
   const cls = {
-    emerald: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    blue: "bg-blue-50 border-blue-200 text-blue-800",
-    amber: "bg-amber-50 border-amber-200 text-amber-800",
-    slate: "bg-slate-50 border-slate-200 text-slate-800",
+    emerald: "bg-emerald-50 dark:bg-slate-800 border-emerald-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-200",
+    blue: "bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700 text-blue-800 dark:text-blue-200",
+    amber: "bg-amber-50 dark:bg-slate-800 border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-200",
+    slate: "bg-slate-50 dark:bg-slate-800 border-slate-200 text-slate-800",
   }[tone];
   return (
     <div className={`rounded-xl border-2 p-4 ${cls}`}>

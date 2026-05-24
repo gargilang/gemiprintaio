@@ -89,15 +89,15 @@ export default function SalesHistoryTable({
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      LUNAS: "bg-green-100 text-green-700 border-green-200",
-      AKTIF: "bg-red-100 text-red-700 border-red-200",
-      SEBAGIAN: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      LUNAS: "bg-green-100 dark:bg-green-900/30 text-green-700 border-green-200 dark:border-slate-700",
+      AKTIF: "bg-red-100 dark:bg-red-900/30 text-red-700 border-red-200 dark:border-red-800/50",
+      SEBAGIAN: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 border-yellow-200 dark:border-yellow-800/50",
     };
 
     return (
       <span
         className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
-          styles[status as keyof typeof styles] || "bg-gray-100 text-gray-700"
+          styles[status as keyof typeof styles] || "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
         }`}
       >
         {status}
@@ -327,7 +327,7 @@ export default function SalesHistoryTable({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari invoice atau pelanggan..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef]"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-3">
@@ -353,22 +353,22 @@ export default function SalesHistoryTable({
             </button>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500">Total Penjualan</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">Total Penjualan</div>
             <div className="text-lg font-bold text-[#00afef]">
               Rp {totalPenjualan.toLocaleString("id-ID")}
             </div>
           </div>
           {totalPiutang > 0 && (
             <div className="text-right">
-              <div className="text-xs text-gray-500">Total Piutang</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">Total Piutang</div>
               <div className="text-lg font-bold text-red-600">
                 Rp {totalPiutang.toLocaleString("id-ID")}
               </div>
             </div>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500">Transaksi</div>
-            <div className="text-lg font-bold text-gray-800">
+            <div className="text-xs text-gray-500 dark:text-slate-400">Transaksi</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
               {filteredSales.length}
             </div>
           </div>
@@ -377,7 +377,7 @@ export default function SalesHistoryTable({
 
       {/* Table */}
       {filteredSales.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-800">
           <div className="text-gray-400 mb-2">
             <svg
               className="w-16 h-16 mx-auto"
@@ -393,13 +393,13 @@ export default function SalesHistoryTable({
               />
             </svg>
           </div>
-          <p className="text-gray-600 font-semibold">Belum ada transaksi</p>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-600 dark:text-slate-300 font-semibold">Belum ada transaksi</p>
+          <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
             Transaksi akan muncul di sini
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[700px] overflow-y-auto">
+        <div className="overflow-x-auto border border-gray-200 dark:border-slate-800 rounded-lg max-h-[700px] overflow-y-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white">
               <tr>
@@ -433,34 +433,34 @@ export default function SalesHistoryTable({
                     onClick={() =>
                       setExpandedSale(expandedSale === sale.id ? null : sale.id)
                     }
-                    className={`border-b border-gray-200 hover:bg-cyan-50 transition-all cursor-pointer ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    className={`border-b border-gray-200 dark:border-slate-800 hover:bg-cyan-50 transition-all cursor-pointer ${
+                      index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
                     }`}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-bold text-gray-800">
+                      <div className="font-bold text-gray-800 dark:text-slate-100">
                         {sale.nomor_invoice}
                       </div>
                       {sale.status_transaksi === "VOIDED" && (
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 rounded text-xs font-semibold">
                           VOID
                         </span>
                       )}
                       {sale.kasir_nama && (
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                           Kasir: {sale.kasir_nama}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-gray-800">
+                      <div className="text-gray-800 dark:text-slate-100">
                         {sale.pelanggan_nama || (
                           <span className="text-gray-400 italic">Walk-in</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="font-bold text-gray-800">
+                      <div className="font-bold text-gray-800 dark:text-slate-100">
                         {formatRupiah(sale.total_jumlah)}
                       </div>
                       {sale.sisa_piutang > 0 && (
@@ -470,7 +470,7 @@ export default function SalesHistoryTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs font-semibold text-gray-700 dark:text-slate-300">
                         {getPaymentMethodIcon(sale.metode_pembayaran)}
                         {sale.metode_pembayaran}
                       </span>
@@ -479,7 +479,7 @@ export default function SalesHistoryTable({
                       {getStatusBadge(sale.status_pembayaran)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700">
+                      <div className="text-sm text-gray-700 dark:text-slate-300">
                         {formatDate(sale.dibuat_pada)}
                       </div>
                     </td>
@@ -491,7 +491,7 @@ export default function SalesHistoryTable({
                             reprintThermal(sale);
                           }}
                           disabled={printingId === sale.id}
-                          className="p-2 hover:bg-cyan-100 rounded-lg transition-all disabled:opacity-50"
+                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-cyan-900/30 rounded-lg transition-all disabled:opacity-50"
                           title="Cetak ulang struk thermal (80mm)"
                         >
                           <svg
@@ -514,11 +514,11 @@ export default function SalesHistoryTable({
                             reprintFaktur(sale);
                           }}
                           disabled={printingId === sale.id}
-                          className="p-2 hover:bg-blue-100 rounded-lg transition-all disabled:opacity-50"
+                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-blue-900/30 rounded-lg transition-all disabled:opacity-50"
                           title="Cetak faktur A5"
                         >
                           <svg
-                            className="w-5 h-5 text-blue-600"
+                            className="w-5 h-5 text-blue-600 dark:text-blue-300"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -546,8 +546,8 @@ export default function SalesHistoryTable({
                             }}
                             className={`p-2 rounded-lg transition-all group ${
                               sale.status_pembayaran === "LUNAS"
-                                ? "hover:bg-blue-100"
-                                : "hover:bg-orange-100"
+                                ? "hover:bg-slate-50 dark:hover:bg-white/5"
+                                : "hover:bg-slate-50 dark:hover:bg-white/5"
                             }`}
                             title={
                               sale.status_pembayaran === "LUNAS"
@@ -558,8 +558,8 @@ export default function SalesHistoryTable({
                             <svg
                               className={`w-5 h-5 ${
                                 sale.status_pembayaran === "LUNAS"
-                                  ? "text-blue-600 group-hover:text-blue-700"
-                                  : "text-orange-600 group-hover:text-orange-700"
+                                  ? "text-blue-600 dark:text-blue-300 group-hover:text-blue-700 dark:text-blue-300"
+                                  : "text-orange-600 dark:text-orange-300 group-hover:text-orange-700 dark:text-orange-300"
                               }`}
                               fill="none"
                               stroke="currentColor"
@@ -588,7 +588,7 @@ export default function SalesHistoryTable({
                               deletingId === sale.id ||
                               sale.status_transaksi === "VOIDED"
                             }
-                            className="p-2 hover:bg-red-100 rounded-lg transition-all disabled:opacity-50"
+                            className="p-2 hover:bg-red-100 dark:bg-red-900/30 rounded-lg transition-all disabled:opacity-50"
                             title="Batalkan Transaksi"
                           >
                             {deletingId === sale.id ? (
@@ -607,24 +607,24 @@ export default function SalesHistoryTable({
                     <tr className="bg-gradient-to-r from-cyan-50/50 to-blue-50/50">
                       <td colSpan={7} className="px-4 py-3">
                         <div className="text-xs">
-                          <div className="font-semibold text-gray-700 mb-2">
+                          <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                             Detail Item:
                           </div>
                           <div className="space-y-1">
                             {sale.items.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-center justify-between py-1 px-2 bg-white/60 rounded"
+                                className="flex items-center justify-between py-1 px-2 bg-white dark:bg-slate-900/60 rounded"
                               >
                                 <div className="flex-1">
-                                  <span className="font-semibold text-gray-800">
+                                  <span className="font-semibold text-gray-800 dark:text-slate-100">
                                     {idx + 1}. {item.barang_nama}
                                   </span>
-                                  <span className="text-gray-500 ml-2">
+                                  <span className="text-gray-500 dark:text-slate-400 ml-2">
                                     ({item.nama_satuan})
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-4 text-gray-700">
+                                <div className="flex items-center gap-4 text-gray-700 dark:text-slate-300">
                                   <span>
                                     Qty:{" "}
                                     <span className="font-semibold">
@@ -670,7 +670,7 @@ export default function SalesHistoryTable({
 
       {/* Info Text */}
       {filteredSales.length > 0 && (
-        <div className="text-xs text-gray-500 text-center">
+        <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
           Klik baris untuk melihat detail item penjualan
         </div>
       )}
@@ -699,7 +699,7 @@ export default function SalesHistoryTable({
 
       {fakturPromptSale && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
               <h3 className="text-white font-bold text-lg">
                 Info untuk Faktur
@@ -711,7 +711,7 @@ export default function SalesHistoryTable({
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
+                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kepada Yth.
                 </label>
                 <input
@@ -724,12 +724,12 @@ export default function SalesHistoryTable({
                     }))
                   }
                   placeholder="Nama / nama perusahaan"
-                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
+                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kota
                 </label>
                 <input
@@ -742,14 +742,14 @@ export default function SalesHistoryTable({
                     }))
                   }
                   placeholder="Bekasi"
-                  className="w-full px-3 py-2 bg-white text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setFakturPromptSale(null)}
-                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200"
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
                 >
                   Batal
                 </button>

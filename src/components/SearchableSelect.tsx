@@ -129,18 +129,22 @@ export default function SearchableSelect({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          className={`w-full px-3 py-2 pr-10 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             disabled
-              ? "opacity-50 cursor-not-allowed bg-gray-100"
+              ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900"
               : "cursor-pointer"
           } ${
-            !searchQuery && !isOpen && selectedLabel ? "text-gray-900" : ""
+            !searchQuery && !isOpen && selectedLabel
+              ? "text-gray-900 dark:text-slate-100"
+              : ""
           } ${
-            !searchQuery && !isOpen && !selectedLabel ? "text-gray-400" : ""
+            !searchQuery && !isOpen && !selectedLabel
+              ? "text-gray-400 dark:text-slate-500"
+              : ""
           } ${inputClassName}`}
         />
         <svg
-          className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-transform pointer-events-none ${
+          className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 transition-transform pointer-events-none ${
             isOpen ? "rotate-180" : ""
           }`}
           fill="none"
@@ -158,11 +162,11 @@ export default function SearchableSelect({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-64 overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg shadow-xl max-h-64 overflow-hidden">
           {/* Options List */}
           <div className="overflow-y-auto max-h-64">
             {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+              <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400 text-center">
                 {emptyText}
               </div>
             ) : (
@@ -181,10 +185,10 @@ export default function SearchableSelect({
                   }}
                   className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
                     option.value === value
-                      ? "bg-indigo-100 text-indigo-700 font-semibold"
+                      ? "bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-semibold dark:bg-indigo-500/20 dark:text-indigo-200"
                       : index === highlightedIndex
-                      ? "bg-gray-200"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-gray-200 dark:bg-slate-700"
+                      : "text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
                   {option.label}

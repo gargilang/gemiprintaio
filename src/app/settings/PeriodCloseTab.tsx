@@ -130,8 +130,8 @@ export default function PeriodCloseTab() {
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Tutup Periode</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Tutup Periode</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             Setelah periode ditutup, transaksi di tanggal periode itu tidak
             bisa di-void / adjust / waste lagi. Pakai ini setelah lapor pajak
             atau finalisasi laporan bulanan.
@@ -143,21 +143,21 @@ export default function PeriodCloseTab() {
         <div
           className={`px-4 py-3 rounded-lg text-sm ${
             notice.kind === "success"
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-green-50 dark:bg-slate-800 text-green-700 border border-green-200 dark:border-slate-700"
+              : "bg-red-50 dark:bg-red-950/40 text-red-700 border border-red-200 dark:border-red-800/50"
           }`}
         >
           {notice.msg}
         </div>
       )}
 
-      <section className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">
+      <section className="bg-gray-50 dark:bg-slate-800 rounded-xl p-6 border-2 border-gray-200 dark:border-slate-800 space-y-4">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">
           Tutup periode baru
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Bulan
             </label>
             <select
@@ -173,7 +173,7 @@ export default function PeriodCloseTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tahun
             </label>
             <input
@@ -184,7 +184,7 @@ export default function PeriodCloseTab() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
               Catatan (opsional)
             </label>
             <input
@@ -205,12 +205,12 @@ export default function PeriodCloseTab() {
         </button>
       </section>
 
-      <section className="bg-white rounded-xl border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 px-4 py-3 border-b border-gray-200">
+      <section className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100 px-4 py-3 border-b border-gray-200 dark:border-slate-800">
           Riwayat Periode
         </h3>
         {loading ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-slate-400">
             Memuat periode...
           </div>
         ) : periods.length === 0 ? (
@@ -226,19 +226,19 @@ export default function PeriodCloseTab() {
                 className="px-4 py-3 flex items-center justify-between"
               >
                 <div>
-                  <div className="font-medium text-gray-800">
+                  <div className="font-medium text-gray-800 dark:text-slate-100">
                     {p.period_key}
                     <span
                       className={`ml-2 inline-block px-2 py-0.5 rounded text-xs font-medium ${
                         p.status === "CLOSED"
-                          ? "bg-gray-200 text-gray-700"
-                          : "bg-emerald-100 text-emerald-800"
+                          ? "bg-gray-200 text-gray-700 dark:text-slate-300"
+                          : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
                       }`}
                     >
                       {p.status}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                     {p.start_date} → {p.end_date}
                     {p.closed_at && (
                       <>
@@ -248,7 +248,7 @@ export default function PeriodCloseTab() {
                     )}
                   </div>
                   {p.catatan && (
-                    <div className="text-xs italic text-gray-600 mt-1">
+                    <div className="text-xs italic text-gray-600 dark:text-slate-300 mt-1">
                       “{p.catatan}”
                     </div>
                   )}
@@ -257,7 +257,7 @@ export default function PeriodCloseTab() {
                   <button
                     type="button"
                     onClick={() => handleReopen(p)}
-                    className="text-xs px-3 py-1 rounded border border-amber-500 text-amber-700 hover:bg-amber-50"
+                    className="text-xs px-3 py-1 rounded border border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800"
                   >
                     Buka kembali
                   </button>

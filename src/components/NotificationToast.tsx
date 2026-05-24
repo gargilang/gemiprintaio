@@ -32,8 +32,8 @@ export default function NotificationToast({
     <div
       className={`fixed top-4 left-1/2 -translate-x-1/2 transform z-50 px-6 py-3 rounded-xl shadow-lg font-semibold text-sm border-2 animate-in fade-in slide-in-from-top-2 duration-300 ${
         type === "success"
-          ? "bg-green-50 text-green-800 border-green-200"
-          : "bg-red-50 text-red-800 border-red-200"
+          ? "bg-green-50 text-green-800 border-green-200 dark:bg-green-950/60 dark:text-green-200 dark:border-green-800"
+          : "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-200 dark:border-red-800"
       }`}
     >
       <div className="flex items-center gap-2">

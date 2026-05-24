@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import MainShell from "@/components/MainShell";
 import IndonesianNativeValidity from "@/components/IndonesianNativeValidity";
+import ThemeProvider from "@/components/ThemeProvider";
+import ThemeScript from "@/components/ThemeScript";
 import { usePathname } from "next/navigation";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import { useAppUpdater } from "@/hooks/use-app-updater";
@@ -35,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
+        <ThemeScript />
         <title>app gemiprint</title>
         <meta
           name="description"
@@ -44,13 +47,15 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <IndonesianNativeValidity />
-        <SwrProvider>
-          {isAuthPage || isRootRedirect ? (
-            children
-          ) : (
-            <MainShell>{children}</MainShell>
-          )}
-        </SwrProvider>
+        <ThemeProvider>
+          <SwrProvider>
+            {isAuthPage || isRootRedirect ? (
+              children
+            ) : (
+              <MainShell>{children}</MainShell>
+            )}
+          </SwrProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

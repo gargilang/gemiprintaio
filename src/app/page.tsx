@@ -31,7 +31,7 @@ export default function Home() {
           className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-[#00afef] border-t-transparent"
           aria-hidden
         />
-        <p className="mt-4 text-[#0a1b3d] font-semibold font-twcenmt">Memuat…</p>
+        <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold font-twcenmt">Memuat…</p>
       </div>
     </div>
   );

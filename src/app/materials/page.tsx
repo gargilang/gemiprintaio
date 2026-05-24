@@ -57,35 +57,35 @@ const MaterialRow = memo(
     return (
       <tr
         key={material.id}
-        className={`border-b border-gray-200 hover:bg-emerald-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+        className={`border-b border-gray-200 dark:border-slate-800 hover:bg-emerald-50 transition-all cursor-default ${
+          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800">{material.nama}</div>
+          <div className="font-semibold text-gray-800 dark:text-slate-100">{material.nama}</div>
           {material.spesifikasi && (
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {material.spesifikasi}
             </div>
           )}
           {!material.lacak_inventori_status && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-200 text-gray-600 rounded text-xs font-semibold">
+            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-200 text-gray-600 dark:text-slate-300 rounded text-xs font-semibold">
               No Tracking
             </span>
           )}
         </td>
         <td className="px-4 py-3">
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-gray-700 dark:text-slate-300">
             {material.category_name || "-"}
           </div>
           {material.subcategory_name && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 dark:text-slate-400">
               {material.subcategory_name}
             </div>
           )}
         </td>
         <td className="px-4 py-3">
-          <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded font-semibold text-sm">
+          <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded font-semibold text-sm">
             {material.satuan_dasar}
           </span>
         </td>
@@ -93,12 +93,12 @@ const MaterialRow = memo(
           <div className="space-y-1">
             {defaultUnit && (
               <div className="text-xs">
-                <span className="font-semibold text-emerald-600">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-300">
                   {defaultUnit.nama_satuan}
                 </span>
                 : Rp {defaultUnit.harga_jual.toLocaleString("id-ID")}
                 {defaultUnit.harga_member > 0 && (
-                  <span className="text-blue-600">
+                  <span className="text-blue-600 dark:text-blue-300">
                     {" "}
                     / Rp {defaultUnit.harga_member.toLocaleString("id-ID")}
                   </span>
@@ -106,8 +106,8 @@ const MaterialRow = memo(
               </div>
             )}
             {otherUnits && otherUnits.length > 0 && (
-              <details className="text-xs text-gray-600">
-                <summary className="cursor-pointer hover:text-emerald-600">
+              <details className="text-xs text-gray-600 dark:text-slate-300">
+                <summary className="cursor-pointer hover:text-emerald-600 dark:text-emerald-300">
                   +{otherUnits.length} satuan lainnya
                 </summary>
                 <div className="mt-1 ml-2 space-y-0.5">
@@ -116,7 +116,7 @@ const MaterialRow = memo(
                       <span className="font-semibold">{up.nama_satuan}</span>:
                       Rp {up.harga_jual.toLocaleString("id-ID")}
                       {up.harga_member > 0 && (
-                        <span className="text-blue-600">
+                        <span className="text-blue-600 dark:text-blue-300">
                           {" "}
                           / Rp {up.harga_member.toLocaleString("id-ID")}
                         </span>
@@ -131,12 +131,12 @@ const MaterialRow = memo(
         <td className="px-4 py-3 text-right">
           {material.lacak_inventori_status ? (
             <>
-              <div className="font-semibold text-gray-800">
+              <div className="font-semibold text-gray-800 dark:text-slate-100">
                 {material.jumlah_stok.toLocaleString("id-ID")}{" "}
                 {material.satuan_dasar}
               </div>
               {material.jumlah_stok <= material.level_stok_minimum && (
-                <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 rounded text-xs font-semibold">
                   Stok Menipis!
                 </span>
               )}
@@ -146,10 +146,10 @@ const MaterialRow = memo(
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          <div className="font-semibold text-gray-800">
+          <div className="font-semibold text-gray-800 dark:text-slate-100">
             Rp {averageCostPerBaseUnit.toLocaleString("id-ID")}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500 dark:text-slate-400">
             per {material.satuan_dasar}
           </div>
         </td>
@@ -178,7 +178,7 @@ const MaterialRow = memo(
                 </button>
                 <button
                   onClick={() => onAdjustStock(material)}
-                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                  className="p-2 text-amber-600 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
                   title="Adjustment stok"
                 >
                   <svg
@@ -226,7 +226,7 @@ const MaterialRow = memo(
             )}
             <button
               onClick={() => onEdit(material)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="p-2 text-blue-600 dark:text-blue-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
               title="Edit"
             >
               <svg
@@ -245,7 +245,7 @@ const MaterialRow = memo(
             </button>
             <button
               onClick={() => onDelete(material)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
               title="Hapus"
             >
               <svg
@@ -658,7 +658,7 @@ export default function MaterialsPage() {
         <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <BoxIcon size={20} className="text-white" />
               </div>
               <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -678,7 +678,7 @@ export default function MaterialsPage() {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -713,7 +713,7 @@ export default function MaterialsPage() {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -733,7 +733,7 @@ export default function MaterialsPage() {
               </h3>
             </div>
             {showLowStockOnly && (
-              <div className="bg-white/20 rounded-full px-2 py-1">
+              <div className="bg-white dark:bg-slate-900/20 rounded-full px-2 py-1">
                 <svg
                   className="w-4 h-4"
                   fill="currentColor"
@@ -758,7 +758,7 @@ export default function MaterialsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -792,7 +792,7 @@ export default function MaterialsPage() {
                 placeholder="Cari barang atau kategori..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
               />
               <svg
                 className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -813,7 +813,7 @@ export default function MaterialsPage() {
       </div>
 
       {/* Materials Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         <div
           ref={tableContainerRef}
           className="overflow-x-auto max-h-[600px] overflow-y-auto"
@@ -900,7 +900,7 @@ export default function MaterialsPage() {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      <span className="text-gray-500">Memuat data...</span>
+                      <span className="text-gray-500 dark:text-slate-400">Memuat data...</span>
                     </div>
                   </td>
                 </tr>
@@ -908,7 +908,7 @@ export default function MaterialsPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-12 text-center text-gray-500"
+                    className="px-4 py-12 text-center text-gray-500 dark:text-slate-400"
                   >
                     <div className="flex flex-col items-center gap-3">
                       <BoxIcon size={48} className="text-gray-300" />
@@ -961,19 +961,19 @@ export default function MaterialsPage() {
 
       {movementMaterial && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <div>
-                <h3 className="text-lg font-bold text-gray-800">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
                   Riwayat Stok
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-slate-400">
                   {movementMaterial.nama}
                 </p>
               </div>
               <button
                 onClick={() => setMovementMaterial(null)}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                className="p-2 text-gray-500 dark:text-slate-400 hover:bg-gray-100 rounded-lg"
                 title="Tutup"
               >
                 <svg
@@ -993,16 +993,16 @@ export default function MaterialsPage() {
             </div>
             <div className="overflow-auto max-h-[60vh]">
               {loadingMovements ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500 dark:text-slate-400">
                   Memuat riwayat stok...
                 </div>
               ) : movementRows.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500 dark:text-slate-400">
                   Belum ada riwayat stok untuk barang ini.
                 </div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                  <thead className="bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300 sticky top-0">
                     <tr>
                       <th className="px-4 py-3 text-left">Tanggal</th>
                       <th className="px-4 py-3 text-left">Tipe</th>
@@ -1015,7 +1015,7 @@ export default function MaterialsPage() {
                   <tbody>
                     {movementRows.map((row) => (
                       <tr key={row.id} className="border-t">
-                        <td className="px-4 py-3 text-gray-700">
+                        <td className="px-4 py-3 text-gray-700 dark:text-slate-300">
                           {row.tanggal}
                         </td>
                         <td className="px-4 py-3">
@@ -1026,7 +1026,7 @@ export default function MaterialsPage() {
                         <td
                           className={`px-4 py-3 text-right font-semibold ${
                             Number(row.qty_delta) >= 0
-                              ? "text-emerald-700"
+                              ? "text-emerald-700 dark:text-emerald-300"
                               : "text-red-700"
                           }`}
                         >
@@ -1043,7 +1043,7 @@ export default function MaterialsPage() {
                             "id-ID"
                           )}
                         </td>
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
                           {row.catatan || "-"}
                         </td>
                       </tr>
@@ -1058,42 +1058,42 @@ export default function MaterialsPage() {
 
       {adjustMaterial && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md">
             <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-bold text-gray-800">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
                 Adjustment Stok
               </h3>
-              <p className="text-sm text-gray-500">{adjustMaterial.nama}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">{adjustMaterial.nama}</p>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Qty Delta
                 </label>
                 <input
                   type="number"
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
                   placeholder="Contoh: -2 atau 10"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Alasan
                 </label>
                 <textarea
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
                   rows={3}
                 />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 dark:bg-slate-800">
               <button
                 onClick={() => setAdjustMaterial(null)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+                className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 rounded-lg"
               >
                 Batal
               </button>
@@ -1112,18 +1112,18 @@ export default function MaterialsPage() {
       {/* Catat Material Rusak modal */}
       {wasteMaterial && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
             <h3 className="text-lg font-bold text-rose-700">
               Catat Material Rusak
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-slate-300">
               Tercatat sebagai{" "}
               <span className="font-mono">WASTE</span> di riwayat stok.
               Mengurangi <span className="font-semibold">{wasteMaterial.nama}</span>{" "}
               dari stok dengan nilai average cost saat ini.
             </p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Jumlah rusak (satuan: {wasteMaterial.satuan_dasar})
               </label>
               <input
@@ -1135,14 +1135,14 @@ export default function MaterialsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 autoFocus
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 Stok saat ini:{" "}
                 {Number(wasteMaterial.jumlah_stok || 0).toLocaleString("id-ID")}{" "}
                 {wasteMaterial.satuan_dasar}
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Alasan / keterangan <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -1156,7 +1156,7 @@ export default function MaterialsPage() {
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setWasteMaterial(null)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+                className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 rounded-lg"
               >
                 Batal
               </button>

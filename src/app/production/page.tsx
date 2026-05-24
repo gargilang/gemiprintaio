@@ -430,7 +430,7 @@ export default function ProductionPage() {
       case "MENUNGGU":
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "PROSES":
-        return "bg-blue-100 text-blue-800 border-blue-300";
+        return "bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-300";
       case "SELESAI":
         return "bg-green-100 text-green-800 border-green-300";
       case "DIBATALKAN":
@@ -440,7 +440,7 @@ export default function ProductionPage() {
       case "FINISHING":
         return "bg-orange-100 text-orange-800 border-orange-300";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
+        return "bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-100 border-gray-300";
     }
   };
 
@@ -460,7 +460,7 @@ export default function ProductionPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent"></div>
-          <p className="mt-4 text-[#0a1b3d] font-semibold">
+          <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">
             Memuat data produksi...
           </p>
         </div>
@@ -479,7 +479,7 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -508,7 +508,7 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <PrinterIcon size={20} />
               </div>
               <h3 className="text-base font-semibold uppercase tracking-wide">
@@ -525,7 +525,7 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -554,7 +554,7 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-amber-700 to-amber-900 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -582,7 +582,7 @@ export default function ProductionPage() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           {/* Search */}
           <div className="flex-1 min-w-[250px]">
@@ -592,7 +592,7 @@ export default function ProductionPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari SPK, Invoice, atau Pelanggan..."
-                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -614,7 +614,7 @@ export default function ProductionPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="ALL">Semua Status</option>
             <option value="MENUNGGU">Menunggu</option>
@@ -627,7 +627,7 @@ export default function ProductionPage() {
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="ALL">Semua Prioritas</option>
             <option value="KILAT">Kilat</option>
@@ -658,11 +658,11 @@ export default function ProductionPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <PrinterIcon size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg font-semibold">
+            <p className="text-gray-500 dark:text-slate-400 text-lg font-semibold">
               {searchQuery || filterStatus !== "ALL" || filterPriority !== "ALL"
                 ? "Tidak ada order yang sesuai filter"
                 : "Belum ada order produksi"}
@@ -704,26 +704,26 @@ export default function ProductionPage() {
                   <tr
                     key={order.id}
                     className={`hover:bg-amber-50 transition-colors ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      idx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
                     }`}
                   >
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-amber-800">
+                      <div className="font-semibold text-amber-800 dark:text-amber-200">
                         {order.nomor_spk}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-slate-300">
                         {order.nomor_invoice}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                         {order.pelanggan_nama || "Walk-in"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 font-semibold">
                         {order.total_item}
                       </span>
                     </td>
@@ -759,7 +759,7 @@ export default function ProductionPage() {
                         <option value="DIBATALKAN">DIBATALKAN</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">
+                    <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-slate-300">
                       {order.dibuat_pada
                         ? new Date(order.dibuat_pada).toLocaleDateString(
                             "id-ID"
@@ -773,7 +773,7 @@ export default function ProductionPage() {
                             setSelectedOrder(order);
                             setShowDetailModal(true);
                           }}
-                          className="p-2 text-amber-700 hover:bg-amber-100 rounded-lg transition-colors"
+                          className="p-2 text-amber-700 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-amber-900/30 rounded-lg transition-colors"
                           title="Lihat Detail"
                         >
                           <svg
@@ -798,7 +798,7 @@ export default function ProductionPage() {
                         </button>
                         <button
                           onClick={() => handlePrintSPK(order)}
-                          className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                          className="p-2 text-orange-600 dark:text-orange-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-orange-900/30 rounded-lg transition-colors"
                           title="Print SPK"
                         >
                           <PrinterIcon size={20} />
@@ -816,8 +816,8 @@ export default function ProductionPage() {
       {/* Detail Modal */}
       {showDetailModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-700 to-amber-900 shrink-0">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-amber-700 to-amber-900 shrink-0">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <PrinterIcon size={24} />
@@ -846,21 +846,21 @@ export default function ProductionPage() {
 
             <div className="p-6 flex-1 min-h-0 overflow-y-auto">
               {/* Order Info */}
-              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg">
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Invoice</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Invoice</div>
                   <div className="font-semibold">
                     {selectedOrder.nomor_invoice}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Pelanggan</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Pelanggan</div>
                   <div className="font-semibold">
                     {selectedOrder.pelanggan_nama || "Walk-in"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Prioritas</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Prioritas</div>
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getPriorityColor(
                       selectedOrder.prioritas
@@ -870,7 +870,7 @@ export default function ProductionPage() {
                   </span>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Status</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Status</div>
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
                       selectedOrder.status
@@ -883,34 +883,34 @@ export default function ProductionPage() {
 
               {/* Items */}
               <div className="space-y-4">
-                <h4 className="font-bold text-lg text-gray-900 mb-4">
+                <h4 className="font-bold text-lg text-gray-900 dark:text-slate-100 mb-4">
                   Item Produksi ({selectedOrder.items?.length || 0})
                 </h4>
                 {(selectedOrder.items || []).map((item, idx) => (
                   <div
                     key={item.id}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-amber-400 transition-colors"
+                    className="border-2 border-gray-200 dark:border-slate-800 rounded-lg p-4 hover:border-amber-400 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="font-bold text-gray-900 mb-1">
+                        <div className="font-bold text-gray-900 dark:text-slate-100 mb-1">
                           {idx + 1}. {item.barang_nama}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 dark:text-slate-300">
                           Jumlah: {item.jumlah} {item.nama_satuan}
                         </div>
                         {item.panjang && item.lebar && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 dark:text-slate-300">
                             Ukuran: {item.panjang} x {item.lebar} cm
                           </div>
                         )}
                         {item.jenis_bahan && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 dark:text-slate-300">
                             Bahan: {item.jenis_bahan}
                           </div>
                         )}
                         {item.mesin_printing && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-gray-600 dark:text-slate-300">
                             Mesin: {item.mesin_printing}
                           </div>
                         )}
@@ -940,22 +940,22 @@ export default function ProductionPage() {
 
                     {/* Finishing */}
                     {item.finishing && item.finishing.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="text-sm font-semibold text-gray-700 mb-2">
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800">
+                        <div className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                           Finishing:
                         </div>
                         <div className="space-y-2">
                           {item.finishing.map((fin) => (
                             <div
                               key={fin.id}
-                              className="flex items-center justify-between bg-orange-50 px-3 py-2 rounded-lg"
+                              className="flex items-center justify-between bg-orange-50 dark:bg-slate-800 px-3 py-2 rounded-lg"
                             >
                               <div className="flex-1">
-                                <span className="font-medium text-gray-900">
+                                <span className="font-medium text-gray-900 dark:text-slate-100">
                                   {fin.jenis_finishing}
                                 </span>
                                 {fin.keterangan && (
-                                  <span className="text-sm text-gray-600 ml-2">
+                                  <span className="text-sm text-gray-600 dark:text-slate-300 ml-2">
                                     ({fin.keterangan})
                                   </span>
                                 )}
@@ -974,7 +974,7 @@ export default function ProductionPage() {
                     )}
 
                     {item.catatan_produksi && (
-                      <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 text-sm text-gray-600 dark:text-slate-300">
                         <strong>Catatan:</strong> {item.catatan_produksi}
                       </div>
                     )}
@@ -983,22 +983,22 @@ export default function ProductionPage() {
               </div>
 
               {selectedOrder.catatan && (
-                <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                  <div className="font-semibold text-gray-900 mb-1">
+                <div className="mt-6 p-4 bg-yellow-50 dark:bg-slate-800 border-l-4 border-yellow-400 rounded">
+                  <div className="font-semibold text-gray-900 dark:text-slate-100 mb-1">
                     Catatan Umum:
                   </div>
-                  <div className="text-sm text-gray-700">
+                  <div className="text-sm text-gray-700 dark:text-slate-300">
                     {selectedOrder.catatan}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
+            <div className="p-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowDetailModal(false)}
-                className="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+                className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
               >
                 Batal
               </button>

@@ -106,7 +106,7 @@ export default function DynamicActorSummary({
 
   if (isLoading && !data) {
     return (
-      <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-sm text-gray-500">
+      <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
         Memuat ringkasan pengurus…
       </div>
     );
@@ -128,7 +128,7 @@ export default function DynamicActorSummary({
   if (actorRows.length === 0) {
     return (
       <div className="mb-6 space-y-2">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
+        <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
           <span>
             Belum ada pengurus terdaftar. Tambah di{" "}
             <strong>Pengaturan → Pengurus</strong>, lalu centang bagi hasil, kasbon,
@@ -138,7 +138,7 @@ export default function DynamicActorSummary({
             <button
               type="button"
               onClick={onOpenPeopleSettings}
-              className="text-blue-700 hover:text-blue-900 font-semibold underline whitespace-nowrap"
+              className="text-blue-700 dark:text-blue-300 hover:text-blue-900 font-semibold underline whitespace-nowrap"
             >
               Buka Pengaturan → Pengurus
             </button>
@@ -150,8 +150,8 @@ export default function DynamicActorSummary({
 
   return (
     <div className="mb-6 space-y-2">
-      <div className="rounded-xl border-2 border-slate-200 overflow-hidden bg-white shadow-sm">
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+      <div className="rounded-xl border-2 border-slate-200 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
@@ -195,18 +195,18 @@ export default function DynamicActorSummary({
             }}
           >
             <table className="w-full text-sm">
-              <thead className="bg-gray-50/80 text-[11px] font-bold uppercase tracking-wide text-gray-500 sticky top-0 z-10">
+              <thead className="bg-gray-50 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-2 text-left">Nama</th>
                   <th className="px-4 py-2 text-left">Jabatan</th>
                   {hasGroup.profit_share && (
-                    <th className="px-4 py-2 text-right text-amber-700">Bagi Hasil</th>
+                    <th className="px-4 py-2 text-right text-amber-700 dark:text-amber-300">Bagi Hasil</th>
                   )}
                   {hasGroup.cash_advance && (
                     <th className="px-4 py-2 text-right text-violet-700">Kasbon</th>
                   )}
                   {hasGroup.bonus && (
-                    <th className="px-4 py-2 text-right text-emerald-700">Bonus</th>
+                    <th className="px-4 py-2 text-right text-emerald-700 dark:text-emerald-300">Bonus</th>
                   )}
                 </tr>
               </thead>
@@ -222,19 +222,19 @@ export default function DynamicActorSummary({
                       className="hover:bg-slate-50/80 transition-colors"
                     >
                       <td className="px-4 py-3 align-top min-w-0">
-                        <div className="font-semibold text-gray-900 truncate">{row.displayName}</div>
+                        <div className="font-semibold text-gray-900 dark:text-slate-100 truncate">{row.displayName}</div>
                         {noMetrics && (
                           <p className="text-[11px] text-slate-400 mt-0.5">
                             Belum ada rumus — edit di Pengaturan → Pengurus
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3 align-top text-xs text-gray-500 truncate">
+                      <td className="px-4 py-3 align-top text-xs text-gray-500 dark:text-slate-400 truncate">
                         {row.roleLabel}
                       </td>
                       {hasGroup.profit_share && (
                         <td className="px-4 py-3 align-top text-right whitespace-nowrap">
-                          <CellValue value={ps} formatRupiah={formatRupiah} tone="text-amber-800" />
+                          <CellValue value={ps} formatRupiah={formatRupiah} tone="text-amber-800 dark:text-amber-200" />
                         </td>
                       )}
                       {hasGroup.cash_advance && (
@@ -257,7 +257,7 @@ export default function DynamicActorSummary({
       </div>
 
       {legacyCount > 0 && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
           {legacyCount} rumus lama masih aktif di belakang layar. Kelola pengurus di{" "}
           {onOpenPeopleSettings ? (
             <button type="button" onClick={onOpenPeopleSettings} className="underline font-semibold">

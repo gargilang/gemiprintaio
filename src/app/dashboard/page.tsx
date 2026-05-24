@@ -50,18 +50,18 @@ const fmtTime = (iso: string) => {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    LUNAS: "bg-emerald-100 text-emerald-700",
-    AKTIF: "bg-amber-100 text-amber-700",
-    SEBAGIAN: "bg-blue-100 text-blue-700",
-    MENUNGGU: "bg-yellow-100 text-yellow-700",
-    PROSES: "bg-blue-100 text-blue-700",
-    SELESAI: "bg-emerald-100 text-emerald-700",
-    KILAT: "bg-red-100 text-red-700",
-    NORMAL: "bg-gray-100 text-gray-600",
+    LUNAS: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    AKTIF: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+    SEBAGIAN: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    MENUNGGU: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700",
+    PROSES: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    SELESAI: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    KILAT: "bg-red-100 dark:bg-red-900/30 text-red-700",
+    NORMAL: "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300",
   };
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${colors[status] || "bg-gray-100 text-gray-600"}`}
+      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${colors[status] || "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"}`}
     >
       {status}
     </span>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
         <>
           {/* Stats row: today */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-3 font-twcenmt">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-3 font-twcenmt">
               Hari Ini
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -164,9 +164,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Sales Trend Chart */}
-          <div className="bg-white/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
+          <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-800 font-twcenmt">
+              <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
                 Tren Penjualan
               </h3>
               <div className="flex gap-1">
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                       trendDays === d
                         ? "bg-[#00afef] text-white shadow"
-                        : "bg-white/60 text-gray-500 hover:bg-white/80"
+                        : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
                     }`}
                   >
                     {d} hari
@@ -193,7 +193,7 @@ export default function DashboardPage() {
 
           {/* Stats Row: Produksi */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-3 font-twcenmt">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-3 font-twcenmt">
               Produksi
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -224,9 +224,9 @@ export default function DashboardPage() {
           {/* Tables Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Sales */}
-            <div className="bg-white/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
+            <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 font-twcenmt">
+                <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
                   Penjualan Hari Ini
                 </h3>
                 <Link
@@ -245,18 +245,18 @@ export default function DashboardPage() {
                   {stats.recentSales.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/60 border border-white/20"
+                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white dark:bg-slate-900/60 border border-white/20"
                     >
                       <div>
-                        <p className="font-semibold text-sm text-gray-800">
+                        <p className="font-semibold text-sm text-gray-800 dark:text-slate-100">
                           {s.pelangganNama}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                           {fmtTime(s.dibuatPada)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-sm text-gray-800">
+                        <p className="font-bold text-sm text-gray-800 dark:text-slate-100">
                           {fmtCurrency(s.totalJumlah)}
                         </p>
                         <StatusBadge status={s.statusPembayaran} />
@@ -268,9 +268,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Active Production */}
-            <div className="bg-white/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
+            <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 font-twcenmt">
+                <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
                   Produksi Aktif
                 </h3>
                 <Link
@@ -289,13 +289,13 @@ export default function DashboardPage() {
                   {stats.recentOrders.map((o) => (
                     <div
                       key={o.id}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/60 border border-white/20"
+                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white dark:bg-slate-900/60 border border-white/20"
                     >
                       <div>
-                        <p className="font-semibold text-sm text-gray-800">
+                        <p className="font-semibold text-sm text-gray-800 dark:text-slate-100">
                           {o.nomorSpk}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                           {o.pelangganNama}
                         </p>
                       </div>
@@ -317,10 +317,10 @@ export default function DashboardPage() {
 
       {/* Footer */}
       <div className="text-center pt-4 pb-2">
-        <p className="text-[#6b7280] text-sm">
+        <p className="text-[#6b7280] dark:text-slate-400 text-sm">
           <span className="font-bauhaus italic">
             <span className="text-[#00afef]">gemi</span>
-            <span className="text-[#0a1b3d]">print</span>
+            <span className="text-[#0a1b3d] dark:text-slate-100">print</span>
           </span>{" "}
           — All-in-One Management System © 2025
         </p>
@@ -424,17 +424,17 @@ function StatCard({
   };
 
   const colorClasses: Record<string, { bg: string; text: string; icon: string }> = {
-    cyan: { bg: "bg-cyan-50", text: "text-[#00afef]", icon: "text-[#00afef]" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", icon: "text-emerald-500" },
-    blue: { bg: "bg-blue-50", text: "text-blue-600", icon: "text-blue-500" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", icon: "text-amber-500" },
-    red: { bg: "bg-red-50", text: "text-red-600", icon: "text-red-500" },
+    cyan: { bg: "bg-cyan-50 dark:bg-slate-800", text: "text-[#00afef]", icon: "text-[#00afef]" },
+    emerald: { bg: "bg-emerald-50 dark:bg-slate-800", text: "text-emerald-600 dark:text-emerald-300", icon: "text-emerald-500" },
+    blue: { bg: "bg-blue-50 dark:bg-slate-800", text: "text-blue-600 dark:text-blue-300", icon: "text-blue-500" },
+    amber: { bg: "bg-amber-50 dark:bg-slate-800", text: "text-amber-600 dark:text-amber-300", icon: "text-amber-500" },
+    red: { bg: "bg-red-50 dark:bg-red-950/40", text: "text-red-600", icon: "text-red-500" },
   };
 
   const c = colorClasses[color] ?? colorClasses.cyan;
 
   return (
-    <div className="bg-white/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5 flex items-start gap-4">
+    <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5 flex items-start gap-4">
       <div className={`${c.bg} p-3 rounded-xl shrink-0`}>
         <svg
           className={`w-6 h-6 ${c.icon}`}
@@ -451,7 +451,7 @@ function StatCard({
         </svg>
       </div>
       <div className="min-w-0">
-        <p className="text-sm text-gray-500 font-twcenmt">{title}</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400 font-twcenmt">{title}</p>
         <p className={`text-xl font-bold ${c.text} font-twcenmt truncate`}>
           {value}
         </p>
