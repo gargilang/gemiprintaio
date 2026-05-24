@@ -1418,6 +1418,63 @@ export async function voidPurchase(
       source_id: id,
     });
 
+    // Sebelum mencoba reversal, cek dulu apakah stok dari pembelian ini
+    // sudah dipakai di penjualan. Kalau iya, kumpulkan nomor invoice-nya
+    // supaya pesan error bisa menyebut transaksi spesifik.
+    const barangIds = [...new Set(items.map((it) => it.barang_id))];
+    const blockingInvoices: string[] = [];
+    for (const barangId of barangIds) {
+      // Cari SALE_ISSUE movements untuk barang ini yang terjadi SETELAH
+      // PURCHASE_RECEIPT dari pembelian ini. Kalau ada, berarti stok dari
+      // pembelian ini sudah dipakai.
+      const purchaseReceipt = movements.find(
+        (m) => m.movement_type === "PURCHASE_RECEIPT" && m.barang_id === barangId
+      );
+      if (!purchaseReceipt) continue;
+
+      // Cek stok saat ini vs qty yang perlu di-reverse
+      const barangResult = await db.queryOne<any>("barang", {
+        where: { id: barangId },
+      });
+      const currentStock = Number(barangResult.data?.jumlah_stok || 0);
+      const qtyToReverse = Math.abs(Number(purchaseReceipt.qty_delta || 0));
+
+      if (currentStock < qtyToReverse - 0.000001) {
+        // Stok tidak cukup — cari penjualan yang memakai barang ini
+        const saleMovements = await getInventoryMovements({
+          barang_id: barangId,
+          source_type: "SALE",
+        });
+        for (const sm of saleMovements) {
+          if (sm.movement_type !== "SALE_ISSUE") continue;
+          // Cari nomor invoice dari penjualan ini
+          const saleResult = await db.queryOne<any>("penjualan", {
+            where: { id: sm.source_id },
+          });
+          if (saleResult.data) {
+            const inv = saleResult.data.nomor_invoice || sm.source_id;
+            const tgl = saleResult.data.dibuat_pada
+              ? new Date(saleResult.data.dibuat_pada).toLocaleDateString(
+                  "id-ID",
+                  { day: "numeric", month: "short", year: "numeric" }
+                )
+              : "";
+            const label = tgl ? `${inv} (${tgl})` : inv;
+            if (!blockingInvoices.includes(label)) {
+              blockingInvoices.push(label);
+            }
+          }
+        }
+      }
+    }
+
+    if (blockingInvoices.length > 0) {
+      throw new Error(
+        `Tidak bisa dibatalkan. Stok dari pembelian ini sudah dipakai di penjualan: ${blockingInvoices.join(", ")}. ` +
+          `Batalkan penjualan tersebut dulu, atau gunakan Retur Vendor untuk mengembalikan sebagian stok.`
+      );
+    }
+
     // Append reversal movements. If stock has already been consumed, this
     // throws a friendly insufficient-stock error and leaves the purchase posted.
     for (const item of items) {

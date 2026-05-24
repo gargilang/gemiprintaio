@@ -1051,6 +1051,33 @@ export async function voidSale(
     throw new Error("Transaksi sudah dibatalkan");
   }
 
+  // Cek status produksi — kalau SPK sudah PROSES atau SELESAI, void tidak
+  // diizinkan karena barang sudah dikerjakan. Tampilkan nomor SPK spesifik.
+  const prodResult = await db.query<any>("order_produksi", {
+    where: { penjualan_id: id },
+  });
+  if (!prodResult.error) {
+    const activeOrders = (prodResult.data || []).filter(
+      (o: any) =>
+        o.status === "PROSES" ||
+        o.status === "SELESAI" ||
+        o.status === "PRINTING" ||
+        o.status === "FINISHING"
+    );
+    if (activeOrders.length > 0) {
+      const spkList = activeOrders
+        .map((o: any) => {
+          const status = o.status;
+          return `${o.nomor_spk} (${status})`;
+        })
+        .join(", ");
+      throw new Error(
+        `Tidak bisa dibatalkan. Penjualan ini sudah masuk produksi: ${spkList}. ` +
+          `Batalkan atau selesaikan SPK tersebut dulu sebelum membatalkan penjualan.`
+      );
+    }
+  }
+
   const piutangResult = await db.query<any>("piutang_penjualan", {
     where: { id_penjualan: id },
   });
