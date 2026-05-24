@@ -469,6 +469,7 @@ DECLARE
   movement inventory_movements%ROWTYPE;
   payment_count INTEGER;
   v_period_date DATE;
+  v_blocking_spk TEXT;
 BEGIN
   SELECT * INTO s FROM penjualan WHERE id = sale_id FOR UPDATE;
   IF NOT FOUND THEN
@@ -480,6 +481,18 @@ BEGIN
 
   v_period_date := s.dibuat_pada::DATE;
   PERFORM public.assert_period_open(v_period_date);
+
+  -- Cek status produksi. Kalau ada SPK yang sudah PROSES/SELESAI, void
+  -- ditolak dengan menyebut nomor SPK spesifik.
+  SELECT STRING_AGG(nomor_spk || ' (' || status || ')', ', ')
+  INTO v_blocking_spk
+  FROM order_produksi
+  WHERE penjualan_id = sale_id
+    AND status IN ('PROSES', 'PRINTING', 'FINISHING', 'SELESAI');
+
+  IF v_blocking_spk IS NOT NULL THEN
+    RAISE EXCEPTION 'Tidak bisa dibatalkan. Penjualan ini sudah masuk produksi: %. Batalkan atau selesaikan SPK tersebut dulu sebelum membatalkan penjualan.', v_blocking_spk;
+  END IF;
 
   SELECT COUNT(*) INTO payment_count
   FROM piutang_penjualan pp
