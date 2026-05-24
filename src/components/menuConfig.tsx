@@ -12,9 +12,11 @@ import {
   AuditLogIcon,
   UserIcon,
   SettingsIcon,
+  PackageIcon,
   PrinterIcon,
   RelationsIcon,
   InventoryIcon,
+  SparklesIcon,
 } from "./icons/PageIcons";
 import { BoxIcon } from "./icons/ContentIcons";
 import type { UserRole } from "@/types/database";
@@ -83,11 +85,27 @@ export const MENU_ENTRIES: MenuEntry[] = [
     allowedRoles: OPERATIONAL,
   },
   {
-    href: "/production",
-    icon: <PrinterIcon size={18} />,
+    kind: "group",
+    id: "produksi",
     label: "Produksi",
-    color: "from-amber-700 to-amber-900",
-    allowedRoles: OPERATIONAL,
+    icon: <PackageIcon size={18} />,
+    color: "from-[#ef4444] to-[#dc2626]",
+    children: [
+      {
+        href: "/production/spk",
+        icon: <PrinterIcon size={18} />,
+        label: "SPK",
+        color: "from-[#f97316] to-[#dc2626]",
+        allowedRoles: OPERATIONAL,
+      },
+      {
+        href: "/production/ai-prompt",
+        icon: <SparklesIcon size={18} />,
+        label: "AI Prompt",
+        color: "from-[#00afef] to-[#dc2626]",
+        allowedRoles: OPERATIONAL,
+      },
+    ],
   },
   {
     kind: "group",
@@ -194,6 +212,8 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/dashboard": "Dashboard",
   "/pos": "POS / Kasir",
   "/production": "Produksi",
+  "/production/spk": "SPK",
+  "/production/ai-prompt": "AI Prompt",
   "/materials": "Data Bahan",
   "/customers": "Pelanggan",
   "/vendors": "Vendor",
