@@ -162,10 +162,12 @@ export default function POSPage() {
     };
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
-  const customers = safePos.customers;
-  const materials = safePos.materials;
-  const sales = safePos.sales;
-  const subkontraktor = safePos.subkontraktor;
+  const customers = safePos.customers ?? [];
+  const materials = safePos.materials ?? [];
+  const sales = safePos.sales ?? [];
+  // Cache localStorage versi pre-maklon bisa hydrate posInitData tanpa field
+  // subkontraktor — fallback ke array kosong sampai SWR re-fetch.
+  const subkontraktor = safePos.subkontraktor ?? [];
   const [refreshing, setRefreshing] = useState(false);
   const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
