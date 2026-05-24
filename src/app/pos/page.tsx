@@ -23,6 +23,9 @@ import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
 import MaklonLineModal, {
   type MaklonLineFormValue,
 } from "@/components/MaklonLineModal";
+import PpnFakturModal, {
+  type PpnFakturData,
+} from "@/components/PpnFakturModal";
 import SalesHistoryTable from "@/components/SalesHistoryTable";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import NotificationToast, {
@@ -55,6 +58,9 @@ interface Customer {
   nama: string;
   member_status: number;
   telepon?: string;
+  alamat?: string;
+  email?: string;
+  kontak_person?: string;
 }
 
 interface Material {
@@ -159,10 +165,12 @@ export default function POSPage() {
     };
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
-  const customers = safePos.customers;
-  const materials = safePos.materials;
-  const sales = safePos.sales;
-  const subkontraktor = safePos.subkontraktor;
+  const customers = safePos.customers ?? [];
+  const materials = safePos.materials ?? [];
+  const sales = safePos.sales ?? [];
+  // Cache localStorage versi pre-maklon bisa hydrate posInitData tanpa field
+  // subkontraktor — fallback ke array kosong sampai SWR re-fetch.
+  const subkontraktor = safePos.subkontraktor ?? [];
   const [refreshing, setRefreshing] = useState(false);
   const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
@@ -249,6 +257,9 @@ export default function POSPage() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showReceivableModal, setShowReceivableModal] = useState(false);
   const [showMaklonModal, setShowMaklonModal] = useState(false);
+  const [showPpnModal, setShowPpnModal] = useState(false);
+  // PPN data untuk transaksi yang sedang disusun. Null = tidak kena PPN.
+  const [ppnFaktur, setPpnFaktur] = useState<PpnFakturData | null>(null);
   const [editingMaklonIndex, setEditingMaklonIndex] = useState<number | null>(
     null
   );
@@ -886,6 +897,23 @@ export default function POSPage() {
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
+        ...(ppnFaktur
+          ? {
+              kena_ppn: true,
+              ppn_persen: ppnFaktur.ppn_persen,
+              ppn_metode: ppnFaktur.ppn_metode,
+              nsfp_kode_transaksi: ppnFaktur.nsfp_kode_transaksi,
+              nsfp_tahun: ppnFaktur.nsfp_tahun,
+              nsfp_nomor_seri: ppnFaktur.nsfp_nomor_seri.padStart(8, "0"),
+              tanggal_faktur_pajak: ppnFaktur.tanggal_faktur_pajak,
+              pelanggan_npwp_snapshot:
+                ppnFaktur.pelanggan_npwp_snapshot || undefined,
+              pelanggan_alamat_npwp_snapshot:
+                ppnFaktur.pelanggan_alamat_npwp_snapshot || undefined,
+              pelanggan_nama_npwp_snapshot:
+                ppnFaktur.pelanggan_nama_npwp_snapshot || undefined,
+            }
+          : {}),
       });
 
       showMsg(
@@ -896,10 +924,52 @@ export default function POSPage() {
       // Print receipt and/or faktur based on user's choice
       if (printType !== "none") {
         const tanggalIso = new Date().toISOString();
+        let shopSettings:
+          | {
+              nama_toko?: string | null;
+              slogan?: string | null;
+              alamat?: string | null;
+              telepon?: string | null;
+              email?: string | null;
+              website?: string | null;
+              bank_nama?: string | null;
+              bank_nomor?: string | null;
+              bank_atas_nama?: string | null;
+              catatan_faktur?: string | null;
+              catatan_struk?: string | null;
+              npwp?: string | null;
+              alamat_npwp?: string | null;
+            }
+          | undefined;
+
+        try {
+          const { getShopSettingsAction } = await import(
+            "@/app/settings/actions"
+          );
+          const settings = await getShopSettingsAction();
+          shopSettings = {
+            nama_toko: settings.nama_toko,
+            slogan: settings.slogan,
+            alamat: settings.alamat,
+            telepon: settings.telepon,
+            email: settings.email,
+            website: settings.website,
+            bank_nama: settings.bank_nama,
+            bank_nomor: settings.bank_nomor,
+            bank_atas_nama: settings.bank_atas_nama,
+            catatan_faktur: settings.catatan_faktur,
+            catatan_struk: settings.catatan_struk,
+            npwp: settings.npwp,
+            alamat_npwp: settings.alamat_npwp,
+          };
+        } catch (err) {
+          console.warn("Data usaha tidak bisa dimuat untuk print:", err);
+        }
 
         const buildThermalData = () => ({
           nomor_invoice: result.nomor_invoice,
           tanggal: tanggalIso,
+          shop: shopSettings,
           pelanggan_nama:
             selectedCustomer?.nama || walkInFaktur?.nama || undefined,
           pelanggan_telepon: selectedCustomer?.telepon,
@@ -935,15 +1005,65 @@ export default function POSPage() {
 
         const buildFakturData = async () => {
           const { formatUkuran } = await import("@/lib/faktur-print");
+          const { formatNsfpString, formatNpwp } = await import(
+            "@/lib/ppn-helpers"
+          );
           const sisa = Math.max(
             0,
             total - (paymentMethod === "NET30" ? 0 : bayar)
           );
+
+          const shop = shopSettings
+            ? {
+                ...shopSettings,
+                npwp: shopSettings.npwp ? formatNpwp(shopSettings.npwp) : null,
+              }
+            : undefined;
+
+          // Hitung DPP per faktur dari data yang sudah di-set di RPC.
+          // Untuk safety di client side, hitung ulang dari ppnFaktur input.
+          const ppn = ppnFaktur
+            ? (() => {
+                const { hitungPpn } = require("@/lib/ppn-helpers") as typeof import("@/lib/ppn-helpers");
+                const breakdown = hitungPpn(
+                  total,
+                  ppnFaktur.ppn_persen,
+                  ppnFaktur.ppn_metode
+                );
+                return {
+                  nsfp: formatNsfpString(
+                    ppnFaktur.nsfp_kode_transaksi,
+                    ppnFaktur.nsfp_tahun,
+                    ppnFaktur.nsfp_nomor_seri.padStart(8, "0")
+                  ),
+                  kode_transaksi: ppnFaktur.nsfp_kode_transaksi,
+                  dpp_total: breakdown.dpp,
+                  persen: ppnFaktur.ppn_persen,
+                  ppn_total: breakdown.ppn,
+                  pelanggan_npwp: ppnFaktur.pelanggan_npwp_snapshot
+                    ? formatNpwp(ppnFaktur.pelanggan_npwp_snapshot)
+                    : null,
+                  pelanggan_alamat_npwp:
+                    ppnFaktur.pelanggan_alamat_npwp_snapshot || null,
+                  pelanggan_nama_npwp:
+                    ppnFaktur.pelanggan_nama_npwp_snapshot || null,
+                };
+              })()
+            : undefined;
+
           return {
             nomor_invoice: result.nomor_invoice,
             tanggal: tanggalIso,
             pelanggan_nama:
               selectedCustomer?.nama || walkInFaktur?.nama || "",
+            pelanggan_detail: [
+              selectedCustomer?.kontak_person
+                ? `Kontak: ${selectedCustomer.kontak_person}`
+                : "",
+              selectedCustomer?.telepon ? `Telp: ${selectedCustomer.telepon}` : "",
+              selectedCustomer?.email ? `Email: ${selectedCustomer.email}` : "",
+              selectedCustomer?.alamat || "",
+            ].filter(Boolean),
             kota: walkInFaktur?.kota || "Bekasi",
             items: cart.map((item, index) => ({
               // For maklon lines, the customer-facing item name is the
@@ -973,6 +1093,8 @@ export default function POSPage() {
             bayar: paymentMethod === "NET30" ? 0 : bayar,
             sisa,
             catatan: catatan.trim() || undefined,
+            ppn,
+            shop,
           };
         };
 
@@ -1019,6 +1141,7 @@ export default function POSPage() {
       setPrioritas("NORMAL");
       setUseRounding(false);
       setSelectedRollSize(null);
+      setPpnFaktur(null);
       setRoundCartPrices(true);
       setWalkInFaktur(null);
 
@@ -1620,7 +1743,26 @@ export default function POSPage() {
           </div>
 
           {/* Right: Cart */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowPpnModal(true)}
+              className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                ppnFaktur
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-emerald-400"
+              }`}
+            >
+              {ppnFaktur ? (
+                <>
+                  ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
+                  {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
+                  {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
+                </>
+              ) : (
+                <>+ Tambah Faktur Pajak (PPN)</>
+              )}
+            </button>
             <POSCart
               cart={cart}
               roundCartPrices={roundCartPrices}
@@ -1737,6 +1879,43 @@ export default function POSPage() {
         }}
         onSave={handleSaveMaklonLine}
         onShowMessage={showMsg}
+      />
+
+      <PpnFakturModal
+        open={showPpnModal}
+        initial={
+          ppnFaktur ?? {
+            kena_ppn: false,
+            ppn_persen: 11,
+            ppn_metode: "EKSKLUSIF",
+            nsfp_kode_transaksi: "01",
+            nsfp_tahun: String(new Date().getFullYear()).slice(-2),
+            nsfp_nomor_seri: "",
+            tanggal_faktur_pajak: new Date().toISOString().split("T")[0],
+            pelanggan_npwp_snapshot: "",
+            pelanggan_alamat_npwp_snapshot: "",
+            pelanggan_nama_npwp_snapshot: "",
+          }
+        }
+        defaultPpnPersen={11}
+        defaultPpnMetode="EKSKLUSIF"
+        defaultKodeTransaksi="01"
+        pelanggan={
+          selectedCustomer
+            ? {
+                nama: selectedCustomer.nama,
+                npwp: (selectedCustomer as any).npwp,
+                alamat_npwp: (selectedCustomer as any).alamat_npwp,
+                nama_di_npwp: (selectedCustomer as any).nama_di_npwp,
+              }
+            : null
+        }
+        onSave={(data) => {
+          setPpnFaktur(data);
+          setShowPpnModal(false);
+        }}
+        onClear={() => setPpnFaktur(null)}
+        onClose={() => setShowPpnModal(false)}
       />
 
       {confirmDialog && (

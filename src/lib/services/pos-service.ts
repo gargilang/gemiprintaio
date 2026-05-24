@@ -22,6 +22,7 @@ import {
   getInventoryMovements,
   postInventoryMovement,
 } from "./inventory-service";
+import { hitungPpn } from "../ppn-helpers";
 
 // ============================================================================
 // TYPES
@@ -150,6 +151,19 @@ export interface CreateSaleData {
   kasir_id?: string;
   tanggal?: string;
   prioritas?: "NORMAL" | "KILAT";
+  // PPN keluaran (opsional). Kalau tidak diset, kena_ppn=0.
+  kena_ppn?: boolean;
+  ppn_persen?: number;
+  ppn_metode?: "EKSKLUSIF" | "INKLUSIF";
+  /** NSFP yang akan dipakai. Wajib kalau kena_ppn=true. */
+  nsfp_kode_transaksi?: string;
+  nsfp_tahun?: string;
+  nsfp_nomor_seri?: string;
+  tanggal_faktur_pajak?: string;
+  /** NPWP pelanggan saat penerbitan faktur (snapshot). */
+  pelanggan_npwp_snapshot?: string;
+  pelanggan_alamat_npwp_snapshot?: string;
+  pelanggan_nama_npwp_snapshot?: string;
 }
 
 // ============================================================================
@@ -480,6 +494,24 @@ export async function createSale(data: CreateSaleData): Promise<{
 
     let totalHpp = 0;
 
+    // PPN keluaran setup
+    const kenaPpn = data.kena_ppn ? 1 : 0;
+    const ppnPersen = kenaPpn === 1 ? Number(data.ppn_persen || 0) : 0;
+    const ppnMetode: "EKSKLUSIF" | "INKLUSIF" =
+      data.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF";
+    const ppnHeaderBreakdown =
+      kenaPpn === 1 && ppnPersen > 0
+        ? hitungPpn(data.total_jumlah, ppnPersen, ppnMetode)
+        : { dpp: data.total_jumlah, ppn: 0, total: data.total_jumlah };
+
+    if (kenaPpn === 1) {
+      if (!data.nsfp_kode_transaksi || !data.nsfp_tahun || !data.nsfp_nomor_seri) {
+        throw new Error(
+          "Faktur kena PPN wajib menyertakan NSFP (Nomor Seri Faktur Pajak) lengkap"
+        );
+      }
+    }
+
     // Track inserted maklon item ids so we can update pembelian_id_terkait
     // after the auto-PO is generated. Keyed by item index in the original
     // request payload.
@@ -500,10 +532,57 @@ export async function createSale(data: CreateSaleData): Promise<{
         metode_pembayaran: data.metode_pembayaran,
         kasir_id: data.kasir_id || null,
         catatan: data.catatan?.trim() || null,
+        // PPN keluaran
+        kena_ppn: kenaPpn,
+        ppn_persen: ppnPersen,
+        ppn_metode: ppnMetode,
+        dpp_total: ppnHeaderBreakdown.dpp,
+        ppn_total: ppnHeaderBreakdown.ppn,
+        nsfp_kode_transaksi: kenaPpn === 1 ? data.nsfp_kode_transaksi || null : null,
+        nsfp_tahun: kenaPpn === 1 ? data.nsfp_tahun || null : null,
+        nsfp_nomor_seri: kenaPpn === 1 ? data.nsfp_nomor_seri || null : null,
+        tanggal_faktur_pajak:
+          kenaPpn === 1 ? data.tanggal_faktur_pajak || tanggalSale : null,
+        pelanggan_npwp_snapshot: data.pelanggan_npwp_snapshot || null,
+        pelanggan_alamat_npwp_snapshot: data.pelanggan_alamat_npwp_snapshot || null,
+        pelanggan_nama_npwp_snapshot: data.pelanggan_nama_npwp_snapshot || null,
       };
 
       const saleResult = await db.insert("penjualan", sale);
       if (saleResult.error) throw saleResult.error;
+
+      // Lock NSFP slot kalau dipakai (status TERSEDIA → TERPAKAI). Lakukan
+      // sebelum insert items supaya gagal-tertentu di NSFP rollback semua.
+      if (
+        kenaPpn === 1 &&
+        data.nsfp_tahun &&
+        data.nsfp_kode_transaksi &&
+        data.nsfp_nomor_seri
+      ) {
+        const nsfpRow = await db.queryOne<any>("nsfp_pool", {
+          where: {
+            tahun: data.nsfp_tahun,
+            kode_transaksi: data.nsfp_kode_transaksi,
+            nomor_seri: data.nsfp_nomor_seri,
+          },
+        });
+        if (!nsfpRow.data) {
+          throw new Error(
+            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} tidak ditemukan di pool. Import dulu dari Coretax.`
+          );
+        }
+        if (nsfpRow.data.status !== "TERSEDIA") {
+          throw new Error(
+            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} sudah ${nsfpRow.data.status}. Pilih nomor lain.`
+          );
+        }
+        const upd = await db.update("nsfp_pool", nsfpRow.data.id, {
+          status: "TERPAKAI",
+          penjualan_id: saleId,
+          diperbarui_pada: getCurrentTimestamp(),
+        });
+        if (upd.error) throw upd.error;
+      }
 
       // Insert sale items and update stock
       for (let i = 0; i < data.items.length; i++) {
@@ -546,6 +625,16 @@ export async function createSale(data: CreateSaleData): Promise<{
           item.subtotal > 0 ? (grossProfit / item.subtotal) * 100 : 0;
         totalHpp += hppTotal;
 
+        // Per-line PPN breakdown (kalau header kena_ppn=1)
+        const lineBreakdown =
+          kenaPpn === 1 && ppnPersen > 0
+            ? hitungPpn(item.subtotal, ppnPersen, ppnMetode)
+            : { dpp: item.subtotal, ppn: 0, total: item.subtotal };
+        const lineDppSatuan =
+          item.jumlah !== 0 ? lineBreakdown.dpp / item.jumlah : 0;
+        const linePpnSatuan =
+          item.jumlah !== 0 ? lineBreakdown.ppn / item.jumlah : 0;
+
         const saleItem = {
           id: itemId,
           penjualan_id: saleId,
@@ -572,6 +661,10 @@ export async function createSale(data: CreateSaleData): Promise<{
           metode_bayar_vendor: isMaklon ? item.metode_bayar_vendor : null,
           pembelian_id_terkait: null,
           deskripsi_pekerjaan: item.deskripsi_pekerjaan?.trim() || null,
+          dpp_satuan: lineDppSatuan,
+          ppn_satuan: linePpnSatuan,
+          dpp_total: lineBreakdown.dpp,
+          ppn_total: lineBreakdown.ppn,
         };
 
         const itemResult = await db.insert("item_penjualan", saleItem);
@@ -625,6 +718,8 @@ export async function createSale(data: CreateSaleData): Promise<{
           omzet: data.total_jumlah,
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
+          reference_type: "SALE",
+          reference_id: saleId,
         });
       }
 
@@ -639,6 +734,8 @@ export async function createSale(data: CreateSaleData): Promise<{
           biaya_bahan: totalHpp,
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
+          reference_type: "SALE_HPP",
+          reference_id: saleId,
         });
       }
 
@@ -703,6 +800,8 @@ export async function createSale(data: CreateSaleData): Promise<{
             omzet: jumlahTerbayar,
             catatan: data.catatan,
             dibuat_oleh: data.kasir_id,
+            reference_type: "SALE_RECEIVABLE_DP",
+            reference_id: saleId,
           });
         }
       }
@@ -950,6 +1049,33 @@ export async function voidSale(
   }
   if (sale.status_transaksi === "VOIDED") {
     throw new Error("Transaksi sudah dibatalkan");
+  }
+
+  // Cek status produksi — kalau SPK sudah PROSES atau SELESAI, void tidak
+  // diizinkan karena barang sudah dikerjakan. Tampilkan nomor SPK spesifik.
+  const prodResult = await db.query<any>("order_produksi", {
+    where: { penjualan_id: id },
+  });
+  if (!prodResult.error) {
+    const activeOrders = (prodResult.data || []).filter(
+      (o: any) =>
+        o.status === "PROSES" ||
+        o.status === "SELESAI" ||
+        o.status === "PRINTING" ||
+        o.status === "FINISHING"
+    );
+    if (activeOrders.length > 0) {
+      const spkList = activeOrders
+        .map((o: any) => {
+          const status = o.status;
+          return `${o.nomor_spk} (${status})`;
+        })
+        .join(", ");
+      throw new Error(
+        `Tidak bisa dibatalkan. Penjualan ini sudah masuk produksi: ${spkList}. ` +
+          `Batalkan atau selesaikan SPK tersebut dulu sebelum membatalkan penjualan.`
+      );
+    }
   }
 
   const piutangResult = await db.query<any>("piutang_penjualan", {
@@ -1399,6 +1525,8 @@ export async function payReceivable(data: {
       omzet: data.jumlah_bayar,
       catatan: data.catatan,
       dibuat_oleh: data.dibuat_oleh,
+      reference_type: "SALE_RECEIVABLE_PAYMENT",
+      reference_id: piutang.id_penjualan,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1560,6 +1688,8 @@ async function createFinanceEntry(data: {
   biaya_bahan?: number;
   catatan?: string | null;
   dibuat_oleh?: string | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
 }) {
   // Get max urutan_tampilan
   const maxOrderResult = await db.query("keuangan", {
@@ -1589,6 +1719,8 @@ async function createFinanceEntry(data: {
     catatan: data.catatan || null,
     dibuat_oleh: data.dibuat_oleh || null,
     urutan_tampilan: nextDisplayOrder,
+    reference_type: data.reference_type || null,
+    reference_id: data.reference_id || null,
   };
 
   const result = await db.insert("keuangan", finance);

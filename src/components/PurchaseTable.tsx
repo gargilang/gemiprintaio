@@ -46,6 +46,7 @@ interface PurchaseTableProps {
   onEdit: (purchase: Purchase) => void;
   onDelete: (purchase: Purchase) => void;
   onRevert?: (purchase: Purchase) => void;
+  onRetur?: (purchase: Purchase) => void;
 }
 
 const PurchaseRow = memo(
@@ -55,12 +56,14 @@ const PurchaseRow = memo(
     onEdit,
     onDelete,
     onRevert,
+    onRetur,
   }: {
     purchase: Purchase;
     index: number;
     onEdit: (purchase: Purchase) => void;
     onDelete: (purchase: Purchase) => void;
     onRevert?: (purchase: Purchase) => void;
+    onRetur?: (purchase: Purchase) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false);
     const [printing, setPrinting] = useState(false);
@@ -72,11 +75,27 @@ const PurchaseRow = memo(
         const { printFakturPembelian, formatUkuranPembelian } = await import(
           "@/lib/faktur-pembelian-print"
         );
+        let shop:
+          | { nama_toko?: string | null; slogan?: string | null }
+          | undefined;
+        try {
+          const { getShopSettingsAction } = await import(
+            "@/app/settings/actions"
+          );
+          const settings = await getShopSettingsAction();
+          shop = {
+            nama_toko: settings.nama_toko,
+            slogan: settings.slogan,
+          };
+        } catch (settingsError) {
+          console.warn("Data usaha tidak bisa dimuat untuk print pembelian:", settingsError);
+        }
         printFakturPembelian({
           nomor_pembelian:
             purchase.nomor_pembelian || purchase.nomor_faktur,
           nomor_faktur_vendor: purchase.nomor_faktur,
           tanggal: purchase.tanggal,
+          shop,
           vendor_nama: purchase.vendor_name || undefined,
           vendor_alamat: purchase.vendor_alamat || undefined,
           vendor_telepon: purchase.vendor_telepon || undefined,
@@ -251,6 +270,29 @@ const PurchaseRow = memo(
                     </svg>
                   </button>
                 )}
+              {/* Retur Vendor: hanya untuk pembelian POSTED yang masih
+                  ada itemnya. Disabled saat VOIDED. */}
+              {purchase.status_transaksi !== "VOIDED" && onRetur && (
+                <button
+                  onClick={() => onRetur(purchase)}
+                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                  title="Retur ke vendor"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h10a8 8 0 018 8v2M3 10l6-6m-6 6l6 6"
+                    />
+                  </svg>
+                </button>
+              )}
               <button
                 onClick={() => onDelete(purchase)}
                 disabled={purchase.status_transaksi === "VOIDED"}
@@ -335,6 +377,7 @@ export default function PurchaseTable({
   onEdit,
   onDelete,
   onRevert,
+  onRetur,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "total" | "status" | "created">(
@@ -536,6 +579,7 @@ export default function PurchaseTable({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onRevert={onRevert}
+                  onRetur={onRetur}
                 />
               ))}
             </tbody>

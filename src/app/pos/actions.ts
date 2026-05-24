@@ -5,6 +5,7 @@
  * Provides server-side data operations for client components
  */
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import {
   getPOSInitData,
   createSale,
@@ -51,6 +52,7 @@ export async function createSaleAction(data: CreateSaleData) {
  */
 export async function deleteSaleAction(id: string): Promise<boolean> {
   try {
+    await requireAdminOrManager();
     return await deleteSale(id);
   } catch (error) {
     console.error("Error in deleteSaleAction:", error);
@@ -63,7 +65,8 @@ export async function voidSaleAction(
   reason = "Penjualan dibatalkan"
 ): Promise<boolean> {
   try {
-    return await voidSale(id, reason);
+    const s = await requireAdminOrManager();
+    return await voidSale(id, reason, s.uid);
   } catch (error) {
     console.error("Error in voidSaleAction:", error);
     throw error;

@@ -240,6 +240,42 @@ export default function SalesHistoryTable({
     setPrintingId(sale.id);
     try {
       const { printFaktur, formatUkuran } = await import("@/lib/faktur-print");
+      let shop:
+        | {
+            nama_toko?: string | null;
+            slogan?: string | null;
+            alamat?: string | null;
+            telepon?: string | null;
+            email?: string | null;
+            website?: string | null;
+            bank_nama?: string | null;
+            bank_nomor?: string | null;
+            bank_atas_nama?: string | null;
+            catatan_faktur?: string | null;
+            npwp?: string | null;
+            alamat_npwp?: string | null;
+          }
+        | undefined;
+      try {
+        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const settings = await getShopSettingsAction();
+        shop = {
+          nama_toko: settings.nama_toko,
+          slogan: settings.slogan,
+          alamat: settings.alamat,
+          telepon: settings.telepon,
+          email: settings.email,
+          website: settings.website,
+          bank_nama: settings.bank_nama,
+          bank_nomor: settings.bank_nomor,
+          bank_atas_nama: settings.bank_atas_nama,
+          catatan_faktur: settings.catatan_faktur,
+          npwp: settings.npwp,
+          alamat_npwp: settings.alamat_npwp,
+        };
+      } catch (settingsError) {
+        console.warn("Data usaha tidak bisa dimuat untuk reprint faktur:", settingsError);
+      }
       const items = (sale.items || []).map((item) => ({
         nama: item.barang_nama || "-",
         ukuran: formatUkuran(item.panjang, item.lebar),
@@ -260,6 +296,7 @@ export default function SalesHistoryTable({
         total,
         bayar,
         sisa,
+        shop,
       });
     } catch (e) {
       console.error("reprintFaktur error:", e);

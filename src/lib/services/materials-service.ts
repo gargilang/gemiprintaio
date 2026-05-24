@@ -372,6 +372,76 @@ export async function updateMaterial(
  */
 export async function deleteMaterial(id: string): Promise<boolean> {
   try {
+    // Cek apakah barang sudah dipakai di pembelian atau penjualan.
+    // Kalau iya, tolak dengan pesan yang menyebut nomor transaksi spesifik.
+    const [purchaseItemsRes, saleItemsRes] = await Promise.all([
+      db.query<any>("item_pembelian", { where: { barang_id: id } }),
+      db.query<any>("item_penjualan", { where: { barang_id: id } }),
+    ]);
+
+    const purchaseItems = purchaseItemsRes.data || [];
+    const saleItems = (saleItemsRes.data || []).filter(
+      (it: any) => it.barang_id === id && it.tipe_item !== "MAKLON"
+    );
+
+    const blockingMessages: string[] = [];
+
+    if (purchaseItems.length > 0) {
+      // Resolve nomor pembelian
+      const purchaseIds = [...new Set(purchaseItems.map((it: any) => it.pembelian_id as string))];
+      const purchaseLabels: string[] = [];
+      for (const pid of purchaseIds) {
+        const p = await db.queryOne<any>("pembelian", { where: { id: pid } });
+        if (p.data) {
+          const label = p.data.nomor_faktur || p.data.nomor_pembelian || pid;
+          const tgl = p.data.tanggal
+            ? new Date(p.data.tanggal).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : "";
+          purchaseLabels.push(tgl ? `${label} (${tgl})` : label);
+        }
+      }
+      if (purchaseLabels.length > 0) {
+        blockingMessages.push(
+          `dipakai di pembelian: ${purchaseLabels.join(", ")}`
+        );
+      }
+    }
+
+    if (saleItems.length > 0) {
+      const saleIds = [...new Set(saleItems.map((it: any) => it.penjualan_id as string))];
+      const saleLabels: string[] = [];
+      for (const sid of saleIds) {
+        const s = await db.queryOne<any>("penjualan", { where: { id: sid } });
+        if (s.data) {
+          const label = s.data.nomor_invoice || sid;
+          const tgl = s.data.dibuat_pada
+            ? new Date(s.data.dibuat_pada).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : "";
+          saleLabels.push(tgl ? `${label} (${tgl})` : label);
+        }
+      }
+      if (saleLabels.length > 0) {
+        blockingMessages.push(
+          `dipakai di penjualan: ${saleLabels.join(", ")}`
+        );
+      }
+    }
+
+    if (blockingMessages.length > 0) {
+      throw new Error(
+        `Barang tidak bisa dihapus karena sudah ${blockingMessages.join("; ")}. ` +
+          `Batalkan atau hapus transaksi tersebut dulu sebelum menghapus barang ini.`
+      );
+    }
+
     // Delete unit prices first (foreign key constraint)
     const unitPricesResult = await db.query("harga_barang_satuan", {
       where: { barang_id: id },

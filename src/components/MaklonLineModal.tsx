@@ -66,6 +66,10 @@ export default function MaklonLineModal({
   onSave,
   onShowMessage,
 }: MaklonLineModalProps) {
+  // Defensive default: cache lama (pre-maklon) bisa kembalikan POSInitData
+  // tanpa field subkontraktor, jadi prop di sini bisa undefined sampai
+  // SWR re-fetch. Render aman dengan empty list.
+  const safeSubkontraktor = subkontraktor ?? [];
   const [deskripsi, setDeskripsi] = useState("");
   const [jumlahStr, setJumlahStr] = useState("1");
   const [namaSatuan, setNamaSatuan] = useState("pcs");
@@ -347,14 +351,14 @@ export default function MaklonLineModal({
                 required
               >
                 <option value="">Pilih vendor...</option>
-                {subkontraktor.map((v) => (
+                {safeSubkontraktor.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.nama_perusahaan}
                     {v.kontak_person ? ` — ${v.kontak_person}` : ""}
                   </option>
                 ))}
               </select>
-              {subkontraktor.length === 0 && (
+              {safeSubkontraktor.length === 0 && (
                 <p className="text-xs text-amber-700 mt-1">
                   Belum ada vendor bertipe Subkontraktor. Tambahkan di
                   halaman Vendor terlebih dahulu.

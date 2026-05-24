@@ -15,6 +15,7 @@ import {
   deleteMaterialAction,
   getInventoryMovementsAction,
   createInventoryAdjustmentAction,
+  createWasteMovementAction,
   getCategoriesAction,
   getSubcategoriesAction,
   getUnitsAction,
@@ -31,6 +32,7 @@ const MaterialRow = memo(
     onDelete,
     onViewMovements,
     onAdjustStock,
+    onWasteMaterial,
   }: {
     material: any;
     index: number;
@@ -38,6 +40,7 @@ const MaterialRow = memo(
     onDelete: (material: any) => void;
     onViewMovements: (material: any) => void;
     onAdjustStock: (material: any) => void;
+    onWasteMaterial: (material: any) => void;
   }) => {
     const defaultUnit = material.unit_prices?.find(
       (up: any) => up.default_status
@@ -192,6 +195,33 @@ const MaterialRow = memo(
                     />
                   </svg>
                 </button>
+                <button
+                  onClick={() => onWasteMaterial(material)}
+                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  title="Catat material rusak / scrap"
+                >
+                  {/* Ikon "trash + warning" — berbeda dari hapus barang biasa.
+                      Pakai ikon fire/flame untuk menggambarkan scrap/rusak. */}
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"
+                    />
+                  </svg>
+                </button>
               </>
             )}
             <button
@@ -279,6 +309,10 @@ export default function MaterialsPage() {
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [savingAdjustment, setSavingAdjustment] = useState(false);
+  const [wasteMaterial, setWasteMaterial] = useState<any>(null);
+  const [wasteQty, setWasteQty] = useState("");
+  const [wasteReason, setWasteReason] = useState("");
+  const [savingWaste, setSavingWaste] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -410,6 +444,7 @@ export default function MaterialsPage() {
         if (showModal) handleCloseModal();
         else if (movementMaterial) setMovementMaterial(null);
         else if (adjustMaterial) setAdjustMaterial(null);
+        else if (wasteMaterial) setWasteMaterial(null);
         else if (confirmDialog?.show) setConfirmDialog(null);
       }
     };
@@ -545,6 +580,44 @@ export default function MaterialsPage() {
       showNotification("error", error.message || "Gagal menyimpan adjustment");
     } finally {
       setSavingAdjustment(false);
+    }
+  };
+
+  const handleWasteMaterial = (material: any) => {
+    setWasteMaterial(material);
+    setWasteQty("");
+    setWasteReason("");
+  };
+
+  const submitWaste = async () => {
+    if (!wasteMaterial) return;
+    const qty = Number(wasteQty);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      showNotification("error", "Jumlah material rusak harus lebih dari 0");
+      return;
+    }
+    if (!wasteReason.trim()) {
+      showNotification("error", "Alasan/keterangan wajib diisi");
+      return;
+    }
+    setSavingWaste(true);
+    try {
+      await createWasteMovementAction({
+        barang_id: wasteMaterial.id,
+        qty,
+        reason: wasteReason.trim(),
+      });
+      setWasteMaterial(null);
+      await loadMaterials();
+      showNotification("success", "Material rusak berhasil dicatat");
+    } catch (error: any) {
+      console.error("Error creating waste:", error);
+      showNotification(
+        "error",
+        error.message || "Gagal menyimpan catatan material rusak"
+      );
+    } finally {
+      setSavingWaste(false);
     }
   };
 
@@ -862,6 +935,7 @@ export default function MaterialsPage() {
                     onDelete={handleDelete}
                     onViewMovements={handleViewMovements}
                     onAdjustStock={handleAdjustStock}
+                    onWasteMaterial={handleWasteMaterial}
                   />
                 ))
               )}
@@ -1029,6 +1103,69 @@ export default function MaterialsPage() {
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
               >
                 {savingAdjustment ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Catat Material Rusak modal */}
+      {wasteMaterial && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-rose-700">
+              Catat Material Rusak
+            </h3>
+            <p className="text-sm text-gray-600">
+              Tercatat sebagai{" "}
+              <span className="font-mono">WASTE</span> di riwayat stok.
+              Mengurangi <span className="font-semibold">{wasteMaterial.nama}</span>{" "}
+              dari stok dengan nilai average cost saat ini.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Jumlah rusak (satuan: {wasteMaterial.satuan_dasar})
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={wasteQty}
+                onChange={(e) => setWasteQty(e.target.value)}
+                placeholder="Contoh: 5"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Stok saat ini:{" "}
+                {Number(wasteMaterial.jumlah_stok || 0).toLocaleString("id-ID")}{" "}
+                {wasteMaterial.satuan_dasar}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Alasan / keterangan <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={wasteReason}
+                onChange={(e) => setWasteReason(e.target.value)}
+                rows={3}
+                placeholder="Misprint mesin Eco-Solvent, batch BCD123 — tinta luntur, dll."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setWasteMaterial(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={submitWaste}
+                disabled={savingWaste}
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
+              >
+                {savingWaste ? "Menyimpan..." : "Catat sebagai Waste"}
               </button>
             </div>
           </div>

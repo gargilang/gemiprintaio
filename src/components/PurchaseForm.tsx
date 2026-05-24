@@ -34,6 +34,13 @@ interface PurchaseFormData {
   catatan: string;
   diterima_oleh: string;
   items: PurchaseItem[];
+  // PPN masukan
+  kena_ppn: boolean;
+  ppn_persen: number;
+  ppn_metode: "EKSKLUSIF" | "INKLUSIF";
+  dapat_dikreditkan: boolean;
+  nomor_faktur_pajak_vendor: string;
+  tanggal_faktur_pajak: string;
 }
 
 interface Material {
@@ -105,6 +112,12 @@ export default function PurchaseForm({
         lebar: null,
       },
     ],
+    kena_ppn: false,
+    ppn_persen: 11,
+    ppn_metode: "EKSKLUSIF",
+    dapat_dikreditkan: true,
+    nomor_faktur_pajak_vendor: "",
+    tanggal_faktur_pajak: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -161,6 +174,14 @@ export default function PurchaseForm({
           panjang: item.panjang ?? null,
           lebar: item.lebar ?? null,
         })),
+        kena_ppn: !!editData.kena_ppn,
+        ppn_persen: Number(editData.ppn_persen ?? 11),
+        ppn_metode: (editData.ppn_metode as "EKSKLUSIF" | "INKLUSIF") || "EKSKLUSIF",
+        dapat_dikreditkan: editData.dapat_dikreditkan === 0 ? false : true,
+        nomor_faktur_pajak_vendor: editData.nomor_faktur_pajak_vendor || "",
+        tanggal_faktur_pajak: editData.tanggal_faktur_pajak
+          ? String(editData.tanggal_faktur_pajak).split("T")[0]
+          : "",
       });
     }
   }, [editData]);
@@ -356,6 +377,17 @@ export default function PurchaseForm({
             lebar: isDimensional ? item.lebar ?? null : null,
           };
         }),
+        // PPN masukan
+        kena_ppn: formData.kena_ppn,
+        ppn_persen: formData.kena_ppn ? formData.ppn_persen : 0,
+        ppn_metode: formData.ppn_metode,
+        dapat_dikreditkan: formData.dapat_dikreditkan,
+        nomor_faktur_pajak_vendor: formData.kena_ppn
+          ? formData.nomor_faktur_pajak_vendor.trim() || null
+          : null,
+        tanggal_faktur_pajak: formData.kena_ppn
+          ? formData.tanggal_faktur_pajak || null
+          : null,
       };
 
       if (editData) {
@@ -389,6 +421,12 @@ export default function PurchaseForm({
               lebar: null,
             },
           ],
+          kena_ppn: false,
+          ppn_persen: 11,
+          ppn_metode: "EKSKLUSIF",
+          dapat_dikreditkan: true,
+          nomor_faktur_pajak_vendor: "",
+          tanggal_faktur_pajak: "",
         });
       }
     } catch (error: any) {
@@ -794,6 +832,115 @@ export default function PurchaseForm({
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                </td>
+              </tr>
+              {/* PPN masukan */}
+              <tr className="bg-emerald-50 border-t border-gray-200">
+                <td colSpan={6} className="px-4 py-3 space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.kena_ppn}
+                      onChange={(e) =>
+                        handleInputChange("kena_ppn", e.target.checked)
+                      }
+                      className="w-4 h-4 rounded text-emerald-600"
+                    />
+                    <span className="text-sm font-semibold text-emerald-800">
+                      Pembelian ini kena PPN (PPN masukan)
+                    </span>
+                  </label>
+                  {formData.kena_ppn && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Tarif PPN (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.ppn_persen}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "ppn_persen",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Metode harga
+                        </label>
+                        <select
+                          value={formData.ppn_metode}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "ppn_metode",
+                              e.target.value as "EKSKLUSIF" | "INKLUSIF"
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="EKSKLUSIF">Belum termasuk PPN</option>
+                          <option value="INKLUSIF">Sudah termasuk PPN</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          No. Faktur Pajak Vendor
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nomor_faktur_pajak_vendor}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "nomor_faktur_pajak_vendor",
+                              e.target.value
+                            )
+                          }
+                          placeholder="010.000-25.00000001"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Tanggal Faktur Pajak
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.tanggal_faktur_pajak}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "tanggal_faktur_pajak",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="md:col-span-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.dapat_dikreditkan}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "dapat_dikreditkan",
+                                e.target.checked
+                              )
+                            }
+                            className="w-4 h-4 rounded text-emerald-600"
+                          />
+                          <span className="text-xs text-gray-700">
+                            PPN masukan dapat dikreditkan (centang kalau faktur
+                            pajak vendor lengkap dan vendor PKP)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </td>
               </tr>
               {/* Diterima Oleh Row */}

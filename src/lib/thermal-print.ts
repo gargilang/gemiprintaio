@@ -1,6 +1,14 @@
 export interface ThermalInvoiceData {
   nomor_invoice: string;
   tanggal: string;
+  shop?: {
+    nama_toko?: string | null;
+    slogan?: string | null;
+    telepon?: string | null;
+    email?: string | null;
+    website?: string | null;
+    catatan_struk?: string | null;
+  };
   pelanggan_nama?: string;
   pelanggan_telepon?: string;
   kasir_nama: string;
@@ -19,6 +27,15 @@ export interface ThermalInvoiceData {
   catatan?: string;
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function generateThermalInvoice(data: ThermalInvoiceData): string {
   const {
     nomor_invoice,
@@ -32,7 +49,16 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     kembalian,
     metode_pembayaran,
     catatan,
+    shop,
   } = data;
+
+  const shopName = shop?.nama_toko?.trim() || "Gemiprint";
+  const shopSlogan = shop?.slogan?.trim() || "Digital Printing & Advertising";
+  const shopPhone = shop?.telepon?.trim() || "0812 3456 0525";
+  const shopEmail = shop?.email?.trim() || "cs@gemiprint.com";
+  const shopWebsite = shop?.website?.trim();
+  const shopReceiptNote =
+    shop?.catatan_struk?.trim() || "Barang yang sudah dibeli tidak dapat dikembalikan";
 
   return `
 <!DOCTYPE html>
@@ -220,12 +246,11 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       <path fill-rule="evenodd" clip-rule="evenodd" d="M7.17259 43.4268C2.76685 43.02 1.19136 40.7312 0.377177 36.396L16.9181 36.2028C14.8139 40.2052 11.3633 43.0118 7.17259 43.4268Z" fill="#00AFEF"/>
       <path fill-rule="evenodd" clip-rule="evenodd" d="M10.4293 14.868C14.5284 18.3608 14.3733 28.8885 9.61513 30.7582C9.31554 30.8773 8.32513 31.0088 8.66349 31.0088L10.4399 31.0129H19.0011C20.2488 27.7831 20.3757 18.8744 19.5756 14.868H10.4293Z" fill="#00AFEF"/>
     </svg>
-    <div class="logo">
-      <span class="logo-gemi">gemi</span><span class="logo-print">print</span>
-    </div>
-    <div class="subtitle">Digital Printing & Advertising</div>
-    <div class="contact">Telp: 0812-3456-7890</div>
-    <div class="contact">www.gemiprint.com</div>
+    <div class="logo">${escapeHtml(shopName)}</div>
+    <div class="subtitle">${escapeHtml(shopSlogan)}</div>
+    <div class="contact">Telp: ${escapeHtml(shopPhone)}</div>
+    <div class="contact">${escapeHtml(shopEmail)}</div>
+    ${shopWebsite ? `<div class="contact">${escapeHtml(shopWebsite)}</div>` : ""}
   </div>
 
   <div class="invoice-title">INVOICE PENJUALAN</div>
@@ -333,7 +358,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
 
   <div class="footer">
     <div class="footer-thanks">Terima Kasih Atas Kunjungan Anda!</div>
-    <div>Barang yang sudah dibeli tidak dapat dikembalikan</div>
+    <div>${escapeHtml(shopReceiptNote)}</div>
     <div style="margin-top: 6px;">Simpan struk ini sebagai bukti pembayaran</div>
   </div>
 
@@ -355,11 +380,25 @@ function writeInvoiceToWindow(
   target.focus();
 }
 
+function printAfterAssetsReady(target: Window): void {
+  const print = () => {
+    try {
+      target.focus();
+      target.print();
+    } catch {
+      // print() may be blocked; preview is still available in the target document
+    }
+  };
+
+  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
+  fontsReady.then(print).catch(print);
+}
+
 /** Returns true if a print preview window was opened. */
 export function printThermalInvoice(data: ThermalInvoiceData): boolean {
   const invoiceHTML = generateThermalInvoice(data);
 
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
+  const printWindow = window.open("", "_blank");
   if (printWindow) {
     writeInvoiceToWindow(printWindow, invoiceHTML);
     return true;
@@ -378,11 +417,7 @@ export function printThermalInvoice(data: ThermalInvoiceData): boolean {
   }
 
   writeInvoiceToWindow(frameWindow, invoiceHTML);
-  try {
-    frameWindow.print();
-  } catch {
-    // print() may be blocked; preview is still in the iframe
-  }
+  printAfterAssetsReady(frameWindow);
 
   window.setTimeout(() => {
     if (iframe.parentNode) {

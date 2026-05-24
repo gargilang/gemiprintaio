@@ -22,6 +22,7 @@ CREATE TABLE barang (
       level_stok_minimum REAL DEFAULT 0,
       lacak_inventori_status INTEGER DEFAULT 1,
       butuh_dimensi_status INTEGER DEFAULT 0,
+      default_location_id TEXT DEFAULT 'main',
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')), frekuensi_terjual INTEGER DEFAULT 0, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
@@ -36,7 +37,7 @@ CREATE TABLE inventory_movements (
       id TEXT PRIMARY KEY,
       barang_id TEXT NOT NULL,
       tanggal TEXT NOT NULL,
-      movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT')),
+      movement_type TEXT NOT NULL CHECK(movement_type IN ('OPENING_BALANCE','PURCHASE_RECEIPT','SALE_ISSUE','SALE_VOID','PURCHASE_VOID','PURCHASE_RETURN','ADJUSTMENT','WASTE')),
       qty_delta REAL NOT NULL,
       unit_cost REAL NOT NULL DEFAULT 0,
       value_delta REAL NOT NULL DEFAULT 0,
@@ -61,9 +62,11 @@ CREATE TABLE inventory_movements (
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
+      location_id TEXT DEFAULT 'main',
       FOREIGN KEY (barang_id) REFERENCES barang(id),
       FOREIGN KEY (reversal_of_id) REFERENCES inventory_movements(id),
-      FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
+      FOREIGN KEY (dibuat_oleh) REFERENCES profil(id),
+      FOREIGN KEY (location_id) REFERENCES lokasi(id)
     );
 
 -- Indexes for inventory_movements
@@ -72,6 +75,41 @@ CREATE INDEX idx_inventory_movements_source ON inventory_movements(source_type, 
 CREATE INDEX idx_inventory_movements_line ON inventory_movements(source_line_id);
 CREATE INDEX idx_inventory_movements_type ON inventory_movements(movement_type);
 CREATE INDEX idx_inventory_movements_sync_status ON inventory_movements(sync_status);
+CREATE INDEX idx_inventory_movements_location ON inventory_movements(location_id);
+
+-- Table: lokasi
+CREATE TABLE lokasi (
+      id TEXT PRIMARY KEY,
+      nama TEXT NOT NULL,
+      kode TEXT UNIQUE,
+      alamat TEXT,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      aktif_status INTEGER NOT NULL DEFAULT 1,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+
+-- Table: accounting_periods
+CREATE TABLE accounting_periods (
+      id TEXT PRIMARY KEY,
+      period_key TEXT NOT NULL UNIQUE,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN', 'CLOSED')),
+      closed_at TEXT,
+      closed_by TEXT,
+      catatan TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (closed_by) REFERENCES profil(id)
+    );
+CREATE INDEX idx_accounting_periods_status ON accounting_periods(status, start_date, end_date);
 
 -- Table: harga_barang_satuan
 CREATE TABLE "harga_barang_satuan" (
@@ -144,6 +182,10 @@ CREATE TABLE item_pembelian (
       subtotal REAL NOT NULL,
       panjang REAL,
       lebar REAL,
+      dpp_satuan REAL NOT NULL DEFAULT 0,
+      ppn_satuan REAL NOT NULL DEFAULT 0,
+      dpp_total REAL NOT NULL DEFAULT 0,
+      ppn_total REAL NOT NULL DEFAULT 0,
       dibuat_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (pembelian_id) REFERENCES pembelian(id) ON DELETE CASCADE,
       FOREIGN KEY (barang_id) REFERENCES "barang"(id),
@@ -176,6 +218,10 @@ CREATE TABLE item_penjualan (
       metode_bayar_vendor TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH','NET30')),
       pembelian_id_terkait TEXT,
       deskripsi_pekerjaan TEXT,
+      dpp_satuan REAL NOT NULL DEFAULT 0,
+      ppn_satuan REAL NOT NULL DEFAULT 0,
+      dpp_total REAL NOT NULL DEFAULT 0,
+      ppn_total REAL NOT NULL DEFAULT 0,
       dibuat_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
       FOREIGN KEY (barang_id) REFERENCES "barang"(id),
@@ -257,6 +303,8 @@ CREATE TABLE keuangan (
       dibuat_oleh TEXT,
       diarsipkan_pada TEXT,
       label_arsip TEXT,
+      reference_type TEXT,
+      reference_id TEXT,
       dibuat_pada TEXT NOT NULL,
       diperbarui_pada TEXT NOT NULL,
       urutan_tampilan INTEGER DEFAULT 0,
@@ -390,6 +438,8 @@ CREATE TABLE "pelanggan" (
       nama TEXT NOT NULL,
       nama_perusahaan TEXT,
       npwp TEXT,
+      alamat_npwp TEXT,
+      nama_di_npwp TEXT,
       email TEXT,
       telepon TEXT,
       alamat TEXT,
@@ -458,6 +508,15 @@ CREATE TABLE pembelian (
       voided_at TEXT,
       voided_by TEXT,
       void_reason TEXT,
+      kena_ppn INTEGER NOT NULL DEFAULT 0,
+      ppn_persen REAL NOT NULL DEFAULT 0,
+      ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF')),
+      dpp_total REAL NOT NULL DEFAULT 0,
+      ppn_total REAL NOT NULL DEFAULT 0,
+      dapat_dikreditkan INTEGER NOT NULL DEFAULT 1,
+      nomor_faktur_pajak_vendor TEXT,
+      tanggal_faktur_pajak TEXT,
+      vendor_npwp_snapshot TEXT,
       FOREIGN KEY (vendor_id) REFERENCES vendor(id),
       FOREIGN KEY (dibuat_oleh) REFERENCES profil(id),
       FOREIGN KEY (penjualan_id_sumber) REFERENCES penjualan(id) ON DELETE SET NULL
@@ -468,6 +527,9 @@ CREATE INDEX idx_pembelian_sync_status ON pembelian(sync_status);
 CREATE INDEX idx_pembelian_penjualan_sumber ON pembelian(penjualan_id_sumber);
 CREATE INDEX idx_pembelian_tipe ON pembelian(tipe_pembelian);
 CREATE INDEX idx_pembelian_status_transaksi ON pembelian(status_transaksi);
+CREATE INDEX idx_pembelian_kena_ppn ON pembelian(kena_ppn);
+CREATE INDEX idx_pembelian_dapat_dikreditkan ON pembelian(dapat_dikreditkan);
+CREATE INDEX idx_pembelian_tanggal_faktur_pajak ON pembelian(tanggal_faktur_pajak);
 
 -- Table: penjualan
 CREATE TABLE penjualan (
@@ -486,6 +548,18 @@ CREATE TABLE penjualan (
       voided_at TEXT,
       voided_by TEXT,
       void_reason TEXT,
+      kena_ppn INTEGER NOT NULL DEFAULT 0,
+      ppn_persen REAL NOT NULL DEFAULT 0,
+      ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF')),
+      dpp_total REAL NOT NULL DEFAULT 0,
+      ppn_total REAL NOT NULL DEFAULT 0,
+      nsfp_kode_transaksi TEXT,
+      nsfp_tahun TEXT,
+      nsfp_nomor_seri TEXT,
+      tanggal_faktur_pajak TEXT,
+      pelanggan_npwp_snapshot TEXT,
+      pelanggan_alamat_npwp_snapshot TEXT,
+      pelanggan_nama_npwp_snapshot TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (pelanggan_id) REFERENCES pelanggan(id),
@@ -495,6 +569,57 @@ CREATE TABLE penjualan (
 -- Indexes for penjualan
 CREATE INDEX idx_penjualan_sync_status ON penjualan(sync_status);
 CREATE INDEX idx_penjualan_status_transaksi ON penjualan(status_transaksi);
+CREATE INDEX idx_penjualan_kena_ppn ON penjualan(kena_ppn);
+CREATE INDEX idx_penjualan_tanggal_faktur_pajak ON penjualan(tanggal_faktur_pajak);
+
+-- Table: pengaturan_toko
+CREATE TABLE pengaturan_toko (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      nama_toko TEXT NOT NULL DEFAULT 'Toko',
+      slogan TEXT,
+      alamat TEXT,
+      telepon TEXT,
+      email TEXT,
+      website TEXT,
+      bank_nama TEXT,
+      bank_nomor TEXT,
+      bank_atas_nama TEXT,
+      catatan_faktur TEXT,
+      catatan_struk TEXT,
+      npwp TEXT,
+      alamat_npwp TEXT,
+      status_pkp INTEGER NOT NULL DEFAULT 0,
+      ppn_persen_default REAL NOT NULL DEFAULT 11,
+      ppn_metode_default TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode_default IN ('EKSKLUSIF','INKLUSIF')),
+      ppn_default_aktif INTEGER NOT NULL DEFAULT 0,
+      nsfp_kode_transaksi_default TEXT NOT NULL DEFAULT '01',
+      nsfp_tahun_aktif TEXT,
+      nsfp_seri_terakhir TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1
+    );
+
+-- Table: nsfp_pool
+CREATE TABLE nsfp_pool (
+      id TEXT PRIMARY KEY,
+      tahun TEXT NOT NULL,
+      kode_transaksi TEXT NOT NULL DEFAULT '01',
+      nomor_seri TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'TERSEDIA' CHECK(status IN ('TERSEDIA','TERPAKAI','BATAL')),
+      penjualan_id TEXT,
+      catatan TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      UNIQUE (tahun, kode_transaksi, nomor_seri)
+    );
+CREATE INDEX idx_nsfp_pool_status ON nsfp_pool(status, tahun, nomor_seri);
+CREATE INDEX idx_nsfp_pool_penjualan ON nsfp_pool(penjualan_id);
 
 -- Table: piutang_penjualan
 CREATE TABLE piutang_penjualan (
@@ -588,6 +713,9 @@ CREATE TABLE "vendor" (
       ketentuan_bayar TEXT,
       aktif_status INTEGER DEFAULT 1,
       catatan TEXT,
+      npwp TEXT,
+      alamat_npwp TEXT,
+      nama_di_npwp TEXT,
       tipe_vendor TEXT NOT NULL DEFAULT 'SUPPLIER' CHECK(tipe_vendor IN ('SUPPLIER','SUBKONTRAKTOR','KEDUANYA')),
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now'))
