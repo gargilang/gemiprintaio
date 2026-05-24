@@ -504,10 +504,10 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header with indicators */}
         <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-30 border-b border-gray-200 dark:border-slate-800">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3 min-w-0">
               <h1 className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100 font-twcenmt uppercase tracking-wide truncate">
                 {computedTitle}
@@ -546,7 +546,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto flex-1">
+        <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 min-w-0">
           {children}
         </main>
       </div>

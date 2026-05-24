@@ -735,14 +735,14 @@ export default function PurchaseForm({
               })}
             </tbody>
             <tfoot>
-              <tr className="bg-gradient-to-r from-indigo-50 to-purple-50">
+              <tr className="border-t border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 dark:border-indigo-800/50 dark:from-slate-800 dark:via-indigo-950/40 dark:to-slate-800">
                 <td
                   colSpan={4}
-                  className="px-3 py-2 text-right font-bold text-gray-800 dark:text-slate-100"
+                  className="px-3 py-2 text-right font-bold text-gray-800 dark:text-slate-200"
                 >
                   TOTAL:
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-lg text-indigo-700 dark:text-indigo-300">
+                <td className="px-3 py-2 text-right font-bold text-lg text-indigo-700 dark:text-cyan-300">
                   Rp {totalHarga.toLocaleString("id-ID")}
                 </td>
                 <td></td>

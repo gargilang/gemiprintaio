@@ -231,7 +231,6 @@ export default function FloatingCalculator({
       >
         <div>
           <h2 className="font-bold leading-tight">Kalkulator</h2>
-          <p className="text-xs text-white/70">Drag untuk pindahkan posisi</p>
         </div>
         <button
           type="button"

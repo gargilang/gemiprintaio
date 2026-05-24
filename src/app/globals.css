@@ -177,6 +177,10 @@ body {
   will-change: auto; /* Remove unnecessary will-change */
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 .font-bauhaus {
   font-family: "Bauhaus 93", "Bauhaus", sans-serif;
 }

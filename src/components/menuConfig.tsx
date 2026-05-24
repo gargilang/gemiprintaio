@@ -4,11 +4,12 @@
 import {
   HomeIcon,
   CartIcon,
-  PackageIcon,
+  PurchaseOrderIcon,
   UsersIcon,
   BuildingIcon,
   MoneyIcon,
   ChartIcon,
+  AuditLogIcon,
   UserIcon,
   SettingsIcon,
   PrinterIcon,
@@ -104,7 +105,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
       },
       {
         href: "/purchases",
-        icon: <PackageIcon size={18} />,
+        icon: <PurchaseOrderIcon size={18} />,
         label: "Pembelian",
         color: "from-[#6366f1] to-[#8b5cf6]",
         allowedRoles: FULL_STAFF,
@@ -150,16 +151,9 @@ export const MENU_ENTRIES: MenuEntry[] = [
       },
       {
         href: "/aktivitas",
-        icon: <ChartIcon size={18} />,
-        label: "Aktivitas",
+        icon: <AuditLogIcon size={18} />,
+        label: "Log Audit",
         color: "from-slate-600 to-slate-700",
-        allowedRoles: ADMIN_ONLY,
-      },
-      {
-        href: "/laporan-ppn",
-        icon: <ChartIcon size={18} />,
-        label: "PPN",
-        color: "from-emerald-500 to-emerald-700",
         allowedRoles: ADMIN_ONLY,
       },
       {
@@ -206,10 +200,14 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/purchases": "Pembelian",
   "/finance": "Keuangan",
   "/reports": "Laporan",
-  "/laporan-ppn": "PPN",
-  "/aktivitas": "Aktivitas",
+  "/laporan-ppn": "Laporan PPN",
+  "/aktivitas": "Log Audit",
   "/users": "Manajemen User",
   "/settings": "Pengaturan",
+};
+
+const HIDDEN_ROUTE_ACCESS: Record<string, UserRole[]> = {
+  "/laporan-ppn": ADMIN_ONLY,
 };
 
 /** Find the menu item that owns a given pathname (longest prefix match). */
@@ -235,6 +233,10 @@ export function canAccessPath(
   pathname: string
 ): boolean {
   if (!role) return false;
+  const hiddenRoles = Object.entries(HIDDEN_ROUTE_ACCESS).find(
+    ([path]) => pathname === path || pathname.startsWith(path + "/")
+  )?.[1];
+  if (hiddenRoles) return hiddenRoles.includes(role as UserRole);
   const matched = findMenuForPath(pathname);
   if (!matched || !matched.allowedRoles) return true;
   return matched.allowedRoles.includes(role as UserRole);

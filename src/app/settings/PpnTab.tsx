@@ -357,7 +357,7 @@ export default function PpnTab() {
             <div className="text-2xl font-bold">{terpakai}</div>
             <div>Terpakai</div>
           </div>
-          <div className="bg-gray-200 text-gray-700 dark:text-slate-300 rounded-lg p-3 text-center">
+          <div className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold">{batal}</div>
             <div>Batal</div>
           </div>
@@ -466,7 +466,7 @@ export default function PpnTab() {
                           ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
                           : row.status === "TERPAKAI"
                           ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
-                          : "bg-gray-200 text-gray-700 dark:text-slate-300"
+                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600"
                       }`}
                     >
                       {row.status}
@@ -483,7 +483,7 @@ export default function PpnTab() {
                       <button
                         type="button"
                         onClick={() => handleCancelNsfp(row.id)}
-                        className="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                        className="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
                       >
                         Batalkan
                       </button>

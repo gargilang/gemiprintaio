@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Halaman Aktivitas — audit log view-only.
+ * Halaman Log Audit — audit log view-only.
  *
  * Menampilkan timeline event yang sensitive untuk owner percetakan:
  *   - Pembelian dibatalkan (siapa, kapan, alasan)
@@ -14,6 +14,8 @@
  */
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import LaporanPpnPanel from "@/components/LaporanPpnPanel";
 import { getAuditLogAction } from "./actions";
 
 interface AuditEvent {
@@ -76,7 +78,14 @@ function formatDateTime(iso: string): string {
   });
 }
 
+type AuditTab = "activity" | "ppn";
+
 export default function AktivitasPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<AuditTab>(
+    searchParams.get("tab") === "ppn" ? "ppn" : "activity"
+  );
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterKind, setFilterKind] = useState<"ALL" | AuditEvent["kind"]>("ALL");
@@ -104,11 +113,50 @@ export default function AktivitasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    setActiveTab(searchParams.get("tab") === "ppn" ? "ppn" : "activity");
+  }, [searchParams]);
+
   const filtered =
     filterKind === "ALL" ? events : events.filter((e) => e.kind === filterKind);
 
+  const tabs: Array<{ id: AuditTab; label: string }> = [
+    { id: "activity", label: "Aktivitas Audit" },
+    { id: "ppn", label: "Laporan PPN" },
+  ];
+
+  const handleTabChange = (tabId: AuditTab) => {
+    setActiveTab(tabId);
+    router.replace(tabId === "ppn" ? "/aktivitas?tab=ppn" : "/aktivitas", {
+      scroll: false,
+    });
+  };
+
   return (
     <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-2">
+        <div className="flex gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex-1 px-4 h-12 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-sm ${
+                activeTab === tab.id
+                  ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md"
+                  : "bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "ppn" ? (
+        <LaporanPpnPanel />
+      ) : (
+        <>
       <div className="flex items-center gap-3">
         <div className="p-3 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl">
           <svg
@@ -126,9 +174,9 @@ export default function AktivitasPage() {
           </svg>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Aktivitas</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Aktivitas Audit</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Catatan permanen pembatalan, adjustment, dan event sensitif lainnya.
+            Catatan permanen pembatalan transaksi, adjustment stok, material rusak, dan pembatalan NSFP.
           </p>
         </div>
       </div>
@@ -248,6 +296,8 @@ export default function AktivitasPage() {
           </ul>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

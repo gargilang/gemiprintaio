@@ -99,6 +99,49 @@ export const PackageIcon = ({ className = "", size = 24 }: IconProps) => (
   </svg>
 );
 
+export const PurchaseOrderIcon = ({
+  className = "",
+  size = 24,
+}: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M6 3H15L19 7V21H6V3Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.1"
+    />
+    <path
+      d="M15 3V7H19"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 11H15M9 14H12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M15 14V20M12 17H18"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const UsersIcon = ({ className = "", size = 24 }: IconProps) => (
   <svg
     className={className}
@@ -275,6 +318,51 @@ export const ChartIcon = ({ className = "", size = 24 }: IconProps) => (
     />
     <path
       d="M21 14V10H17"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const AuditLogIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M16 4H18C19.1046 4 20 4.89543 20 6V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V6C4 4.89543 4.89543 4 6 4H8"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <rect
+      x="8"
+      y="2"
+      width="8"
+      height="4"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8 11H13M8 15H11"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M14 16L16 18L20 13"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
