@@ -53,7 +53,13 @@ export async function PUT(
       tanggal: body.tanggal,
       metode_pembayaran: body.metode_pembayaran,
       catatan: body.catatan,
-      items: body.items,
+      items: Array.isArray(body.items)
+        ? body.items.map((item: any) => ({
+            ...item,
+            panjang: item.panjang ?? null,
+            lebar: item.lebar ?? null,
+          }))
+        : body.items,
     });
 
     const updated = await getPurchaseById(params.id);

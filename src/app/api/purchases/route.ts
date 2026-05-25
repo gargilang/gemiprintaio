@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
         faktor_konversi: item.faktor_konversi ?? 1,
         jumlah: item.jumlah,
         harga_satuan: item.harga_satuan,
+        panjang: item.panjang ?? null,
+        lebar: item.lebar ?? null,
       })),
     });
 

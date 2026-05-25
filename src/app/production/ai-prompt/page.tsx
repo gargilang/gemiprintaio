@@ -264,6 +264,7 @@ function buildPrompt(input: {
   safeMargin: string;
   outputFormat: string;
   negativePrompt: string;
+  hasReferenceImage: boolean;
   language: Language;
   modelNotes: string;
 }) {
@@ -320,6 +321,9 @@ function buildPrompt(input: {
     noSpecs: isID
       ? "- Layout siap cetak dengan teks tajam dan safe margin yang cukup."
       : "- Print-ready layout with sharp text and enough safe margin.",
+    referenceImage: isID
+      ? "Gambar referensi telah diupload bersama prompt ini. Gunakan gambar tersebut sebagai acuan gaya, komposisi, atau elemen visual sesuai konteks brief."
+      : "A reference image has been uploaded alongside this prompt. Use it as a guide for style, composition, or visual elements as relevant to the brief.",
     negSection: isID ? "NEGATIVE PROMPT" : "NEGATIVE PROMPT",
     defaultNeg: isID
       ? "Hindari teks salah eja, kata acak, wajah terdistorsi, tipografi tidak terbaca, layout berantakan, resolusi rendah, kontak salah, dan elemen penting terpotong."
@@ -363,6 +367,7 @@ function buildPrompt(input: {
           .map((item, index) => `${index + 1}. ${item.role}: ${item.text.trim()}`)
           .join("\n")
       : L.noVisual,
+    input.hasReferenceImage ? `\n[REFERENCE IMAGE]\n${L.referenceImage}` : "",
     L.printNote,
     ``,
     L.specsSection,
@@ -405,6 +410,7 @@ export default function AiPromptPage() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [language, setLanguage] = useState<Language>("id");
   const [modelId, setModelId] = useState<ModelId>("universal");
+  const [hasReferenceImage, setHasReferenceImage] = useState(false);
 
   const generatedPrompt = useMemo(
     () =>
@@ -431,6 +437,7 @@ export default function AiPromptPage() {
         negativePrompt,
         language,
         modelNotes: MODELS.find((m) => m.id === modelId)?.notes ?? "",
+        hasReferenceImage,
       }),
     [
       rawBrief,
@@ -455,6 +462,7 @@ export default function AiPromptPage() {
       negativePrompt,
       language,
       modelId,
+      hasReferenceImage,
     ]
   );
 
@@ -482,6 +490,7 @@ export default function AiPromptPage() {
     setCopyState("idle");
     setLanguage("id");
     setModelId("universal");
+    setHasReferenceImage(false);
   };
 
   const copyPrompt = async () => {
@@ -581,6 +590,22 @@ export default function AiPromptPage() {
                 onChange={setStyleDirection}
                 placeholder="Contoh: ramai, tajam, modern, mudah dibaca dari jauh"
               />
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800/50">
+                <input
+                  type="checkbox"
+                  checked={hasReferenceImage}
+                  onChange={(e) => setHasReferenceImage(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#00afef]"
+                />
+                <div>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+                    Ada gambar referensi yang diupload
+                  </span>
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+                    Centang jika kamu akan melampirkan gambar referensi bersama prompt ini. AI akan diarahkan untuk menggunakannya sebagai acuan.
+                  </p>
+                </div>
+              </label>
               <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">Spesifikasi Cetak</p>
                 <div className="grid gap-4 md:grid-cols-4">
