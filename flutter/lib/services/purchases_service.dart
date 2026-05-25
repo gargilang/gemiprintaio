@@ -14,7 +14,8 @@ class PurchasesService {
   }
 
   Future<Map<String, dynamic>> create(Map<String, dynamic> body) async {
-    return await _api.post('/api/purchases', body: body) as Map<String, dynamic>;
+    return await _api.post('/api/purchases', body: body)
+        as Map<String, dynamic>;
   }
 
   Future<void> delete(String id) async {
@@ -27,6 +28,20 @@ class PurchasesService {
   }
 
   Future<void> payDebt(Map<String, dynamic> body) async {
-    await _api.post('/api/purchases/pay-debt', body: body);
+    await _api.post(
+      '/api/purchases/pay-debt',
+      body: {
+        'purchase_id':
+            body['purchase_id'] ?? body['pembelian_id'] ?? body['id'],
+        'jumlah_bayar': body['jumlah_bayar'] ?? body['jumlah'],
+        if (body['tanggal_bayar'] != null)
+          'tanggal_bayar': body['tanggal_bayar'],
+        if (body['metode_pembayaran'] != null)
+          'metode_pembayaran': body['metode_pembayaran'],
+        if (body['referensi'] != null) 'referensi': body['referensi'],
+        if (body['catatan'] != null) 'catatan': body['catatan'],
+        if (body['dibuat_oleh'] != null) 'dibuat_oleh': body['dibuat_oleh'],
+      },
+    );
   }
 }

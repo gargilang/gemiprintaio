@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/customer.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -32,23 +33,37 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     setState(() => _isLoading = true);
     try {
       final data = await ref.read(customersServiceProvider).getAll();
-      if (mounted) setState(() { _customers = data; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _customers = data;
+          _isLoading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, e.message); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, e.message);
+      }
     } catch (_) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat data pelanggan'); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, 'Gagal memuat data pelanggan');
+      }
     }
   }
 
   List<Customer> get _filtered {
     if (_search.isEmpty) return _customers;
     final q = _search.toLowerCase();
-    return _customers.where((c) =>
-      c.nama.toLowerCase().contains(q) ||
-      (c.namaPerusahaan?.toLowerCase().contains(q) ?? false) ||
-      (c.telepon?.toLowerCase().contains(q) ?? false) ||
-      (c.email?.toLowerCase().contains(q) ?? false)
-    ).toList();
+    return _customers
+        .where(
+          (c) =>
+              c.nama.toLowerCase().contains(q) ||
+              (c.namaPerusahaan?.toLowerCase().contains(q) ?? false) ||
+              (c.telepon?.toLowerCase().contains(q) ?? false) ||
+              (c.email?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
   }
 
   Future<void> _showForm({Customer? existing}) async {
@@ -62,7 +77,9 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
   }
 
   Future<void> _handleDelete(Customer c) async {
-    final ok = await showConfirmDialog(context,
+    if (!_canUseRiskyActions) return;
+    final ok = await showConfirmDialog(
+      context,
       title: 'Hapus Pelanggan',
       message: 'Yakin ingin menghapus "${c.nama}"?',
       isDangerous: true,
@@ -71,10 +88,18 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
 
     try {
       await ref.read(customersServiceProvider).delete(c.id);
-      if (mounted) { showSuccessSnackbar(context, 'Pelanggan berhasil dihapus'); _loadData(); }
+      if (mounted) {
+        showSuccessSnackbar(context, 'Pelanggan berhasil dihapus');
+        _loadData();
+      }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
     }
+  }
+
+  bool get _canUseRiskyActions {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.adminOnly.contains(role);
   }
 
   @override
@@ -82,30 +107,42 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     final filtered = _filtered;
     return Stack(
       children: [
-    Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Expanded(child: SearchField(hintText: 'Cari pelanggan...', onChanged: (v) => setState(() => _search = v))),
-              const SizedBox(width: 8),
-              Text('${filtered.length} data', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SearchField(
+                      hintText: 'Cari pelanggan...',
+                      onChanged: (v) => setState(() => _search = v),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${filtered.length} data',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
                   ? EmptyState(
                       icon: Icons.groups_rounded,
-                      title: _search.isEmpty ? 'Belum ada pelanggan' : 'Tidak ditemukan',
-                      action: _search.isEmpty ? ElevatedButton.icon(
-                        onPressed: () => _showForm(),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah Pelanggan'),
-                      ) : null,
+                      title: _search.isEmpty
+                          ? 'Belum ada pelanggan'
+                          : 'Tidak ditemukan',
+                      action: _search.isEmpty
+                          ? ElevatedButton.icon(
+                              onPressed: () => _showForm(),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Tambah Pelanggan'),
+                            )
+                          : null,
                     )
                   : RefreshIndicator(
                       onRefresh: _loadData,
@@ -116,17 +153,17 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                         itemBuilder: (_, i) => _buildCard(filtered[i]),
                       ),
                     ),
+            ),
+          ],
         ),
-      ],
-    ),
-    Positioned(
-      right: 16,
-      bottom: 16,
-      child: FloatingActionButton(
-        onPressed: () => _showForm(),
-        child: const Icon(Icons.add_rounded),
-      ),
-    ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showForm(),
+            child: const Icon(Icons.add_rounded),
+          ),
+        ),
       ],
     );
   }
@@ -142,7 +179,13 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
             children: [
               CircleAvatar(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                child: Text(c.nama[0].toUpperCase(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: Text(
+                  c.nama[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -151,31 +194,66 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                   children: [
                     Row(
                       children: [
-                        Flexible(child: Text(c.nama, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), overflow: TextOverflow.ellipsis)),
+                        Flexible(
+                          child: Text(
+                            c.nama,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         if (c.isMember) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                            child: const Text('Member', style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w600)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Member',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      [if (c.namaPerusahaan != null && c.namaPerusahaan!.isNotEmpty) c.namaPerusahaan!, if (c.telepon != null && c.telepon!.isNotEmpty) c.telepon!]
-                          .join(' · '),
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      [
+                        if (c.namaPerusahaan != null &&
+                            c.namaPerusahaan!.isNotEmpty)
+                          c.namaPerusahaan!,
+                        if (c.telepon != null && c.telepon!.isNotEmpty)
+                          c.telepon!,
+                      ].join(' · '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.delete_outline_rounded, color: Colors.grey.shade400, size: 20),
-                onPressed: () => _handleDelete(c),
-              ),
+              if (_canUseRiskyActions)
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.grey.shade400,
+                    size: 20,
+                  ),
+                  onPressed: () => _handleDelete(c),
+                ),
             ],
           ),
         ),

@@ -36,10 +36,12 @@ class ProductionOrder {
       status: (json['status'] ?? 'ANTRIAN') as String,
       prioritas: (json['prioritas'] ?? 'NORMAL') as String,
       catatan: json['catatan'] as String?,
-      createdAt: json['created_at'] as String?,
-      updatedAt: json['updated_at'] as String?,
+      createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
+      updatedAt: (json['updated_at'] ?? json['diperbarui_pada']) as String?,
       items: itemList is List
-          ? itemList.map((i) => ProductionItem.fromJson(i as Map<String, dynamic>)).toList()
+          ? itemList
+                .map((i) => ProductionItem.fromJson(i as Map<String, dynamic>))
+                .toList()
           : [],
     );
   }
@@ -50,8 +52,10 @@ class ProductionItem {
   final String orderProduksiId;
   final String? barangNama;
   final double quantity;
+  final String status;
   final String statusCetak;
   final String statusFinishing;
+  final List<ProductionFinishing> finishing;
   final String? createdAt;
 
   const ProductionItem({
@@ -59,20 +63,68 @@ class ProductionItem {
     required this.orderProduksiId,
     this.barangNama,
     this.quantity = 0,
+    this.status = 'MENUNGGU',
     this.statusCetak = 'BELUM',
     this.statusFinishing = 'BELUM',
+    this.finishing = const [],
     this.createdAt,
   });
 
   factory ProductionItem.fromJson(Map<String, dynamic> json) {
+    final finishingList = json['finishing'] ?? json['item_finishing'];
+    final finishing = finishingList is List
+        ? finishingList
+              .map(
+                (f) => ProductionFinishing.fromJson(f as Map<String, dynamic>),
+              )
+              .toList()
+        : <ProductionFinishing>[];
+    final status = (json['status'] ?? 'MENUNGGU') as String;
+    final statusFinishing =
+        (json['status_finishing'] ??
+                (finishing.isEmpty
+                    ? status
+                    : finishing.every((f) => f.status == 'SELESAI')
+                    ? 'SELESAI'
+                    : 'PROSES'))
+            as String;
+
     return ProductionItem(
       id: json['id'] as String,
       orderProduksiId: (json['order_produksi_id'] ?? '') as String,
-      barangNama: json['barang_nama'] as String?,
-      quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
-      statusCetak: (json['status_cetak'] ?? 'BELUM') as String,
-      statusFinishing: (json['status_finishing'] ?? 'BELUM') as String,
-      createdAt: json['created_at'] as String?,
+      barangNama: (json['barang_nama'] ?? json['nama_barang']) as String?,
+      quantity:
+          (json['quantity'] as num?)?.toDouble() ??
+          (json['jumlah'] as num?)?.toDouble() ??
+          0,
+      status: status,
+      statusCetak: (json['status_cetak'] ?? status) as String,
+      statusFinishing: statusFinishing,
+      finishing: finishing,
+      createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
+    );
+  }
+}
+
+class ProductionFinishing {
+  final String id;
+  final String jenisFinishing;
+  final String status;
+  final String? operatorNama;
+
+  const ProductionFinishing({
+    required this.id,
+    required this.jenisFinishing,
+    this.status = 'MENUNGGU',
+    this.operatorNama,
+  });
+
+  factory ProductionFinishing.fromJson(Map<String, dynamic> json) {
+    return ProductionFinishing(
+      id: (json['id'] ?? '') as String,
+      jenisFinishing: (json['jenis_finishing'] ?? '') as String,
+      status: (json['status'] ?? 'MENUNGGU') as String,
+      operatorNama: json['operator_nama'] as String?,
     );
   }
 }

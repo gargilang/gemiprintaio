@@ -31,7 +31,9 @@ class _UsersPageState extends ConsumerState<UsersPage> {
       setState(() => _isLoading = true);
     }
     try {
-      final data = await ref.read(usersServiceProvider).getAll(forceRefresh: forceRefresh);
+      final data = await ref
+          .read(usersServiceProvider)
+          .getAll(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _users = data
@@ -68,20 +70,26 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                 TextField(
                   controller: namaLengkapCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Nama Lengkap', isDense: true),
+                    labelText: 'Nama Lengkap',
+                    isDense: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: namaPenggunaCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Username *', isDense: true),
+                    labelText: 'Username *',
+                    isDense: true,
+                  ),
                   autocorrect: false,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: emailCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Email', isDense: true),
+                    labelText: 'Email',
+                    isDense: true,
+                  ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
@@ -91,9 +99,11 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                     labelText: 'Password *',
                     isDense: true,
                     suffixIcon: IconButton(
-                      icon: Icon(obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: () =>
                           setLocal(() => obscurePassword = !obscurePassword),
                     ),
@@ -102,14 +112,15 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<UserRole>(
-                  value: selectedRole,
-                  decoration:
-                      const InputDecoration(labelText: 'Role', isDense: true),
+                  initialValue: selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    isDense: true,
+                  ),
                   items: UserRole.values
-                      .map((r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(r.name),
-                          ))
+                      .map(
+                        (r) => DropdownMenuItem(value: r, child: Text(r.name)),
+                      )
                       .toList(),
                   onChanged: (v) => setLocal(() => selectedRole = v!),
                 ),
@@ -118,15 +129,18 @@ class _UsersPageState extends ConsumerState<UsersPage> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final username = namaPenggunaCtrl.text.trim();
                 final password = passwordCtrl.text;
                 if (username.isEmpty || password.isEmpty) {
                   showErrorSnackbar(
-                      ctx, 'Username dan password tidak boleh kosong');
+                    ctx,
+                    'Username dan password tidak boleh kosong',
+                  );
                   return;
                 }
                 try {
@@ -187,8 +201,9 @@ class _UsersPageState extends ConsumerState<UsersPage> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (newPasswordCtrl.text.length < 6) {
@@ -196,9 +211,12 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   return;
                 }
                 try {
-                  await ref.read(apiClientProvider).put(
-                      '/api/passwords/${u.id}',
-                      body: {'password': newPasswordCtrl.text});
+                  await ref
+                      .read(apiClientProvider)
+                      .put(
+                        '/api/passwords/${u.id}',
+                        body: {'password': newPasswordCtrl.text},
+                      );
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } on ApiException catch (e) {
                   if (ctx.mounted) showErrorSnackbar(ctx, e.message);
@@ -218,12 +236,12 @@ class _UsersPageState extends ConsumerState<UsersPage> {
 
   Future<void> _toggleActive(User u) async {
     try {
-      await ref
-          .read(usersServiceProvider)
-          .update(u.id, {'aktif': !u.isActive});
+      await ref.read(usersServiceProvider).update(u.id, {'aktif': !u.isActive});
       if (mounted) {
         showSuccessSnackbar(
-            context, u.isActive ? 'User dinonaktifkan' : 'User diaktifkan');
+          context,
+          u.isActive ? 'User dinonaktifkan' : 'User diaktifkan',
+        );
         _loadData();
       }
     } on ApiException catch (e) {
@@ -233,9 +251,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
 
   Future<void> _changeRole(User u, UserRole newRole) async {
     try {
-      await ref
-          .read(usersServiceProvider)
-          .update(u.id, {'role': newRole.name});
+      await ref.read(usersServiceProvider).update(u.id, {'role': newRole.name});
       if (mounted) {
         showSuccessSnackbar(context, 'Role diperbarui ke ${newRole.name}');
         _loadData();
@@ -246,10 +262,12 @@ class _UsersPageState extends ConsumerState<UsersPage> {
   }
 
   Future<void> _deleteUser(User u) async {
-    final ok = await showConfirmDialog(context,
-        title: 'Hapus User',
-        message: 'Hapus "${u.displayName}"?',
-        isDangerous: true);
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Hapus User',
+      message: 'Hapus "${u.displayName}"?',
+      isDangerous: true,
+    );
     if (!ok) return;
     try {
       await ref.read(usersServiceProvider).delete(u.id);
@@ -280,24 +298,24 @@ class _UsersPageState extends ConsumerState<UsersPage> {
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _users.isEmpty
-                ? EmptyState(
-                    icon: Icons.manage_accounts_rounded,
-                    title: 'Belum ada user',
-                    action: ElevatedButton.icon(
-                      onPressed: _showCreateForm,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Tambah User'),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadData,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                      itemCount: _users.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) => _buildCard(_users[i]),
-                    ),
-                  ),
+            ? EmptyState(
+                icon: Icons.manage_accounts_rounded,
+                title: 'Belum ada user',
+                action: ElevatedButton.icon(
+                  onPressed: _showCreateForm,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Tambah User'),
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                  itemCount: _users.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) => _buildCard(_users[i]),
+                ),
+              ),
         Positioned(
           right: 16,
           bottom: 16,
@@ -319,8 +337,10 @@ class _UsersPageState extends ConsumerState<UsersPage> {
           children: [
             CircleAvatar(
               backgroundColor: color.withValues(alpha: 0.15),
-              child: Text(u.displayName[0].toUpperCase(),
-                  style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+              child: Text(
+                u.displayName[0].toUpperCase(),
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -330,45 +350,60 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(u.displayName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 15),
-                            overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          u.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 1),
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(u.role.name,
-                            style: TextStyle(
-                                color: color,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          u.role.name,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       if (!u.isActive) ...[
                         const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text('Nonaktif',
-                              style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 10)),
+                          child: Text(
+                            'Nonaktif',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
                       ],
                     ],
                   ),
-                  Text('@${u.namaPengguna}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600)),
+                  Text(
+                    '@${u.namaPengguna}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -389,21 +424,29 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               },
               itemBuilder: (_) => [
                 PopupMenuItem(
-                    value: 'toggle',
-                    child: Text(u.isActive ? 'Nonaktifkan' : 'Aktifkan')),
+                  value: 'toggle',
+                  child: Text(u.isActive ? 'Nonaktifkan' : 'Aktifkan'),
+                ),
                 const PopupMenuItem(
-                    value: 'password', child: Text('Ganti Password')),
+                  value: 'password',
+                  child: Text('Ganti Password'),
+                ),
                 const PopupMenuDivider(),
-                ...UserRole.values.map((r) => PopupMenuItem(
-                      value: 'role:${r.name}',
-                      enabled: r != u.role,
-                      child: Text('Role: ${r.name}'),
-                    )),
+                ...UserRole.values.map(
+                  (r) => PopupMenuItem(
+                    value: 'role:${r.name}',
+                    enabled: r != u.role,
+                    child: Text('Role: ${r.name}'),
+                  ),
+                ),
                 const PopupMenuDivider(),
                 const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Hapus',
-                        style: TextStyle(color: AppColors.error))),
+                  value: 'delete',
+                  child: Text(
+                    'Hapus',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
               ],
             ),
           ],

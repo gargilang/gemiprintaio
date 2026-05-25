@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/customer.dart';
 import 'package:gemiprint/models/material_item.dart';
@@ -88,8 +89,11 @@ class _PosPageState extends ConsumerState<PosPage>
   final _jumlahBayarCtrl = TextEditingController();
   final _customerSearchCtrl = TextEditingController();
 
-  final _fmt =
-      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _fmt = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
@@ -113,20 +117,24 @@ class _PosPageState extends ConsumerState<PosPage>
     }
     try {
       final api = ref.read(apiClientProvider);
-      final data = await api.get('/api/pos/init-data', forceRefresh: forceRefresh);
+      final data = await api.get(
+        '/api/pos/init-data',
+        forceRefresh: forceRefresh,
+      );
       if (mounted) {
         setState(() {
-          _materials = (data['materials'] as List?)
-                  ?.map((j) =>
-                      MaterialItem.fromJson(j as Map<String, dynamic>))
+          _materials =
+              (data['materials'] as List?)
+                  ?.map((j) => MaterialItem.fromJson(j as Map<String, dynamic>))
                   .toList() ??
               [];
-          _customers = (data['customers'] as List?)
-                  ?.map((j) =>
-                      Customer.fromJson(j as Map<String, dynamic>))
+          _customers =
+              (data['customers'] as List?)
+                  ?.map((j) => Customer.fromJson(j as Map<String, dynamic>))
                   .toList() ??
               [];
-          _sales = (data['sales'] as List?)
+          _sales =
+              (data['sales'] as List?)
                   ?.map((j) => Sale.fromJson(j as Map<String, dynamic>))
                   .toList() ??
               [];
@@ -169,9 +177,11 @@ class _PosPageState extends ConsumerState<PosPage>
     final q = _materialSearch.trim().toLowerCase();
     if (q.isEmpty) return list;
     return list
-        .where((m) =>
-            m.nama.toLowerCase().contains(q) ||
-            (m.kategoriNama?.toLowerCase().contains(q) ?? false))
+        .where(
+          (m) =>
+              m.nama.toLowerCase().contains(q) ||
+              (m.kategoriNama?.toLowerCase().contains(q) ?? false),
+        )
         .toList();
   }
 
@@ -205,6 +215,11 @@ class _PosPageState extends ConsumerState<PosPage>
   }
 
   bool get _isMemberSelected => _selectedCustomer?.isMember ?? false;
+
+  bool get _canUseRiskyActions {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.adminOnly.contains(role);
+  }
 
   double get _totalCart =>
       _cart.fold(0.0, (s, c) => s + c.subtotal(isMember: _isMemberSelected));
@@ -245,11 +260,13 @@ class _PosPageState extends ConsumerState<PosPage>
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => Padding(
           padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: DraggableScrollableSheet(
             initialChildSize: 0.7,
             expand: false,
@@ -267,18 +284,25 @@ class _PosPageState extends ConsumerState<PosPage>
                 ),
                 // Header
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(m.nama,
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          m.nama,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(ctx)),
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
                     ],
                   ),
                 ),
@@ -289,48 +313,69 @@ class _PosPageState extends ConsumerState<PosPage>
                     padding: const EdgeInsets.all(16),
                     children: [
                       // Satuan / Harga
-                      const Text('Satuan & Harga',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
+                      const Text(
+                        'Satuan & Harga',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      ...m.harga.map((p) => RadioListTile<MaterialPrice>(
-                            dense: true,
-                            value: p,
-                            groupValue: selectedPrice,
-                            onChanged: (v) =>
-                                setLocal(() => selectedPrice = v!),
-                            title: Text(p.label,
-                                style: const TextStyle(fontSize: 14)),
-                            subtitle: Text(
-                              _isMemberSelected && p.hargaMember > 0
-                                  ? '${_fmt.format(p.hargaMember)} (member)'
-                                  : _fmt.format(p.hargaJual),
-                              style: TextStyle(
-                                  color: AppColors.primary, fontSize: 13),
+                      ...m.harga.map(
+                        (p) => RadioListTile<MaterialPrice>(
+                          dense: true,
+                          value: p,
+                          // ignore: deprecated_member_use
+                          groupValue: selectedPrice,
+                          // ignore: deprecated_member_use
+                          onChanged: (v) => setLocal(() => selectedPrice = v!),
+                          title: Text(
+                            p.label,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            _isMemberSelected && p.hargaMember > 0
+                                ? '${_fmt.format(p.hargaMember)} (member)'
+                                : _fmt.format(p.hargaJual),
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
                             ),
-                            secondary: p.isDefault
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4),
+                          ),
+                          secondary: p.isDefault
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.1,
                                     ),
-                                    child: const Text('Default',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            color: AppColors.primary)),
-                                  )
-                                : null,
-                          )),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Default',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // Dimensi (kalau perlu)
                       if (m.dimensiRequired) ...[
-                        const Text('Dimensi (meter)',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13)),
+                        const Text(
+                          'Dimensi (meter)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -339,10 +384,12 @@ class _PosPageState extends ConsumerState<PosPage>
                                 controller: panjangCtrl,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                        decimal: true),
+                                      decimal: true,
+                                    ),
                                 decoration: const InputDecoration(
-                                    labelText: 'Panjang (m)',
-                                    isDense: true),
+                                  labelText: 'Panjang (m)',
+                                  isDense: true,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -351,10 +398,12 @@ class _PosPageState extends ConsumerState<PosPage>
                                 controller: lebarCtrl,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                        decimal: true),
+                                      decimal: true,
+                                    ),
                                 decoration: const InputDecoration(
-                                    labelText: 'Lebar (m)',
-                                    isDense: true),
+                                  labelText: 'Lebar (m)',
+                                  isDense: true,
+                                ),
                               ),
                             ),
                           ],
@@ -364,17 +413,20 @@ class _PosPageState extends ConsumerState<PosPage>
 
                       // Jumlah (untuk non-dimensi)
                       if (!m.dimensiRequired) ...[
-                        const Text('Jumlah',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13)),
+                        const Text(
+                          'Jumlah',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline),
                               onPressed: () {
-                                final v =
-                                    int.tryParse(qtyCtrl.text) ?? 1;
+                                final v = int.tryParse(qtyCtrl.text) ?? 1;
                                 if (v > 1) {
                                   qtyCtrl.text = (v - 1).toString();
                                   setLocal(() {});
@@ -387,18 +439,22 @@ class _PosPageState extends ConsumerState<PosPage>
                                 keyboardType: TextInputType.number,
                                 textAlign: TextAlign.center,
                                 decoration: const InputDecoration(
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 8)),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 8,
+                                  ),
+                                ),
                                 onChanged: (_) => setLocal(() {}),
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.add_circle_outline,
-                                  color: AppColors.primary),
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                color: AppColors.primary,
+                              ),
                               onPressed: () {
-                                final v =
-                                    int.tryParse(qtyCtrl.text) ?? 1;
+                                final v = int.tryParse(qtyCtrl.text) ?? 1;
                                 qtyCtrl.text = (v + 1).toString();
                                 setLocal(() {});
                               },
@@ -417,31 +473,31 @@ class _PosPageState extends ConsumerState<PosPage>
                             final l = double.tryParse(lebarCtrl.text) ?? 0;
                             previewSubtotal =
                                 selectedPrice.hargaUntuk(
-                                        isMember: _isMemberSelected) *
-                                    p *
-                                    l;
+                                  isMember: _isMemberSelected,
+                                ) *
+                                p *
+                                l;
                           } else {
-                            final qty =
-                                double.tryParse(qtyCtrl.text) ?? 1;
+                            final qty = double.tryParse(qtyCtrl.text) ?? 1;
                             previewSubtotal =
                                 selectedPrice.hargaUntuk(
-                                        isMember: _isMemberSelected) *
-                                    qty;
+                                  isMember: _isMemberSelected,
+                                ) *
+                                qty;
                           }
                           return Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.08),
+                              color: AppColors.primary.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Subtotal',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600)),
+                                const Text(
+                                  'Subtotal',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
                                 Text(
                                   _fmt.format(previewSubtotal),
                                   style: const TextStyle(
@@ -459,47 +515,47 @@ class _PosPageState extends ConsumerState<PosPage>
                   ),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      icon:
-                          const Icon(Icons.add_shopping_cart_rounded),
+                      icon: const Icon(Icons.add_shopping_cart_rounded),
                       label: const Text('Tambah ke Keranjang'),
                       onPressed: () {
                         if (m.dimensiRequired) {
-                          final p =
-                              double.tryParse(panjangCtrl.text);
-                          final l =
-                              double.tryParse(lebarCtrl.text);
+                          final p = double.tryParse(panjangCtrl.text);
+                          final l = double.tryParse(lebarCtrl.text);
                           if (p == null || l == null || p <= 0 || l <= 0) {
-                            showErrorSnackbar(ctx,
-                                'Masukkan panjang dan lebar yang valid');
+                            showErrorSnackbar(
+                              ctx,
+                              'Masukkan panjang dan lebar yang valid',
+                            );
                             return;
                           }
                           setState(() {
-                            _cart.add(_CartItem(
-                              material: m,
-                              selectedPrice: selectedPrice,
-                              panjang: p,
-                              lebar: l,
-                            ));
+                            _cart.add(
+                              _CartItem(
+                                material: m,
+                                selectedPrice: selectedPrice,
+                                panjang: p,
+                                lebar: l,
+                              ),
+                            );
                           });
                         } else {
-                          final qty =
-                              double.tryParse(qtyCtrl.text) ?? 1;
+                          final qty = double.tryParse(qtyCtrl.text) ?? 1;
                           if (qty <= 0) {
-                            showErrorSnackbar(
-                                ctx, 'Jumlah harus lebih dari 0');
+                            showErrorSnackbar(ctx, 'Jumlah harus lebih dari 0');
                             return;
                           }
                           setState(() {
-                            _cart.add(_CartItem(
-                              material: m,
-                              selectedPrice: selectedPrice,
-                              quantity: qty,
-                            ));
+                            _cart.add(
+                              _CartItem(
+                                material: m,
+                                selectedPrice: selectedPrice,
+                                quantity: qty,
+                              ),
+                            );
                           });
                         }
                         Navigator.pop(ctx);
@@ -542,17 +598,16 @@ class _PosPageState extends ConsumerState<PosPage>
       message: _paymentMethod == 'NET30'
           ? 'Total: ${_fmt.format(total)}\nMetode: NET30 (Piutang Penuh)\nProses transaksi ini?'
           : 'Total: ${_fmt.format(total)}\nDibayar: ${_fmt.format(bayar)}'
-              '${kembalian > 0 ? '\nKembalian: ${_fmt.format(kembalian)}' : ''}'
-              '${_kurang > 0 ? '\nKurang: ${_fmt.format(_kurang)}' : ''}'
-              '\nProses transaksi ini?',
+                '${kembalian > 0 ? '\nKembalian: ${_fmt.format(kembalian)}' : ''}'
+                '${_kurang > 0 ? '\nKurang: ${_fmt.format(_kurang)}' : ''}'
+                '\nProses transaksi ini?',
     );
     if (!confirmed) return;
 
     final user = ref.read(authStateProvider).valueOrNull;
 
     final items = _cart.map((c) {
-      final harga =
-          c.selectedPrice.hargaUntuk(isMember: _isMemberSelected);
+      final harga = c.selectedPrice.hargaUntuk(isMember: _isMemberSelected);
       return {
         'barang_id': c.material.id,
         'harga_satuan_id': c.selectedPrice.id,
@@ -581,14 +636,10 @@ class _PosPageState extends ConsumerState<PosPage>
         'prioritas': _prioritas,
       });
       if (mounted) {
-        final invoice = result['sale']?['nomor_invoice'] ??
-            result['nomor_invoice'] ??
-            '';
+        final invoice =
+            result['sale']?['nomor_invoice'] ?? result['nomor_invoice'] ?? '';
         final spk = result['spk_number'] ?? '';
-        showSuccessSnackbar(
-          context,
-          'Invoice $invoice berhasil! SPK: $spk',
-        );
+        showSuccessSnackbar(context, 'Invoice $invoice berhasil! SPK: $spk');
         setState(() {
           _cart.clear();
           _selectedCustomer = null;
@@ -612,8 +663,7 @@ class _PosPageState extends ConsumerState<PosPage>
   void _showTerimapiutangSheet() async {
     try {
       final data = await ref.read(posServiceProvider).getReceivables();
-      final receivables =
-          (data['receivables'] as List?) ?? [];
+      final receivables = (data['receivables'] as List?) ?? [];
       if (!mounted) return;
 
       if (receivables.isEmpty) {
@@ -626,7 +676,8 @@ class _PosPageState extends ConsumerState<PosPage>
         isScrollControlled: true,
         useSafeArea: true,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         builder: (ctx) => _TerimapiutangSheet(
           receivables: receivables,
           posService: ref.read(posServiceProvider),
@@ -648,18 +699,20 @@ class _PosPageState extends ConsumerState<PosPage>
   // ---------------------------------------------------------------------------
 
   Future<void> _deleteSale(Sale s) async {
+    if (!_canUseRiskyActions) return;
     final ok = await showConfirmDialog(
       context,
-      title: 'Hapus Penjualan',
-      message: 'Hapus invoice ${s.nomorInvoice}?\n'
-          'Tindakan ini akan menghapus transaksi dan mengembalikan stok.',
+      title: 'Batalkan Penjualan',
+      message:
+          'Batalkan invoice ${s.nomorInvoice}?\n'
+          'Tindakan ini akan membatalkan transaksi dan mengembalikan stok.',
       isDangerous: true,
     );
     if (!ok) return;
     try {
       await ref.read(posServiceProvider).deleteSale(s.id);
       if (mounted) {
-        showSuccessSnackbar(context, 'Penjualan berhasil dihapus');
+        showSuccessSnackbar(context, 'Penjualan berhasil dibatalkan');
         _loadData();
       }
     } on ApiException catch (e) {
@@ -668,20 +721,23 @@ class _PosPageState extends ConsumerState<PosPage>
   }
 
   Future<void> _revertPayment(Sale s) async {
+    if (!_canUseRiskyActions) return;
     final ok = await showConfirmDialog(
       context,
       title: 'Batalkan Pembayaran Piutang',
-      message: 'Batalkan SEMUA riwayat pembayaran untuk invoice '
+      message:
+          'Batalkan SEMUA riwayat pembayaran untuk invoice '
           '${s.nomorInvoice}?\n\nTindakan ini tidak dapat dibatalkan.',
       isDangerous: true,
     );
     if (!ok) return;
     try {
-      await ref
-          .read(posServiceProvider)
-          .revertPayment({'sale_id': s.id});
+      await ref.read(posServiceProvider).revertPayment({'sale_id': s.id});
       if (mounted) {
-        showSuccessSnackbar(context, 'Status pembayaran dikembalikan ke PIUTANG');
+        showSuccessSnackbar(
+          context,
+          'Status pembayaran dikembalikan ke PIUTANG',
+        );
         _loadData();
       }
     } on ApiException catch (e) {
@@ -737,8 +793,7 @@ class _PosPageState extends ConsumerState<PosPage>
                       padding: const EdgeInsets.fromLTRB(8, 8, 4, 4),
                       child: SearchField(
                         hintText: 'Cari barang...',
-                        onChanged: (v) =>
-                            setState(() => _materialSearch = v),
+                        onChanged: (v) => setState(() => _materialSearch = v),
                       ),
                     ),
                     if (_materialCategories.isNotEmpty)
@@ -758,34 +813,38 @@ class _PosPageState extends ConsumerState<PosPage>
                     Expanded(
                       child: _filteredMaterials.isEmpty
                           ? const Center(
-                              child: Text('Tidak ada barang',
-                                  style: TextStyle(color: Colors.grey)))
+                              child: Text(
+                                'Tidak ada barang',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
                           : GridView.builder(
                               padding: const EdgeInsets.all(8),
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 6,
-                                mainAxisSpacing: 6,
-                                childAspectRatio: 1.4,
-                              ),
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 6,
+                                    mainAxisSpacing: 6,
+                                    childAspectRatio: 1.4,
+                                  ),
                               itemCount: _filteredMaterials.length,
                               itemBuilder: (_, i) {
                                 final m = _filteredMaterials[i];
                                 final defaultP = m.harga.isNotEmpty
                                     ? m.harga.firstWhere(
                                         (p) => p.isDefault,
-                                        orElse: () => m.harga.first)
+                                        orElse: () => m.harga.first,
+                                      )
                                     : null;
                                 return GestureDetector(
                                   onTap: () => _showAddToCartSheet(m),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                          color: Colors.grey.shade200),
+                                        color: Colors.grey.shade200,
+                                      ),
                                     ),
                                     padding: const EdgeInsets.all(8),
                                     child: Column(
@@ -795,8 +854,9 @@ class _PosPageState extends ConsumerState<PosPage>
                                         Text(
                                           m.nama,
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
+                                          ),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -804,18 +864,20 @@ class _PosPageState extends ConsumerState<PosPage>
                                           Text(
                                             m.kategoriNama!,
                                             style: TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.grey.shade500),
+                                              fontSize: 10,
+                                              color: Colors.grey.shade500,
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         const Spacer(),
                                         if (defaultP != null)
                                           Text(
-                                            _fmt.format(defaultP
-                                                .hargaUntuk(
-                                                    isMember:
-                                                        _isMemberSelected)),
+                                            _fmt.format(
+                                              defaultP.hargaUntuk(
+                                                isMember: _isMemberSelected,
+                                              ),
+                                            ),
                                             style: const TextStyle(
                                               color: AppColors.primary,
                                               fontWeight: FontWeight.bold,
@@ -834,10 +896,7 @@ class _PosPageState extends ConsumerState<PosPage>
               ),
               Container(width: 1, color: Colors.grey.shade200),
               // Kanan: Keranjang + checkout
-              Expanded(
-                flex: 2,
-                child: _buildCartPanel(),
-              ),
+              Expanded(flex: 2, child: _buildCartPanel()),
             ],
           ),
         ),
@@ -852,40 +911,50 @@ class _PosPageState extends ConsumerState<PosPage>
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
           child: DropdownButtonFormField<String?>(
-            value: _selectedCustomer?.id,
+            initialValue: _selectedCustomer?.id,
             isDense: true,
             decoration: const InputDecoration(
               labelText: 'Pelanggan',
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             ),
             items: [
               const DropdownMenuItem(value: null, child: Text('Walk-in')),
-              ..._customers.map((c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Row(
-                      children: [
-                        Flexible(
-                            child: Text(c.nama,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13))),
-                        if (c.isMember) ...[
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('M',
-                                style: TextStyle(
-                                    fontSize: 9, color: AppColors.success)),
+              ..._customers.map(
+                (c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          c.nama,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      if (c.isMember) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
                           ),
-                        ],
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'M',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                  )),
+                    ],
+                  ),
+                ),
+              ),
             ],
             onChanged: (v) => setState(() {
               _selectedCustomer = v != null
@@ -899,8 +968,11 @@ class _PosPageState extends ConsumerState<PosPage>
         Expanded(
           child: _cart.isEmpty
               ? const Center(
-                  child: Text('Keranjang kosong',
-                      style: TextStyle(color: Colors.grey, fontSize: 13)))
+                  child: Text(
+                    'Keranjang kosong',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   itemCount: _cart.length,
@@ -919,16 +991,20 @@ class _PosPageState extends ConsumerState<PosPage>
                                   child: Text(
                                     item.material.nama,
                                     style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 GestureDetector(
                                   onTap: () =>
                                       setState(() => _cart.removeAt(i)),
-                                  child: const Icon(Icons.close,
-                                      size: 16, color: Colors.grey),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
@@ -937,12 +1013,13 @@ class _PosPageState extends ConsumerState<PosPage>
                                   ? '${item.panjang ?? 0} × ${item.lebar ?? 0} m'
                                   : '× ${item.quantity.toStringAsFixed(0)} ${item.selectedPrice.label}',
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.grey.shade600),
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 if (!item.material.dimensiRequired)
                                   Row(
@@ -954,36 +1031,40 @@ class _PosPageState extends ConsumerState<PosPage>
                                           }
                                         },
                                         child: const Icon(
-                                            Icons.remove_circle_outline,
-                                            size: 18,
-                                            color: Colors.grey),
+                                          Icons.remove_circle_outline,
+                                          size: 18,
+                                          color: Colors.grey,
+                                        ),
                                       ),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 6),
+                                          horizontal: 6,
+                                        ),
                                         child: Text(
-                                          item.quantity
-                                              .toStringAsFixed(0),
+                                          item.quantity.toStringAsFixed(0),
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                       GestureDetector(
-                                        onTap: () => setState(
-                                            () => item.quantity++),
+                                        onTap: () =>
+                                            setState(() => item.quantity++),
                                         child: const Icon(
-                                            Icons.add_circle_outline,
-                                            size: 18,
-                                            color: AppColors.primary),
+                                          Icons.add_circle_outline,
+                                          size: 18,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                     ],
                                   )
                                 else
                                   const SizedBox(),
                                 Text(
-                                  _fmt.format(item.subtotal(
-                                      isMember: _isMemberSelected)),
+                                  _fmt.format(
+                                    item.subtotal(isMember: _isMemberSelected),
+                                  ),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -1014,15 +1095,20 @@ class _PosPageState extends ConsumerState<PosPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Text(
+                      'Total',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                     Text(
                       _fmt.format(_totalCart),
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: AppColors.primary),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -1031,26 +1117,25 @@ class _PosPageState extends ConsumerState<PosPage>
                 // Prioritas
                 Row(
                   children: [
-                    const Text('Prioritas:',
-                        style: TextStyle(fontSize: 12)),
+                    const Text('Prioritas:', style: TextStyle(fontSize: 12)),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Normal',
-                          style: TextStyle(fontSize: 11)),
+                      label: const Text(
+                        'Normal',
+                        style: TextStyle(fontSize: 11),
+                      ),
                       selected: _prioritas == 'NORMAL',
-                      onSelected: (_) =>
-                          setState(() => _prioritas = 'NORMAL'),
+                      onSelected: (_) => setState(() => _prioritas = 'NORMAL'),
                     ),
                     const SizedBox(width: 4),
                     ChoiceChip(
-                      label: const Text('Kilat',
-                          style: TextStyle(
-                              fontSize: 11, color: AppColors.error)),
+                      label: const Text(
+                        'Kilat',
+                        style: TextStyle(fontSize: 11, color: AppColors.error),
+                      ),
                       selected: _prioritas == 'KILAT',
-                      selectedColor:
-                          AppColors.error.withValues(alpha: 0.15),
-                      onSelected: (_) =>
-                          setState(() => _prioritas = 'KILAT'),
+                      selectedColor: AppColors.error.withValues(alpha: 0.15),
+                      onSelected: (_) => setState(() => _prioritas = 'KILAT'),
                     ),
                   ],
                 ),
@@ -1058,25 +1143,34 @@ class _PosPageState extends ConsumerState<PosPage>
 
                 // Metode bayar
                 DropdownButtonFormField<String>(
-                  value: _paymentMethod,
+                  initialValue: _paymentMethod,
                   isDense: true,
                   decoration: const InputDecoration(
                     labelText: 'Pembayaran',
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(value: 'CASH', child: Text('Tunai')),
                     DropdownMenuItem(
-                        value: 'TRANSFER', child: Text('Transfer')),
+                      value: 'TRANSFER',
+                      child: Text('Transfer'),
+                    ),
                     DropdownMenuItem(value: 'QRIS', child: Text('QRIS')),
-                    DropdownMenuItem(value: 'DEBIT', child: Text('Kartu Debit')),
                     DropdownMenuItem(
-                        value: 'DOWN_PAYMENT',
-                        child: Text('Down Payment')),
+                      value: 'DEBIT',
+                      child: Text('Kartu Debit'),
+                    ),
                     DropdownMenuItem(
-                        value: 'NET30',
-                        child: Text('Piutang (NET30)')),
+                      value: 'DOWN_PAYMENT',
+                      child: Text('Down Payment'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'NET30',
+                      child: Text('Piutang (NET30)'),
+                    ),
                   ],
                   onChanged: (v) => setState(() {
                     _paymentMethod = v ?? 'CASH';
@@ -1096,8 +1190,10 @@ class _PosPageState extends ConsumerState<PosPage>
                       labelText: 'Jumlah Dibayar',
                       prefixText: 'Rp ',
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -1107,15 +1203,20 @@ class _PosPageState extends ConsumerState<PosPage>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Kembalian',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600)),
+                          Text(
+                            'Kembalian',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                           Text(
                             _fmt.format(_kembalian),
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.success,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 12,
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -1123,15 +1224,20 @@ class _PosPageState extends ConsumerState<PosPage>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Kurang',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600)),
+                          Text(
+                            'Kurang',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                           Text(
                             _fmt.format(_kurang),
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.error,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 12,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -1146,8 +1252,10 @@ class _PosPageState extends ConsumerState<PosPage>
                   decoration: const InputDecoration(
                     labelText: 'Catatan (opsional)',
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1174,15 +1282,17 @@ class _PosPageState extends ConsumerState<PosPage>
     final filtered = _salesSearch.isEmpty
         ? _sales
         : _sales
-            .where((s) =>
-                s.nomorInvoice
-                    .toLowerCase()
-                    .contains(_salesSearch.toLowerCase()) ||
-                (s.pelangganNama
-                        ?.toLowerCase()
-                        .contains(_salesSearch.toLowerCase()) ??
-                    false))
-            .toList();
+              .where(
+                (s) =>
+                    s.nomorInvoice.toLowerCase().contains(
+                      _salesSearch.toLowerCase(),
+                    ) ||
+                    (s.pelangganNama?.toLowerCase().contains(
+                          _salesSearch.toLowerCase(),
+                        ) ??
+                        false),
+              )
+              .toList();
 
     return Column(
       children: [
@@ -1201,8 +1311,10 @@ class _PosPageState extends ConsumerState<PosPage>
                 icon: const Icon(Icons.payments_outlined, size: 16),
                 label: const Text('Piutang', style: TextStyle(fontSize: 12)),
                 style: OutlinedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   minimumSize: Size.zero,
                 ),
                 onPressed: _showTerimapiutangSheet,
@@ -1215,8 +1327,11 @@ class _PosPageState extends ConsumerState<PosPage>
             onRefresh: () => _loadData(forceRefresh: true),
             child: filtered.isEmpty
                 ? const Center(
-                    child: Text('Belum ada riwayat penjualan',
-                        style: TextStyle(color: Colors.grey)))
+                    child: Text(
+                      'Belum ada riwayat penjualan',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                     itemCount: filtered.length,
@@ -1262,7 +1377,9 @@ class _PosPageState extends ConsumerState<PosPage>
                       Text(
                         s.nomorInvoice,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         [
@@ -1271,14 +1388,18 @@ class _PosPageState extends ConsumerState<PosPage>
                           if (s.prioritas == 'KILAT') '⚡ KILAT',
                         ].join(' · '),
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade600),
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -1286,9 +1407,10 @@ class _PosPageState extends ConsumerState<PosPage>
                   child: Text(
                     statusLabel,
                     style: TextStyle(
-                        color: statusColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700),
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1300,15 +1422,18 @@ class _PosPageState extends ConsumerState<PosPage>
                 Text(
                   _fmt.format(s.totalHarga),
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: AppColors.primary),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primary,
+                  ),
                 ),
                 if (s.sisaPiutang > 0)
                   Text(
                     'Sisa: ${_fmt.format(s.sisaPiutang)}',
                     style: const TextStyle(
-                        fontSize: 11, color: AppColors.error),
+                      fontSize: 11,
+                      color: AppColors.error,
+                    ),
                   ),
               ],
             ),
@@ -1324,21 +1449,28 @@ class _PosPageState extends ConsumerState<PosPage>
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (s.isPiutang && s.hasPelunasan)
+                if (_canUseRiskyActions && s.isPiutang && s.hasPelunasan)
                   TextButton(
                     onPressed: () => _revertPayment(s),
-                    style:
-                        TextButton.styleFrom(foregroundColor: AppColors.warning),
-                    child: const Text('Revert',
-                        style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.warning,
+                    ),
+                    child: const Text(
+                      'Batalkan Bayar',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
-                TextButton(
-                  onPressed: () => _deleteSale(s),
-                  style:
-                      TextButton.styleFrom(foregroundColor: AppColors.error),
-                  child: const Text('Hapus',
-                      style: TextStyle(fontSize: 12)),
-                ),
+                if (_canUseRiskyActions)
+                  TextButton(
+                    onPressed: () => _deleteSale(s),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                    ),
+                    child: const Text(
+                      'Batalkan',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
               ],
             ),
           ],
@@ -1444,13 +1576,15 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
             child: Row(
               children: [
                 const Expanded(
-                  child: Text('Terima Pembayaran Piutang',
-                      style:
-                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Terima Pembayaran Piutang',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context)),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
           ),
@@ -1460,9 +1594,10 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
               controller: scroll,
               padding: const EdgeInsets.all(16),
               children: [
-                const Text('Pilih Piutang',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13)),
+                const Text(
+                  'Pilih Piutang',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
                 const SizedBox(height: 8),
                 ...widget.receivables.map((r) {
                   final isSelected = _selected?['id'] == r['id'];
@@ -1496,14 +1631,16 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                                 Text(
                                   r['nomor_invoice']?.toString() ?? '-',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 Text(
                                   r['pelanggan_nama']?.toString() ?? '-',
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600),
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1513,17 +1650,20 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                             children: [
                               Text(
                                 widget.fmt.format(
-                                    (r['sisa_piutang'] as num?) ?? 0),
+                                  (r['sisa_piutang'] as num?) ?? 0,
+                                ),
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.error,
-                                    fontSize: 13),
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.error,
+                                  fontSize: 13,
+                                ),
                               ),
                               Text(
                                 'dari ${widget.fmt.format((r['jumlah_piutang'] as num?) ?? 0)}',
                                 style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade500),
+                                  fontSize: 10,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
                             ],
                           ),
@@ -1534,9 +1674,10 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                 }),
                 const SizedBox(height: 16),
                 if (_selected != null) ...[
-                  const Text('Jumlah Pembayaran',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const Text(
+                    'Jumlah Pembayaran',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _amountCtrl,
@@ -1548,16 +1689,18 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _method,
+                    initialValue: _method,
                     decoration: const InputDecoration(
-                        labelText: 'Metode', isDense: true),
+                      labelText: 'Metode',
+                      isDense: true,
+                    ),
                     items: const [
+                      DropdownMenuItem(value: 'CASH', child: Text('Tunai')),
                       DropdownMenuItem(
-                          value: 'CASH', child: Text('Tunai')),
-                      DropdownMenuItem(
-                          value: 'TRANSFER', child: Text('Transfer')),
-                      DropdownMenuItem(
-                          value: 'QRIS', child: Text('QRIS')),
+                        value: 'TRANSFER',
+                        child: Text('Transfer'),
+                      ),
+                      DropdownMenuItem(value: 'QRIS', child: Text('QRIS')),
                     ],
                     onChanged: (v) => setState(() => _method = v ?? 'CASH'),
                   ),
@@ -1577,7 +1720,10 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Text('Simpan Pembayaran'),
                 ),
               ),

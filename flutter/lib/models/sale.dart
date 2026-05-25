@@ -39,7 +39,8 @@ class Sale {
     this.items = const [],
   });
 
-  bool get isPiutang => statusPembayaran == 'AKTIF' || statusPembayaran == 'SEBAGIAN';
+  bool get isPiutang =>
+      statusPembayaran == 'AKTIF' || statusPembayaran == 'SEBAGIAN';
   bool get isLunas => statusPembayaran == 'LUNAS' || statusPembayaran == null;
 
   factory Sale.fromJson(Map<String, dynamic> json) {
@@ -50,12 +51,18 @@ class Sale {
       nomorInvoice: (json['nomor_invoice'] ?? '') as String,
       pelangganId: json['pelanggan_id'] as String?,
       pelangganNama: json['pelanggan_nama'] as String?,
-      totalHarga: (json['total_jumlah'] as num?)?.toDouble() ??
-          (json['total_harga'] as num?)?.toDouble() ?? 0,
-      dibayar: (json['jumlah_dibayar'] as num?)?.toDouble() ??
-          (json['dibayar'] as num?)?.toDouble() ?? 0,
-      kembalian: (json['jumlah_kembalian'] as num?)?.toDouble() ??
-          (json['kembalian'] as num?)?.toDouble() ?? 0,
+      totalHarga:
+          (json['total_jumlah'] as num?)?.toDouble() ??
+          (json['total_harga'] as num?)?.toDouble() ??
+          0,
+      dibayar:
+          (json['jumlah_dibayar'] as num?)?.toDouble() ??
+          (json['dibayar'] as num?)?.toDouble() ??
+          0,
+      kembalian:
+          (json['jumlah_kembalian'] as num?)?.toDouble() ??
+          (json['kembalian'] as num?)?.toDouble() ??
+          0,
       metodePembayaran: json['metode_pembayaran'] as String?,
       kasirId: json['kasir_id'] as String?,
       kasirNama: json['kasir_nama'] as String?,
@@ -64,10 +71,14 @@ class Sale {
       sisaPiutang: (json['sisa_piutang'] as num?)?.toDouble() ?? 0,
       hasPelunasan: hasPelunasanRaw == true || hasPelunasanRaw == 1,
       prioritas: json['prioritas'] as String?,
-      createdAt: json['dibuat_pada'] as String? ?? json['created_at'] as String?,
-      updatedAt: json['diperbarui_pada'] as String? ?? json['updated_at'] as String?,
+      createdAt:
+          json['dibuat_pada'] as String? ?? json['created_at'] as String?,
+      updatedAt:
+          json['diperbarui_pada'] as String? ?? json['updated_at'] as String?,
       items: itemList is List
-          ? itemList.map((i) => SaleItem.fromJson(i as Map<String, dynamic>)).toList()
+          ? itemList
+                .map((i) => SaleItem.fromJson(i as Map<String, dynamic>))
+                .toList()
           : [],
     );
   }
@@ -113,8 +124,11 @@ class SaleItem {
       id: json['id'] as String,
       penjualanId: (json['penjualan_id'] ?? '') as String,
       barangId: (json['barang_id'] ?? '') as String,
-      barangNama: json['barang_nama'] as String?,
-      quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
+      barangNama: (json['barang_nama'] ?? json['nama_barang']) as String?,
+      quantity:
+          (json['quantity'] as num?)?.toDouble() ??
+          (json['jumlah'] as num?)?.toDouble() ??
+          0,
       hargaSatuan: (json['harga_satuan'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
       hppSatuan: (json['hpp_satuan'] as num?)?.toDouble() ?? 0,
@@ -124,7 +138,7 @@ class SaleItem {
       panjang: (json['panjang'] as num?)?.toDouble(),
       lebar: (json['lebar'] as num?)?.toDouble(),
       finishingOptions: json['finishing_options'] as String?,
-      createdAt: json['created_at'] as String?,
+      createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
     );
   }
 }

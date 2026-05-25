@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/vendor.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -32,22 +33,36 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
     setState(() => _isLoading = true);
     try {
       final data = await ref.read(vendorsServiceProvider).getAll();
-      if (mounted) setState(() { _vendors = data; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _vendors = data;
+          _isLoading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, e.message); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, e.message);
+      }
     } catch (_) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat data vendor'); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, 'Gagal memuat data vendor');
+      }
     }
   }
 
   List<Vendor> get _filtered {
     if (_search.isEmpty) return _vendors;
     final q = _search.toLowerCase();
-    return _vendors.where((v) =>
-      v.namaPerusahaan.toLowerCase().contains(q) ||
-      (v.kontakPerson?.toLowerCase().contains(q) ?? false) ||
-      (v.telepon?.toLowerCase().contains(q) ?? false)
-    ).toList();
+    return _vendors
+        .where(
+          (v) =>
+              v.namaPerusahaan.toLowerCase().contains(q) ||
+              (v.kontakPerson?.toLowerCase().contains(q) ?? false) ||
+              (v.telepon?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
   }
 
   Future<void> _showForm({Vendor? existing}) async {
@@ -61,7 +76,9 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
   }
 
   Future<void> _handleDelete(Vendor v) async {
-    final ok = await showConfirmDialog(context,
+    if (!_canUseRiskyActions) return;
+    final ok = await showConfirmDialog(
+      context,
       title: 'Hapus Vendor',
       message: 'Yakin ingin menghapus "${v.namaPerusahaan}"?',
       isDangerous: true,
@@ -70,10 +87,18 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
 
     try {
       await ref.read(vendorsServiceProvider).delete(v.id);
-      if (mounted) { showSuccessSnackbar(context, 'Vendor berhasil dihapus'); _loadData(); }
+      if (mounted) {
+        showSuccessSnackbar(context, 'Vendor berhasil dihapus');
+        _loadData();
+      }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
     }
+  }
+
+  bool get _canUseRiskyActions {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.adminOnly.contains(role);
   }
 
   @override
@@ -81,30 +106,42 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
     final filtered = _filtered;
     return Stack(
       children: [
-    Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Expanded(child: SearchField(hintText: 'Cari vendor...', onChanged: (v) => setState(() => _search = v))),
-              const SizedBox(width: 8),
-              Text('${filtered.length} data', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SearchField(
+                      hintText: 'Cari vendor...',
+                      onChanged: (v) => setState(() => _search = v),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${filtered.length} data',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
                   ? EmptyState(
                       icon: Icons.business_rounded,
-                      title: _search.isEmpty ? 'Belum ada vendor' : 'Tidak ditemukan',
-                      action: _search.isEmpty ? ElevatedButton.icon(
-                        onPressed: () => _showForm(),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah Vendor'),
-                      ) : null,
+                      title: _search.isEmpty
+                          ? 'Belum ada vendor'
+                          : 'Tidak ditemukan',
+                      action: _search.isEmpty
+                          ? ElevatedButton.icon(
+                              onPressed: () => _showForm(),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Tambah Vendor'),
+                            )
+                          : null,
                     )
                   : RefreshIndicator(
                       onRefresh: _loadData,
@@ -115,17 +152,17 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
                         itemBuilder: (_, i) => _buildCard(filtered[i]),
                       ),
                     ),
+            ),
+          ],
         ),
-      ],
-    ),
-    Positioned(
-      right: 16,
-      bottom: 16,
-      child: FloatingActionButton(
-        onPressed: () => _showForm(),
-        child: const Icon(Icons.add_rounded),
-      ),
-    ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            onPressed: () => _showForm(),
+            child: const Icon(Icons.add_rounded),
+          ),
+        ),
       ],
     );
   }
@@ -141,28 +178,54 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
             children: [
               CircleAvatar(
                 backgroundColor: AppColors.accent.withValues(alpha: 0.15),
-                child: Text(v.namaPerusahaan[0].toUpperCase(), style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold)),
+                child: Text(
+                  v.namaPerusahaan[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(v.namaPerusahaan, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), overflow: TextOverflow.ellipsis),
+                    Text(
+                      v.namaPerusahaan,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      [if (v.kontakPerson != null && v.kontakPerson!.isNotEmpty) v.kontakPerson!, if (v.telepon != null && v.telepon!.isNotEmpty) v.telepon!]
-                          .join(' · '),
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      [
+                        if (v.kontakPerson != null &&
+                            v.kontakPerson!.isNotEmpty)
+                          v.kontakPerson!,
+                        if (v.telepon != null && v.telepon!.isNotEmpty)
+                          v.telepon!,
+                      ].join(' · '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.delete_outline_rounded, color: Colors.grey.shade400, size: 20),
-                onPressed: () => _handleDelete(v),
-              ),
+              if (_canUseRiskyActions)
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.grey.shade400,
+                    size: 20,
+                  ),
+                  onPressed: () => _handleDelete(v),
+                ),
             ],
           ),
         ),

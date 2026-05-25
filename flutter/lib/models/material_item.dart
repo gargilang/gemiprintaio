@@ -44,18 +44,28 @@ class MaterialItem {
       kategoriId: json['kategori_id'] as String?,
       subkategoriId: json['subkategori_id'] as String?,
       satuanId: json['satuan_id'] as String?,
-      kategoriNama: json['kategori_nama'] as String?,
-      subkategoriNama: json['subkategori_nama'] as String?,
-      satuanNama: json['satuan_nama'] as String?,
-      trackStock: (json['track_stock'] ?? false) as bool,
-      dimensiRequired: (json['dimensi_required'] ?? false) as bool,
-      stok: (json['stok'] as num?)?.toDouble() ?? 0,
+      kategoriNama: (json['kategori_nama'] ?? json['category_name']) as String?,
+      subkategoriNama:
+          (json['subkategori_nama'] ?? json['subcategory_name']) as String?,
+      satuanNama: (json['satuan_nama'] ?? json['satuan_dasar']) as String?,
+      trackStock: _boolFromJson(
+        json['track_stock'] ?? json['lacak_inventori_status'],
+      ),
+      dimensiRequired: _boolFromJson(
+        json['dimensi_required'] ?? json['butuh_dimensi_status'],
+      ),
+      stok:
+          (json['stok'] as num?)?.toDouble() ??
+          (json['jumlah_stok'] as num?)?.toDouble() ??
+          0,
       averageCostPerBaseUnit:
           (json['average_cost_per_base_unit'] as num?)?.toDouble() ?? 0,
-      createdAt: json['created_at'] as String?,
-      updatedAt: json['updated_at'] as String?,
+      createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
+      updatedAt: (json['updated_at'] ?? json['diperbarui_pada']) as String?,
       harga: hargaList is List
-          ? hargaList.map((h) => MaterialPrice.fromJson(h as Map<String, dynamic>)).toList()
+          ? hargaList
+                .map((h) => MaterialPrice.fromJson(h as Map<String, dynamic>))
+                .toList()
           : [],
     );
   }
@@ -65,9 +75,9 @@ class MaterialItem {
     'deskripsi': deskripsi,
     'kategori_id': kategoriId,
     'subkategori_id': subkategoriId,
-    'satuan_id': satuanId,
-    'track_stock': trackStock,
-    'dimensi_required': dimensiRequired,
+    'satuan_dasar': satuanNama,
+    'lacak_inventori_status': trackStock,
+    'butuh_dimensi_status': dimensiRequired,
   };
 }
 
@@ -119,4 +129,8 @@ class MaterialPrice {
     'harga_member': hargaMember,
     'faktor_konversi': faktorKonversi,
   };
+}
+
+bool _boolFromJson(Object? value) {
+  return value == true || value == 1 || value == '1';
 }

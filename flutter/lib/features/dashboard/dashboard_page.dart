@@ -18,8 +18,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   bool _isLoading = false;
   String? _error;
 
-  final _fmt =
-      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _fmt = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
@@ -50,7 +53,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
         final sales = posData['sales'] as List? ?? [];
         final orders = prodData['orders'] as List? ?? [];
-        final entries = financeData['entries'] as List? ??
+        final entries =
+            financeData['cashBooks'] as List? ??
+            financeData['entries'] as List? ??
             financeData['keuangan'] as List? ??
             [];
 
@@ -60,7 +65,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
         final todaySales = sales.where((s) {
-          final dateStr = s['dibuat_pada'] as String? ?? s['created_at'] as String? ?? '';
+          final dateStr =
+              s['dibuat_pada'] as String? ?? s['created_at'] as String? ?? '';
           return dateStr.startsWith(todayStr);
         }).toList();
 
@@ -156,9 +162,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         child: Text(
                           'Selamat Datang, ${user?.displayName ?? ''}!',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       Opacity(
@@ -173,39 +180,43 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   const SizedBox(height: 4),
                   Text.rich(
-                    TextSpan(children: [
-                      TextSpan(
-                        text: 'gemi',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          fontFamily: AppFonts.brand,
-                          fontStyle: FontStyle.italic,
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'gemi',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            fontFamily: AppFonts.brand,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: 'print',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          fontFamily: AppFonts.brand,
-                          fontStyle: FontStyle.italic,
+                        TextSpan(
+                          text: 'print',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            fontFamily: AppFonts.brand,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: ' — Sistem Manajemen Percetakan',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 13,
+                        TextSpan(
+                          text: ' — Sistem Manajemen Percetakan',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   if (user != null) ...[
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -213,9 +224,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: Text(
                         user.role.name.toUpperCase(),
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700),
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -235,11 +247,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               Center(
                 child: Column(
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.grey, size: 40),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.grey,
+                      size: 40,
+                    ),
                     const SizedBox(height: 8),
-                    Text(_error!,
-                        style: const TextStyle(color: Colors.grey)),
+                    Text(_error!, style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: _loadStats,
@@ -251,9 +265,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
             ] else if (_stats != null) ...[
               // Stats hari ini
-              const Text('Hari Ini',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Hari Ini',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -280,9 +295,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 20),
 
               // Produksi
-              const Text('Produksi',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Produksi',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -310,9 +326,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 20),
 
               // Keuangan
-              const Text('Keuangan',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Keuangan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -331,8 +348,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       _fmt.format(_stats!['totalPiutang']),
                       Icons.receipt_outlined,
                       AppColors.error,
-                      subtitle:
-                          '${_stats!['activePiutang']} transaksi',
+                      subtitle: '${_stats!['activePiutang']} transaksi',
                     ),
                   ),
                 ],
@@ -340,9 +356,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 20),
 
               // Quick access
-              const Text('Akses Cepat',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Akses Cepat',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 3,
@@ -352,18 +369,55 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 mainAxisSpacing: 10,
                 childAspectRatio: 1.1,
                 children: [
-                  _quickAccessTile(context, 'POS', Icons.point_of_sale_rounded,
-                      AppColors.primary, '/pos'),
-                  _quickAccessTile(context, 'Produksi', Icons.print_rounded,
-                      AppColors.warning, '/production'),
-                  _quickAccessTile(context, 'Keuangan',
-                      Icons.account_balance_wallet_rounded, AppColors.success, '/finance'),
-                  _quickAccessTile(context, 'Barang', Icons.category_rounded,
-                      AppColors.accent, '/materials'),
-                  _quickAccessTile(context, 'Pelanggan', Icons.groups_rounded,
-                      AppColors.primary, '/customers'),
-                  _quickAccessTile(context, 'Laporan', Icons.assessment_rounded,
-                      AppColors.pink, '/reports'),
+                  _quickAccessTile(
+                    context,
+                    'POS',
+                    Icons.point_of_sale_rounded,
+                    AppColors.primary,
+                    '/pos',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Produksi',
+                    Icons.print_rounded,
+                    AppColors.warning,
+                    '/production',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Pembelian',
+                    Icons.shopping_bag_rounded,
+                    AppColors.warning,
+                    '/purchases',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Barang',
+                    Icons.category_rounded,
+                    AppColors.accent,
+                    '/materials',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Pelanggan',
+                    Icons.groups_rounded,
+                    AppColors.primary,
+                    '/customers',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Vendor',
+                    Icons.business_rounded,
+                    AppColors.accent,
+                    '/vendors',
+                  ),
+                  _quickAccessTile(
+                    context,
+                    'Keuangan',
+                    Icons.account_balance_wallet_rounded,
+                    AppColors.success,
+                    '/finance',
+                  ),
                 ],
               ),
             ],
@@ -410,9 +464,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade600)),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
                 Text(
                   value,
                   style: TextStyle(
@@ -423,9 +478,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (subtitle != null)
-                  Text(subtitle,
-                      style: TextStyle(
-                          fontSize: 10, color: Colors.grey.shade400)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                  ),
               ],
             ),
           ),
@@ -434,8 +490,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _quickAccessTile(BuildContext context, String label,
-      IconData icon, Color color, String route) {
+  Widget _quickAccessTile(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    String route,
+  ) {
     return GestureDetector(
       onTap: () => context.go(route),
       child: Container(
@@ -465,8 +526,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
           ],

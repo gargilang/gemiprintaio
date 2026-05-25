@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/production.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -30,6 +31,8 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     'DIBATALKAN',
   ];
 
+  static const _itemStatuses = ['MENUNGGU', 'PRINTING', 'FINISHING', 'SELESAI'];
+
   @override
   void initState() {
     super.initState();
@@ -41,12 +44,13 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
       setState(() => _isLoading = true);
     }
     try {
-      final data = await ref.read(productionServiceProvider).getOrders(forceRefresh: forceRefresh);
+      final data = await ref
+          .read(productionServiceProvider)
+          .getOrders(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _orders = data
-              .map((j) =>
-                  ProductionOrder.fromJson(j as Map<String, dynamic>))
+              .map((j) => ProductionOrder.fromJson(j as Map<String, dynamic>))
               .toList();
           _isLoading = false;
         });
@@ -67,16 +71,24 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     if (_search.isNotEmpty) {
       final q = _search.toLowerCase();
       list = list
-          .where((o) =>
-              (o.nomorSpk?.toLowerCase().contains(q) ?? false) ||
-              (o.nomorInvoice?.toLowerCase().contains(q) ?? false) ||
-              (o.pelangganNama?.toLowerCase().contains(q) ?? false))
+          .where(
+            (o) =>
+                (o.nomorSpk?.toLowerCase().contains(q) ?? false) ||
+                (o.nomorInvoice?.toLowerCase().contains(q) ?? false) ||
+                (o.pelangganNama?.toLowerCase().contains(q) ?? false),
+          )
           .toList();
     }
     return list;
   }
 
+  bool get _canUpdateStatus {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.operational.contains(role);
+  }
+
   Future<void> _updateStatus(ProductionOrder order, String newStatus) async {
+    if (!_canUpdateStatus) return;
     final ok = await showConfirmDialog(
       context,
       title: 'Ubah Status',
@@ -96,18 +108,47 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     }
   }
 
+  Future<void> _updateItemStatus(ProductionItem item, String newStatus) async {
+    if (!_canUpdateStatus || item.status == newStatus) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Ubah Status Item',
+      message: 'Ubah status ${item.barangNama ?? item.id} ke $newStatus?',
+    );
+    if (!ok) return;
+    try {
+      final user = ref.read(authStateProvider).valueOrNull;
+      await ref
+          .read(productionServiceProvider)
+          .updateItemStatus(item.id, newStatus, operatorId: user?.id);
+      if (mounted) {
+        showSuccessSnackbar(context, 'Status item diperbarui ke $newStatus');
+        _loadData(forceRefresh: true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) showErrorSnackbar(context, e.message);
+    }
+  }
+
   void _showOrderDetail(ProductionOrder order) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => _OrderDetailSheet(
         order: order,
+        canUpdateStatus: _canUpdateStatus,
+        itemStatuses: _itemStatuses,
         onStatusChanged: (newStatus) {
           Navigator.pop(ctx);
           _updateStatus(order, newStatus);
+        },
+        onItemStatusChanged: (item, newStatus) {
+          Navigator.pop(ctx);
+          _updateItemStatus(item, newStatus);
         },
       ),
     );
@@ -119,6 +160,8 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
       'PROSES' => AppColors.primary,
       'SELESAI' => AppColors.success,
       'DIBATALKAN' => AppColors.error,
+      'PRINTING' => AppColors.primary,
+      'FINISHING' => Colors.deepPurple,
       _ => Colors.grey,
     };
   }
@@ -141,17 +184,17 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             children: _statuses
-                .map((s) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: FilterChip(
-                        label: Text(s, style: const TextStyle(fontSize: 12)),
-                        selected: _statusFilter == s,
-                        onSelected: (_) =>
-                            setState(() => _statusFilter = s),
-                        selectedColor:
-                            AppColors.primary.withValues(alpha: 0.2),
-                      ),
-                    ))
+                .map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: FilterChip(
+                      label: Text(s, style: const TextStyle(fontSize: 12)),
+                      selected: _statusFilter == s,
+                      onSelected: (_) => setState(() => _statusFilter = s),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -160,21 +203,19 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : filtered.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.print_rounded,
-                      title: 'Tidak ada order produksi')
-                  : RefreshIndicator(
-                      onRefresh: () => _loadData(forceRefresh: true),
-                      child: ListView.separated(
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (_, i) =>
-                            _buildCard(filtered[i]),
-                      ),
-                    ),
+              ? const EmptyState(
+                  icon: Icons.print_rounded,
+                  title: 'Tidak ada order produksi',
+                )
+              : RefreshIndicator(
+                  onRefresh: () => _loadData(forceRefresh: true),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _buildCard(filtered[i]),
+                  ),
+                ),
         ),
       ],
     );
@@ -202,46 +243,57 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
                             Text(
                               o.nomorSpk ?? 'SPK-?',
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                             if (o.prioritas == 'KILAT') ...[
                               const SizedBox(width: 6),
                               Container(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error
-                                      .withValues(alpha: 0.1),
-                                  borderRadius:
-                                      BorderRadius.circular(4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
                                 ),
-                                child: const Text('⚡ KILAT',
-                                    style: TextStyle(
-                                        color: AppColors.error,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700)),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'KILAT',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ],
                           ],
                         ),
                         if (o.nomorInvoice != null)
-                          Text('Invoice: ${o.nomorInvoice}',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600)),
+                          Text(
+                            'Invoice: ${o.nomorInvoice}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                         if (o.pelangganNama != null)
-                          Text(o.pelangganNama!,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600)),
+                          Text(
+                            o.pelangganNama!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
@@ -249,38 +301,44 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
                     child: Text(
                       o.status,
                       style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600),
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
               if (o.items.isNotEmpty) ...[
                 const Divider(height: 14),
-                ...o.items.take(3).map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.barangNama ?? '-',
-                              style: const TextStyle(fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
+                ...o.items
+                    .take(3)
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.barangNama ?? '-',
+                                style: const TextStyle(fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          _statusDot(item.statusCetak, 'C'),
-                          const SizedBox(width: 4),
-                          _statusDot(item.statusFinishing, 'F'),
-                        ],
+                            const SizedBox(width: 8),
+                            _statusDot(item.status, 'I'),
+                            if (item.finishing.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              _statusDot(item.statusFinishing, 'F'),
+                            ],
+                          ],
+                        ),
                       ),
-                    )),
+                    ),
                 if (o.items.length > 3)
                   Text(
                     '+${o.items.length - 3} item lainnya',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   ),
               ],
               const SizedBox(height: 8),
@@ -289,18 +347,25 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
                 children: [
                   if (o.status == 'MENUNGGU')
                     TextButton(
-                      onPressed: () => _updateStatus(o, 'PROSES'),
-                      child: const Text('Mulai Proses',
-                          style: TextStyle(fontSize: 12)),
+                      onPressed: _canUpdateStatus
+                          ? () => _updateStatus(o, 'PROSES')
+                          : null,
+                      child: const Text(
+                        'Mulai Proses',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   if (o.status == 'PROSES')
                     TextButton(
-                      onPressed: () => _updateStatus(o, 'SELESAI'),
-                      child: const Text('Tandai Selesai',
-                          style: TextStyle(fontSize: 12)),
+                      onPressed: _canUpdateStatus
+                          ? () => _updateStatus(o, 'SELESAI')
+                          : null,
+                      child: const Text(
+                        'Tandai Selesai',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
-                  const Icon(Icons.chevron_right,
-                      color: Colors.grey, size: 18),
+                  const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
                 ],
               ),
             ],
@@ -344,11 +409,17 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
 
 class _OrderDetailSheet extends StatelessWidget {
   final ProductionOrder order;
+  final bool canUpdateStatus;
+  final List<String> itemStatuses;
   final void Function(String) onStatusChanged;
+  final void Function(ProductionItem, String) onItemStatusChanged;
 
   const _OrderDetailSheet({
     required this.order,
+    required this.canUpdateStatus,
+    required this.itemStatuses,
     required this.onStatusChanged,
+    required this.onItemStatusChanged,
   });
 
   Color _statusColor(String status) {
@@ -357,6 +428,8 @@ class _OrderDetailSheet extends StatelessWidget {
       'PROSES' => AppColors.primary,
       'SELESAI' => AppColors.success,
       'DIBATALKAN' => AppColors.error,
+      'PRINTING' => AppColors.primary,
+      'FINISHING' => Colors.deepPurple,
       _ => Colors.grey,
     };
   }
@@ -380,8 +453,7 @@ class _OrderDetailSheet extends StatelessWidget {
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Expanded(
@@ -391,19 +463,26 @@ class _OrderDetailSheet extends StatelessWidget {
                       Text(
                         order.nomorSpk ?? 'SPK-?',
                         style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       if (order.nomorInvoice != null)
-                        Text('Invoice: ${order.nomorInvoice}',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600)),
+                        Text(
+                          'Invoice: ${order.nomorInvoice}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
@@ -411,7 +490,9 @@ class _OrderDetailSheet extends StatelessWidget {
                   child: Text(
                     order.status,
                     style: TextStyle(
-                        color: statusColor, fontWeight: FontWeight.w700),
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -425,68 +506,98 @@ class _OrderDetailSheet extends StatelessWidget {
               children: [
                 // Info
                 if (order.pelangganNama != null)
-                  _infoRow(Icons.person_outline, 'Pelanggan',
-                      order.pelangganNama!),
+                  _infoRow(
+                    Icons.person_outline,
+                    'Pelanggan',
+                    order.pelangganNama!,
+                  ),
                 if (order.prioritas == 'KILAT')
-                  _infoRow(Icons.bolt, 'Prioritas', 'KILAT',
-                      color: AppColors.error),
+                  _infoRow(
+                    Icons.bolt,
+                    'Prioritas',
+                    'KILAT',
+                    color: AppColors.error,
+                  ),
                 if (order.catatan != null && order.catatan!.isNotEmpty)
                   _infoRow(Icons.notes, 'Catatan', order.catatan!),
                 const SizedBox(height: 16),
 
                 // Items
-                const Text('Item Produksi',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                const Text(
+                  'Item Produksi',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
                 const SizedBox(height: 8),
-                ...order.items.map((item) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.barangNama ?? '-',
-                                    style: const TextStyle(
+                ...order.items.map(
+                  (item) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.barangNama ?? '-',
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 14),
-                                  ),
-                                  Text(
-                                    'Qty: ${item.quantity.toStringAsFixed(0)}',
-                                    style: TextStyle(
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Qty: ${item.quantity.toStringAsFixed(0)}',
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey.shade600),
-                                  ),
-                                ],
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _itemStatusControl(item),
+                            ],
+                          ),
+                          if (item.finishing.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            ...item.finishing.map(
+                              (f) => Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        f.jenisFinishing,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                    _itemStatusBadge('Finishing', f.status),
+                                  ],
+                                ),
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                _itemStatusBadge(
-                                    'Cetak', item.statusCetak),
-                                const SizedBox(height: 4),
-                                _itemStatusBadge(
-                                    'Finishing', item.statusFinishing),
-                              ],
-                            ),
                           ],
-                        ),
+                        ],
                       ),
-                    )),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
 
                 // Actions
-                const Text('Aksi',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 8),
-                if (order.status == 'MENUNGGU')
+                if (canUpdateStatus && order.status == 'MENUNGGU') ...[
+                  const Text(
+                    'Aksi',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -494,7 +605,13 @@ class _OrderDetailSheet extends StatelessWidget {
                       child: const Text('Mulai Proses'),
                     ),
                   ),
-                if (order.status == 'PROSES') ...[
+                ],
+                if (canUpdateStatus && order.status == 'PROSES') ...[
+                  const Text(
+                    'Aksi',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -508,23 +625,23 @@ class _OrderDetailSheet extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => onStatusChanged('DIBATALKAN'),
                       style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side:
-                              const BorderSide(color: AppColors.error)),
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                      ),
                       child: const Text('Batalkan'),
                     ),
                   ),
                 ],
-                if (order.status == 'MENUNGGU') ...[
+                if (canUpdateStatus && order.status == 'MENUNGGU') ...[
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () => onStatusChanged('DIBATALKAN'),
                       style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side:
-                              const BorderSide(color: AppColors.error)),
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                      ),
                       child: const Text('Batalkan'),
                     ),
                   ),
@@ -537,17 +654,17 @@ class _OrderDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value,
-      {Color? color}) {
+  Widget _infoRow(IconData icon, String label, String value, {Color? color}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(icon, size: 16, color: color ?? Colors.grey.shade600),
           const SizedBox(width: 8),
-          Text('$label: ',
-              style: TextStyle(
-                  fontSize: 13, color: Colors.grey.shade600)),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
           Expanded(
             child: Text(
               value,
@@ -563,12 +680,44 @@ class _OrderDetailSheet extends StatelessWidget {
     );
   }
 
+  Widget _itemStatusControl(ProductionItem item) {
+    if (!canUpdateStatus) {
+      return _itemStatusBadge('Item', item.status);
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Ubah status item',
+      initialValue: item.status,
+      onSelected: (value) => onItemStatusChanged(item, value),
+      itemBuilder: (context) => itemStatuses
+          .map(
+            (status) => PopupMenuItem(
+              value: status,
+              child: Row(
+                children: [
+                  Icon(
+                    status == item.status
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 16,
+                    color: _statusColor(status),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(status),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+      child: _itemStatusBadge('Item', item.status),
+    );
+  }
+
   Widget _itemStatusBadge(String label, String status) {
     final isDone = status == 'SELESAI' || status == 'DONE';
-    final color = isDone ? AppColors.success : AppColors.warning;
+    final color = isDone ? AppColors.success : _statusColor(status);
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
@@ -576,9 +725,10 @@ class _OrderDetailSheet extends StatelessWidget {
       child: Text(
         '$label: $status',
         style: TextStyle(
-            fontSize: 10,
-            color: color,
-            fontWeight: FontWeight.w600),
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

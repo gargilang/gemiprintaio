@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/purchase.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -18,14 +19,19 @@ class PurchasesPage extends ConsumerStatefulWidget {
   ConsumerState<PurchasesPage> createState() => _PurchasesPageState();
 }
 
-class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTickerProviderStateMixin {
+class _PurchasesPageState extends ConsumerState<PurchasesPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   List<Purchase> _purchases = [];
   List<dynamic> _debts = [];
   bool _isLoading = true;
   String _search = '';
 
-  final _fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _fmt = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
@@ -47,31 +53,53 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
       final results = await Future.wait([svc.getAll(), svc.getDebts()]);
       if (mounted) {
         setState(() {
-          _purchases = results[0].map((j) => Purchase.fromJson(j as Map<String, dynamic>)).toList();
+          _purchases = results[0]
+              .map((j) => Purchase.fromJson(j as Map<String, dynamic>))
+              .toList();
           _debts = results[1];
           _isLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat data pembelian'); }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showErrorSnackbar(context, 'Gagal memuat data pembelian');
+      }
     }
   }
 
   List<Purchase> get _filtered {
     if (_search.isEmpty) return _purchases;
     final q = _search.toLowerCase();
-    return _purchases.where((p) =>
-      p.nomorPembelian.toLowerCase().contains(q) ||
-      (p.vendorNama?.toLowerCase().contains(q) ?? false)
-    ).toList();
+    return _purchases
+        .where(
+          (p) =>
+              p.nomorPembelian.toLowerCase().contains(q) ||
+              (p.vendorNama?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
+  }
+
+  bool get _canUseRiskyActions {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.adminOnly.contains(role);
   }
 
   Future<void> _handleDelete(Purchase p) async {
-    final ok = await showConfirmDialog(context, title: 'Hapus Pembelian', message: 'Hapus "${p.nomorPembelian}"?', isDangerous: true);
+    if (!_canUseRiskyActions) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Batalkan Pembelian',
+      message: 'Batalkan pembelian "${p.nomorPembelian}" dan kembalikan stok?',
+      isDangerous: true,
+    );
     if (!ok) return;
     try {
       await ref.read(purchasesServiceProvider).delete(p.id);
-      if (mounted) { showSuccessSnackbar(context, 'Pembelian berhasil dihapus'); _loadData(); }
+      if (mounted) {
+        showSuccessSnackbar(context, 'Pembelian berhasil dibatalkan');
+        _loadData();
+      }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
     }
@@ -92,19 +120,28 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
 
     return Column(
       children: [
-        TabBar(controller: _tabCtrl, labelColor: AppColors.primary, tabs: const [
-          Tab(text: 'Pembelian'),
-          Tab(text: 'Hutang'),
-        ]),
-        Expanded(child: TabBarView(controller: _tabCtrl, children: [_buildPurchasesList(), _buildDebtsList()])),
+        TabBar(
+          controller: _tabCtrl,
+          labelColor: AppColors.primary,
+          tabs: const [
+            Tab(text: 'Pembelian'),
+            Tab(text: 'Hutang'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabCtrl,
+            children: [_buildPurchasesList(), _buildDebtsList()],
+          ),
+        ),
       ],
     );
   }
 
   Future<void> _openPurchaseForm() async {
-    final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const PurchaseFormPage()),
-    );
+    final ok = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const PurchaseFormPage()));
     if (ok == true) _loadData();
   }
 
@@ -119,12 +156,16 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
               child: Row(
                 children: [
                   Expanded(
-                      child: SearchField(
-                          hintText: 'Cari pembelian...',
-                          onChanged: (v) => setState(() => _search = v))),
+                    child: SearchField(
+                      hintText: 'Cari pembelian...',
+                      onChanged: (v) => setState(() => _search = v),
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Text('${filtered.length} data',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  Text(
+                    '${filtered.length} data',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -157,31 +198,49 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
                               title: Row(
                                 children: [
                                   Expanded(
-                                      child: Text(p.nomorPembelian,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14))),
+                                    child: Text(
+                                      p.nomorPembelian,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(4)),
-                                    child: Text(p.statusPembayaran,
-                                        style: TextStyle(
-                                            color: color,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600)),
+                                      color: color.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      p.statusPembayaran,
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                               subtitle: Text(
-                                  '${p.vendorNama ?? '-'} · ${_fmt.format(p.totalHarga)}',
-                                  style: const TextStyle(fontSize: 12)),
-                              trailing: IconButton(
-                                  icon: Icon(Icons.delete_outline_rounded,
-                                      color: Colors.grey.shade400, size: 20),
-                                  onPressed: () => _handleDelete(p)),
+                                '${p.vendorNama ?? '-'} · ${_fmt.format(p.totalHarga)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: _canUseRiskyActions
+                                  ? IconButton(
+                                      tooltip: 'Batalkan pembelian',
+                                      icon: Icon(
+                                        Icons.cancel_outlined,
+                                        color: Colors.grey.shade400,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => _handleDelete(p),
+                                    )
+                                  : null,
                             ),
                           );
                         },
@@ -204,7 +263,12 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
   }
 
   Widget _buildDebtsList() {
-    if (_debts.isEmpty) return const EmptyState(icon: Icons.check_circle_outline_rounded, title: 'Tidak ada hutang');
+    if (_debts.isEmpty) {
+      return const EmptyState(
+        icon: Icons.check_circle_outline_rounded,
+        title: 'Tidak ada hutang',
+      );
+    }
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.separated(
@@ -215,9 +279,21 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
           final d = _debts[i] as Map<String, dynamic>;
           return Card(
             child: ListTile(
-              title: Text(d['nomor_pembelian']?.toString() ?? '-', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: Text('${d['vendor_nama'] ?? '-'} · Sisa: ${_fmt.format(d['sisa_hutang'] ?? 0)}', style: const TextStyle(fontSize: 12)),
-              trailing: TextButton(onPressed: () => _showPayDebtDialog(d), child: const Text('Bayar')),
+              title: Text(
+                (d['nomor_pembelian'] ?? d['nomor_faktur'] ?? '-').toString(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                '${d['vendor_nama'] ?? d['vendor_name'] ?? '-'} · Sisa: ${_fmt.format(d['sisa_hutang'] ?? 0)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: TextButton(
+                onPressed: () => _showPayDebtDialog(d),
+                child: const Text('Bayar'),
+              ),
             ),
           );
         },
@@ -231,9 +307,16 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage> with SingleTicker
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Bayar Hutang'),
-        content: TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'Jumlah'), keyboardType: TextInputType.number),
+        content: TextField(
+          controller: amountCtrl,
+          decoration: const InputDecoration(labelText: 'Jumlah'),
+          keyboardType: TextInputType.number,
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final amount = double.tryParse(amountCtrl.text);

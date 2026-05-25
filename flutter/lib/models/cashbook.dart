@@ -72,8 +72,8 @@ class CashBookEntry {
       catatan: json['catatan'] as String?,
       dibuatOleh: json['dibuat_oleh'] as String?,
       urutanTampilan: json['urutan_tampilan'] as int?,
-      createdAt: json['created_at'] as String?,
-      updatedAt: json['updated_at'] as String?,
+      createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
+      updatedAt: (json['updated_at'] ?? json['diperbarui_pada']) as String?,
     );
   }
 }

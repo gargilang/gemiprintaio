@@ -43,8 +43,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _categories = results[0]['categories'] as List? ?? [];
           _subcategories = results[1]['subcategories'] as List? ?? [];
           _units = results[2]['units'] as List? ?? [];
-          _finishingOptions = results[3]['options'] as List? ??
-              results[3]['finishing_options'] as List? ?? [];
+          _finishingOptions =
+              results[3]['options'] as List? ??
+              results[3]['finishing_options'] as List? ??
+              [];
           _isLoading = false;
         });
       }
@@ -56,49 +58,61 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _showItemForm(String type, {Map<String, dynamic>? existing}) async {
-    final nameCtrl =
-        TextEditingController(text: existing?['nama'] as String? ?? '');
+  Future<void> _showItemForm(
+    String type, {
+    Map<String, dynamic>? existing,
+  }) async {
+    final nameCtrl = TextEditingController(
+      text: existing?['nama'] as String? ?? '',
+    );
     String? selectedCategoryId = existing?['kategori_id'] as String?;
 
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(existing == null
-              ? 'Tambah ${_typeLabel(type)}'
-              : 'Edit ${_typeLabel(type)}'),
+          title: Text(
+            existing == null
+                ? 'Tambah ${_typeLabel(type)}'
+                : 'Edit ${_typeLabel(type)}',
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Nama', isDense: true),
+                  labelText: 'Nama',
+                  isDense: true,
+                ),
                 autofocus: true,
               ),
               if (type == 'subcategory') ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
-                  value: selectedCategoryId,
+                  initialValue: selectedCategoryId,
                   decoration: const InputDecoration(
-                      labelText: 'Kategori Induk', isDense: true),
+                    labelText: 'Kategori Induk',
+                    isDense: true,
+                  ),
                   items: _categories
-                      .map((c) => DropdownMenuItem<String>(
-                            value: c['id'] as String?,
-                            child: Text(c['nama'] as String? ?? ''),
-                          ))
+                      .map(
+                        (c) => DropdownMenuItem<String>(
+                          value: c['id'] as String?,
+                          child: Text(c['nama'] as String? ?? ''),
+                        ),
+                      )
                       .toList(),
-                  onChanged: (v) =>
-                      setLocal(() => selectedCategoryId = v),
+                  onChanged: (v) => setLocal(() => selectedCategoryId = v),
                 ),
               ],
             ],
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final name = nameCtrl.text.trim();
@@ -107,15 +121,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   final api = ref.read(apiClientProvider);
                   final body = {
                     'nama': name,
-                    if (type == 'subcategory' &&
-                        selectedCategoryId != null)
+                    if (type == 'subcategory' && selectedCategoryId != null)
                       'kategori_id': selectedCategoryId,
                   };
                   if (existing == null) {
                     await api.post(_apiPath(type), body: body);
                   } else {
-                    await api.put('${_apiPath(type)}/${existing['id']}',
-                        body: body);
+                    await api.put(
+                      '${_apiPath(type)}/${existing['id']}',
+                      body: body,
+                    );
                   }
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } on ApiException catch (e) {
@@ -131,10 +146,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     nameCtrl.dispose();
     if (result == true && mounted) {
       showSuccessSnackbar(
-          context,
-          existing == null
-              ? '${_typeLabel(type)} berhasil ditambahkan'
-              : '${_typeLabel(type)} berhasil diperbarui');
+        context,
+        existing == null
+            ? '${_typeLabel(type)} berhasil ditambahkan'
+            : '${_typeLabel(type)} berhasil diperbarui',
+      );
       _loadData();
     }
   }
@@ -148,7 +164,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
     if (!ok) return;
     try {
-      await ref.read(apiClientProvider).delete('${_apiPath(type)}/${item['id']}');
+      await ref
+          .read(apiClientProvider)
+          .delete('${_apiPath(type)}/${item['id']}');
       if (mounted) {
         showSuccessSnackbar(context, '${_typeLabel(type)} berhasil dihapus');
         _loadData();
@@ -204,12 +222,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             },
           ),
           const SizedBox(height: 16),
-          _buildSection(
-            'Satuan',
-            'unit',
-            _units,
-            Icons.straighten_rounded,
-          ),
+          _buildSection('Satuan', 'unit', _units, Icons.straighten_rounded),
           const SizedBox(height: 16),
           _buildSection(
             'Opsi Finishing',
@@ -241,9 +254,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 Icon(icon, color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(title,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _showItemForm(type),
@@ -258,8 +275,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   'Belum ada data',
-                  style: TextStyle(
-                      color: Colors.grey.shade500, fontSize: 13),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                 ),
               )
             else
@@ -284,28 +300,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name,
-                                style: const TextStyle(fontSize: 14)),
+                            Text(name, style: const TextStyle(fontSize: 14)),
                             if (sub != null && sub.isNotEmpty)
-                              Text(sub,
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey.shade500)),
+                              Text(
+                                sub,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.edit_outlined,
-                            size: 17, color: AppColors.primary),
-                        onPressed: () =>
-                            _showItemForm(type, existing: m),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          size: 17,
+                          color: AppColors.primary,
+                        ),
+                        onPressed: () => _showItemForm(type, existing: m),
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline,
-                            size: 17,
-                            color: Colors.grey.shade400),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 17,
+                          color: Colors.grey.shade400,
+                        ),
                         onPressed: () => _deleteItem(type, m),
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,

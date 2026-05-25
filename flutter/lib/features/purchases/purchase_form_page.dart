@@ -17,6 +17,8 @@ class _LineDraft {
   double hargaBeli;
   String namaSatuan;
   double faktorKonversi;
+  double? panjang;
+  double? lebar;
 
   _LineDraft({
     this.barangId,
@@ -25,7 +27,11 @@ class _LineDraft {
     this.hargaBeli = 0,
     this.namaSatuan = '',
     this.faktorKonversi = 1,
+    this.panjang,
+    this.lebar,
   });
+
+  double get area => (panjang ?? 0) * (lebar ?? 0);
 }
 
 /// Form tambah pembelian baru (selaras dengan web PurchaseForm).
@@ -51,7 +57,11 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
   String _metode = 'CASH';
   final List<_LineDraft> _lines = [_LineDraft()];
 
-  final _fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _fmt = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
   final _dateFmt = DateFormat('yyyy-MM-dd');
 
   @override
@@ -73,11 +83,13 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
       final data = await ref.read(purchasesServiceProvider).getInitData();
       if (!mounted) return;
       setState(() {
-        _materials = (data['materials'] as List?)
+        _materials =
+            (data['materials'] as List?)
                 ?.map((j) => MaterialItem.fromJson(j as Map<String, dynamic>))
                 .toList() ??
             [];
-        _vendors = (data['vendors'] as List?)
+        _vendors =
+            (data['vendors'] as List?)
                 ?.map((j) => Vendor.fromJson(j as Map<String, dynamic>))
                 .toList() ??
             [];
@@ -94,8 +106,7 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
   List<Vendor> get _activeVendors =>
       _vendors.where((v) => v.aktifStatus).toList();
 
-  double get _total =>
-      _lines.fold(0, (s, l) => s + l.jumlah * l.hargaBeli);
+  double get _total => _lines.fold(0, (s, l) => s + l.jumlah * l.hargaBeli);
 
   MaterialItem? _material(String? id) {
     if (id == null) return null;
@@ -128,9 +139,13 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Text(title,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -142,10 +157,12 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                           filtered = query.isEmpty
                               ? List<T>.from(items)
                               : items
-                                  .where((e) => label(e)
-                                      .toLowerCase()
-                                      .contains(query))
-                                  .toList();
+                                    .where(
+                                      (e) => label(
+                                        e,
+                                      ).toLowerCase().contains(query),
+                                    )
+                                    .toList();
                         });
                       },
                     ),
@@ -160,10 +177,13 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                         return ListTile(
                           title: Text(label(item)),
                           subtitle: subtitle != null
-                              ? Text(subtitle(item),
+                              ? Text(
+                                  subtitle(item),
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600))
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                )
                               : null,
                           onTap: () => Navigator.pop(ctx, item),
                         );
@@ -188,6 +208,8 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
         hargaBeli: _lines[index].hargaBeli,
         namaSatuan: _lines[index].namaSatuan,
         faktorKonversi: _lines[index].faktorKonversi,
+        panjang: _lines[index].panjang,
+        lebar: _lines[index].lebar,
       );
       update(copy);
       _lines[index] = copy;
@@ -208,6 +230,9 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
       l.namaSatuan = '';
       l.faktorKonversi = 1;
       l.hargaBeli = 0;
+      l.panjang = null;
+      l.lebar = null;
+      l.jumlah = picked.dimensiRequired ? 0 : 1;
     });
   }
 
@@ -257,7 +282,25 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
         return;
       }
       if (line.jumlah <= 0) {
-        showErrorSnackbar(context, 'Item #${i + 1}: jumlah harus lebih dari 0');
+        final mat = _material(line.barangId);
+        if (mat?.dimensiRequired == true) {
+          final area = line.area;
+          if ((line.panjang ?? 0) <= 0 || (line.lebar ?? 0) <= 0 || area <= 0) {
+            showErrorSnackbar(context, 'Item #${i + 1}: isi panjang dan lebar');
+            return;
+          }
+        } else {
+          showErrorSnackbar(
+            context,
+            'Item #${i + 1}: jumlah harus lebih dari 0',
+          );
+          return;
+        }
+      }
+      final mat = _material(line.barangId);
+      if (mat?.dimensiRequired == true &&
+          ((line.panjang ?? 0) <= 0 || (line.lebar ?? 0) <= 0)) {
+        showErrorSnackbar(context, 'Item #${i + 1}: isi panjang dan lebar');
         return;
       }
       if (line.hargaBeli < 0) {
@@ -275,16 +318,20 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
         'vendor_id': _vendorId,
         'catatan': _catatanCtrl.text.trim(),
         'metode_pembayaran': _metode,
-        'items': _lines
-            .map((l) => {
-                  'barang_id': l.barangId,
-                  'harga_satuan_id': l.satuanId,
-                  'jumlah': l.jumlah,
-                  'nama_satuan': l.namaSatuan,
-                  'faktor_konversi': l.faktorKonversi,
-                  'harga_satuan': l.hargaBeli,
-                })
-            .toList(),
+        'items': _lines.map((l) {
+          final mat = _material(l.barangId);
+          final isDimensional = mat?.dimensiRequired == true;
+          return {
+            'barang_id': l.barangId,
+            'harga_satuan_id': l.satuanId,
+            'jumlah': isDimensional ? l.area : l.jumlah,
+            'nama_satuan': l.namaSatuan,
+            'faktor_konversi': l.faktorKonversi,
+            'harga_satuan': l.hargaBeli,
+            if (isDimensional) 'panjang': l.panjang,
+            if (isDimensional) 'lebar': l.lebar,
+          };
+        }).toList(),
       });
       if (mounted) {
         showSuccessSnackbar(context, 'Pembelian berhasil ditambahkan');
@@ -324,7 +371,10 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
           decoration: const InputDecoration(hintText: 'Contoh: 7.4'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('OK'),
@@ -355,7 +405,10 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('OK'),
@@ -366,6 +419,51 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
     if (ok == true) {
       final n = double.tryParse(ctrl.text) ?? 0;
       _setLine(index, (l) => l.hargaBeli = n);
+    }
+    ctrl.dispose();
+  }
+
+  Future<void> _editDimension(int index, {required bool isPanjang}) async {
+    final line = _lines[index];
+    final value = isPanjang ? line.panjang : line.lebar;
+    final ctrl = TextEditingController(
+      text: value == null || value == 0 ? '' : value.toString(),
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isPanjang ? 'Panjang (m)' : 'Lebar (m)'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          ],
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Contoh: 3.2'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final n = double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0;
+      _setLine(index, (l) {
+        if (isPanjang) {
+          l.panjang = n <= 0 ? null : n;
+        } else {
+          l.lebar = n <= 0 ? null : n;
+        }
+        l.jumlah = l.area;
+      });
     }
     ctrl.dispose();
   }
@@ -421,12 +519,17 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
           children: [
             Row(
               children: [
-                Text('Item ${index + 1}',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  'Item ${index + 1}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const Spacer(),
                 if (_lines.length > 1)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
+                    ),
                     onPressed: () => setState(() => _lines.removeAt(index)),
                   ),
               ],
@@ -448,14 +551,56 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  line.namaSatuan.isNotEmpty
-                      ? line.namaSatuan
-                      : 'Pilih satuan',
+                  line.namaSatuan.isNotEmpty ? line.namaSatuan : 'Pilih satuan',
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            _qtyField(index, line),
+            if (mat?.dimensiRequired == true) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _editDimension(index, isPanjang: true),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Panjang (m)',
+                          isDense: true,
+                        ),
+                        child: Text(
+                          line.panjang == null
+                              ? 'Isi'
+                              : line.panjang!.toStringAsFixed(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _editDimension(index, isPanjang: false),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Lebar (m)',
+                          isDense: true,
+                        ),
+                        child: Text(
+                          line.lebar == null
+                              ? 'Isi'
+                              : line.lebar!.toStringAsFixed(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Luas masuk stok: ${line.area.toStringAsFixed(2)} m2',
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+            ] else
+              _qtyField(index, line),
             const SizedBox(height: 8),
             InkWell(
               onTap: () => _editHarga(index),
@@ -465,7 +610,9 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                   isDense: true,
                 ),
                 child: Text(
-                  line.hargaBeli > 0 ? _fmt.format(line.hargaBeli) : 'Ketuk untuk isi',
+                  line.hargaBeli > 0
+                      ? _fmt.format(line.hargaBeli)
+                      : 'Ketuk untuk isi',
                 ),
               ),
             ),
@@ -483,9 +630,7 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tambah Pembelian'),
-      ),
+      appBar: AppBar(title: const Text('Tambah Pembelian')),
       body: _loadingInit
           ? const Center(child: CircularProgressIndicator())
           : Form(
@@ -516,7 +661,7 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
-                    value: _vendorId,
+                    initialValue: _vendorId,
                     decoration: const InputDecoration(
                       labelText: 'Vendor',
                       border: OutlineInputBorder(),
@@ -537,13 +682,16 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _metode,
+                    initialValue: _metode,
                     decoration: const InputDecoration(
                       labelText: 'Metode pembayaran',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'CASH', child: Text('Tunai (CASH)')),
+                      DropdownMenuItem(
+                        value: 'CASH',
+                        child: Text('Tunai (CASH)'),
+                      ),
                       DropdownMenuItem(value: 'NET30', child: Text('NET 30')),
                       DropdownMenuItem(value: 'COD', child: Text('COD')),
                     ],
@@ -563,9 +711,13 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Text('Item pembelian',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Item pembelian',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: () =>
@@ -609,8 +761,10 @@ class _PurchaseFormPageState extends ConsumerState<PurchaseFormPage> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Simpan Pembelian',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Simpan Pembelian',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                   ),
                   const SizedBox(height: 24),
                 ],

@@ -26,8 +26,8 @@ class ApiClient {
   final AppCache _cache = AppCache();
 
   ApiClient({required TokenStorage tokenStorage, http.Client? httpClient})
-      : _tokenStorage = tokenStorage,
-        _http = httpClient ?? http.Client();
+    : _tokenStorage = tokenStorage,
+      _http = httpClient ?? http.Client();
 
   Future<Map<String, String>> _headers() async {
     final headers = <String, String>{
@@ -43,12 +43,15 @@ class ApiClient {
 
   /// Cached GET — returns cached data immediately if available,
   /// then revalidates in background when stale.
-  Future<dynamic> get(String path, {
+  Future<dynamic> get(
+    String path, {
     Map<String, String>? queryParams,
     Duration maxAge = const Duration(minutes: 2),
     bool forceRefresh = false,
   }) async {
-    final uri = Uri.parse(AppConfig.apiUrl(path)).replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      AppConfig.apiUrl(path),
+    ).replace(queryParameters: queryParams);
     final cacheKey = uri.toString();
 
     if (!forceRefresh) {
@@ -73,6 +76,13 @@ class ApiClient {
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
     final uri = Uri.parse(AppConfig.apiUrl(path));
     final result = await _request('PUT', uri, body: body);
+    _invalidateRelated(path);
+    return result;
+  }
+
+  Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+    final uri = Uri.parse(AppConfig.apiUrl(path));
+    final result = await _request('PATCH', uri, body: body);
     _invalidateRelated(path);
     return result;
   }
@@ -110,7 +120,11 @@ class ApiClient {
     _cache.invalidatePrefix('');
   }
 
-  Future<dynamic> _request(String method, Uri uri, {Map<String, dynamic>? body}) async {
+  Future<dynamic> _request(
+    String method,
+    Uri uri, {
+    Map<String, dynamic>? body,
+  }) async {
     final headers = await _headers();
     final encodedBody = body != null ? jsonEncode(body) : null;
 
@@ -125,21 +139,38 @@ class ApiClient {
           response = await _http.post(uri, headers: headers, body: encodedBody);
         case 'PUT':
           response = await _http.put(uri, headers: headers, body: encodedBody);
+        case 'PATCH':
+          response = await _http.patch(
+            uri,
+            headers: headers,
+            body: encodedBody,
+          );
         case 'DELETE':
-          response = await _http.delete(uri, headers: headers, body: encodedBody);
+          response = await _http.delete(
+            uri,
+            headers: headers,
+            body: encodedBody,
+          );
         default:
           throw ApiException(0, 'Unsupported HTTP method: $method');
       }
 
-      debugPrint('[API] Response: ${response.statusCode} (${response.body.length} bytes)');
+      debugPrint(
+        '[API] Response: ${response.statusCode} (${response.body.length} bytes)',
+      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.body.isNotEmpty ? jsonDecode(response.body) : null;
       }
 
-      final responseBody = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final responseBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : null;
       final message = responseBody is Map
-          ? (responseBody['error'] ?? responseBody['message'] ?? 'Server error ${response.statusCode}') as String
+          ? (responseBody['error'] ??
+                    responseBody['message'] ??
+                    'Server error ${response.statusCode}')
+                as String
           : 'Server error ${response.statusCode}';
       debugPrint('[API] ERROR: $message');
       throw ApiException(response.statusCode, message);
@@ -147,7 +178,10 @@ class ApiClient {
       rethrow;
     } on SocketException catch (e) {
       debugPrint('[API] NETWORK ERROR (SocketException): $e');
-      throw ApiException(0, 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.\n\nDetail: $e');
+      throw ApiException(
+        0,
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.\n\nDetail: $e',
+      );
     } on HandshakeException catch (e) {
       debugPrint('[API] SSL ERROR (HandshakeException): $e');
       throw ApiException(0, 'Gagal koneksi SSL ke server.\n\nDetail: $e');

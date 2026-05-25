@@ -3,9 +3,9 @@
     "short_name": "gemiprint",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0a1b3d",
+    "theme_color": "#00afef",
+    "description": "Mobile web POS, SPK, inventory, purchasing, contacts, and finance for gemiprint.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

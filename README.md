@@ -9,7 +9,7 @@ Available on four platforms:
 | **Web** | Next.js on Vercel | Supabase (cloud Postgres) | [app.gemiprint.com](https://app.gemiprint.com) |
 | **Desktop** | Tauri + Next.js standalone | Local SQLite + sync to Supabase | [GitHub Releases](https://github.com/gargilang/gemiprintaio/releases) |
 | **Mobile** | Flutter (Android) | Online-only via Next.js API | Google Play (coming soon) |
-| **Mobile Web** | Flutter Web | Online-only via Next.js API | [m.gemiprint.com](https://m.gemiprint.com) (coming soon) |
+| **Mobile Web** | Flutter Web | Online-only via Next.js API | [m.gemiprint.com](https://m.gemiprint.com) |
 
 ## Architecture
 
@@ -177,6 +177,41 @@ flutter build web --dart-define=API_BASE_URL=https://app.gemiprint.com
 ```
 
 Output: `flutter/build/web/`
+
+### Mobile Web Deploy (m.gemiprint.com)
+
+Mobile web is a separate Flutter Web static deployment. The production API stays on
+`https://app.gemiprint.com`, while `https://m.gemiprint.com` serves only the Flutter
+client. The Next.js middleware redirects mobile browsers from `app.gemiprint.com`
+to `m.gemiprint.com`; API routes are not redirected.
+
+Recommended Vercel setup:
+
+```bash
+cd flutter
+flutter build web --dart-define=API_BASE_URL=https://app.gemiprint.com
+cd build/web
+npx vercel --prod
+npx vercel alias set <deployment-url> m.gemiprint.com --scope gemiprint
+```
+
+Use a separate Vercel project for this static deployment, for example
+`gemiprint-mobile-web`, and attach the domain `m.gemiprint.com` to that project.
+The file `flutter/web/vercel.json` is copied into `flutter/build/web/` during
+`flutter build web` and rewrites all paths to `index.html`, so path-based Flutter
+routes such as `/login`, `/pos`, and `/finance` work after refresh.
+
+Current production setup:
+
+- Vercel team: `gemiprint`
+- Vercel project: `gemiprint-mobile-web`
+- Production alias: `https://m.gemiprint.com`
+
+Mobile web intentionally contains only backup/emergency features: Dashboard,
+POS/Kasir, SPK, Data Barang, Pembelian, Pelanggan, Vendor, and simple Keuangan.
+Advanced web/desktop-only features such as Surat Jalan, AI Prompt, Log Audit,
+Reports, user management, settings, print previews, and finance formula setup are
+not part of the mobile v1 scope.
 
 ## Releasing a Desktop Update
 

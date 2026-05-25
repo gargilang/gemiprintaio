@@ -1,17 +1,71 @@
-# gemiprint
+# gemiprint Flutter
 
-A new Flutter project.
+Flutter client for gemiprint Android and mobile web. This app is online-only and
+talks to the Next.js API at `https://app.gemiprint.com`.
 
-## Getting Started
+## Scope
 
-This project is a starting point for a Flutter application.
+The Flutter app is intentionally small and practical for backup/emergency use:
 
-A few resources to get you started if this is your first Flutter project:
+- Dashboard
+- POS / Kasir
+- SPK / Produksi
+- Data Barang
+- Pembelian
+- Pelanggan
+- Vendor
+- Keuangan sederhana
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Web/desktop-only features such as Surat Jalan, AI Prompt, Log Audit, Reports,
+settings, user management, print previews, and finance formula setup are not part
+of the mobile v1 scope.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Development
+
+```bash
+flutter pub get
+flutter run --dart-define=API_BASE_URL=https://app.gemiprint.com
+```
+
+For mobile web development:
+
+```bash
+flutter run -d web-server --web-port=8080 --dart-define=API_BASE_URL=https://app.gemiprint.com
+```
+
+Open `http://localhost:8080/login`. Routing is path-based, so do not use
+`/#/login`.
+
+## Android Release
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://app.gemiprint.com
+```
+
+Output:
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+## Mobile Web Release
+
+`m.gemiprint.com` is a separate static Vercel project. Build and deploy the
+Flutter web output:
+
+```bash
+flutter build web --dart-define=API_BASE_URL=https://app.gemiprint.com
+cd build/web
+npx vercel --prod
+npx vercel alias set <deployment-url> m.gemiprint.com --scope gemiprint
+```
+
+`web/vercel.json` is copied into `build/web` by Flutter and configures Vercel to
+rewrite every route to `index.html`, which keeps `/login`, `/pos`, `/production`,
+and other GoRouter paths working after refresh.
+
+Current production setup:
+
+- Vercel team: `gemiprint`
+- Vercel project: `gemiprint-mobile-web`
+- Production alias: `https://m.gemiprint.com`

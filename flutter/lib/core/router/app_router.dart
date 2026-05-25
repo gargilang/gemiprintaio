@@ -10,9 +10,6 @@ import 'package:gemiprint/features/purchases/purchases_page.dart';
 import 'package:gemiprint/features/customers/customers_page.dart';
 import 'package:gemiprint/features/vendors/vendors_page.dart';
 import 'package:gemiprint/features/finance/finance_page.dart';
-import 'package:gemiprint/features/reports/reports_page.dart';
-import 'package:gemiprint/features/users/users_page.dart';
-import 'package:gemiprint/features/settings/settings_page.dart';
 import 'package:gemiprint/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -34,28 +31,40 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       // Path-based URLs on web (not #/...). "/" alone must redirect or new tabs show a blank screen.
-      GoRoute(
-        path: '/',
-        redirect: (context, state) => '/dashboard',
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginPage(),
-      ),
+      GoRoute(path: '/', redirect: (context, state) => '/dashboard'),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (context, state) => const DashboardPage()),
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const DashboardPage(),
+          ),
           GoRoute(path: '/pos', builder: (context, state) => const PosPage()),
-          GoRoute(path: '/production', builder: (context, state) => const ProductionPage()),
-          GoRoute(path: '/materials', builder: (context, state) => const MaterialsPage()),
-          GoRoute(path: '/purchases', builder: (context, state) => const PurchasesPage()),
-          GoRoute(path: '/customers', builder: (context, state) => const CustomersPage()),
-          GoRoute(path: '/vendors', builder: (context, state) => const VendorsPage()),
-          GoRoute(path: '/finance', builder: (context, state) => const FinancePage()),
-          GoRoute(path: '/reports', builder: (context, state) => const ReportsPage()),
-          GoRoute(path: '/users', builder: (context, state) => const UsersPage()),
-          GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
+          GoRoute(
+            path: '/production',
+            builder: (context, state) => const ProductionPage(),
+          ),
+          GoRoute(
+            path: '/materials',
+            builder: (context, state) => const MaterialsPage(),
+          ),
+          GoRoute(
+            path: '/purchases',
+            builder: (context, state) => const PurchasesPage(),
+          ),
+          GoRoute(
+            path: '/customers',
+            builder: (context, state) => const CustomersPage(),
+          ),
+          GoRoute(
+            path: '/vendors',
+            builder: (context, state) => const VendorsPage(),
+          ),
+          GoRoute(
+            path: '/finance',
+            builder: (context, state) => const FinancePage(),
+          ),
         ],
       ),
     ],

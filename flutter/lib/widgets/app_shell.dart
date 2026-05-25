@@ -33,25 +33,89 @@ class _MenuGroupData {
 }
 
 final List<dynamic> _menuEntries = [
-  const _MenuItemData(path: '/dashboard', icon: Icons.dashboard_rounded, label: 'Dashboard'),
-  const _MenuItemData(path: '/pos', icon: Icons.point_of_sale_rounded, label: 'POS / Kasir', allowedRoles: RoleGroups.operational),
-  const _MenuItemData(path: '/production', icon: Icons.print_rounded, label: 'Produksi', allowedRoles: RoleGroups.operational),
-  const _MenuGroupData(label: 'Inventori', icon: Icons.inventory_2_rounded, children: [
-    _MenuItemData(path: '/materials', icon: Icons.category_rounded, label: 'Data Barang', allowedRoles: RoleGroups.fullStaff),
-    _MenuItemData(path: '/purchases', icon: Icons.shopping_bag_rounded, label: 'Pembelian', allowedRoles: RoleGroups.fullStaff),
-  ]),
-  const _MenuGroupData(label: 'Relasi', icon: Icons.people_alt_rounded, children: [
-    _MenuItemData(path: '/customers', icon: Icons.groups_rounded, label: 'Pelanggan', allowedRoles: RoleGroups.frontOfHouse),
-    _MenuItemData(path: '/vendors', icon: Icons.business_rounded, label: 'Vendor', allowedRoles: RoleGroups.fullStaff),
-  ]),
-  const _MenuGroupData(label: 'Laporan & Keuangan', icon: Icons.bar_chart_rounded, children: [
-    _MenuItemData(path: '/reports', icon: Icons.assessment_rounded, label: 'Laporan', allowedRoles: RoleGroups.fullStaff),
-    _MenuItemData(path: '/finance', icon: Icons.account_balance_wallet_rounded, label: 'Keuangan', allowedRoles: RoleGroups.fullStaff),
-  ]),
-  const _MenuGroupData(label: 'Pengaturan', icon: Icons.settings_rounded, children: [
-    _MenuItemData(path: '/settings', icon: Icons.tune_rounded, label: 'Umum', allowedRoles: RoleGroups.adminOnly),
-    _MenuItemData(path: '/users', icon: Icons.manage_accounts_rounded, label: 'Manajemen User', allowedRoles: RoleGroups.adminOnly),
-  ]),
+  const _MenuItemData(
+    path: '/dashboard',
+    icon: Icons.dashboard_rounded,
+    label: 'Dashboard',
+  ),
+  const _MenuGroupData(
+    label: 'Penjualan',
+    icon: Icons.point_of_sale_rounded,
+    children: [
+      _MenuItemData(
+        path: '/pos',
+        icon: Icons.point_of_sale_rounded,
+        label: 'POS / Kasir',
+        allowedRoles: RoleGroups.operational,
+      ),
+    ],
+  ),
+  const _MenuGroupData(
+    label: 'Produksi',
+    icon: Icons.print_rounded,
+    children: [
+      _MenuItemData(
+        path: '/production',
+        icon: Icons.print_rounded,
+        label: 'SPK',
+        allowedRoles: RoleGroups.operational,
+      ),
+    ],
+  ),
+  const _MenuGroupData(
+    label: 'Pembelian',
+    icon: Icons.shopping_bag_rounded,
+    children: [
+      _MenuItemData(
+        path: '/purchases',
+        icon: Icons.shopping_bag_rounded,
+        label: 'Pembelian',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
+    ],
+  ),
+  const _MenuGroupData(
+    label: 'Inventori',
+    icon: Icons.inventory_2_rounded,
+    children: [
+      _MenuItemData(
+        path: '/materials',
+        icon: Icons.category_rounded,
+        label: 'Data Barang',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
+    ],
+  ),
+  const _MenuGroupData(
+    label: 'Relasi',
+    icon: Icons.people_alt_rounded,
+    children: [
+      _MenuItemData(
+        path: '/customers',
+        icon: Icons.groups_rounded,
+        label: 'Pelanggan',
+        allowedRoles: RoleGroups.frontOfHouse,
+      ),
+      _MenuItemData(
+        path: '/vendors',
+        icon: Icons.business_rounded,
+        label: 'Vendor',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
+    ],
+  ),
+  const _MenuGroupData(
+    label: 'Administrasi',
+    icon: Icons.bar_chart_rounded,
+    children: [
+      _MenuItemData(
+        path: '/finance',
+        icon: Icons.account_balance_wallet_rounded,
+        label: 'Keuangan',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
+    ],
+  ),
 ];
 
 class AppShell extends ConsumerWidget {
@@ -76,10 +140,17 @@ class AppShell extends ConsumerWidget {
                   backgroundColor: Colors.white24,
                   child: Text(
                     user.displayName[0].toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                label: Text(user.displayName, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                label: Text(
+                  user.displayName,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
                 backgroundColor: Colors.white10,
                 side: BorderSide.none,
               ),
@@ -91,7 +162,12 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, WidgetRef ref, UserRole? role, String currentPath) {
+  Widget _buildDrawer(
+    BuildContext context,
+    WidgetRef ref,
+    UserRole? role,
+    String currentPath,
+  ) {
     return Drawer(
       child: Container(
         color: AppColors.primaryDark,
@@ -99,7 +175,10 @@ class AppShell extends ConsumerWidget {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
                 child: Row(
                   children: [
                     SvgPicture.asset(
@@ -109,26 +188,28 @@ class AppShell extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     Text.rich(
-                      TextSpan(children: [
-                        TextSpan(
-                          text: 'gemi',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 22,
-                            fontFamily: AppFonts.brand,
-                            fontStyle: FontStyle.italic,
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'gemi',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 22,
+                              fontFamily: AppFonts.brand,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ),
-                        const TextSpan(
-                          text: 'print',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontFamily: AppFonts.brand,
-                            fontStyle: FontStyle.italic,
+                          const TextSpan(
+                            text: 'print',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontFamily: AppFonts.brand,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ),
-                      ]),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -142,8 +223,14 @@ class AppShell extends ConsumerWidget {
               ),
               const Divider(color: Colors.white12, height: 1),
               ListTile(
-                leading: const Icon(Icons.logout_rounded, color: Colors.white70),
-                title: const Text('Keluar', style: TextStyle(color: Colors.white70)),
+                leading: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.white70,
+                ),
+                title: const Text(
+                  'Keluar',
+                  style: TextStyle(color: Colors.white70),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   ref.read(authStateProvider.notifier).logout();
@@ -156,7 +243,12 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildMenuItems(BuildContext context, WidgetRef ref, UserRole? role, String currentPath) {
+  List<Widget> _buildMenuItems(
+    BuildContext context,
+    WidgetRef ref,
+    UserRole? role,
+    String currentPath,
+  ) {
     final widgets = <Widget>[];
 
     for (final entry in _menuEntries) {
@@ -164,16 +256,25 @@ class AppShell extends ConsumerWidget {
         if (!_canAccess(role, entry.allowedRoles)) continue;
         widgets.add(_buildMenuItem(context, entry, currentPath));
       } else if (entry is _MenuGroupData) {
-        final visibleChildren = entry.children.where((c) => _canAccess(role, c.allowedRoles)).toList();
+        final visibleChildren = entry.children
+            .where((c) => _canAccess(role, c.allowedRoles))
+            .toList();
         if (visibleChildren.isEmpty) continue;
 
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(left: 16, top: 16, bottom: 4),
-          child: Text(
-            entry.label.toUpperCase(),
-            style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1),
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 16, bottom: 4),
+            child: Text(
+              entry.label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
           ),
-        ));
+        );
         for (final child in visibleChildren) {
           widgets.add(_buildMenuItem(context, child, currentPath));
         }
@@ -183,7 +284,11 @@ class AppShell extends ConsumerWidget {
     return widgets;
   }
 
-  Widget _buildMenuItem(BuildContext context, _MenuItemData item, String currentPath) {
+  Widget _buildMenuItem(
+    BuildContext context,
+    _MenuItemData item,
+    String currentPath,
+  ) {
     final isSelected = currentPath == item.path;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
@@ -193,7 +298,11 @@ class AppShell extends ConsumerWidget {
       ),
       child: ListTile(
         dense: true,
-        leading: Icon(item.icon, color: isSelected ? AppColors.primary : Colors.white70, size: 20),
+        leading: Icon(
+          item.icon,
+          color: isSelected ? AppColors.primary : Colors.white70,
+          size: 20,
+        ),
         title: Text(
           item.label,
           style: TextStyle(
@@ -226,9 +335,6 @@ class AppShell extends ConsumerWidget {
       '/customers': 'Pelanggan',
       '/vendors': 'Vendor',
       '/finance': 'Keuangan',
-      '/reports': 'Laporan',
-      '/users': 'Manajemen User',
-      '/settings': 'Pengaturan',
     };
     return titles[path] ?? 'gemiprint';
   }
