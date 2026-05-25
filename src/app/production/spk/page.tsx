@@ -481,7 +481,7 @@ export default function ProductionPage() {
             <div className="flex items-center gap-2">
               <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
-                  className="w-5 h-5"
+                  className="w-5 h-5 text-yellow-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -509,7 +509,7 @@ export default function ProductionPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
-                <PrinterIcon size={20} />
+                <PrinterIcon size={20} className="text-blue-500" />
               </div>
               <h3 className="text-base font-semibold uppercase tracking-wide">
                 Proses
@@ -527,7 +527,7 @@ export default function ProductionPage() {
             <div className="flex items-center gap-2">
               <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
-                  className="w-5 h-5"
+                  className="w-5 h-5 text-green-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -556,7 +556,7 @@ export default function ProductionPage() {
             <div className="flex items-center gap-2">
               <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
                 <svg
-                  className="w-5 h-5"
+                  className="w-5 h-5 text-amber-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
