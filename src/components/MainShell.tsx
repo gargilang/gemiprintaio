@@ -23,6 +23,7 @@ import {
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import SyncStatus from "./SyncStatus";
 import FloatingCalculator from "./FloatingCalculator";
+import FloatingFakturPreview from "./FloatingFakturPreview";
 import {
   fetchSessionUser,
   getCachedSessionUser,
@@ -43,6 +44,27 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [fakturPreview, setFakturPreview] = useState<{
+    html: string;
+    title: string;
+    orientation?: "landscape" | "portrait";
+  } | null>(null);
+
+  // Global event bus: any component can fire "gemi:preview-faktur" with { html, title, orientation? }
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { html, title, orientation } = (
+        e as CustomEvent<{
+          html: string;
+          title: string;
+          orientation?: "landscape" | "portrait";
+        }>
+      ).detail;
+      setFakturPreview({ html, title, orientation });
+    };
+    window.addEventListener("gemi:preview-faktur", handler);
+    return () => window.removeEventListener("gemi:preview-faktur", handler);
+  }, []);
   const navRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -554,6 +576,14 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       <FloatingCalculator
         open={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
+      />
+
+      <FloatingFakturPreview
+        open={fakturPreview !== null}
+        html={fakturPreview?.html ?? ""}
+        title={fakturPreview?.title ?? "Preview Faktur"}
+        orientation={fakturPreview?.orientation}
+        onClose={() => setFakturPreview(null)}
       />
     </div>
   );

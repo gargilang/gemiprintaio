@@ -68,6 +68,65 @@ const PurchaseRow = memo(
     const [showDetails, setShowDetails] = useState(false);
     const [printing, setPrinting] = useState(false);
 
+    const handlePreview = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setPrinting(true);
+      try {
+        const { generateFakturPembelianHTML, formatUkuranPembelian } = await import(
+          "@/lib/faktur-pembelian-print"
+        );
+        let shop:
+          | { nama_toko?: string | null; slogan?: string | null }
+          | undefined;
+        try {
+          const { getShopSettingsAction } = await import(
+            "@/app/settings/actions"
+          );
+          const settings = await getShopSettingsAction();
+          shop = { nama_toko: settings.nama_toko, slogan: settings.slogan };
+        } catch {
+          // fallback to defaults
+        }
+        const html = generateFakturPembelianHTML({
+          nomor_pembelian: purchase.nomor_pembelian || purchase.nomor_faktur,
+          nomor_faktur_vendor: purchase.nomor_faktur,
+          tanggal: purchase.tanggal,
+          shop,
+          vendor_nama: purchase.vendor_name || undefined,
+          vendor_alamat: purchase.vendor_alamat || undefined,
+          vendor_telepon: purchase.vendor_telepon || undefined,
+          vendor_kontak: purchase.vendor_kontak_person || undefined,
+          dibuat_oleh: purchase.created_by_name || undefined,
+          diterima_oleh: purchase.diterima_oleh || undefined,
+          catatan: purchase.catatan || undefined,
+          items: purchase.items.map((item) => ({
+            nama: item.nama_barang,
+            ukuran: formatUkuranPembelian(item.panjang, item.lebar),
+            qty: item.jumlah,
+            satuan: item.nama_satuan,
+            harga: item.harga_beli,
+            jumlah: item.jumlah * item.harga_beli,
+          })),
+          total: purchase.total_harga,
+          jumlah_dibayar: purchase.jumlah_dibayar ?? purchase.total_harga,
+          status_pembayaran: purchase.status_pembayaran || "LUNAS",
+        });
+        window.dispatchEvent(
+          new CustomEvent("gemi:preview-faktur", {
+            detail: {
+              html,
+              title: `Bukti Pembelian ${purchase.nomor_pembelian || purchase.nomor_faktur}`,
+            },
+          })
+        );
+      } catch (e) {
+        console.error("previewFakturPembelian error:", e);
+        alert("Gagal menyiapkan preview.");
+      } finally {
+        setPrinting(false);
+      }
+    };
+
     const handlePrint = async (e: React.MouseEvent) => {
       e.stopPropagation();
       setPrinting(true);
@@ -200,6 +259,33 @@ const PurchaseRow = memo(
           </td>
           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-2">
+              {/* Preview button — floating window */}
+              <button
+                onClick={handlePreview}
+                disabled={printing}
+                className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-50"
+                title="Preview faktur pembelian (floating window)"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+              </button>
               {/* Print button */}
               <button
                 onClick={handlePrint}

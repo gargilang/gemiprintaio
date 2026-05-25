@@ -13,6 +13,8 @@ interface SaleItemRow {
   hpp_total?: number;
   panjang?: number | null;
   lebar?: number | null;
+  deskripsi_pekerjaan?: string | null;
+  tipe_item?: string | null;
 }
 
 interface Sale {
@@ -66,7 +68,8 @@ export default function SalesHistoryTable({
   const filteredSales = sales.filter(
     (sale) =>
       sale.nomor_invoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase())
+      sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.pelanggan_nama_snapshot?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatRupiah = (amount: number) => {
@@ -182,13 +185,39 @@ export default function SalesHistoryTable({
     setPrintingId(sale.id);
     try {
       const { printThermalInvoice } = await import("@/lib/thermal-print");
+      let shop:
+        | {
+            nama_toko?: string | null;
+            slogan?: string | null;
+            telepon?: string | null;
+            email?: string | null;
+            website?: string | null;
+            catatan_struk?: string | null;
+          }
+        | undefined;
+      try {
+        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const settings = await getShopSettingsAction();
+        shop = {
+          nama_toko: settings.nama_toko,
+          slogan: settings.slogan,
+          telepon: settings.telepon,
+          email: settings.email,
+          website: settings.website,
+          catatan_struk: settings.catatan_struk,
+        };
+      } catch (settingsError) {
+        console.warn("Data usaha tidak bisa dimuat untuk reprint thermal:", settingsError);
+      }
       const items = (sale.items || []).map((item) => {
         const dimensi =
           item.panjang && item.lebar
             ? `${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m`
             : undefined;
         return {
-          nama: item.barang_nama || "-",
+          nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+            ? item.deskripsi_pekerjaan
+            : item.barang_nama || "-",
           jumlah: Number(item.jumlah || 0),
           satuan: item.nama_satuan || "",
           harga: Number(item.harga_satuan || 0),
@@ -201,6 +230,7 @@ export default function SalesHistoryTable({
       printThermalInvoice({
         nomor_invoice: sale.nomor_invoice,
         tanggal: sale.dibuat_pada,
+        shop,
         pelanggan_nama:
           sale.pelanggan_nama || sale.pelanggan_nama_snapshot || undefined,
         kasir_nama: sale.kasir_nama || "Kasir",
@@ -213,6 +243,100 @@ export default function SalesHistoryTable({
     } catch (e) {
       console.error("reprintThermal error:", e);
       alert("Gagal menyiapkan struk untuk dicetak.");
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
+  const previewFaktur = async (
+    sale: Sale,
+    overrideNama?: string,
+    overrideKota?: string
+  ) => {
+    const nama =
+      overrideNama ||
+      sale.pelanggan_nama ||
+      sale.pelanggan_nama_snapshot ||
+      "";
+    if (!nama) {
+      setFakturPromptInput({
+        nama: "",
+        kota: sale.pelanggan_kota || "Bekasi",
+      });
+      setFakturPromptSale(sale);
+      return;
+    }
+    setPrintingId(sale.id);
+    try {
+      const { generateFakturHTML, formatUkuran } = await import("@/lib/faktur-print");
+      let shop:
+        | {
+            nama_toko?: string | null;
+            slogan?: string | null;
+            alamat?: string | null;
+            telepon?: string | null;
+            email?: string | null;
+            website?: string | null;
+            bank_nama?: string | null;
+            bank_nomor?: string | null;
+            bank_atas_nama?: string | null;
+            catatan_faktur?: string | null;
+            npwp?: string | null;
+            alamat_npwp?: string | null;
+          }
+        | undefined;
+      try {
+        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const settings = await getShopSettingsAction();
+        shop = {
+          nama_toko: settings.nama_toko,
+          slogan: settings.slogan,
+          alamat: settings.alamat,
+          telepon: settings.telepon,
+          email: settings.email,
+          website: settings.website,
+          bank_nama: settings.bank_nama,
+          bank_nomor: settings.bank_nomor,
+          bank_atas_nama: settings.bank_atas_nama,
+          catatan_faktur: settings.catatan_faktur,
+          npwp: settings.npwp,
+          alamat_npwp: settings.alamat_npwp,
+        };
+      } catch (settingsError) {
+        console.warn("Data usaha tidak bisa dimuat untuk preview faktur:", settingsError);
+      }
+      const items = (sale.items || []).map((item) => ({
+        nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+          ? item.deskripsi_pekerjaan
+          : item.barang_nama || "-",
+        ukuran: formatUkuran(item.panjang, item.lebar),
+        qty: Number(item.jumlah || 0),
+        satuan: item.nama_satuan || "",
+        harga: Number(item.harga_satuan || 0),
+        jumlah: Number(item.subtotal || 0),
+      }));
+      const total = sale.total_jumlah;
+      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      const sisa = Math.max(0, total - bayar);
+      const html = generateFakturHTML({
+        nomor_invoice: sale.nomor_invoice,
+        tanggal: sale.dibuat_pada,
+        pelanggan_nama: nama,
+        kota: overrideKota || sale.pelanggan_kota || "Bekasi",
+        items,
+        total,
+        bayar,
+        sisa,
+        shop,
+      });
+      window.dispatchEvent(
+        new CustomEvent("gemi:preview-faktur", {
+          detail: { html, title: `Faktur ${sale.nomor_invoice}` },
+        })
+      );
+    } catch (e) {
+      console.error("previewFaktur error:", e);
+      alert("Gagal menyiapkan preview faktur.");
     } finally {
       setPrintingId(null);
     }
@@ -277,7 +401,9 @@ export default function SalesHistoryTable({
         console.warn("Data usaha tidak bisa dimuat untuk reprint faktur:", settingsError);
       }
       const items = (sale.items || []).map((item) => ({
-        nama: item.barang_nama || "-",
+        nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+          ? item.deskripsi_pekerjaan
+          : item.barang_nama || "-",
         ukuran: formatUkuran(item.panjang, item.lebar),
         qty: Number(item.jumlah || 0),
         satuan: item.nama_satuan || "",
@@ -454,7 +580,7 @@ export default function SalesHistoryTable({
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-gray-800 dark:text-slate-100">
-                        {sale.pelanggan_nama || (
+                        {sale.pelanggan_nama || sale.pelanggan_nama_snapshot || (
                           <span className="text-gray-400 italic">Walk-in</span>
                         )}
                       </div>
@@ -488,6 +614,35 @@ export default function SalesHistoryTable({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            previewFaktur(sale);
+                          }}
+                          disabled={printingId === sale.id}
+                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-indigo-900/30 rounded-lg transition-all disabled:opacity-50"
+                          title="Preview faktur (floating window)"
+                        >
+                          <svg
+                            className="w-5 h-5 text-indigo-600 dark:text-indigo-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             reprintThermal(sale);
                           }}
                           disabled={printingId === sale.id}
@@ -515,7 +670,7 @@ export default function SalesHistoryTable({
                           }}
                           disabled={printingId === sale.id}
                           className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-blue-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Cetak faktur A5"
+                          title="Cetak faktur A4 (buka tab baru)"
                         >
                           <svg
                             className="w-5 h-5 text-blue-600 dark:text-blue-300"
@@ -528,6 +683,34 @@ export default function SalesHistoryTable({
                               strokeLinejoin="round"
                               strokeWidth={2}
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/surat-jalan?from=${sale.id}`;
+                          }}
+                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-emerald-900/30 rounded-lg transition-all disabled:opacity-50"
+                          title="Buat surat jalan dari transaksi ini"
+                        >
+                          <svg
+                            className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1"
                             />
                           </svg>
                         </button>
@@ -618,7 +801,9 @@ export default function SalesHistoryTable({
                               >
                                 <div className="flex-1">
                                   <span className="font-semibold text-gray-800 dark:text-slate-100">
-                                    {idx + 1}. {item.barang_nama}
+                                    {idx + 1}. {item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+                                    ? item.deskripsi_pekerjaan
+                                    : item.barang_nama}
                                   </span>
                                   <span className="text-gray-500 dark:text-slate-400 ml-2">
                                     ({item.nama_satuan})

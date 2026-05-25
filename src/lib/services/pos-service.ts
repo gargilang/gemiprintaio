@@ -412,10 +412,120 @@ export async function getPOSInitData(): Promise<POSInitData> {
 }
 
 /**
- * Get sales transactions
+ * Get sales transactions — optimised batch version.
+ *
+ * Old approach: N+1 queries (100 sales × items × barang + pelunasan checks)
+ * New approach: 6 flat queries, all joins done in-memory.
+ *
+ * For Supabase (web) we use the JS client's .in() filter directly.
+ * For SQLite (Tauri) we fall back to the old sequential approach because
+ * the db adapter does not yet expose a whereIn helper.
  */
 export async function getSales(limit: number = 100): Promise<Sale[]> {
   try {
+    const supabase = getServerSupabaseClient();
+
+    // ── Supabase fast-path (web) ──────────────────────────────────────────────
+    if (supabase) {
+      // 1. Sales
+      const { data: sales, error: salesErr } = await supabase
+        .from("penjualan")
+        .select("*")
+        .order("dibuat_pada", { ascending: false })
+        .limit(limit);
+      if (salesErr) throw salesErr;
+      if (!sales || sales.length === 0) return [];
+
+      const saleIds = sales.map((s: any) => s.id);
+      const pelangganIds = [...new Set(sales.map((s: any) => s.pelanggan_id).filter(Boolean))];
+      const kasirIds = [...new Set(sales.map((s: any) => s.kasir_id).filter(Boolean))];
+
+      // 2–6. Batch fetch all related data in parallel
+      const [
+        itemsRes,
+        piutangRes,
+        customersRes,
+        usersRes,
+        pelunasanRes,
+      ] = await Promise.all([
+        supabase.from("item_penjualan").select("*").in("penjualan_id", saleIds),
+        supabase.from("piutang_penjualan").select("*").in("id_penjualan", saleIds),
+        pelangganIds.length > 0
+          ? supabase.from("pelanggan").select("id,nama,member_status").in("id", pelangganIds)
+          : Promise.resolve({ data: [], error: null }),
+        kasirIds.length > 0
+          ? supabase.from("profil").select("id,nama_pengguna").in("id", kasirIds)
+          : Promise.resolve({ data: [], error: null }),
+        // We need pelunasan to know has_pelunasan — fetch all at once
+        supabase.from("pelunasan_piutang").select("id,id_piutang"),
+      ]);
+
+      if (itemsRes.error) throw itemsRes.error;
+      if (piutangRes.error) throw piutangRes.error;
+
+      const allItems: any[] = itemsRes.data || [];
+      const allPiutang: any[] = piutangRes.data || [];
+      const allCustomers: any[] = customersRes.data || [];
+      const allUsers: any[] = usersRes.data || [];
+      const allPelunasan: any[] = pelunasanRes.data || [];
+
+      // Fetch barang names for all unique barang_ids in one query
+      const barangIds = [...new Set(allItems.map((i: any) => i.barang_id).filter(Boolean))];
+      const barangMap = new Map<string, string>();
+      if (barangIds.length > 0) {
+        const { data: barangRows } = await supabase
+          .from("barang")
+          .select("id,nama")
+          .in("id", barangIds);
+        for (const b of barangRows || []) {
+          barangMap.set(b.id, b.nama);
+        }
+      }
+
+      // Build lookup maps
+      const itemsByPenjualanId = new Map<string, any[]>();
+      for (const item of allItems) {
+        const list = itemsByPenjualanId.get(item.penjualan_id) || [];
+        list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
+        itemsByPenjualanId.set(item.penjualan_id, list);
+      }
+
+      const piutangBySaleId = new Map<string, any>();
+      for (const p of allPiutang) {
+        piutangBySaleId.set(p.id_penjualan, p);
+      }
+
+      const pelunasanByPiutangId = new Set<string>();
+      for (const pl of allPelunasan) {
+        pelunasanByPiutangId.add(pl.id_piutang);
+      }
+
+      const customerMap = new Map<string, any>();
+      for (const c of allCustomers) customerMap.set(c.id, c);
+
+      const userMap = new Map<string, any>();
+      for (const u of allUsers) userMap.set(u.id, u);
+
+      return sales.map((sale: any) => {
+        const customer = customerMap.get(sale.pelanggan_id);
+        const kasir = userMap.get(sale.kasir_id);
+        const piutang = piutangBySaleId.get(sale.id);
+        const has_pelunasan = piutang ? pelunasanByPiutangId.has(piutang.id) : false;
+
+        return {
+          ...sale,
+          pelanggan_nama: customer?.nama || undefined,
+          member_status: customer?.member_status || undefined,
+          kasir_nama: kasir?.nama_pengguna || undefined,
+          status_pembayaran: piutang?.status || "LUNAS",
+          sisa_piutang: piutang?.sisa_piutang || 0,
+          has_pelunasan,
+          items: itemsByPenjualanId.get(sale.id) || [],
+        };
+      });
+    }
+
+    // ── SQLite fallback (Tauri) — sequential, same as before ─────────────────
     const salesResult = await db.query<Sale>("penjualan", {
       orderBy: { column: "dibuat_pada", ascending: false },
       limit,
@@ -423,7 +533,6 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
 
     const sales = salesResult.data || [];
 
-    // Get customers and users for enrichment
     const customersResult = await db.query("pelanggan");
     const usersResult = await db.query("profil");
     const piutangResult = await db.query("piutang_penjualan");
@@ -432,38 +541,23 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
     const users = usersResult.data || [];
     const piutangList = piutangResult.data || [];
 
-    // Enrich sales with items and related data
     const salesWithItems = await Promise.all(
       sales.map(async (sale) => {
-        // Get items
         const itemsResult = await db.query<SaleItem>("item_penjualan", {
           where: { penjualan_id: sale.id },
         });
-
         const items = itemsResult.data || [];
-
-        // Enrich items with material names
         const itemsWithNames = await Promise.all(
           items.map(async (item) => {
             const materialResult = await db.queryOne("barang", {
               where: { id: item.barang_id },
             });
-
-            return {
-              ...item,
-              barang_nama: materialResult.data?.nama || "",
-            };
+            return { ...item, barang_nama: materialResult.data?.nama || "" };
           })
         );
-
-        // Find related data
         const customer = customers.find((c: any) => c.id === sale.pelanggan_id);
         const kasir = users.find((u: any) => u.id === sale.kasir_id);
-        const piutang = piutangList.find(
-          (p: any) => p.id_penjualan === sale.id
-        );
-
-        // Check if has pelunasan
+        const piutang = piutangList.find((p: any) => p.id_penjualan === sale.id);
         let has_pelunasan = false;
         if (piutang) {
           const pelunasanResult = await db.query("pelunasan_piutang", {
@@ -472,7 +566,6 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           });
           has_pelunasan = (pelunasanResult.data?.length || 0) > 0;
         }
-
         return {
           ...sale,
           pelanggan_nama: customer?.nama || undefined,

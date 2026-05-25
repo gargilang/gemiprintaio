@@ -377,7 +377,7 @@ export function generateFakturPembelianHTML(
       <div class="brand-logo">
         <svg viewBox="0 0 38 45" xmlns="http://www.w3.org/2000/svg">${LOGO_SVG_PATHS}</svg>
         <div class="brand-wordmark">
-          ${escapeHtml(shopName)}
+          <span class="gemi">gemi</span><span class="print">print</span>
         </div>
       </div>
       <div class="brand-sub">${escapeHtml(shopSlogan)}</div>

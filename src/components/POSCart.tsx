@@ -75,6 +75,8 @@ interface POSCartProps {
   onCheckout: () => void;
   onEditFinishing?: (index: number, finishing: FinishingItem[]) => void;
   onGetFinishingOptions: () => Promise<FinishingOption[]>;
+  /** Nama pelanggan aktif (dari selectedCustomer atau customerSearch) untuk penawaran harga. */
+  customerName?: string;
 }
 
 const denominations = [
@@ -129,6 +131,7 @@ export default function POSCart({
   onCheckout,
   onEditFinishing,
   onGetFinishingOptions,
+  customerName,
 }: POSCartProps) {
   const totalRaw = cart.reduce((sum, item) => sum + item.subtotalRaw, 0);
   const lineCharges = useMemo(
@@ -146,6 +149,57 @@ export default function POSCart({
   const [editingFinishingIndex, setEditingFinishingIndex] = useState<
     number | null
   >(null);
+
+  const handlePreviewQuotation = async () => {
+    try {
+      const { generateFakturHTML, patchQuotationHTML } = await import(
+        "@/lib/faktur-print"
+      );
+      const { formatRollCartDetailLine } = await import("@/lib/money-rounding");
+
+      const items = cart.map((item, index) => {
+        // Build ukuran string for dimensional items
+        let ukuran = "";
+        if (item.butuh_dimensi && item.billedPanjang != null && item.billedLebar != null) {
+          ukuran = `${item.billedPanjang} × ${item.billedLebar} m`;
+        } else if (item.butuh_dimensi && item.panjang != null && item.lebar != null) {
+          ukuran = `${item.panjang} × ${item.lebar} m`;
+        }
+        return {
+          nama: item.barang_nama,
+          keterangan: item.tipe_item === "MAKLON" && item.vendor_subkontrak_nama
+            ? `Maklon: ${item.vendor_subkontrak_nama}`
+            : undefined,
+          ukuran,
+          qty: item.jumlah,
+          satuan: item.nama_satuan,
+          harga: item.jumlah > 0 ? lineCharges[index] / item.jumlah : item.harga_satuan,
+          jumlah: lineCharges[index],
+        };
+      });
+
+      const html = generateFakturHTML({
+        nomor_invoice: "—",
+        tanggal: new Date().toISOString(),
+        pelanggan_nama: customerName?.trim() || "—",
+        items,
+        total,
+        bayar: 0,
+        sisa: 0,
+        shop: undefined,
+      });
+
+      const patched = patchQuotationHTML(html);
+
+      window.dispatchEvent(
+        new CustomEvent("gemi:preview-faktur", {
+          detail: { html: patched, title: "Penawaran Harga" },
+        })
+      );
+    } catch (e) {
+      console.error("handlePreviewQuotation error:", e);
+    }
+  };
 
   const paymentMethods = [
     {
@@ -212,15 +266,29 @@ export default function POSCart({
 
       {cart.length > 0 && hasRoundingChoice && (
         <div className="shrink-0 px-4 py-2.5 border-b border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60">
-          <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={roundCartPrices}
-              onChange={(e) => onRoundCartPricesChange(e.target.checked)}
-              className="w-3.5 h-3.5 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
-            />
-            Bulatkan kelipatan Rp 1.000
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={roundCartPrices}
+                onChange={(e) => onRoundCartPricesChange(e.target.checked)}
+                className="w-3.5 h-3.5 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
+              />
+              Bulatkan kelipatan Rp 1.000
+            </label>
+            <button
+              type="button"
+              onClick={handlePreviewQuotation}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/50 text-[10px] font-semibold transition-colors"
+              title="Preview penawaran harga"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Penawaran
+            </button>
+          </div>
         </div>
       )}
 
@@ -354,7 +422,7 @@ export default function POSCart({
                   <button
                     type="button"
                     onClick={() => onRemoveItem(index)}
-                    className="bg-red-50 dark:bg-red-950/400/80 hover:bg-red-500 p-1.5 rounded-md transition-all text-white"
+                    className="bg-red-50 dark:bg-red-900/30 hover:bg-red-500 dark:hover:bg-red-500 p-1.5 rounded-md transition-all text-red-500 dark:text-red-400 hover:text-white"
                     aria-label="Hapus item"
                     title="Hapus item"
                   >
@@ -461,7 +529,7 @@ export default function POSCart({
                 }
               }}
               placeholder="0"
-              className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
             />
           </div>
           <label className="shrink-0 flex items-center gap-1.5 cursor-pointer px-2 py-2 bg-white dark:bg-slate-900 rounded-lg border-2 border-gray-200 dark:border-slate-800 hover:border-amber-600 transition-all h-[42px]">
@@ -501,20 +569,20 @@ export default function POSCart({
           <div
             className={`rounded-lg px-3 py-2 text-sm border-2 ${
               kembalian > 0
-                ? "bg-green-50 dark:bg-slate-800 border-green-300"
+                ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
                 : kurang > 0
-                  ? "bg-yellow-50 dark:bg-slate-800 border-yellow-300"
-                  : "bg-green-50 dark:bg-slate-800 border-green-300"
+                  ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700"
+                  : "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
             }`}
           >
             <div className="flex items-center justify-between gap-2">
               <span
                 className={`text-xs font-bold ${
                   kembalian > 0
-                    ? "text-green-800"
+                    ? "text-green-800 dark:text-green-300"
                     : kurang > 0
-                      ? "text-yellow-800"
-                      : "text-green-800"
+                      ? "text-yellow-800 dark:text-yellow-300"
+                      : "text-green-800 dark:text-green-300"
                 }`}
               >
                 {kembalian > 0
@@ -526,10 +594,10 @@ export default function POSCart({
               <span
                 className={`font-bold ${
                   kembalian > 0
-                    ? "text-green-700"
+                    ? "text-green-700 dark:text-green-300"
                     : kurang > 0
-                      ? "text-yellow-700"
-                      : "text-green-700"
+                      ? "text-yellow-700 dark:text-yellow-300"
+                      : "text-green-700 dark:text-green-300"
                 }`}
               >
                 {kembalian > 0 || kurang > 0
@@ -541,7 +609,7 @@ export default function POSCart({
               <button
                 type="button"
                 onClick={() => setShowChangeDetail(!showChangeDetail)}
-                className="text-[10px] text-green-700 underline mt-1"
+                className="text-[10px] text-green-700 dark:text-green-400 underline mt-1"
               >
                 {showChangeDetail ? "Sembunyikan pecahan" : "Lihat pecahan"}
               </button>
@@ -551,7 +619,7 @@ export default function POSCart({
                 {changeBreakdown.map(({ denom, label, count }) => (
                   <div
                     key={denom}
-                    className="flex justify-between bg-green-100 dark:bg-green-900/30/80 rounded px-1.5 py-0.5"
+                    className="flex justify-between bg-green-100 dark:bg-green-900/40 rounded px-1.5 py-0.5 text-green-900 dark:text-green-200"
                   >
                     <span>{label}</span>
                     <span className="font-bold">{count}×</span>
@@ -560,7 +628,7 @@ export default function POSCart({
               </div>
             )}
             {kurang > 0 && (
-              <p className="text-[10px] text-yellow-700 mt-1">
+              <p className="text-[10px] text-yellow-700 dark:text-yellow-400 mt-1">
                 Kekurangan masuk tagihan
               </p>
             )}
@@ -582,7 +650,7 @@ export default function POSCart({
               value={catatan}
               onChange={(e) => onCatatanChange(e.target.value)}
               placeholder="Catatan transaksi..."
-              className="mt-1.5 w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="mt-1.5 w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
             />
           )}
         </div>

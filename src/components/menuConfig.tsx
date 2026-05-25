@@ -78,11 +78,27 @@ export const MENU_ENTRIES: MenuEntry[] = [
     // No allowedRoles -> visible to every role, including "user".
   },
   {
-    href: "/pos",
+    kind: "group",
+    id: "penjualan",
+    label: "Penjualan",
     icon: <CartIcon size={18} />,
-    label: "POS / Kasir",
     color: "from-[#00afef] to-[#2266ff]",
-    allowedRoles: OPERATIONAL,
+    children: [
+      {
+        href: "/pos",
+        icon: <CartIcon size={18} />,
+        label: "POS / Kasir",
+        color: "from-[#00afef] to-[#2266ff]",
+        allowedRoles: OPERATIONAL,
+      },
+      {
+        href: "/surat-jalan",
+        icon: <PurchaseOrderIcon size={18} />,
+        label: "Surat Jalan",
+        color: "from-[#0a1b3d] to-[#00afef]",
+        allowedRoles: FRONT_OF_HOUSE,
+      },
+    ],
   },
   {
     kind: "group",
@@ -109,23 +125,32 @@ export const MENU_ENTRIES: MenuEntry[] = [
   },
   {
     kind: "group",
+    id: "pembelian",
+    label: "Pembelian",
+    icon: <PurchaseOrderIcon size={18} />,
+    color: "from-[#6366f1] to-[#8b5cf6]",
+    children: [
+      {
+        href: "/purchases",
+        icon: <PurchaseOrderIcon size={18} />,
+        label: "Pembelian",
+        color: "from-[#6366f1] to-[#8b5cf6]",
+        allowedRoles: FULL_STAFF,
+      },
+    ],
+  },
+  {
+    kind: "group",
     id: "inventori",
     label: "Inventori",
     icon: <InventoryIcon size={18} />,
-    color: "from-[#10b981] to-[#6366f1]",
+    color: "from-[#10b981] to-[#059669]",
     children: [
       {
         href: "/materials",
         icon: <BoxIcon size={18} />,
         label: "Data Barang",
         color: "from-[#10b981] to-[#059669]",
-        allowedRoles: FULL_STAFF,
-      },
-      {
-        href: "/purchases",
-        icon: <PurchaseOrderIcon size={18} />,
-        label: "Pembelian",
-        color: "from-[#6366f1] to-[#8b5cf6]",
         allowedRoles: FULL_STAFF,
       },
     ],
@@ -211,6 +236,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
 export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/dashboard": "Dashboard",
   "/pos": "POS / Kasir",
+  "/surat-jalan": "Surat Jalan",
   "/production": "Produksi",
   "/production/spk": "SPK",
   "/production/ai-prompt": "AI Prompt",

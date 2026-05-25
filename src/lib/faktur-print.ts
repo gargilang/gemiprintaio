@@ -648,7 +648,7 @@ export function generateFakturHTML(data: FakturData): string {
         <div class="brand-logo">
           <svg viewBox="0 0 38 45" xmlns="http://www.w3.org/2000/svg">${LOGO_SVG_PATHS}</svg>
           <div class="brand-wordmark">
-            ${escapeHtml(shopInfo.nama_toko)}
+            <span class="gemi">gemi</span><span class="print">print</span>
           </div>
         </div>
         <div class="brand-sub">${escapeHtml(shopInfo.slogan)}</div>
@@ -712,7 +712,7 @@ export function generateFakturHTML(data: FakturData): string {
     </div>
     <div class="payment-section">
       <div class="payment-box">
-        <div><strong>${escapeHtml(shopInfo.nama_toko)}</strong></div>
+        <div><strong><span style="color:#00AFEF">gemi</span><span style="color:#0a1b3d">print</span></strong></div>
         <div class="bank-number">${escapeHtml(shopInfo.bankNama)} ${escapeHtml(shopInfo.bankNomor)}</div>
         <div><span>a.n. ${escapeHtml(shopInfo.bankAtasNama)}</span></div>
       </div>
@@ -785,6 +785,69 @@ export function printFaktur(data: FakturData): boolean {
   }, 120_000);
 
   return true;
+}
+
+/**
+ * Generate a "Penawaran Harga" (quotation) HTML document from cart items.
+ *
+ * Reuses the same A4 landscape layout as the sales faktur but:
+ * - Title changed to "PENAWARAN HARGA"
+ * - No invoice number (replaced with "—")
+ * - No BAYAR / SISA rows — only TOTAL
+ * - "Kepada Yth." section shows pelanggan_nama if provided, else "—"
+ * - Footer note replaced with quotation validity note
+ * - No PPN strip
+ */
+export function generateQuotationHTML(data: {
+  pelanggan_nama?: string;
+  kota?: string;
+  tanggal: string;
+  items: FakturItem[];
+  total: number;
+  catatan?: string;
+  shop?: FakturData["shop"];
+}): string {
+  return generateFakturHTML({
+    nomor_invoice: "—",
+    tanggal: data.tanggal,
+    pelanggan_nama: data.pelanggan_nama || "—",
+    kota: data.kota,
+    items: data.items,
+    total: data.total,
+    bayar: 0,
+    sisa: 0,
+    catatan: data.catatan,
+    shop: {
+      ...data.shop,
+      // Override catatan_faktur with quotation note
+      catatan_faktur:
+        "Penawaran ini berlaku 7 hari sejak tanggal tertera. Harga dapat berubah sewaktu-waktu.",
+    },
+    // Pass a flag via a custom field — we patch the HTML after generation
+    _isQuotation: true,
+  } as any);
+}
+
+/**
+ * Post-process faktur HTML to turn it into a quotation:
+ * - Replace "FAKTUR PENJUALAN" with "PENAWARAN HARGA"
+ * - Remove BAYAR and SISA rows
+ * - Replace title tag
+ */
+export function patchQuotationHTML(html: string): string {
+  return html
+    .replace(/FAKTUR PENJUALAN/g, "PENAWARAN HARGA")
+    .replace(/<title>Faktur[^<]*<\/title>/, "<title>Penawaran Harga</title>")
+    // Remove BAYAR row
+    .replace(
+      /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+      ""
+    )
+    // Remove SISA row
+    .replace(
+      /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+      ""
+    );
 }
 
 /**

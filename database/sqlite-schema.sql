@@ -725,3 +725,54 @@ CREATE TABLE "vendor" (
 CREATE INDEX idx_vendor_sync_status ON vendor(sync_status);
 CREATE INDEX idx_vendor_tipe ON vendor(tipe_vendor);
 
+-- Table: surat_jalan
+CREATE TABLE surat_jalan (
+      id TEXT PRIMARY KEY,
+      nomor_sj TEXT UNIQUE NOT NULL,
+      penjualan_id TEXT,
+      pelanggan_nama TEXT,
+      pelanggan_alamat TEXT,
+      pelanggan_telepon TEXT,
+      tanggal TEXT NOT NULL,
+      nomor_kendaraan TEXT,
+      pengirim_nama TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','TERKIRIM','DITERIMA','BATAL')),
+      catatan TEXT,
+      dibuat_oleh TEXT,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
+      tanggal_terkirim TEXT,
+      tanggal_diterima TEXT,
+      diterima_oleh TEXT,
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE SET NULL,
+      FOREIGN KEY (dibuat_oleh) REFERENCES profil(id) ON DELETE SET NULL
+    );
+
+CREATE INDEX idx_surat_jalan_penjualan ON surat_jalan(penjualan_id);
+CREATE INDEX idx_surat_jalan_status ON surat_jalan(status);
+CREATE INDEX idx_surat_jalan_tanggal ON surat_jalan(tanggal DESC);
+CREATE INDEX idx_surat_jalan_sync_status ON surat_jalan(sync_status);
+
+-- Table: item_surat_jalan
+CREATE TABLE item_surat_jalan (
+      id TEXT PRIMARY KEY,
+      surat_jalan_id TEXT NOT NULL,
+      nama_barang TEXT NOT NULL,
+      keterangan TEXT,
+      ukuran TEXT,
+      qty REAL NOT NULL DEFAULT 1,
+      satuan TEXT,
+      urutan INTEGER NOT NULL DEFAULT 0,
+      dibuat_pada TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 1,
+      FOREIGN KEY (surat_jalan_id) REFERENCES surat_jalan(id) ON DELETE CASCADE
+    );
+
+CREATE INDEX idx_item_surat_jalan_sj ON item_surat_jalan(surat_jalan_id);
+CREATE INDEX idx_item_surat_jalan_sync_status ON item_surat_jalan(sync_status);
+

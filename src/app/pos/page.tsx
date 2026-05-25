@@ -697,35 +697,42 @@ export default function POSPage() {
     const vendor = subkontraktor.find(
       (v) => v.id === value.vendor_subkontrak_id
     );
-    const newItem: CartItem = {
-      // Placeholder ids — server uses 'barang-jasa-maklon' regardless, these
-      // are just enough to satisfy the existing CartItem shape.
+
+    // Build N CartItems, one per line — all share the same vendor + metode.
+    const newItems: CartItem[] = value.lines.map((line) => ({
+      // Placeholder ids — server uses 'barang-jasa-maklon' regardless.
       barang_id: "barang-jasa-maklon",
-      barang_nama: value.deskripsi_pekerjaan,
+      barang_nama: line.deskripsi_pekerjaan,
       harga_satuan_id: "harga-jasa-maklon-pcs",
-      nama_satuan: value.nama_satuan || "pcs",
+      nama_satuan: line.nama_satuan || "pcs",
       faktor_konversi: 1,
-      harga_satuan: value.harga_satuan,
-      jumlah: value.jumlah,
-      subtotalRaw: value.subtotal,
+      harga_satuan: line.harga_satuan,
+      jumlah: line.jumlah,
+      subtotalRaw: line.jumlah * line.harga_satuan,
       tipe_item: "MAKLON",
       vendor_subkontrak_id: value.vendor_subkontrak_id,
       vendor_subkontrak_nama: vendor?.nama_perusahaan,
-      biaya_subkontrak: value.biaya_subkontrak,
+      biaya_subkontrak: line.biaya_subkontrak,
       metode_bayar_vendor: value.metode_bayar_vendor,
-      deskripsi_pekerjaan: value.deskripsi_pekerjaan,
-    };
+      deskripsi_pekerjaan: line.deskripsi_pekerjaan,
+    }));
 
     setCart((prev) => {
       if (editingMaklonIndex !== null) {
+        // Edit mode: replace the existing line; if user added more lines,
+        // append the rest after the original index.
         const next = [...prev];
+        const original = prev[editingMaklonIndex];
         next[editingMaklonIndex] = {
-          ...newItem,
-          finishing: prev[editingMaklonIndex]?.finishing,
+          ...newItems[0],
+          finishing: original?.finishing,
         };
+        if (newItems.length > 1) {
+          next.splice(editingMaklonIndex + 1, 0, ...newItems.slice(1));
+        }
         return next;
       }
-      return [...prev, newItem];
+      return [...prev, ...newItems];
     });
 
     setShowMaklonModal(false);
@@ -797,10 +804,18 @@ export default function POSPage() {
       return;
     }
 
+    // If user typed a name in the search box but didn't select from dropdown,
+    // treat it as a walk-in name and save it automatically — no modal needed.
+    const typedName = customerSearch.trim();
+    if (!selectedCustomer && typedName && !walkInFaktur) {
+      setWalkInFaktur({ nama: typedName, kota: "Bekasi" });
+    }
+
     // If user wants to print faktur but is a walk-in (no customer selected) and
-    // hasn't filled the walk-in info yet, prompt for "Kepada Yth" + "Kota" first.
+    // hasn't filled the kota yet, prompt for kota only.
     const wantsFaktur = printType === "faktur" || printType === "both";
-    if (wantsFaktur && !selectedCustomer && !walkInFaktur) {
+    const resolvedWalkIn = walkInFaktur ?? (typedName ? { nama: typedName, kota: "Bekasi" } : null);
+    if (wantsFaktur && !selectedCustomer && !resolvedWalkIn) {
       setWalkInFakturInput({ nama: "", kota: "Bekasi" });
       setShowWalkInFakturModal(true);
       return;
@@ -879,8 +894,8 @@ export default function POSPage() {
       const result = await createSaleAction({
         pelanggan_id: selectedCustomer?.id,
         pelanggan_nama_snapshot:
-          !selectedCustomer && walkInFaktur?.nama
-            ? walkInFaktur.nama
+          !selectedCustomer
+            ? (walkInFaktur?.nama || customerSearch.trim() || undefined)
             : undefined,
         pelanggan_kota: walkInFaktur?.kota || undefined,
         items: saleItems,
@@ -971,7 +986,7 @@ export default function POSPage() {
           tanggal: tanggalIso,
           shop: shopSettings,
           pelanggan_nama:
-            selectedCustomer?.nama || walkInFaktur?.nama || undefined,
+            selectedCustomer?.nama || walkInFaktur?.nama || customerSearch.trim() || undefined,
           pelanggan_telepon: selectedCustomer?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
           items: cart.map((item, index) => ({
@@ -1055,7 +1070,7 @@ export default function POSPage() {
             nomor_invoice: result.nomor_invoice,
             tanggal: tanggalIso,
             pelanggan_nama:
-              selectedCustomer?.nama || walkInFaktur?.nama || "",
+              selectedCustomer?.nama || walkInFaktur?.nama || customerSearch.trim() || "",
             pelanggan_detail: [
               selectedCustomer?.kontak_person
                 ? `Kontak: ${selectedCustomer.kontak_person}`
@@ -1201,7 +1216,7 @@ export default function POSPage() {
                   }}
                   onFocus={() => setShowCustomerDropdown(true)}
                   onKeyDown={handleCustomerKeyDown}
-                  placeholder="Cari atau Walk-in Customer..."
+                  placeholder="Cari pelanggan atau ketik nama walk-in..."
                   className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                 />
 
@@ -1783,6 +1798,9 @@ export default function POSPage() {
               onCheckout={handleCheckout}
               onEditFinishing={handleEditFinishing}
               onGetFinishingOptions={getFinishingOptionsAction}
+              customerName={
+                selectedCustomer?.nama || customerSearch.trim() || undefined
+              }
             />
           </div>
         </div>
@@ -1858,18 +1876,22 @@ export default function POSPage() {
         initialValue={
           editingMaklonIndex !== null && cart[editingMaklonIndex]
             ? {
-                deskripsi_pekerjaan:
-                  cart[editingMaklonIndex].deskripsi_pekerjaan ||
-                  cart[editingMaklonIndex].barang_nama,
-                jumlah: cart[editingMaklonIndex].jumlah,
-                nama_satuan: cart[editingMaklonIndex].nama_satuan,
-                harga_satuan: cart[editingMaklonIndex].harga_satuan,
                 vendor_subkontrak_id:
-                  cart[editingMaklonIndex].vendor_subkontrak_id,
-                biaya_subkontrak:
-                  cart[editingMaklonIndex].biaya_subkontrak,
+                  cart[editingMaklonIndex].vendor_subkontrak_id || "",
                 metode_bayar_vendor:
-                  cart[editingMaklonIndex].metode_bayar_vendor,
+                  cart[editingMaklonIndex].metode_bayar_vendor || "CASH",
+                lines: [
+                  {
+                    deskripsi_pekerjaan:
+                      cart[editingMaklonIndex].deskripsi_pekerjaan ||
+                      cart[editingMaklonIndex].barang_nama,
+                    jumlah: cart[editingMaklonIndex].jumlah,
+                    nama_satuan: cart[editingMaklonIndex].nama_satuan,
+                    harga_satuan: cart[editingMaklonIndex].harga_satuan,
+                    biaya_subkontrak:
+                      cart[editingMaklonIndex].biaya_subkontrak || 0,
+                  },
+                ],
               }
             : null
         }

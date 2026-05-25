@@ -248,8 +248,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     </svg>
     <div class="logo">${escapeHtml(shopName)}</div>
     <div class="subtitle">${escapeHtml(shopSlogan)}</div>
-    <div class="contact">Telp: ${escapeHtml(shopPhone)}</div>
-    <div class="contact">${escapeHtml(shopEmail)}</div>
+    <div class="contact">Telp: ${escapeHtml(shopPhone)}${shopEmail ? ` · ${escapeHtml(shopEmail)}` : ""}</div>
     ${shopWebsite ? `<div class="contact">${escapeHtml(shopWebsite)}</div>` : ""}
   </div>
 
