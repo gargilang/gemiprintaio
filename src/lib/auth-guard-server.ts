@@ -27,6 +27,19 @@ export async function requireAdminOrManager(): Promise<SessionPayload> {
   return s;
 }
 
+export async function requireProductionInventoryRole(): Promise<SessionPayload> {
+  const s = await requireSession();
+  if (
+    s.role !== "admin" &&
+    s.role !== "manager" &&
+    s.role !== "staff" &&
+    s.role !== "operator"
+  ) {
+    throw new AuthGuardError("Forbidden", 403);
+  }
+  return s;
+}
+
 export async function requireAdminManagerOrSelf(
   targetUserId: string
 ): Promise<SessionPayload> {

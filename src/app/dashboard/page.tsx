@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,7 +18,14 @@ import {
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
-import { getDashboardStatsAction, type DashboardStats, type DailySalesTrend } from "./actions";
+import {
+  generateDraftPurchaseOrdersAction,
+  getDashboardStatsAction,
+  getReorderSuggestionsAction,
+  type DashboardStats,
+  type DailySalesTrend,
+  type ReorderSuggestionsResponse,
+} from "./actions";
 
 interface User {
   id: string;
@@ -90,6 +98,14 @@ export default function DashboardPage() {
   const { data: stats, isLoading } = useCachedData<DashboardStats>(
     "dashboard-stats-v2",
     getDashboardStatsAction
+  );
+
+  const {
+    data: reorderData,
+    mutate: mutateReorder,
+  } = useCachedData<ReorderSuggestionsResponse>(
+    "dashboard-reorder-v1",
+    getReorderSuggestionsAction
   );
 
   return (
@@ -312,6 +328,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Reorder Widget */}
+          <ReorderWidget
+            reorderData={reorderData ?? null}
+            onChanged={() => {
+              void mutateReorder();
+            }}
+          />
+
         </>
       ) : null}
 
@@ -397,6 +421,239 @@ function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14
         />
       </AreaChart>
     </ResponsiveContainer>
+  );
+}
+
+function ReorderWidget({
+  reorderData,
+  onChanged,
+}: {
+  reorderData: ReorderSuggestionsResponse | null;
+  onChanged: () => void;
+}) {
+  const router = useRouter();
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const totalItems = reorderData?.total_items ?? 0;
+  const groups = reorderData?.groups ?? [];
+  const vendorGroups = groups.filter((g) => g.vendor_id);
+  const unassignedGroup = groups.find((g) => !g.vendor_id);
+
+  async function handleGenerate(vendorIds: string[] | null) {
+    setError(null);
+    setGenerating(vendorIds === null ? "all" : vendorIds.join(","));
+    try {
+      const result = await generateDraftPurchaseOrdersAction(
+        vendorIds ?? undefined
+      );
+      onChanged();
+      if (result.created.length > 0) {
+        router.push("/purchase-orders");
+      } else {
+        setError("Tidak ada draft PO yang dibuat. Pastikan vendor sudah aktif.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal membuat draft PO"
+      );
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
+      <div className="flex items-start justify-between mb-4 gap-3">
+        <div>
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-amber-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
+            </svg>
+            Barang Perlu Restock
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            {totalItems > 0
+              ? `${totalItems} barang di bawah par level`
+              : "Semua stok di atas par level"}
+          </p>
+        </div>
+        {vendorGroups.length > 0 && (
+          <button
+            type="button"
+            onClick={() => handleGenerate(null)}
+            disabled={generating !== null}
+            className="px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all whitespace-nowrap"
+          >
+            {generating === "all" ? "Generating..." : `Generate Semua (${vendorGroups.length})`}
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      {totalItems === 0 ? (
+        <div className="py-8 text-center text-sm text-gray-400 dark:text-slate-500">
+          Tidak ada barang yang perlu di-restock saat ini.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {vendorGroups.map((group) => (
+            <details
+              key={group.vendor_id}
+              className="group bg-gray-50 dark:bg-slate-800/60 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden"
+            >
+              <summary className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 list-none">
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg
+                    className="w-4 h-4 text-gray-500 dark:text-slate-400 group-open:rotate-90 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-gray-800 dark:text-slate-100 truncate">
+                      {group.vendor_name || "Vendor"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {group.items.length} barang · estimasi{" "}
+                      {fmtCurrency(group.total_estimasi)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (group.vendor_id) handleGenerate([group.vendor_id]);
+                  }}
+                  disabled={generating !== null}
+                  className="px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {generating === group.vendor_id ? "..." : "Generate Draft"}
+                </button>
+              </summary>
+              <div className="border-t border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-800">
+                {group.items.map((item) => (
+                  <div
+                    key={item.barang_id}
+                    className="flex items-center justify-between px-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-800 dark:text-slate-100 truncate">
+                        {item.barang_nama}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        Stok {item.jumlah_stok.toLocaleString("id-ID")} / par{" "}
+                        {item.level_stok_minimum.toLocaleString("id-ID")}{" "}
+                        {item.satuan_dasar}
+                        {item.pending_po_qty > 0 && (
+                          <span className="text-blue-600 dark:text-blue-300">
+                            {" "}
+                            · {item.pending_po_qty.toLocaleString("id-ID")} di
+                            PO pending
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right ml-3 whitespace-nowrap">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                        {item.suggested_qty.toLocaleString("id-ID")}{" "}
+                        {item.satuan_dasar}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        @ {fmtCurrency(item.last_unit_price)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ))}
+
+          {unassignedGroup && unassignedGroup.items.length > 0 && (
+            <details className="group bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900/40 overflow-hidden">
+              <summary className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-950/40 list-none">
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg
+                    className="w-4 h-4 text-amber-600 dark:text-amber-400 group-open:rotate-90 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">
+                      Tanpa Saran Vendor ({unassignedGroup.items.length})
+                    </p>
+                    <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                      Belum ada riwayat pembelian. Buat PO manual.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/purchase-orders"
+                  className="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold whitespace-nowrap"
+                >
+                  Buat Manual
+                </Link>
+              </summary>
+              <div className="border-t border-amber-200 dark:border-amber-900/40 divide-y divide-amber-100 dark:divide-amber-900/30">
+                {unassignedGroup.items.map((item) => (
+                  <div
+                    key={item.barang_id}
+                    className="flex items-center justify-between px-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-800 dark:text-slate-100 truncate">
+                        {item.barang_nama}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        Stok {item.jumlah_stok.toLocaleString("id-ID")} / par{" "}
+                        {item.level_stok_minimum.toLocaleString("id-ID")}{" "}
+                        {item.satuan_dasar}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap ml-3">
+                      Butuh {item.suggested_qty.toLocaleString("id-ID")}{" "}
+                      {item.satuan_dasar}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

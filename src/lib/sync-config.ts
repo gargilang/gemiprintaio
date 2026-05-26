@@ -7,9 +7,20 @@ export const SYNC_WAVE = Number(process.env.SYNC_WAVE || "1");
 export const CORE_SYNC_TABLES = [
   "penjualan",
   "item_penjualan",
+  "penawaran",
+  "item_penawaran",
   "pembelian",
   "item_pembelian",
+  "purchase_orders",
+  "purchase_order_items",
+  "retur_penjualan",
+  "item_retur_penjualan",
+  "retur_pembelian",
+  "item_retur_pembelian",
+  "stock_opnames",
+  "stock_opname_items",
   "inventory_movements",
+  "production_material_consumptions",
   "keuangan",
 ] as const;
 
@@ -22,6 +33,7 @@ export const BALANCE_SYNC_TABLES = [
 
 export const MASTER_SYNC_TABLES = [
   "barang",
+  "barang_roll_variants",
   "harga_barang_satuan",
   "pelanggan",
   "vendor",

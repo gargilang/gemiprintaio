@@ -31,9 +31,17 @@ export interface Material {
   level_stok_minimum: number;
   lacak_inventori_status: boolean | number;
   butuh_dimensi_status: boolean | number;
+  roll_inventory_status?: boolean | number;
   category_name?: string;
   subcategory_name?: string;
   unit_prices?: UnitPrice[];
+  roll_variants?: Array<{
+    id: string;
+    lebar_m: number;
+    panjang_tersedia_m: number;
+    average_cost_per_m2: number;
+    aktif_status: number;
+  }>;
 }
 
 export interface UnitPrice {
@@ -90,12 +98,22 @@ export async function getMaterials(): Promise<Material[]> {
             orderBy: { column: "urutan_tampilan", ascending: true },
           }
         );
+        const rollVariantsResult = await db.query<any>(
+          "barang_roll_variants",
+          {
+            where: { barang_id: material.id },
+            orderBy: { column: "lebar_m", ascending: true },
+          }
+        );
 
         return {
           ...material,
           category_name: category?.nama || undefined,
           subcategory_name: subcategory?.nama || undefined,
           unit_prices: unitPricesResult.data || [],
+          roll_variants: (rollVariantsResult.data || []).filter(
+            (row: any) => Number(row.aktif_status) !== 0
+          ),
         };
       })
     );
@@ -147,10 +165,17 @@ export async function getMaterialById(id: string): Promise<Material | null> {
       where: { barang_id: id },
       orderBy: { column: "urutan_tampilan", ascending: true },
     });
+    const rollVariantsResult = await db.query<any>("barang_roll_variants", {
+      where: { barang_id: id },
+      orderBy: { column: "lebar_m", ascending: true },
+    });
 
     return {
       ...material,
       unit_prices: unitPricesResult.data || [],
+      roll_variants: (rollVariantsResult.data || []).filter(
+        (row: any) => Number(row.aktif_status) !== 0
+      ),
     };
   } catch (error) {
     console.error("Error fetching material:", error);
@@ -195,6 +220,9 @@ export async function createMaterial(
         : materialData.level_stok_minimum ?? 0,
       lacak_inventori_status: toDbIntBoolean(materialData.lacak_inventori_status),
       butuh_dimensi_status: toDbIntBoolean(materialData.butuh_dimensi_status),
+      roll_inventory_status: isDimensional
+        ? 1
+        : toDbIntBoolean(materialData.roll_inventory_status),
       average_cost_per_base_unit:
         materialData.average_cost_per_base_unit ?? initialAverageCostPerBaseUnit,
       dibuat_pada: new Date().toISOString(),
@@ -317,6 +345,8 @@ export async function updateMaterial(
       ...(materialData.butuh_dimensi_status !== undefined
         ? {
             butuh_dimensi_status:
+              toDbIntBoolean(materialData.butuh_dimensi_status),
+            roll_inventory_status:
               toDbIntBoolean(materialData.butuh_dimensi_status),
           }
         : {}),

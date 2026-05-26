@@ -142,6 +142,191 @@ export const PurchaseOrderIcon = ({
   </svg>
 );
 
+export const QuotationIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M6 3H15L19 7V21H6V3Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path d="M15 3V7H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 11H15M9 15H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M15 16L18 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="15.2" cy="13.2" r="0.8" fill="currentColor" />
+    <circle cx="17.8" cy="15.8" r="0.8" fill="currentColor" />
+  </svg>
+);
+
+export const SalesReturnIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M3 3H5L6.7 13.2H18.2L21 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="9" cy="20" r="1.6" stroke="currentColor" strokeWidth="2" />
+    <circle cx="18" cy="20" r="1.6" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M16 9H11.5C10.1 9 9 10.1 9 11.5S10.1 14 11.5 14H14"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M13 6L16 9L13 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const PurchaseReturnIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M20 8L12 4L4 8L12 12L20 8Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path d="M4 8V16L12 20L20 16V8M12 12V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 7L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M8 15H4.5C3.1 15 2 13.9 2 12.5S3.1 10 4.5 10H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 7L2 10L5 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const DebtIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M6 3H18V21L15.5 19.5L13 21L10.5 19.5L8 21L6 19.8V3Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path d="M9 8H15M9 11H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="15" cy="16" r="3" stroke="currentColor" strokeWidth="2" />
+    <path d="M15 14.5V16H16.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const StockAdjustmentIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M4 8H20M4 16H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="9" cy="8" r="2" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.12" />
+    <circle cx="16" cy="16" r="2" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.12" />
+    <path d="M7 21L12 18L17 21M12 18V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10 12L12 10L14 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const StockOpnameIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M8 4H6C4.9 4 4 4.9 4 6V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V6C20 4.9 19.1 4 18 4H16"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2" />
+    <path d="M8 11L10 13L14 9M8 17H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const MovementLedgerIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M5 3H19V21H5V3Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path d="M8 8H16M8 12H13M8 16H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M16 13L19 16L16 19M19 16H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const PurchaseOrderFlowIcon = ({ className = "", size = 24 }: IconProps) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M6 3H15L19 7V21H6V3Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="currentColor"
+      fillOpacity="0.08"
+    />
+    <path d="M15 3V7H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 11H14M9 15H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M15 14L18 17L15 20M18 17H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const UsersIcon = ({ className = "", size = 24 }: IconProps) => (
   <svg
     className={className}

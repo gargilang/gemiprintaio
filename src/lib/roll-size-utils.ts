@@ -46,6 +46,23 @@ export function suggestCheapestRollSize(
   return sorted[sorted.length - 1] ?? shorter;
 }
 
+/**
+ * Billing recommendation: pick the smallest roll that can cover the shorter
+ * side of the order. Operators may still override the actual roll in SPK.
+ */
+export function suggestSmallestCoveringRollSize(
+  panjang: number,
+  lebar: number,
+  rollSizes: number[] = getStoredRollSizes()
+): number {
+  const shorter = Math.min(panjang, lebar);
+  const sorted = [...rollSizes].sort((a, b) => a - b);
+  for (const size of sorted) {
+    if (size >= shorter) return size;
+  }
+  return sorted[sorted.length - 1] ?? shorter;
+}
+
 /** @deprecated Use suggestCheapestRollSize with both dimensions */
 export function suggestRollSize(
   smallerDim: number,

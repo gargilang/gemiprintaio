@@ -80,6 +80,10 @@ const DEFAULT_CATEGORIES: FinanceCategoryDefinition[] = [
   { category_code: "SUBSIDI", display_name: "Subsidi", color_bg: "bg-yellow-100 dark:bg-yellow-900/30", color_text: "text-yellow-800", color_border: "border-yellow-300", direction: "debit", display_order: 50 },
   { category_code: "LUNAS", display_name: "Lunas", color_bg: "bg-teal-100 dark:bg-teal-900/30", color_text: "text-teal-800", color_border: "border-teal-300", direction: "debit", display_order: 60 },
   { category_code: "SUPPLY", display_name: "Supply", color_bg: "bg-orange-100 dark:bg-orange-900/30", color_text: "text-orange-800", color_border: "border-orange-300", direction: "kredit", display_order: 70 },
+  { category_code: "RETUR_PEMBELIAN", display_name: "Retur Pembelian", color_bg: "bg-emerald-100", color_text: "text-emerald-800", color_border: "border-emerald-300", direction: "debit", display_order: 72 },
+  { category_code: "RETUR_PENJUALAN", display_name: "Retur Penjualan", color_bg: "bg-rose-100", color_text: "text-rose-800", color_border: "border-rose-300", direction: "kredit", display_order: 32 },
+  { category_code: "RETUR_PENJUALAN_NONCASH", display_name: "Retur Penjualan (non-kas)", color_bg: "bg-rose-50", color_text: "text-rose-700", color_border: "border-rose-200", direction: "kredit", display_order: 33 },
+  { category_code: "RETUR_HPP", display_name: "Retur HPP", color_bg: "bg-slate-100", color_text: "text-slate-800", color_border: "border-slate-300", direction: "debit", display_order: 76 },
   { category_code: "LABA", display_name: "Laba", color_bg: "bg-emerald-100 dark:bg-emerald-900/30", color_text: "text-emerald-800", color_border: "border-emerald-300", direction: "both", display_order: 80 },
   { category_code: "KOMISI", display_name: "Komisi", color_bg: "bg-cyan-100 dark:bg-cyan-900/30", color_text: "text-cyan-800", color_border: "border-cyan-300", direction: "kredit", display_order: 90 },
   { category_code: "TABUNGAN", display_name: "Tabungan", color_bg: "bg-indigo-100 dark:bg-indigo-900/30", color_text: "text-indigo-800", color_border: "border-indigo-300", direction: "kredit", display_order: 100 },
@@ -362,6 +366,9 @@ async function ensureColumnRulesTable(): Promise<void> {
         { codes: ["OMZET", "PIUTANG", "LUNAS"], contrib: [{ column: "omzet", amount_field: "debit", sign: 1 }] },
         { codes: ["BIAYA", "TABUNGAN", "KOMISI"], contrib: [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }] },
         { codes: ["HPP"], contrib: [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }] },
+        { codes: ["RETUR_PENJUALAN", "RETUR_PENJUALAN_NONCASH"], contrib: [{ column: "omzet", amount_field: "kredit", sign: -1 }] },
+        { codes: ["RETUR_HPP"], contrib: [{ column: "biaya_bahan", amount_field: "debit", sign: -1 }] },
+        { codes: ["RETUR_PEMBELIAN"], contrib: [] },
       ];
       for (const { codes, contrib } of seedContributions) {
         await sb

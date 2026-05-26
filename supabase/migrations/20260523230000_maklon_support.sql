@@ -103,29 +103,6 @@ ON CONFLICT (category_code) DO UPDATE SET
   direction = EXCLUDED.direction,
   is_active = 1;
 
--- 5. Seed placeholder barang "Jasa Maklon Cetak" used as the FK target for
---    every MAKLON line on item_penjualan and item_pembelian. Inventory
---    tracking is OFF so stock never moves; the real cost is captured
---    per-line via biaya_subkontrak / item_pembelian.harga_satuan.
-INSERT INTO barang
-  (id, nama, deskripsi, kategori_id, satuan_dasar, jumlah_stok, average_cost_per_base_unit,
-   level_stok_minimum, lacak_inventori_status, butuh_dimensi_status)
-VALUES (
-  'barang-jasa-maklon',
-  'Jasa Maklon Cetak',
-  'Placeholder untuk pekerjaan yang dikerjakan vendor subkontraktor (auto-generated, jangan diedit).',
-  'cat-lain-lain',
-  'pcs',
-  0, 0, 0, 0, 0
-)
-ON CONFLICT (id) DO NOTHING;
+-- 5. (Placeholder barang "Jasa Maklon Cetak" removed from default seed.
+--    Create it manually if needed for your installation.)
 
-INSERT INTO harga_barang_satuan
-  (id, barang_id, nama_satuan, faktor_konversi, harga_beli, harga_jual, harga_member, default_status, urutan_tampilan)
-VALUES (
-  'harga-jasa-maklon-pcs',
-  'barang-jasa-maklon',
-  'pcs',
-  1, 0, 0, 0, 1, 0
-)
-ON CONFLICT (id) DO NOTHING;

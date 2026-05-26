@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlusIcon, TrashIcon } from "@/components/icons/ContentIcons";
+import { SparklesIcon } from "@/components/icons/PageIcons";
 
 type TextRole = "headline" | "subheadline" | "menu" | "cta" | "body" | "small";
 type Emphasis = "high" | "medium" | "low";
@@ -506,16 +507,18 @@ export default function AiPromptPage() {
 
   return (
     <div className="space-y-6">
+      {/* Title Card */}
+      <div className="bg-gradient-to-br from-[#00afef] to-[#dc2626] rounded-2xl shadow-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <SparklesIcon size={28} className="text-white" />
+          <div>
+            <h2 className="text-2xl font-bold uppercase tracking-wide">AI Prompt</h2>
+            <p className="text-white/90 text-sm">Ubah imajinasi pelanggan menjadi prompt gambar siap pakai untuk Generative AI</p>
+          </div>
+        </div>
+      </div>
       <section className="rounded-lg border border-cyan-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#00afef]">
-              Pembuat Prompt AI Design
-            </p>
-            <h2 className="mt-1 text-2xl font-bold text-[#0a1b3d] dark:text-slate-100">
-              Ubah imajinasi pelanggan menjadi prompt gambar siap pakai untuk Generative AI
-            </h2>
-          </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

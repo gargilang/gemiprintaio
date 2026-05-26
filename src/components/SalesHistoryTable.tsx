@@ -33,6 +33,7 @@ interface Sale {
   kasir_nama: string | null;
   has_pelunasan?: number; // 1 if has payment records, 0 if not
   items?: SaleItemRow[];
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 interface SalesHistoryTableProps {
@@ -239,6 +240,7 @@ export default function SalesHistoryTable({
         jumlah_bayar: bayar,
         kembalian: Math.max(0, bayar - total),
         metode_pembayaran: sale.metode_pembayaran,
+        biaya_tambahan: sale.biaya_tambahan,
       });
     } catch (e) {
       console.error("reprintThermal error:", e);
@@ -328,6 +330,7 @@ export default function SalesHistoryTable({
         bayar,
         sisa,
         shop,
+        biaya_tambahan: sale.biaya_tambahan,
       });
       window.dispatchEvent(
         new CustomEvent("gemi:preview-faktur", {
@@ -423,6 +426,7 @@ export default function SalesHistoryTable({
         bayar,
         sisa,
         shop,
+        biaya_tambahan: sale.biaya_tambahan,
       });
     } catch (e) {
       console.error("reprintFaktur error:", e);
@@ -842,6 +846,28 @@ export default function SalesHistoryTable({
                               </div>
                             ))}
                           </div>
+                          {sale.biaya_tambahan && sale.biaya_tambahan.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                              <div className="font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Biaya Tambahan:
+                              </div>
+                              <div className="space-y-0.5">
+                                {sale.biaya_tambahan.map((b, bIdx) => (
+                                  <div
+                                    key={bIdx}
+                                    className="flex justify-between py-0.5 px-2 bg-amber-50 dark:bg-amber-900/20 rounded"
+                                  >
+                                    <span className="text-gray-700 dark:text-slate-300">
+                                      {b.label}
+                                    </span>
+                                    <span className="font-semibold text-amber-700 dark:text-amber-300">
+                                      Rp {b.nominal.toLocaleString("id-ID")}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

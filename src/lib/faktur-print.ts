@@ -49,6 +49,11 @@ export interface FakturData {
   sisa: number;
   /** Optional footer note (e.g. catatan). Currently unused by template but kept for future. */
   catatan?: string;
+  /**
+   * Header-level extra charges (ongkir, biaya pasang, dll).
+   * Rendered as separate rows in the totals block before TOTAL.
+   */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
   /** PPN section. Tampil hanya kalau kena_ppn dan ppn_total > 0. */
   ppn?: {
     /** Komposit NSFP, mis. "010.000-25.00000001". Wajib kalau kena_ppn. */
@@ -150,6 +155,7 @@ export function generateFakturHTML(data: FakturData): string {
     sisa,
     ppn,
     shop,
+    biaya_tambahan,
   } = data;
 
   const shopInfo = {
@@ -177,6 +183,16 @@ export function generateFakturHTML(data: FakturData): string {
 
   // PPN-aware totals: kalau kena_ppn, tampil DPP + PPN row sebelum TOTAL.
   const hasPpn = ppn && ppn.ppn_total > 0;
+  const biayaTambahanRows = (biaya_tambahan || [])
+    .filter((b) => b.label?.trim() && b.nominal > 0)
+    .map(
+      (b) => `
+      <div class="totals-row">
+        <div class="totals-label">${escapeHtml(b.label)} Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(b.nominal)}</div>
+      </div>`
+    )
+    .join("");
   const totalsHTML = hasPpn
     ? `
       <div class="totals-row">
@@ -186,7 +202,7 @@ export function generateFakturHTML(data: FakturData): string {
       <div class="totals-row">
         <div class="totals-label">PPN ${ppn!.persen}% Rp.</div>
         <div class="totals-value">${formatRupiahPlain(ppn!.ppn_total)}</div>
-      </div>
+      </div>${biayaTambahanRows}
       <div class="totals-row totals-grand">
         <div class="totals-label">TOTAL Rp.</div>
         <div class="totals-value">${formatRupiahPlain(total)}</div>
@@ -199,7 +215,7 @@ export function generateFakturHTML(data: FakturData): string {
         <div class="totals-label">SISA Rp.</div>
         <div class="totals-value">${formatRupiahPlain(sisa)}</div>
       </div>`
-    : `
+    : `${biayaTambahanRows}
       <div class="totals-row">
         <div class="totals-label">TOTAL Rp.</div>
         <div class="totals-value">${formatRupiahPlain(total)}</div>

@@ -102,9 +102,7 @@ VALUES
   ('fin-cat-komisi', 'KOMISI', 'Komisi', 'bg-cyan-100', 'text-cyan-800', 'border-cyan-300', 'kredit', 90),
   ('fin-cat-tabungan', 'TABUNGAN', 'Tabungan', 'bg-indigo-100', 'text-indigo-800', 'border-indigo-300', 'kredit', 100),
   ('fin-cat-hutang', 'HUTANG', 'Hutang', 'bg-rose-100', 'text-rose-800', 'border-rose-300', 'kredit', 110),
-  ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 120),
-  ('fin-cat-pribadi-a', 'PRIBADI-A', 'Pribadi A', 'bg-sky-100', 'text-sky-800', 'border-sky-300', 'both', 130),
-  ('fin-cat-pribadi-s', 'PRIBADI-S', 'Pribadi S', 'bg-pink-100', 'text-pink-800', 'border-pink-300', 'both', 140)
+  ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 120)
 ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   color_bg = EXCLUDED.color_bg,

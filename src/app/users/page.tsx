@@ -617,35 +617,21 @@ export default function UsersPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-[#00afef]">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Total Users</h4>
-                <UsersIcon size={28} className="text-[#00afef]" />
-              </div>
-              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
-                {users.length}
-              </p>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-[#00afef] shadow-sm">
+              <UsersIcon size={16} className="text-[#00afef] shrink-0" />
+              <span className="text-sm text-slate-500 dark:text-slate-400">Total Users</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.length}</span>
             </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-green-500">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Aktif</h4>
-                <CheckIcon size={28} className="text-green-600" />
-              </div>
-              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
-                {users.filter((u) => u.aktif_status).length}
-              </p>
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-green-500 shadow-sm">
+              <CheckIcon size={16} className="text-green-600 shrink-0" />
+              <span className="text-sm text-slate-500 dark:text-slate-400">Aktif</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.aktif_status).length}</span>
             </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-6 border-l-4 border-l-purple-500">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[#6b7280] dark:text-slate-400 font-semibold">Admin</h4>
-                <CrownIcon size={28} className="text-purple-600 dark:text-purple-300" />
-              </div>
-              <p className="text-3xl font-bold text-[#0a1b3d] dark:text-slate-100">
-                {users.filter((u) => u.role === "admin").length}
-              </p>
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-purple-500 shadow-sm">
+              <CrownIcon size={16} className="text-purple-600 dark:text-purple-300 shrink-0" />
+              <span className="text-sm text-slate-500 dark:text-slate-400">Admin</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.role === "admin").length}</span>
             </div>
           </div>
         </>
@@ -989,7 +975,7 @@ export default function UsersPage() {
         header={
           <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
                 <UsersIcon size={28} className="text-white" />
               </div>
               <h3 className="text-xl font-bold text-white truncate">
@@ -1201,7 +1187,7 @@ export default function UsersPage() {
         header={
           <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-[#0a1b3d]/90 to-[#00afef]/90 flex items-center justify-between shrink-0 gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+              <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
                 <KeyIcon size={24} className="text-white" />
               </div>
               <h3 className="text-xl font-bold text-white truncate">

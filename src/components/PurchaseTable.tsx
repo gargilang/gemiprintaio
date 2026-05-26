@@ -37,6 +37,7 @@ interface Purchase {
     harga_beli: number;
     panjang?: number | null;
     lebar?: number | null;
+    jumlah_roll?: number | null;
   }[];
 }
 
@@ -101,7 +102,7 @@ const PurchaseRow = memo(
           catatan: purchase.catatan || undefined,
           items: purchase.items.map((item) => ({
             nama: item.nama_barang,
-            ukuran: formatUkuranPembelian(item.panjang, item.lebar),
+            ukuran: formatUkuranPembelian(item.panjang, item.lebar, item.jumlah_roll),
             qty: item.jumlah,
             satuan: item.nama_satuan,
             harga: item.harga_beli,
@@ -164,7 +165,7 @@ const PurchaseRow = memo(
           catatan: purchase.catatan || undefined,
           items: purchase.items.map((item) => ({
             nama: item.nama_barang,
-            ukuran: formatUkuranPembelian(item.panjang, item.lebar),
+            ukuran: formatUkuranPembelian(item.panjang, item.lebar, item.jumlah_roll),
             qty: item.jumlah,
             satuan: item.nama_satuan,
             harga: item.harga_beli,

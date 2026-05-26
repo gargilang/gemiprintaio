@@ -1,0 +1,194 @@
+import "server-only";
+
+import { db, generateId } from "@/lib/db-unified";
+import { getMaterials } from "@/lib/services/materials-service";
+import { postInventoryMovement } from "@/lib/services/inventory-service";
+import {
+  generateDailyDocumentNumber,
+  numeric,
+  todayJakarta,
+} from "./document-number-service";
+
+async function enrichSessions(rows: any[]) {
+  const ids = new Set(rows.map((row) => row.id));
+  const itemRes = await db.query<any>("stock_opname_items", {});
+  if (itemRes.error) throw itemRes.error;
+  const items = (itemRes.data || []).filter((item) => ids.has(item.stock_opname_id));
+  const barangIds = [...new Set(items.map((item) => item.barang_id).filter(Boolean))];
+  const barangMap = new Map<string, string>();
+  await Promise.all(
+    barangIds.map(async (id) => {
+      const res = await db.queryOne<{ nama: string; satuan_dasar?: string }>("barang", {
+        where: { id },
+        select: "nama,satuan_dasar",
+      });
+      if (res.data) barangMap.set(id, res.data.nama);
+    })
+  );
+  const bySession = new Map<string, any[]>();
+  for (const item of items) {
+    const list = bySession.get(item.stock_opname_id) || [];
+    list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
+    bySession.set(item.stock_opname_id, list);
+  }
+  return rows.map((row) => ({
+    ...row,
+    items: bySession.get(row.id) || [],
+  }));
+}
+
+export async function getStockOpnames(limit = 100) {
+  const result = await db.query<any>("stock_opnames", {
+    orderBy: { column: "dibuat_pada", ascending: false },
+    limit,
+  });
+  if (result.error) throw result.error;
+  return enrichSessions(result.data || []);
+}
+
+export async function getStockOpnameById(id: string) {
+  const result = await db.queryOne<any>("stock_opnames", { where: { id } });
+  if (result.error) throw result.error;
+  if (!result.data) return null;
+  const [session] = await enrichSessions([result.data]);
+  return session;
+}
+
+export async function createStockOpname(input: {
+  tanggal?: string;
+  catatan?: string | null;
+  dibuat_oleh?: string | null;
+  barang_ids?: string[];
+}) {
+  const tanggal = input.tanggal || todayJakarta();
+  const id = generateId();
+  const nomor = await generateDailyDocumentNumber("stock_opnames", "nomor_opname", "SO", tanggal);
+  const materials = await getMaterials();
+  const selectedIds = input.barang_ids?.length ? new Set(input.barang_ids) : null;
+  const tracked = materials.filter(
+    (material: any) =>
+      Number(material.lacak_inventori_status ?? 1) !== 0 &&
+      (!selectedIds || selectedIds.has(material.id))
+  );
+
+  await db.transaction(async () => {
+    const header = await db.insert("stock_opnames", {
+      id,
+      nomor_opname: nomor,
+      tanggal,
+      status: "DRAFT",
+      catatan: input.catatan?.trim() || null,
+      dibuat_oleh: input.dibuat_oleh || null,
+      total_items: tracked.length,
+      total_delta_qty: 0,
+      total_delta_value: 0,
+    });
+    if (header.error) throw header.error;
+
+    for (const material of tracked) {
+      const row = await db.insert("stock_opname_items", {
+        id: generateId(),
+        stock_opname_id: id,
+        barang_id: material.id,
+        system_qty: numeric(material.jumlah_stok),
+        counted_qty: null,
+        delta_qty: 0,
+        unit_cost: numeric(material.average_cost_per_base_unit),
+        delta_value: 0,
+      });
+      if (row.error) throw row.error;
+    }
+  });
+
+  return { id, nomor_opname: nomor };
+}
+
+export async function updateStockOpnameCounts(
+  id: string,
+  items: Array<{ stock_opname_item_id: string; counted_qty: number; catatan?: string | null }>
+) {
+  const session = await getStockOpnameById(id);
+  if (!session) throw new Error("Stock opname tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAFT yang bisa diedit");
+
+  let totalDeltaQty = 0;
+  let totalDeltaValue = 0;
+  for (const input of items) {
+    const existing = (session.items || []).find((item: any) => item.id === input.stock_opname_item_id);
+    if (!existing) continue;
+    const countedQty = numeric(input.counted_qty);
+    const deltaQty = countedQty - numeric(existing.system_qty);
+    const deltaValue = deltaQty * numeric(existing.unit_cost);
+    const upd = await db.update("stock_opname_items", existing.id, {
+      counted_qty: countedQty,
+      delta_qty: deltaQty,
+      delta_value: deltaValue,
+      catatan: input.catatan?.trim() || null,
+    });
+    if (upd.error) throw upd.error;
+  }
+
+  const fresh = await getStockOpnameById(id);
+  for (const item of fresh?.items || []) {
+    totalDeltaQty += numeric(item.delta_qty);
+    totalDeltaValue += numeric(item.delta_value);
+  }
+  const updHeader = await db.update("stock_opnames", id, {
+    total_delta_qty: totalDeltaQty,
+    total_delta_value: totalDeltaValue,
+  });
+  if (updHeader.error) throw updHeader.error;
+}
+
+export async function postStockOpname(id: string, actorId?: string | null) {
+  const session = await getStockOpnameById(id);
+  if (!session) throw new Error("Stock opname tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Stock opname sudah diposting/batal");
+
+  let totalDeltaQty = 0;
+  let totalDeltaValue = 0;
+  await db.transaction(async () => {
+    for (const item of session.items || []) {
+      const deltaQty = numeric(item.delta_qty);
+      if (Math.abs(deltaQty) < 0.000001) continue;
+      const movement = await postInventoryMovement({
+        id: `mov-${item.id}`,
+        barang_id: item.barang_id,
+        tanggal: session.tanggal || todayJakarta(),
+        movement_type: "ADJUSTMENT",
+        qty_delta: deltaQty,
+        unit_cost: numeric(item.unit_cost),
+        source_type: "STOCK_OPNAME",
+        source_id: id,
+        source_line_id: item.id,
+        catatan: item.catatan || `Stock opname ${session.nomor_opname}`,
+        dibuat_oleh: actorId || null,
+      });
+      const upd = await db.update("stock_opname_items", item.id, {
+        movement_id: movement?.id || null,
+      });
+      if (upd.error) throw upd.error;
+      totalDeltaQty += deltaQty;
+      totalDeltaValue += numeric(item.delta_value);
+    }
+
+    const updHeader = await db.update("stock_opnames", id, {
+      status: "POSTED",
+      posted_at: new Date().toISOString(),
+      posted_by: actorId || null,
+      total_delta_qty: totalDeltaQty,
+      total_delta_value: totalDeltaValue,
+    });
+    if (updHeader.error) throw updHeader.error;
+  });
+
+  return { id, total_delta_qty: totalDeltaQty, total_delta_value: totalDeltaValue };
+}
+
+export async function cancelStockOpname(id: string) {
+  const session = await getStockOpnameById(id);
+  if (!session) throw new Error("Stock opname tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAFT yang bisa dibatalkan");
+  const upd = await db.update("stock_opnames", id, { status: "CANCELLED" });
+  if (upd.error) throw upd.error;
+}

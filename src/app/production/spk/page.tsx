@@ -15,6 +15,9 @@ import {
   getProductionOrdersAction,
   updateProductionStatusAction,
   updateProductionItemStatusAction,
+  getRollVariantsForProductionItemAction,
+  postProductionMaterialConsumptionAction,
+  voidProductionMaterialConsumptionAction,
 } from "./actions";
 import {
   fetchSessionUser,
@@ -26,6 +29,13 @@ interface User {
   id: string;
   nama_pengguna: string;
   role: string;
+}
+
+interface RollVariantOption {
+  id: string;
+  lebar_m: number;
+  panjang_tersedia_m: number;
+  average_cost_per_m2: number;
 }
 
 const EMPTY_ORDERS: ProductionOrder[] = [];
@@ -55,6 +65,12 @@ export default function ProductionPage() {
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
+  const [rollVariantsByItem, setRollVariantsByItem] = useState<
+    Record<string, RollVariantOption[]>
+  >({});
+  const [consumptionDrafts, setConsumptionDrafts] = useState<
+    Record<string, { roll_variant_id: string; linear_used_m: string; catatan: string }>
+  >({});
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +87,60 @@ export default function ProductionPage() {
       cancelled = true;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!showDetailModal || !selectedOrder) return;
+    const pendingItems = (selectedOrder.items || []).filter(
+      (item) => item.roll_inventory_status === "PENDING"
+    );
+    if (pendingItems.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        pendingItems.map(async (item) => {
+          try {
+            const variants = await getRollVariantsForProductionItemAction(item.id);
+            return [item.id, variants as RollVariantOption[]] as const;
+          } catch (error) {
+            console.error("Error loading roll variants:", error);
+            return [item.id, [] as RollVariantOption[]] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setRollVariantsByItem((prev) => {
+        const next = { ...prev };
+        for (const [itemId, variants] of entries) {
+          next[itemId] = variants;
+        }
+        return next;
+      });
+      setConsumptionDrafts((prev) => {
+        const next = { ...prev };
+        for (const item of pendingItems) {
+          if (next[item.id]) continue;
+          const variants = entries.find(([itemId]) => itemId === item.id)?.[1] || [];
+          const preferred =
+            variants.find(
+              (v) =>
+                Math.abs(
+                  Number(v.lebar_m) - Number(item.recommended_roll_width_m || 0)
+                ) < 0.000001
+            ) || variants[0];
+          next[item.id] = {
+            roll_variant_id: preferred?.id || "",
+            linear_used_m: "",
+            catatan: "",
+          };
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showDetailModal, selectedOrder]);
 
   const filteredOrders = useMemo(() => {
     let filtered = [...orders];
@@ -135,6 +205,70 @@ export default function ProductionPage() {
     } catch (error) {
       console.error("Error updating item status:", error);
       showMsg("error", "Gagal memperbarui status item");
+    }
+  };
+
+  const patchConsumptionDraft = (
+    itemId: string,
+    patch: Partial<{ roll_variant_id: string; linear_used_m: string; catatan: string }>
+  ) => {
+    setConsumptionDrafts((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...(prev[itemId] || {
+          roll_variant_id: "",
+          linear_used_m: "",
+          catatan: "",
+        }),
+        ...patch,
+      },
+    }));
+  };
+
+  const handlePostConsumption = async (item: ProductionItem) => {
+    const draft = consumptionDrafts[item.id];
+    if (!draft?.roll_variant_id) {
+      showMsg("error", "Pilih roll aktual terlebih dahulu");
+      return;
+    }
+    try {
+      await postProductionMaterialConsumptionAction({
+        item_produksi_id: item.id,
+        roll_variant_id: draft.roll_variant_id,
+        linear_used_m: draft.linear_used_m
+          ? Number(draft.linear_used_m)
+          : null,
+        operator_id: currentUser?.id || null,
+        catatan: draft.catatan,
+      });
+      showMsg("success", "Konsumsi bahan produksi berhasil diposting");
+      await loadOrders();
+      if (selectedOrder) {
+        const refreshed = await getProductionOrdersAction();
+        const next = (refreshed as ProductionOrder[]).find(
+          (order) => order.id === selectedOrder.id
+        );
+        if (next) setSelectedOrder(next);
+      }
+    } catch (error: any) {
+      console.error("Error posting consumption:", error);
+      showMsg("error", error?.message || "Gagal posting konsumsi bahan");
+    }
+  };
+
+  const handleVoidConsumption = async (item: ProductionItem) => {
+    if (!item.consumption?.id) return;
+    try {
+      await voidProductionMaterialConsumptionAction(
+        item.consumption.id,
+        "Koreksi konsumsi produksi",
+        currentUser?.id || null
+      );
+      showMsg("success", "Konsumsi bahan dibatalkan");
+      await loadOrders();
+    } catch (error: any) {
+      console.error("Error voiding consumption:", error);
+      showMsg("error", error?.message || "Gagal membatalkan konsumsi bahan");
     }
   };
 
@@ -479,9 +613,9 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <svg
-                  className="w-5 h-5 text-yellow-500"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -508,8 +642,8 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
-                <PrinterIcon size={20} className="text-blue-500" />
+              <div className="p-2 bg-white/20 rounded-lg">
+                <PrinterIcon size={20} className="text-white" />
               </div>
               <h3 className="text-base font-semibold uppercase tracking-wide">
                 Proses
@@ -525,9 +659,9 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <svg
-                  className="w-5 h-5 text-green-500"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -554,9 +688,9 @@ export default function ProductionPage() {
         <div className="bg-gradient-to-br from-amber-700 to-amber-900 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg">
                 <svg
-                  className="w-5 h-5 text-amber-700"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -937,6 +1071,89 @@ export default function ProductionPage() {
                         <option value="SELESAI">SELESAI</option>
                       </select>
                     </div>
+
+                    {item.roll_inventory_status === "PENDING" && (
+                      <div className="mb-3 border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3">
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                              Roll aktual
+                            </label>
+                            <select
+                              value={consumptionDrafts[item.id]?.roll_variant_id || ""}
+                              onChange={(e) =>
+                                patchConsumptionDraft(item.id, {
+                                  roll_variant_id: e.target.value,
+                                })
+                              }
+                              className="px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
+                            >
+                              <option value="">Pilih roll</option>
+                              {(rollVariantsByItem[item.id] || []).map((variant) => (
+                                <option key={variant.id} value={variant.id}>
+                                  {Number(variant.lebar_m).toFixed(2)}m · sisa{" "}
+                                  {Number(variant.panjang_tersedia_m).toFixed(2)}m
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                              Panjang aktual
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              inputMode="decimal"
+                              value={consumptionDrafts[item.id]?.linear_used_m || ""}
+                              onChange={(e) =>
+                                patchConsumptionDraft(item.id, {
+                                  linear_used_m: e.target.value,
+                                })
+                              }
+                              placeholder="Auto"
+                              className="w-24 px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
+                            />
+                          </div>
+                          <div className="min-w-[180px] text-xs text-amber-900 dark:text-amber-200">
+                            Billing: {Number(item.jumlah || 0).toFixed(2)} m²
+                            {item.recommended_roll_width_m
+                              ? ` · rekomendasi ${Number(item.recommended_roll_width_m).toFixed(2)}m`
+                              : ""}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handlePostConsumption(item)}
+                            className="px-3 py-1.5 text-sm font-semibold rounded bg-amber-600 text-white hover:bg-amber-700"
+                          >
+                            Konfirmasi Bahan
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.roll_inventory_status === "POSTED" && item.consumption && (
+                      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
+                        <span>
+                          Roll {Number(item.consumption.roll_width_m).toFixed(2)}m ·
+                          pakai {Number(item.consumption.linear_used_m).toFixed(2)}m ·
+                          stok keluar {Number(item.consumption.area_used_m2).toFixed(2)}m²
+                        </span>
+                        {Number(item.consumption.waste_area_m2) > 0 && (
+                          <span>
+                            Waste {Number(item.consumption.waste_area_m2).toFixed(2)}m²
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleVoidConsumption(item)}
+                          className="px-2 py-1 rounded border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                        >
+                          Koreksi
+                        </button>
+                      </div>
+                    )}
 
                     {/* Finishing */}
                     {item.finishing && item.finishing.length > 0 && (

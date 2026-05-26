@@ -7,7 +7,7 @@ import {
   getRoundedDimensions,
   getStoredRollSizes,
   isRollSizeValidForDimensions,
-  suggestCheapestRollSize,
+  suggestSmallestCoveringRollSize,
 } from "@/lib/roll-size-utils";
 import {
   formatPosUnitPrice,
@@ -102,6 +102,12 @@ interface CartItem {
   billedPanjang?: number;
   billedLebar?: number;
   subtotalRaw: number;
+  /**
+   * Original harga_satuan from catalog (or maklon initial input).
+   * When user overrides the price, harga_satuan changes but this stays.
+   * Used to: show "(override)" badge, support Reset, compute discount/markup.
+   */
+  originalHargaSatuan?: number;
   finishing?: FinishingItem[];
   // Maklon (subcontract) line. When set, this cart entry represents work
   // outsourced to a partner shop instead of a regular catalog item.
@@ -238,6 +244,9 @@ export default function POSPage() {
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
   const [rollSizes, setRollSizes] = useState<number[]>(() => getStoredRollSizes());
   const [catatan, setCatatan] = useState("");
+  const [biayaTambahan, setBiayaTambahan] = useState<
+    Array<{ label: string; nominal: number }>
+  >([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
@@ -346,7 +355,7 @@ export default function POSPage() {
       return;
     }
     setSelectedRollSize(
-      suggestCheapestRollSize(parsedPanjang, parsedLebar, rollSizes)
+      suggestSmallestCoveringRollSize(parsedPanjang, parsedLebar, rollSizes)
     );
   }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
 
@@ -562,6 +571,7 @@ export default function POSPage() {
       harga_satuan: hargaPerSatuan,
       jumlah: finalQuantity,
       subtotalRaw,
+      originalHargaSatuan: hargaPerSatuan,
       butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
       panjang: originalPanjang,
       lebar: originalLebar,
@@ -683,6 +693,20 @@ export default function POSPage() {
     setCart(newCart);
   };
 
+  const handleEditPrice = (index: number, newHargaSatuan: number) => {
+    setCart((prev) => {
+      const next = [...prev];
+      const item = next[index];
+      if (!item) return prev;
+      next[index] = {
+        ...item,
+        harga_satuan: newHargaSatuan,
+        subtotalRaw: newHargaSatuan * item.jumlah,
+      };
+      return next;
+    });
+  };
+
   /**
    * Open the maklon modal — either for adding a new maklon line or editing
    * an existing one. Editing only works for cart lines that already have
@@ -709,6 +733,7 @@ export default function POSPage() {
       harga_satuan: line.harga_satuan,
       jumlah: line.jumlah,
       subtotalRaw: line.jumlah * line.harga_satuan,
+      originalHargaSatuan: line.harga_satuan,
       tipe_item: "MAKLON",
       vendor_subkontrak_id: value.vendor_subkontrak_id,
       vendor_subkontrak_nama: vendor?.nama_perusahaan,
@@ -821,7 +846,12 @@ export default function POSPage() {
       return;
     }
 
-    const total = getCartChargeTotal(cart, roundCartPrices);
+    const subtotalItems = getCartChargeTotal(cart, roundCartPrices);
+    const biayaTambahanTotal = biayaTambahan.reduce(
+      (sum, b) => sum + (Number(b.nominal) || 0),
+      0
+    );
+    const total = subtotalItems + biayaTambahanTotal;
     const bayar = parseFloat(jumlahBayar) || 0;
 
     // Validation for payment methods that require full payment
@@ -883,6 +913,10 @@ export default function POSPage() {
         subtotal: lineCharges[index],
         panjang: item.panjang,
         lebar: item.lebar,
+        billed_panjang: item.billedPanjang,
+        billed_lebar: item.billedLebar,
+        recommended_roll_width_m: item.selectedRollSize,
+        selectedRollSize: item.selectedRollSize,
         finishing: item.finishing,
         tipe_item: item.tipe_item || "BARANG",
         vendor_subkontrak_id: item.vendor_subkontrak_id || null,
@@ -912,6 +946,9 @@ export default function POSPage() {
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
+        biaya_tambahan: biayaTambahan
+          .filter((b) => b.label.trim() && b.nominal > 0)
+          .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
         ...(ppnFaktur
           ? {
               kena_ppn: true,
@@ -1016,6 +1053,9 @@ export default function POSPage() {
           kembalian: kembalian,
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || undefined,
+          biaya_tambahan: biayaTambahan
+            .filter((b) => b.label.trim() && b.nominal > 0)
+            .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
         });
 
         const buildFakturData = async () => {
@@ -1110,6 +1150,9 @@ export default function POSPage() {
             catatan: catatan.trim() || undefined,
             ppn,
             shop,
+            biaya_tambahan: biayaTambahan
+              .filter((b) => b.label.trim() && b.nominal > 0)
+              .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
           };
         };
 
@@ -1159,6 +1202,7 @@ export default function POSPage() {
       setPpnFaktur(null);
       setRoundCartPrices(true);
       setWalkInFaktur(null);
+      setBiayaTambahan([]);
 
       // Reload data
       await loadAllData();
@@ -1798,6 +1842,9 @@ export default function POSPage() {
               onCheckout={handleCheckout}
               onEditFinishing={handleEditFinishing}
               onGetFinishingOptions={getFinishingOptionsAction}
+              onEditPrice={handleEditPrice}
+              biayaTambahan={biayaTambahan}
+              onBiayaTambahanChange={setBiayaTambahan}
               customerName={
                 selectedCustomer?.nama || customerSearch.trim() || undefined
               }

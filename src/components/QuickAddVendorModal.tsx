@@ -95,7 +95,7 @@ export default function QuickAddVendorModal({
       header={
         <div className="bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"

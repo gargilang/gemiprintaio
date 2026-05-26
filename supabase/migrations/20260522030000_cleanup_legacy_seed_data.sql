@@ -29,8 +29,4 @@ DELETE FROM cashbook_formula
 --    eval time and the user can replace it via the Expression Assistant.
 DELETE FROM cashbook_partner;
 
--- 3. Remove the two hardcoded "PRIBADI" categories that were seeded for the
---    original Anwar/Suri kasbon split. User is free to recreate them with
---    new names if their business needs them.
-DELETE FROM finance_category_definitions
-  WHERE category_code IN ('PRIBADI-A', 'PRIBADI-S');
+-- 3. (PRIBADI-A / PRIBADI-S categories removed from default seed — no cleanup needed.)

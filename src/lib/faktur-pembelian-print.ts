@@ -533,17 +533,21 @@ export function printFakturPembelian(data: FakturPembelianData): boolean {
 }
 
 /**
- * Helper: derive a display size string from panjang × lebar values.
- * Returns empty string when either value is missing or non-positive.
+ * Helper: derive a display size string from panjang × lebar values, with
+ * optional roll count prefix when there is more than one roll. Returns an
+ * empty string when both dimensions are missing or non-positive.
  */
 export function formatUkuranPembelian(
   panjang: number | null | undefined,
-  lebar: number | null | undefined
+  lebar: number | null | undefined,
+  jumlahRoll: number | null | undefined = 1
 ): string {
   const p = typeof panjang === "number" && panjang > 0 ? panjang : 0;
   const l = typeof lebar === "number" && lebar > 0 ? lebar : 0;
   if (!p || !l) return "";
   const fmt = (n: number) =>
     Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
-  return `${fmt(p)} × ${fmt(l)} m`;
+  const qty = Math.max(1, Math.round(Number(jumlahRoll) || 1));
+  const dims = `${fmt(l)} × ${fmt(p)} m`;
+  return qty > 1 ? `${qty} roll · ${dims}` : dims;
 }

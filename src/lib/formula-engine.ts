@@ -192,6 +192,10 @@ export const DEFAULT_CATEGORY_CONTRIBUTIONS: Record<string, CategoryContribution
   TABUNGAN:[{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
   KOMISI:  [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
   HPP:     [{ column: "biaya_bahan", amount_field: "kredit", sign: 1 }],
+  RETUR_PENJUALAN: [{ column: "omzet", amount_field: "kredit", sign: -1 }],
+  RETUR_PENJUALAN_NONCASH: [{ column: "omzet", amount_field: "kredit", sign: -1 }],
+  RETUR_HPP: [{ column: "biaya_bahan", amount_field: "debit", sign: -1 }],
+  RETUR_PEMBELIAN: [],
 };
 
 /** Resolve KasbonConditions from raw DB value (string or object). */

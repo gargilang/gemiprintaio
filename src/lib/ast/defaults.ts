@@ -66,6 +66,11 @@ const op = (
 ): ASTNode => ({ type: "binaryOp", op: o, left: l, right: r });
 
 const isFirstRow = (): ASTNode => op("=", row(), lit(2));
+const isReturPenjualan = (): ASTNode =>
+  or(
+    op("=", col("C"), lit("RETUR_PENJUALAN")),
+    op("=", col("C"), lit("RETUR_PENJUALAN_NONCASH"))
+  );
 
 /**
  * Default partners. Intentionally empty — partners (real people) are added
@@ -82,10 +87,25 @@ export const DEFAULT_PARTNERS: PartnerDefinition[] = [];
  */
 const astOmzet: ASTNode = iff(
   or(
-    not(iserror(search(lit("OMZET"), col("C")))),
-    not(iserror(search(lit("PIUTANG"), col("C"))))
+    or(
+      not(iserror(search(lit("OMZET"), col("C")))),
+      not(iserror(search(lit("PIUTANG"), col("C"))))
+    ),
+    isReturPenjualan()
   ),
-  iff(isFirstRow(), col("D"), op("+", prev("G"), col("D"))),
+  iff(
+    isFirstRow(),
+    iff(
+      isReturPenjualan(),
+      op("-", lit(0), col("E")),
+      col("D")
+    ),
+    iff(
+      isReturPenjualan(),
+      op("-", prev("G"), col("E")),
+      op("+", prev("G"), col("D"))
+    )
+  ),
   iff(isFirstRow(), lit(0), prev("G"))
 );
 
@@ -113,17 +133,21 @@ const astBiayaOps: ASTNode = iff(
  * Purchases stay as cash/inventory movements; they become cost when sold.
  */
 const astBiayaBahan: ASTNode = iff(
-  isFirstRow(),
+  or(op("=", col("C"), lit("HPP")), op("=", col("C"), lit("RETUR_HPP"))),
   iff(
-    op("=", col("C"), lit("HPP")),
-    col("E"),
-    lit(0)
+    isFirstRow(),
+    iff(
+      op("=", col("C"), lit("RETUR_HPP")),
+      op("-", lit(0), col("D")),
+      col("E")
+    ),
+    iff(
+      op("=", col("C"), lit("RETUR_HPP")),
+      op("-", prev("I"), col("D")),
+      op("+", prev("I"), col("E"))
+    )
   ),
-  iff(
-    op("=", col("C"), lit("HPP")),
-    op("+", prev("I"), col("E")),
-    prev("I")
-  )
+  iff(isFirstRow(), lit(0), prev("I"))
 );
 
 /**
@@ -139,7 +163,10 @@ const astBiayaBahan: ASTNode = iff(
  *        IF(ROW() == 2, D - E, J_prev + D - E))  ← all others: normal
  */
 const astSaldo: ASTNode = iff(
-  op("=", col("C"), lit("HPP")),
+  or(
+    or(op("=", col("C"), lit("HPP")), op("=", col("C"), lit("RETUR_HPP"))),
+    op("=", col("C"), lit("RETUR_PENJUALAN_NONCASH"))
+  ),
   iff(isFirstRow(), lit(0), prev("J")),
   iff(
     isFirstRow(),

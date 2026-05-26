@@ -131,6 +131,11 @@ async function calculateRunningTotals(
   let omzet;
   if (kategori_transaksi === "OMZET" || kategori_transaksi === "PIUTANG") {
     omzet = isFirstEntry ? debit : prev.omzet + debit;
+  } else if (
+    kategori_transaksi === "RETUR_PENJUALAN" ||
+    kategori_transaksi === "RETUR_PENJUALAN_NONCASH"
+  ) {
+    omzet = isFirstEntry ? -kredit : prev.omzet - kredit;
   } else {
     omzet = isFirstEntry ? 0 : prev.omzet;
   }
@@ -154,10 +159,18 @@ async function calculateRunningTotals(
   // BIAYA BAHAN
   let biaya_bahan;
   if (isFirstEntry) {
-    biaya_bahan = 0;
+    if (kategori_transaksi === "HPP") {
+      biaya_bahan = kredit;
+    } else if (kategori_transaksi === "RETUR_HPP") {
+      biaya_bahan = -debit;
+    } else {
+      biaya_bahan = 0;
+    }
   } else {
     if (kategori_transaksi === "HPP") {
       biaya_bahan = prev.biaya_bahan + kredit;
+    } else if (kategori_transaksi === "RETUR_HPP") {
+      biaya_bahan = prev.biaya_bahan - debit;
     } else {
       biaya_bahan = prev.biaya_bahan;
     }
@@ -173,7 +186,9 @@ async function calculateRunningTotals(
   // as HPP when the sale that triggered them was created. Bumping again here
   // would double-count the cost in laba_bersih.
   const saldo =
-    kategori_transaksi === "HPP"
+    kategori_transaksi === "HPP" ||
+    kategori_transaksi === "RETUR_HPP" ||
+    kategori_transaksi === "RETUR_PENJUALAN_NONCASH"
       ? isFirstEntry
         ? 0
         : prev.saldo

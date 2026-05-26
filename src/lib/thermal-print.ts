@@ -25,6 +25,8 @@ export interface ThermalInvoiceData {
   kembalian: number;
   metode_pembayaran: string;
   catatan?: string;
+  /** Header-level extra charges (ongkir, biaya pasang, dll). */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 function escapeHtml(input: string): string {
@@ -50,6 +52,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     metode_pembayaran,
     catatan,
     shop,
+    biaya_tambahan,
   } = data;
 
   const shopName = shop?.nama_toko?.trim() || "Gemiprint";
@@ -317,6 +320,16 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   </div>
 
   <div class="totals">
+    ${(biaya_tambahan || [])
+      .filter((b) => b.label?.trim() && b.nominal > 0)
+      .map(
+        (b) => `
+    <div class="total-row">
+      <span>${escapeHtml(b.label)}:</span>
+      <span>Rp ${Number(b.nominal).toLocaleString("id-ID")}</span>
+    </div>`
+      )
+      .join("")}
     <div class="total-row grand">
       <span>TOTAL:</span>
       <span>Rp ${total.toLocaleString("id-ID")}</span>

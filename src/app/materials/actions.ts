@@ -17,6 +17,8 @@ import {
   createInventoryAdjustment,
   getInventoryMovements,
   createWasteMovement,
+  getRollVariants,
+  convertRollVariant,
 } from "@/lib/services/inventory-service";
 
 export async function getMaterialsAction() {
@@ -109,6 +111,30 @@ export async function createWasteMovementAction(data: {
     return await createWasteMovement({ ...data, dibuat_oleh: s.uid });
   } catch (error) {
     console.error("Error in createWasteMovementAction:", error);
+    throw error;
+  }
+}
+
+export async function getRollVariantsAction(barangId?: string) {
+  try {
+    return await getRollVariants(barangId);
+  } catch (error) {
+    console.error("Error in getRollVariantsAction:", error);
+    throw error;
+  }
+}
+
+export async function convertRollVariantAction(data: {
+  source_roll_variant_id: string;
+  target_widths_m: number[];
+  length_m?: number | null;
+  reason?: string | null;
+}) {
+  try {
+    const s = await requireAdminOrManager();
+    return await convertRollVariant({ ...data, dibuat_oleh: s.uid });
+  } catch (error) {
+    console.error("Error in convertRollVariantAction:", error);
     throw error;
   }
 }

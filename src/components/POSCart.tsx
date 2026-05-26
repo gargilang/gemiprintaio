@@ -9,6 +9,7 @@ import {
   CalendarIcon,
 } from "./icons/ContentIcons";
 import AddFinishingModal from "./AddFinishingModal";
+import EditPriceModal from "./EditPriceModal";
 import {
   allocateCartLineCharges,
   formatPosUnitPrice,
@@ -35,6 +36,7 @@ interface CartItem {
   billedPanjang?: number;
   billedLebar?: number;
   subtotalRaw: number;
+  originalHargaSatuan?: number;
   finishing?: FinishingItem[];
   // Maklon (subcontract) fields. When tipe_item === 'MAKLON' the cart line
   // represents work outsourced to a partner shop; the cart row shows a
@@ -54,6 +56,11 @@ interface FinishingOption {
 }
 
 export type PrintType = "thermal" | "faktur" | "both" | "none";
+
+export interface BiayaTambahan {
+  label: string;
+  nominal: number;
+}
 
 interface POSCartProps {
   cart: CartItem[];
@@ -75,6 +82,11 @@ interface POSCartProps {
   onCheckout: () => void;
   onEditFinishing?: (index: number, finishing: FinishingItem[]) => void;
   onGetFinishingOptions: () => Promise<FinishingOption[]>;
+  /** Override harga_satuan untuk cart line tertentu. */
+  onEditPrice?: (index: number, newHargaSatuan: number) => void;
+  /** Header-level biaya tambahan (ongkir, biaya pasang, dll). */
+  biayaTambahan?: BiayaTambahan[];
+  onBiayaTambahanChange?: (next: BiayaTambahan[]) => void;
   /** Nama pelanggan aktif (dari selectedCustomer atau customerSearch) untuk penawaran harga. */
   customerName?: string;
 }
@@ -131,6 +143,9 @@ export default function POSCart({
   onCheckout,
   onEditFinishing,
   onGetFinishingOptions,
+  onEditPrice,
+  biayaTambahan = [],
+  onBiayaTambahanChange,
   customerName,
 }: POSCartProps) {
   const totalRaw = cart.reduce((sum, item) => sum + item.subtotalRaw, 0);
@@ -138,7 +153,12 @@ export default function POSCart({
     () => allocateCartLineCharges(cart, roundCartPrices),
     [cart, roundCartPrices]
   );
-  const total = lineCharges.reduce((sum, n) => sum + n, 0);
+  const subtotalItems = lineCharges.reduce((sum, n) => sum + n, 0);
+  const biayaTambahanTotal = useMemo(
+    () => biayaTambahan.reduce((sum, b) => sum + (Number(b.nominal) || 0), 0),
+    [biayaTambahan]
+  );
+  const total = subtotalItems + biayaTambahanTotal;
   const hasRoundingChoice = totalRaw !== roundUpToThousand(totalRaw);
   const bayar = parseFloat(jumlahBayar) || 0;
   const kembalian = Math.max(0, bayar - total);
@@ -149,6 +169,9 @@ export default function POSCart({
   const [editingFinishingIndex, setEditingFinishingIndex] = useState<
     number | null
   >(null);
+  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(
+    null
+  );
 
   const handlePreviewQuotation = async () => {
     try {
@@ -368,6 +391,13 @@ export default function POSCart({
                         {formatPosUnitPrice(item.harga_satuan)}
                       </span>
                     )}
+                    {item.originalHargaSatuan != null &&
+                      Math.abs(item.harga_satuan - item.originalHargaSatuan) >
+                        0.01 && (
+                        <span className="ml-1.5 inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded uppercase tracking-wide">
+                          Override
+                        </span>
+                      )}
                   </div>
                   <div className="text-sm font-bold text-[#00afef] mt-1">
                     Rp{" "}
@@ -396,6 +426,29 @@ export default function POSCart({
                     )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {onEditPrice && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingPriceIndex(index)}
+                      className="bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-500 dark:hover:bg-amber-500 p-1.5 rounded-md transition-all text-amber-700 dark:text-amber-300 hover:text-white"
+                      aria-label="Edit harga"
+                      title="Edit harga / subtotal"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                        />
+                      </svg>
+                    </button>
+                  )}
                   {onEditItem && (
                     <button
                       type="button"
@@ -474,6 +527,92 @@ export default function POSCart({
           ))
         )}
       </div>
+
+      {/* Biaya tambahan section — header-level extra charges */}
+      {onBiayaTambahanChange && cart.length > 0 && (
+        <div className="shrink-0 px-4 py-2 border-t border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-600 dark:text-slate-400">
+              Biaya Tambahan
+              {biayaTambahan.length > 0 && (
+                <span className="ml-1 text-[#00afef]">
+                  ({biayaTambahan.length})
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                onBiayaTambahanChange([
+                  ...biayaTambahan,
+                  { label: "", nominal: 0 },
+                ])
+              }
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors"
+              title="Tambah biaya tambahan (ongkir, biaya pasang, dll)"
+            >
+              + Tambah
+            </button>
+          </div>
+
+          {biayaTambahan.map((biaya, idx) => (
+            <div key={idx} className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={biaya.label}
+                onChange={(e) => {
+                  const next = [...biayaTambahan];
+                  next[idx] = { ...next[idx], label: e.target.value };
+                  onBiayaTambahanChange(next);
+                }}
+                placeholder="Ongkir, biaya pasang, dll"
+                className="flex-1 min-w-0 px-2 py-1 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef]"
+              />
+              <input
+                type="number"
+                step="1000"
+                min="0"
+                value={biaya.nominal || ""}
+                onChange={(e) => {
+                  const next = [...biayaTambahan];
+                  next[idx] = {
+                    ...next[idx],
+                    nominal: parseFloat(e.target.value) || 0,
+                  };
+                  onBiayaTambahanChange(next);
+                }}
+                placeholder="0"
+                className="w-24 px-2 py-1 text-xs text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const next = biayaTambahan.filter((_, i) => i !== idx);
+                  onBiayaTambahanChange(next);
+                }}
+                className="p-1 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                aria-label="Hapus biaya"
+                title="Hapus baris"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+
+          {biayaTambahanTotal > 0 && (
+            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-gray-100 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">
+                Subtotal items + biaya tambahan
+              </span>
+              <span className="font-bold text-[#00afef]">
+                Rp {total.toLocaleString("id-ID")}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Payment + checkout — always visible at bottom */}
       <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-900 space-y-2.5">
@@ -729,6 +868,24 @@ export default function POSCart({
           existingFinishing={cart[editingFinishingIndex]?.finishing}
           itemName={cart[editingFinishingIndex]?.barang_nama || ""}
           onGetFinishingOptions={onGetFinishingOptions}
+        />
+      )}
+
+      {editingPriceIndex !== null && onEditPrice && cart[editingPriceIndex] && (
+        <EditPriceModal
+          show={true}
+          itemName={cart[editingPriceIndex].barang_nama}
+          jumlah={cart[editingPriceIndex].jumlah}
+          hargaOriginal={
+            cart[editingPriceIndex].originalHargaSatuan ??
+            cart[editingPriceIndex].harga_satuan
+          }
+          hargaCurrent={cart[editingPriceIndex].harga_satuan}
+          onClose={() => setEditingPriceIndex(null)}
+          onSave={(newHarga) => {
+            onEditPrice(editingPriceIndex, newHarga);
+            setEditingPriceIndex(null);
+          }}
         />
       )}
     </div>

@@ -1,5 +1,14 @@
 "use server";
 
+import { requireAdminOrManager } from "@/lib/auth-guard-server";
+import {
+  generateDraftPurchaseOrders,
+  getReorderSuggestions,
+  groupSuggestionsByVendor,
+  type GenerateDraftPurchaseOrdersResult,
+  type ReorderSuggestion,
+  type ReorderSuggestionGroup,
+} from "@/lib/services/auto-po-service";
 import { getPOSInitData } from "@/lib/services/pos-service";
 import { getProductionOrders } from "@/lib/services/production-service";
 import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
@@ -140,4 +149,30 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
     recentSales,
     recentOrders,
   };
+}
+
+export interface ReorderSuggestionsResponse {
+  suggestions: ReorderSuggestion[];
+  groups: ReorderSuggestionGroup[];
+  total_items: number;
+}
+
+export async function getReorderSuggestionsAction(): Promise<ReorderSuggestionsResponse> {
+  const suggestions = await getReorderSuggestions();
+  const groups = groupSuggestionsByVendor(suggestions);
+  return {
+    suggestions,
+    groups,
+    total_items: suggestions.length,
+  };
+}
+
+export async function generateDraftPurchaseOrdersAction(
+  vendor_ids?: string[]
+): Promise<GenerateDraftPurchaseOrdersResult> {
+  const session = await requireAdminOrManager();
+  return generateDraftPurchaseOrders({
+    vendor_ids,
+    dibuat_oleh: session.uid,
+  });
 }

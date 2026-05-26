@@ -9,9 +9,13 @@ import {
   getProductionOrderById,
   updateProductionOrderStatus,
   updateProductionItemStatus,
+  getRollVariantsForProductionItem,
+  postProductionMaterialConsumption,
+  voidProductionMaterialConsumption,
   deleteProductionOrder,
   type ProductionOrder,
 } from "@/lib/services/production-service";
+import { requireProductionInventoryRole } from "@/lib/auth-guard-server";
 
 export async function getProductionOrdersAction() {
   try {
@@ -54,6 +58,48 @@ export async function updateProductionItemStatusAction(
     return await updateProductionItemStatus(itemId, data);
   } catch (error) {
     console.error("Error in updateProductionItemStatusAction:", error);
+    throw error;
+  }
+}
+
+export async function getRollVariantsForProductionItemAction(itemId: string) {
+  try {
+    return await getRollVariantsForProductionItem(itemId);
+  } catch (error) {
+    console.error("Error in getRollVariantsForProductionItemAction:", error);
+    throw error;
+  }
+}
+
+export async function postProductionMaterialConsumptionAction(data: {
+  item_produksi_id: string;
+  roll_variant_id: string;
+  linear_used_m?: number | null;
+  operator_id?: string | null;
+  catatan?: string | null;
+}) {
+  try {
+    const s = await requireProductionInventoryRole();
+    return await postProductionMaterialConsumption({
+      ...data,
+      operator_id: data.operator_id || s.uid,
+    });
+  } catch (error) {
+    console.error("Error in postProductionMaterialConsumptionAction:", error);
+    throw error;
+  }
+}
+
+export async function voidProductionMaterialConsumptionAction(
+  consumptionId: string,
+  reason?: string,
+  actorId?: string | null
+) {
+  try {
+    const s = await requireProductionInventoryRole();
+    return await voidProductionMaterialConsumption(consumptionId, reason, actorId || s.uid);
+  } catch (error) {
+    console.error("Error in voidProductionMaterialConsumptionAction:", error);
     throw error;
   }
 }

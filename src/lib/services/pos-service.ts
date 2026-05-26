@@ -54,6 +54,9 @@ export interface Sale {
   has_pelunasan?: boolean;
   member_status?: boolean | number;
   items?: SaleItem[];
+  /** Header-level extra charges. */
+  biaya_tambahan?: Array<{ id?: string; label: string; nominal: number; urutan?: number }>;
+  biaya_tambahan_total?: number;
 }
 
 export interface SaleItem {
@@ -73,6 +76,10 @@ export interface SaleItem {
   gross_margin?: number;
   panjang?: number | null;
   lebar?: number | null;
+  billed_panjang?: number | null;
+  billed_lebar?: number | null;
+  recommended_roll_width_m?: number | null;
+  roll_inventory_deferred?: number | null;
   dibuat_pada?: string;
 }
 
@@ -118,6 +125,10 @@ export interface CreateSaleData {
     subtotal: number;
     panjang?: number;
     lebar?: number;
+    billed_panjang?: number;
+    billed_lebar?: number;
+    recommended_roll_width_m?: number;
+    selectedRollSize?: number;
     finishing?: Array<{
       jenis_finishing: string;
       keterangan?: string;
@@ -165,6 +176,11 @@ export interface CreateSaleData {
   pelanggan_npwp_snapshot?: string;
   pelanggan_alamat_npwp_snapshot?: string;
   pelanggan_nama_npwp_snapshot?: string;
+  /**
+   * Header-level extra charges (ongkir, biaya pasang, dll). Each row gets a
+   * free-text label + nominal. Total is rolled up to penjualan.biaya_tambahan_total.
+   */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 // ============================================================================
@@ -180,6 +196,21 @@ function getTodayJakarta(): string {
 function positiveNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function isRollInventoryLine(material: any, item: {
+  panjang?: number | null;
+  lebar?: number | null;
+  recommended_roll_width_m?: number | null;
+  selectedRollSize?: number | null;
+}): boolean {
+  return (
+    Number(material?.lacak_inventori_status) !== 0 &&
+    Number(material?.butuh_dimensi_status) === 1 &&
+    (positiveNumber(item.recommended_roll_width_m) > 0 ||
+      positiveNumber(item.selectedRollSize) > 0 ||
+      (positiveNumber(item.panjang) > 0 && positiveNumber(item.lebar) > 0))
+  );
 }
 
 async function fallbackAverageCostPerBaseUnit(
@@ -440,13 +471,14 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const pelangganIds = [...new Set(sales.map((s: any) => s.pelanggan_id).filter(Boolean))];
       const kasirIds = [...new Set(sales.map((s: any) => s.kasir_id).filter(Boolean))];
 
-      // 2–6. Batch fetch all related data in parallel
+      // 2–7. Batch fetch all related data in parallel
       const [
         itemsRes,
         piutangRes,
         customersRes,
         usersRes,
         pelunasanRes,
+        biayaTambahanRes,
       ] = await Promise.all([
         supabase.from("item_penjualan").select("*").in("penjualan_id", saleIds),
         supabase.from("piutang_penjualan").select("*").in("id_penjualan", saleIds),
@@ -458,6 +490,11 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           : Promise.resolve({ data: [], error: null }),
         // We need pelunasan to know has_pelunasan — fetch all at once
         supabase.from("pelunasan_piutang").select("id,id_piutang"),
+        // Header-level biaya tambahan
+        supabase
+          .from("biaya_tambahan_penjualan")
+          .select("*")
+          .in("penjualan_id", saleIds),
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
@@ -468,6 +505,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const allCustomers: any[] = customersRes.data || [];
       const allUsers: any[] = usersRes.data || [];
       const allPelunasan: any[] = pelunasanRes.data || [];
+      const allBiayaTambahan: any[] = biayaTambahanRes.data || [];
 
       // Fetch barang names for all unique barang_ids in one query
       const barangIds = [...new Set(allItems.map((i: any) => i.barang_id).filter(Boolean))];
@@ -500,6 +538,22 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         pelunasanByPiutangId.add(pl.id_piutang);
       }
 
+      const biayaTambahanBySaleId = new Map<string, any[]>();
+      for (const b of allBiayaTambahan) {
+        const list = biayaTambahanBySaleId.get(b.penjualan_id) || [];
+        list.push({
+          id: b.id,
+          label: b.label,
+          nominal: Number(b.nominal) || 0,
+          urutan: b.urutan ?? 0,
+        });
+        biayaTambahanBySaleId.set(b.penjualan_id, list);
+      }
+      // Sort each list by urutan
+      for (const [, list] of biayaTambahanBySaleId) {
+        list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+      }
+
       const customerMap = new Map<string, any>();
       for (const c of allCustomers) customerMap.set(c.id, c);
 
@@ -521,6 +575,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           sisa_piutang: piutang?.sisa_piutang || 0,
           has_pelunasan,
           items: itemsByPenjualanId.get(sale.id) || [],
+          biaya_tambahan: biayaTambahanBySaleId.get(sale.id) || [],
         };
       });
     }
@@ -566,6 +621,18 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           });
           has_pelunasan = (pelunasanResult.data?.length || 0) > 0;
         }
+        // Fetch biaya tambahan for this sale (SQLite path is sequential)
+        const biayaRes = await db.query<any>("biaya_tambahan_penjualan", {
+          where: { penjualan_id: sale.id },
+        });
+        const biayaList = (biayaRes.data || [])
+          .map((b: any) => ({
+            id: b.id,
+            label: b.label,
+            nominal: Number(b.nominal) || 0,
+            urutan: b.urutan ?? 0,
+          }))
+          .sort((a: any, b: any) => (a.urutan ?? 0) - (b.urutan ?? 0));
         return {
           ...sale,
           pelanggan_nama: customer?.nama || undefined,
@@ -575,6 +642,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           sisa_piutang: piutang?.sisa_piutang || 0,
           has_pelunasan,
           items: itemsWithNames,
+          biaya_tambahan: biayaList,
         };
       })
     );
@@ -641,6 +709,10 @@ export async function createSale(data: CreateSaleData): Promise<{
     const requiredStock = new Map<string, number>();
     for (const item of data.items) {
       if (item.tipe_item === "MAKLON" || item.tipe_item === "JASA") continue;
+      const materialResult = await db.queryOne("barang", {
+        where: { id: item.barang_id },
+      });
+      if (isRollInventoryLine(materialResult.data, item)) continue;
       const qtyBase = item.jumlah * (positiveNumber(item.faktor_konversi) || 1);
       requiredStock.set(item.barang_id, (requiredStock.get(item.barang_id) || 0) + qtyBase);
     }
@@ -715,6 +787,8 @@ export async function createSale(data: CreateSaleData): Promise<{
         metode_pembayaran: data.metode_pembayaran,
         kasir_id: data.kasir_id || null,
         catatan: data.catatan?.trim() || null,
+        biaya_tambahan_total: (data.biaya_tambahan || [])
+          .reduce((sum, b) => sum + (Number(b.nominal) || 0), 0),
         // PPN keluaran
         kena_ppn: kenaPpn,
         ppn_persen: ppnPersen,
@@ -733,6 +807,25 @@ export async function createSale(data: CreateSaleData): Promise<{
 
       const saleResult = await db.insert("penjualan", sale);
       if (saleResult.error) throw saleResult.error;
+
+      // Insert biaya tambahan rows (ongkir, biaya pasang, dll). Skip rows
+      // dengan label kosong atau nominal 0.
+      if (data.biaya_tambahan && data.biaya_tambahan.length > 0) {
+        for (let i = 0; i < data.biaya_tambahan.length; i++) {
+          const b = data.biaya_tambahan[i];
+          const label = b.label?.trim();
+          const nominal = Number(b.nominal) || 0;
+          if (!label || nominal <= 0) continue;
+          const r = await db.insert("biaya_tambahan_penjualan", {
+            id: generateId(),
+            penjualan_id: saleId,
+            label,
+            nominal,
+            urutan: i,
+          });
+          if (r.error) throw r.error;
+        }
+      }
 
       // Lock NSFP slot kalau dipakai (status TERSEDIA → TERPAKAI). Lakukan
       // sebelum insert items supaya gagal-tertentu di NSFP rollback semua.
@@ -803,6 +896,15 @@ export async function createSale(data: CreateSaleData): Promise<{
             (positiveNumber(item.faktor_konversi) || 1);
           hppTotal = hppSatuan * item.jumlah;
         }
+        const recommendedRollWidth =
+          positiveNumber(item.recommended_roll_width_m) ||
+          positiveNumber(item.selectedRollSize) ||
+          null;
+        const rollInventoryDeferred =
+          !isMaklon && !isJasa && isRollInventoryLine(material, {
+            ...item,
+            recommended_roll_width_m: recommendedRollWidth,
+          });
         const grossProfit = item.subtotal - hppTotal;
         const grossMargin =
           item.subtotal > 0 ? (grossProfit / item.subtotal) * 100 : 0;
@@ -838,6 +940,10 @@ export async function createSale(data: CreateSaleData): Promise<{
           gross_margin: grossMargin,
           panjang: item.panjang ?? null,
           lebar: item.lebar ?? null,
+          billed_panjang: item.billed_panjang ?? null,
+          billed_lebar: item.billed_lebar ?? null,
+          recommended_roll_width_m: recommendedRollWidth,
+          roll_inventory_deferred: rollInventoryDeferred ? 1 : 0,
           tipe_item: item.tipe_item || "BARANG",
           vendor_subkontrak_id: isMaklon ? item.vendor_subkontrak_id : null,
           biaya_subkontrak: isMaklon ? item.biaya_subkontrak : null,
@@ -857,7 +963,7 @@ export async function createSale(data: CreateSaleData): Promise<{
           maklonItemIds.set(i, itemId);
           // Maklon lines never touch stock or material frequency — there is
           // no underlying material in our catalog.
-        } else if (material && material.lacak_inventori_status) {
+        } else if (material && material.lacak_inventori_status && !rollInventoryDeferred) {
           const stockReduction = item.jumlah * item.faktor_konversi;
           await postInventoryMovement({
             id: `mov-${itemId}`,
@@ -1050,11 +1156,20 @@ export async function createSale(data: CreateSaleData): Promise<{
             id: itemProdId,
             order_produksi_id: orderId,
             item_penjualan_id: itemPenjualan.id,
+            barang_id: isMaklon ? null : itemPenjualan.barang_id,
             barang_nama: barangNama,
             jumlah: item.jumlah,
             nama_satuan: item.nama_satuan,
             panjang: item.panjang || null,
             lebar: item.lebar || null,
+            billed_panjang: item.billed_panjang ?? null,
+            billed_lebar: item.billed_lebar ?? null,
+            recommended_roll_width_m:
+              (itemPenjualan as any).recommended_roll_width_m ?? null,
+            roll_inventory_status:
+              (itemPenjualan as any).roll_inventory_deferred === 1
+                ? "PENDING"
+                : "NOT_REQUIRED",
             status: "MENUNGGU" as const,
           };
 

@@ -114,29 +114,34 @@ INSERT INTO subkategori_barang (id, kategori_id, nama, urutan_tampilan) VALUES
   ('sub-ll-umum', 'cat-lain-lain', 'Umum', 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Maklon placeholder material (used by sale + purchase rows with tipe = MAKLON).
--- Inventory tracking off — cost is captured per line via biaya_subkontrak /
--- harga_satuan, not via the moving-average on this row.
-INSERT INTO barang
-  (id, nama, deskripsi, kategori_id, satuan_dasar, jumlah_stok, average_cost_per_base_unit,
-   level_stok_minimum, lacak_inventori_status, butuh_dimensi_status)
-VALUES
-  ('barang-jasa-maklon', 'Jasa Maklon Cetak',
-   'Placeholder untuk pekerjaan yang dikerjakan vendor subkontraktor (auto-generated, jangan diedit).',
-   'cat-lain-lain', 'pcs', 0, 0, 0, 0, 0)
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO harga_barang_satuan
-  (id, barang_id, nama_satuan, faktor_konversi, harga_beli, harga_jual, harga_member, default_status, urutan_tampilan)
-VALUES
-  ('harga-jasa-maklon-pcs', 'barang-jasa-maklon', 'pcs', 1, 0, 0, 0, 1, 0)
-ON CONFLICT (id) DO NOTHING;
-
--- MAKLON finance category for subcontract outflows (separate from SUPPLY).
+-- Default flexible finance category definitions.
 INSERT INTO finance_category_definitions
   (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)
 VALUES
+  ('fin-cat-kas', 'KAS', 'Kas', 'bg-blue-100', 'text-blue-800', 'border-blue-300', 'both', 1, 10),
+  ('fin-cat-biaya', 'BIAYA', 'Biaya', 'bg-red-100', 'text-red-800', 'border-red-300', 'kredit', 1, 20),
+  ('fin-cat-omzet', 'OMZET', 'Omzet', 'bg-green-100', 'text-green-800', 'border-green-300', 'debit', 1, 30),
+  ('fin-cat-investor', 'INVESTOR', 'Investor', 'bg-purple-100', 'text-purple-800', 'border-purple-300', 'both', 1, 40),
+  ('fin-cat-subsidi', 'SUBSIDI', 'Subsidi', 'bg-yellow-100', 'text-yellow-800', 'border-yellow-300', 'debit', 1, 50),
+  ('fin-cat-lunas', 'LUNAS', 'Lunas', 'bg-teal-100', 'text-teal-800', 'border-teal-300', 'debit', 1, 60),
+  ('fin-cat-supply', 'SUPPLY', 'Supply', 'bg-orange-100', 'text-orange-800', 'border-orange-300', 'kredit', 1, 70),
+  ('fin-cat-hpp', 'HPP', 'Harga Pokok Penjualan', 'bg-slate-100', 'text-slate-800', 'border-slate-300', 'kredit', 1, 75),
   ('fin-cat-maklon', 'MAKLON', 'Maklon', 'bg-fuchsia-100', 'text-fuchsia-800', 'border-fuchsia-300', 'kredit', 1, 78)
+ON CONFLICT (category_code) DO NOTHING;
+
+INSERT INTO finance_category_definitions
+  (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)
+VALUES
+  ('fin-cat-retur-penjualan', 'RETUR_PENJUALAN', 'Retur Penjualan', 'bg-rose-100', 'text-rose-800', 'border-rose-300', 'kredit', 1, 32),
+  ('fin-cat-retur-penjualan-noncash', 'RETUR_PENJUALAN_NONCASH', 'Retur Penjualan (non-kas)', 'bg-rose-50', 'text-rose-700', 'border-rose-200', 'kredit', 1, 33),
+  ('fin-cat-retur-pembelian', 'RETUR_PEMBELIAN', 'Retur Pembelian', 'bg-emerald-100', 'text-emerald-800', 'border-emerald-300', 'debit', 1, 72),
+  ('fin-cat-retur-hpp', 'RETUR_HPP', 'Retur HPP', 'bg-slate-100', 'text-slate-800', 'border-slate-300', 'debit', 1, 76),
+  ('fin-cat-laba', 'LABA', 'Laba', 'bg-emerald-100', 'text-emerald-800', 'border-emerald-300', 'both', 1, 80),
+  ('fin-cat-komisi', 'KOMISI', 'Komisi', 'bg-cyan-100', 'text-cyan-800', 'border-cyan-300', 'kredit', 1, 90),
+  ('fin-cat-tabungan', 'TABUNGAN', 'Tabungan', 'bg-indigo-100', 'text-indigo-800', 'border-indigo-300', 'kredit', 1, 100),
+  ('fin-cat-hutang', 'HUTANG', 'Hutang', 'bg-rose-100', 'text-rose-800', 'border-rose-300', 'kredit', 1, 110),
+  ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 1, 120)
 ON CONFLICT (category_code) DO NOTHING;
 
 INSERT INTO satuan_barang (id, nama, urutan_tampilan) VALUES

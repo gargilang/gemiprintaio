@@ -803,9 +803,21 @@ export default function PengaturanKeuanganModal({
         maxWidthClass="max-w-2xl"
         zIndexClass="z-[60]"
         header={
-          <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4">
-            <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pengurus" : "Tambah Pengurus"}</h3>
-            <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Centang rumus yang berlaku untuk orang ini.</p>
+          <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pengurus" : "Tambah Pengurus"}</h3>
+              <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Centang rumus yang berlaku untuk orang ini.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormOpen(false)}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         }
         footer={
@@ -953,9 +965,21 @@ export default function PengaturanKeuanganModal({
         maxWidthClass="max-w-5xl"
         allowDismiss={!formOpen && !pendingConfirm && !editingFormulaId && !newFormulaDraft}
         header={
-          <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-4 border-b border-slate-800">
-            <h3 className="text-xl font-bold text-white">Pengaturan Keuangan</h3>
-            <p className="text-slate-300 text-sm mt-1">Kelola orang, kategori transaksi, dan rumus kalkulasi buku kas.</p>
+          <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white">Pengaturan Keuangan</h3>
+              <p className="text-slate-300 text-sm mt-1">Kelola orang, kategori transaksi, dan rumus kalkulasi buku kas.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
+              aria-label="Tutup"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         }
         footer={
@@ -972,7 +996,7 @@ export default function PengaturanKeuanganModal({
         }
       >
         {/* Tab navigation */}
-        <div className="flex border-b border-slate-200 bg-white dark:bg-slate-900 sticky top-0 z-10">
+        <div className="flex border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-10">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -980,8 +1004,8 @@ export default function PengaturanKeuanganModal({
               onClick={() => { setTab(t.id); setEditingFormulaId(null); }}
               className={`px-5 py-3 text-sm border-b-2 transition-colors ${
                 tab === t.id
-                  ? "border-slate-700 text-slate-900 font-semibold bg-slate-50 dark:bg-slate-800"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  ? "border-slate-700 dark:border-slate-300 text-slate-900 dark:text-white font-semibold bg-slate-50 dark:bg-slate-800"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
               }`}
             >
               {t.label}
@@ -1123,7 +1147,7 @@ export default function PengaturanKeuanganModal({
                 kasbon diatur di tab <strong>Rumus</strong>, bukan di sini.
               </p>
               <div className="flex gap-2 max-w-lg">
-                <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void addCategory(); }} placeholder='Contoh: ASURANSI (tanpa menggunakan ")' className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+                <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void addCategory(); }} placeholder='Contoh: Asuransi (tanpa menggunakan ")' className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
                 <button type="button" disabled={katSaving || !newCatName.trim()} onClick={addCategory} className="px-4 py-2 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50">Tambah</button>
               </div>
             </div>
@@ -1139,22 +1163,18 @@ export default function PengaturanKeuanganModal({
                   <p className="py-8 text-center text-slate-500 text-sm">{categories.length === 0 ? "Belum ada kategori." : "Tidak ada yang cocok."}</p>
                 )}
                 {filteredCats.map((cat) => {
-                  const sameLabel =
-                    cat.display_name.toUpperCase() === cat.category_code.toUpperCase();
                   return (
                   <div
                     key={cat.id || cat.category_code}
-                    className="flex items-center justify-between gap-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 rounded-lg p-3"
+                    className="flex items-center justify-between gap-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3"
                   >
                     <div className="flex flex-col min-w-0">
-                      <span className="font-mono font-semibold text-amber-700 dark:text-amber-300 truncate">
+                      <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {cat.display_name}
+                      </span>
+                      <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono truncate mt-0.5">
                         &quot;{cat.category_code}&quot;
                       </span>
-                      {!sameLabel && (
-                        <span className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {cat.display_name}
-                        </span>
-                      )}
                     </div>
                     {cat.id && (
                       <button
@@ -1198,10 +1218,10 @@ export default function PengaturanKeuanganModal({
           zIndexClass="z-[60]"
           allowDismiss={false}
           header={
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
+              <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] text-slate-400 uppercase tracking-wider">
-                  {FORMULA_GROUP_LABEL[(editingFormula.formulaGroup ?? "custom") as FormulaGroup]}
+                  Konfigurasi Rumus
                 </p>
                 <h3 className="text-base font-bold text-white truncate">
                   {editingFormula.name}

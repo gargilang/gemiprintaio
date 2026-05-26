@@ -139,7 +139,7 @@ export default function EditManualModal({
       header={
         <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-orange-500 to-pink-600 shrink-0 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
               <span className="text-2xl" aria-hidden>
                 🔧
               </span>

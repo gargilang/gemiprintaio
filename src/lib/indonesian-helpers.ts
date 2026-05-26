@@ -20,7 +20,7 @@ export const tipePelangganOptions = [
 // Transaction Category Mapping
 // ============================================
 
-export const kategoriTransaksiLabels: Record<KategoriTransaksi, string> = {
+export const kategoriTransaksiLabels: Partial<Record<KategoriTransaksi, string>> = {
   KAS: "Kas",
   BIAYA: "Biaya",
   OMZET: "Omzet",
@@ -38,7 +38,7 @@ export const kategoriTransaksiLabels: Record<KategoriTransaksi, string> = {
   MAKLON: "Maklon",
 };
 
-export const kategoriTransaksiIcons: Record<KategoriTransaksi, string> = {
+export const kategoriTransaksiIcons: Partial<Record<KategoriTransaksi, string>> = {
   KAS: "💵",
   BIAYA: "💸",
   OMZET: "💰",
@@ -56,7 +56,7 @@ export const kategoriTransaksiIcons: Record<KategoriTransaksi, string> = {
   MAKLON: "🖨️",
 };
 
-export const kategoriTransaksiColors: Record<KategoriTransaksi, string> = {
+export const kategoriTransaksiColors: Partial<Record<KategoriTransaksi, string>> = {
   KAS: "blue",
   BIAYA: "red",
   OMZET: "green",

@@ -12,7 +12,7 @@ UPDATE finance_participants SET
   share_divisor = 3,
   bagi_hasil_column = 'bagi_hasil_anwar',
   kasbon_column = 'kasbon_anwar',
-  pribadi_kategori = 'PRIBADI-A'
+  pribadi_kategori = NULL
 WHERE id = 'fin-participant-anwar';
 
 UPDATE finance_participants SET
@@ -20,7 +20,7 @@ UPDATE finance_participants SET
   share_divisor = 3,
   bagi_hasil_column = 'bagi_hasil_suri',
   kasbon_column = 'kasbon_suri',
-  pribadi_kategori = 'PRIBADI-S'
+  pribadi_kategori = NULL
 WHERE id = 'fin-participant-suri';
 
 UPDATE finance_participants SET

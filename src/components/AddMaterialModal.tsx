@@ -435,7 +435,7 @@ export default function AddMaterialModal({
         // For edits, pass the updated material back with ID; for new items pass null
         const updatedMaterial = editData
           ? { id: editData.id }
-          : (result as any);
+          : null;
         onSuccess(
           `Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`,
           updatedMaterial
@@ -505,7 +505,7 @@ export default function AddMaterialModal({
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg">
+            <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -550,7 +550,7 @@ export default function AddMaterialModal({
             {/* Section 1: Informasi Dasar */}
             <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-gray-200 dark:border-slate-800">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-emerald-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                <span className="w-8 h-8 bg-emerald-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                   1
                 </span>
                 Informasi Dasar
@@ -655,7 +655,7 @@ export default function AddMaterialModal({
                     required
                     value={formData.base_unit}
                     onChange={(e) => handleBaseUnitChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
                     disabled={loadingMaster || formData.requires_dimension}
                   >
                     {loadingMaster ? (
@@ -814,7 +814,7 @@ export default function AddMaterialModal({
             <div className="bg-blue-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-blue-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-blue-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                  <span className="w-8 h-8 bg-blue-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                     2
                   </span>
                   Harga Per Satuan Jual
@@ -822,7 +822,7 @@ export default function AddMaterialModal({
                 <button
                   type="button"
                   onClick={addUnitPrice}
-                  className="px-3 py-1.5 bg-blue-50 dark:bg-slate-8000 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
+                  className="px-3 py-1.5 bg-blue-500 dark:bg-slate-700 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
                 >
                   <svg
                     className="w-4 h-4"
@@ -1063,7 +1063,7 @@ export default function AddMaterialModal({
             {/* Section 3: Stock */}
             <div className="bg-orange-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-orange-200 dark:border-orange-800/50">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-orange-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                <span className="w-8 h-8 bg-orange-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
                   3
                 </span>
                 Stok & Inventory

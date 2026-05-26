@@ -25,6 +25,7 @@ import type {
   SuratJalanStatus,
 } from "@/lib/services/surat-jalan-service";
 import { fetchSessionUser } from "@/lib/client-session";
+import { PurchaseOrderIcon } from "@/components/icons/PageIcons";
 
 export default function SuratJalanPage() {
   const router = useRouter();
@@ -207,16 +208,18 @@ export default function SuratJalanPage() {
   return (
     <>
       <div className="space-y-6">
+        {/* Title Card */}
+        <div className="bg-gradient-to-br from-[#0a1b3d] to-[#00afef] rounded-2xl shadow-lg p-6 mb-2 text-white">
+          <div className="flex items-center gap-3">
+            <PurchaseOrderIcon size={28} className="text-white" />
+            <div>
+              <h2 className="text-2xl font-bold uppercase tracking-wide">Surat Jalan</h2>
+              <p className="text-white/90 text-sm">Dokumen pengantar barang dari toko ke pelanggan</p>
+            </div>
+          </div>
+        </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
-                Surat Jalan
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
-                Dokumen pengantar barang dari toko ke pelanggan
-              </p>
-            </div>
             <button
               onClick={() => {
                 setEditTarget(null);

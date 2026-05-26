@@ -244,11 +244,11 @@ export default function FloatingCalculator({
       </div>
 
       <div className="p-4 space-y-4">
-        <div className="rounded-xl bg-slate-950 text-right p-4 min-h-[92px] flex flex-col justify-end">
-          <div className="text-xs text-slate-400 min-h-5 truncate">
+        <div className="rounded-xl bg-gray-100 dark:bg-slate-950 text-right p-4 min-h-[92px] flex flex-col justify-end">
+          <div className="text-xs text-gray-500 dark:text-slate-400 min-h-5 truncate">
             {history || "Siap menghitung"}
           </div>
-          <div className="text-3xl font-bold text-white tabular-nums break-all">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums break-all">
             {display}
           </div>
         </div>

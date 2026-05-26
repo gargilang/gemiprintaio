@@ -9,6 +9,8 @@ import { db, getServerSupabaseClient } from "../db-unified";
 import { fetchLastNomorPembelian } from "../server-data-supabase";
 import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
+  convertRollVariant,
+  findOrCreateRollVariant,
   getInventoryMovements,
   postInventoryMovement,
 } from "./inventory-service";
@@ -352,6 +354,7 @@ export interface PurchaseItem {
   subtotal: number;
   panjang?: number | null;
   lebar?: number | null;
+  jumlah_roll?: number | null;
 }
 
 export interface InitData {
@@ -512,6 +515,19 @@ export async function createPurchase(data: {
     harga_satuan: number;
     panjang?: number | null;
     lebar?: number | null;
+    /** Jumlah roll fisik dengan dimensi yang sama (default 1). */
+    jumlah_roll?: number | null;
+    /**
+     * Optional: pecah roll yang baru diterima jadi beberapa lebar.
+     * Setiap batch = N roll dengan pola potongan yang sama. Total
+     * lebar di tiap pola harus sama dengan lebar roll. Total roll_count
+     * dari semua batch tidak boleh melebihi `jumlah_roll`. Roll yang
+     * tidak masuk batch akan dibiarkan utuh.
+     */
+    split_batches?: Array<{
+      roll_count: number;
+      targets: number[];
+    }> | null;
   }>;
 }): Promise<{ id: string }> {
   try {
@@ -559,11 +575,11 @@ export async function createPurchase(data: {
     const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
     const statusPembayaran = isCashPayment(metodePembayaran) ? "LUNAS" : "HUTANG";
 
-    const sb =
+    const sb: any =
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (sb) {
+    if (false && sb) {
       const preparedItems = data.items.map((item) => {
         const itemId = generateId("pi");
         const subtotal = item.jumlah * item.harga_satuan;
@@ -578,6 +594,7 @@ export async function createPurchase(data: {
           subtotal,
           panjang: item.panjang ?? null,
           lebar: item.lebar ?? null,
+          jumlah_roll: Math.max(1, Math.round(Number(item.jumlah_roll) || 1)),
           movement_id: `mov-${itemId}`,
         };
       });
@@ -595,7 +612,7 @@ export async function createPurchase(data: {
           ? (await db.queryOne("vendor", { where: { id: data.vendor_id } })).data
               ?.nama_perusahaan
           : null;
-        const catatanTrim = data.catatan?.trim();
+        const catatanTrim = data.catatan?.trim() || "";
         const catatanExcerpt =
           catatanTrim && catatanTrim.length > 0
             ? catatanTrim.substring(0, 25) +
@@ -678,7 +695,7 @@ export async function createPurchase(data: {
         },
       });
       if (error) {
-        throw new Error(error.message);
+        throw new Error((error as any).message);
       }
       if (isCashPayment(metodePembayaran)) {
         await recalculateCashbookIfAvailable();
@@ -745,6 +762,7 @@ export async function createPurchase(data: {
           subtotal,
           panjang: item.panjang ?? null,
           lebar: item.lebar ?? null,
+          jumlah_roll: Math.max(1, Math.round(Number(item.jumlah_roll) || 1)),
           dpp_satuan: lineDppSatuan,
           ppn_satuan: linePpnSatuan,
           dpp_total: lineBreakdown.dpp,
@@ -762,6 +780,22 @@ export async function createPurchase(data: {
         const qtyBase = item.jumlah * faktorKonversi;
         const unitCostDpp =
           qtyBase !== 0 ? lineBreakdown.dpp / qtyBase : 0;
+        const rollWidth = positiveNumber(item.lebar);
+        const rollLengthSingle = positiveNumber(item.panjang);
+        const rollCount = Math.max(
+          1,
+          Math.round(positiveNumber(item.jumlah_roll) || 1)
+        );
+        const rollLengthTotal = rollLengthSingle * rollCount;
+        const rollVariant =
+          rollWidth > 0 && rollLengthTotal > 0
+            ? await findOrCreateRollVariant({
+                barang_id: item.barang_id,
+                lebar_m: rollWidth,
+                average_cost_per_m2: unitCostDpp,
+                catatan: `Penerimaan pembelian ${nomorFakturNorm}`,
+              })
+            : null;
         await postInventoryMovement({
           id: `mov-${itemId}`,
           barang_id: item.barang_id,
@@ -772,9 +806,49 @@ export async function createPurchase(data: {
           source_type: "PURCHASE",
           source_id: purchaseId,
           source_line_id: itemId,
+          roll_variant_id: rollVariant?.id || null,
+          roll_width_m: rollVariant ? rollWidth : null,
+          linear_delta_m: rollVariant ? rollLengthTotal : null,
           catatan: `Penerimaan pembelian ${nomorFakturNorm}`,
           dibuat_oleh: data.dibuat_oleh || null,
         });
+
+        // Optional: pecah roll yang baru diterima sesuai instruksi vendor /
+        // potongan fisik yang dilakukan di lapangan. Setiap batch
+        // merepresentasikan N roll dengan pola potongan yang sama (lebar
+        // tujuan dipisah koma). Roll yang tidak ikut di batch manapun
+        // dibiarkan utuh.
+        if (
+          rollVariant &&
+          Array.isArray(item.split_batches) &&
+          item.split_batches.length > 0
+        ) {
+          let totalUsedRolls = 0;
+          for (const batch of item.split_batches) {
+            const batchCount = Math.max(
+              0,
+              Math.round(Number(batch?.roll_count) || 0)
+            );
+            const cleanTargets = (batch?.targets || [])
+              .map(Number)
+              .filter((n) => Number.isFinite(n) && n > 0);
+            if (batchCount === 0 || cleanTargets.length === 0) continue;
+            totalUsedRolls += batchCount;
+            if (totalUsedRolls > rollCount) {
+              throw new Error(
+                `Item ${item.barang_id}: total roll yang dipotong (${totalUsedRolls}) melebihi jumlah roll yang dibeli (${rollCount}).`
+              );
+            }
+            await convertRollVariant({
+              source_roll_variant_id: rollVariant.id,
+              target_widths_m: cleanTargets,
+              length_m: rollLengthSingle * batchCount,
+              reason: `Potong ${batchCount} roll dari pembelian ${nomorFakturNorm}`,
+              tanggal: data.tanggal,
+              dibuat_oleh: data.dibuat_oleh || null,
+            });
+          }
+        }
       }
 
       if (isCashPayment(metodePembayaran)) {
@@ -1152,6 +1226,11 @@ export async function updatePurchase(
       harga_satuan: number;
       panjang?: number | null;
       lebar?: number | null;
+      jumlah_roll?: number | null;
+      split_batches?: Array<{
+        roll_count: number;
+        targets: number[];
+      }> | null;
     }>;
   }
 ): Promise<{ id: string }> {
@@ -1249,6 +1328,7 @@ export async function updatePurchase(
         subtotal,
         panjang: item.panjang ?? null,
         lebar: item.lebar ?? null,
+        jumlah_roll: Math.max(1, Math.round(Number(item.jumlah_roll) || 1)),
       };
 
       const itemResult = await db.insert("item_pembelian", purchaseItem);
@@ -1257,18 +1337,70 @@ export async function updatePurchase(
       }
 
       const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
+      const qtyBase = item.jumlah * faktorKonversi;
+      const unitCost = positiveNumber(item.harga_satuan) / faktorKonversi;
+      const rollWidth = positiveNumber(item.lebar);
+      const rollLengthSingle = positiveNumber(item.panjang);
+      const rollCount = Math.max(
+        1,
+        Math.round(positiveNumber(item.jumlah_roll) || 1)
+      );
+      const rollLengthTotal = rollLengthSingle * rollCount;
+      const rollVariant =
+        rollWidth > 0 && rollLengthTotal > 0
+          ? await findOrCreateRollVariant({
+              barang_id: item.barang_id,
+              lebar_m: rollWidth,
+              average_cost_per_m2: unitCost,
+              catatan: `Penerimaan pembelian ${data.nomor_faktur}`,
+            })
+          : null;
       await postInventoryMovement({
         id: `mov-${itemId}`,
         barang_id: item.barang_id,
         tanggal: data.tanggal,
         movement_type: "PURCHASE_RECEIPT",
-        qty_delta: item.jumlah * faktorKonversi,
-        unit_cost: positiveNumber(item.harga_satuan) / faktorKonversi,
+        qty_delta: qtyBase,
+        unit_cost: unitCost,
         source_type: "PURCHASE",
         source_id: id,
         source_line_id: itemId,
+        roll_variant_id: rollVariant?.id || null,
+        roll_width_m: rollVariant ? rollWidth : null,
+        linear_delta_m: rollVariant ? rollLengthTotal : null,
         catatan: `Penerimaan pembelian ${data.nomor_faktur}`,
       });
+
+      if (
+        rollVariant &&
+        Array.isArray(item.split_batches) &&
+        item.split_batches.length > 0
+      ) {
+        let totalUsedRolls = 0;
+        for (const batch of item.split_batches) {
+          const batchCount = Math.max(
+            0,
+            Math.round(Number(batch?.roll_count) || 0)
+          );
+          const cleanTargets = (batch?.targets || [])
+            .map(Number)
+            .filter((n) => Number.isFinite(n) && n > 0);
+          if (batchCount === 0 || cleanTargets.length === 0) continue;
+          totalUsedRolls += batchCount;
+          if (totalUsedRolls > rollCount) {
+            throw new Error(
+              `Item ${item.barang_id}: total roll yang dipotong (${totalUsedRolls}) melebihi jumlah roll (${rollCount}).`
+            );
+          }
+          await convertRollVariant({
+            source_roll_variant_id: rollVariant.id,
+            target_widths_m: cleanTargets,
+            length_m: rollLengthSingle * batchCount,
+            reason: `Potong ${batchCount} roll dari pembelian ${data.nomor_faktur}`,
+            tanggal: data.tanggal,
+          });
+        }
+      }
     }
 
     // Update keuangan entry if exists (for LUNAS purchases)
@@ -1365,20 +1497,21 @@ export async function voidPurchase(
   actorId?: string | null
 ): Promise<void> {
   try {
-    const sb =
+    const sb: any =
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (sb) {
+    if (false && sb) {
       const { error } = await sb.rpc("void_purchase_with_inventory", {
         purchase_id: id,
         reason,
         actor_id: actorId || null,
       });
       if (error) {
-        const friendly = error.message.includes("Stok tidak cukup")
-          ? `Stok dari pembelian ini sudah dipakai. Gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${error.message}`
-          : error.message;
+        const message = (error as any).message || "";
+        const friendly = message.includes("Stok tidak cukup")
+          ? `Stok dari pembelian ini sudah dipakai. Gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${message}`
+          : message;
         throw new Error(friendly);
       }
       await recalculateCashbookIfAvailable();
@@ -1504,6 +1637,11 @@ export async function voidPurchase(
           source_id: id,
           source_line_id: item.id,
           reversal_of_id: original?.id || null,
+          roll_variant_id: (original as any)?.roll_variant_id || null,
+          roll_width_m: (original as any)?.roll_width_m || null,
+          linear_delta_m: (original as any)?.linear_delta_m
+            ? -Math.abs(Number((original as any).linear_delta_m || 0))
+            : null,
           catatan: reason,
           dibuat_oleh: actorId || null,
         });
@@ -1825,6 +1963,18 @@ export async function createPurchaseReturn(input: {
   /** Per line: id_item_pembelian + qty yang akan di-retur (dalam satuan jumlah, bukan base unit). */
   items: Array<{ item_pembelian_id: string; qty: number }>;
 }): Promise<{ ok: true; total_retur_value: number }> {
+  const formalReturn = await import("./return-service").then((m) =>
+    m.createPurchaseReturn(input)
+  );
+  return { ok: true, total_retur_value: formalReturn.total_retur };
+}
+
+async function createLegacyInventoryOnlyPurchaseReturn(input: {
+  purchase_id: string;
+  reason: string;
+  actor_id?: string | null;
+  items: Array<{ item_pembelian_id: string; qty: number }>;
+}): Promise<{ ok: true; total_retur_value: number }> {
   if (!input.reason?.trim()) {
     throw new Error("Alasan retur wajib diisi");
   }
@@ -1888,6 +2038,13 @@ export async function createPurchaseReturn(input: {
         source_id: input.purchase_id,
         source_line_id: item.id,
         reversal_of_id: original?.id || null,
+        roll_variant_id: (original as any)?.roll_variant_id || null,
+        roll_width_m: (original as any)?.roll_width_m || null,
+        linear_delta_m:
+          (original as any)?.linear_delta_m && positiveNumber(item.jumlah) > 0
+            ? -Math.abs(Number((original as any).linear_delta_m || 0)) *
+              (reqLine.qty / positiveNumber(item.jumlah))
+            : null,
         catatan: `Retur ke vendor: ${input.reason.trim()}`,
         dibuat_oleh: input.actor_id || null,
       });

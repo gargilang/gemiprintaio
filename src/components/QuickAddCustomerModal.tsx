@@ -94,7 +94,7 @@ export default function QuickAddCustomerModal({
       header={
         <div className="bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white dark:bg-slate-900/20 rounded-lg shrink-0">
+            <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"

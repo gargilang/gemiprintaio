@@ -25,6 +25,10 @@ export type KategoriTransaksi =
   | "PRIBADI-A" // Personal Add
   | "PRIBADI-S"
   | "MAKLON" // Subcontract printing payout (outbound subcontracted job)
+  | "RETUR_PENJUALAN"
+  | "RETUR_PENJUALAN_NONCASH"
+  | "RETUR_HPP"
+  | "RETUR_PEMBELIAN"
   | (string & {}); // allow dynamic categories per company
 
 export interface Profile {
@@ -48,6 +52,7 @@ export interface Material {
   member_price: number;
   stock_quantity: number;
   average_cost_per_base_unit?: number;
+  roll_inventory_status?: number;
   min_stock_level: number;
   created_at: string;
   updated_at: string;
@@ -206,10 +211,15 @@ export interface InventoryMovement {
     | "PURCHASE_RECEIPT"
     | "SALE_ISSUE"
     | "SALE_VOID"
+    | "SALE_RETURN"
     | "PURCHASE_VOID"
     | "PURCHASE_RETURN"
     | "ADJUSTMENT"
-    | "WASTE";
+    | "WASTE"
+    | "ROLL_CONVERSION_OUT"
+    | "ROLL_CONVERSION_IN"
+    | "PRODUCTION_ISSUE"
+    | "PRODUCTION_WASTE";
   qty_delta: number;
   unit_cost: number;
   value_delta: number;
@@ -221,6 +231,9 @@ export interface InventoryMovement {
   source_id: string;
   source_line_id?: string | null;
   reversal_of_id?: string | null;
+  roll_variant_id?: string | null;
+  roll_width_m?: number | null;
+  linear_delta_m?: number | null;
   catatan?: string | null;
   dibuat_oleh?: string | null;
   dibuat_pada: string;
@@ -302,6 +315,42 @@ export interface NsfpPool {
   catatan?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
+}
+
+export interface RollVariant {
+  id: string;
+  barang_id: string;
+  lebar_m: number;
+  panjang_tersedia_m: number;
+  average_cost_per_m2: number;
+  aktif_status: number;
+}
+
+export interface Penawaran {
+  id: string;
+  nomor_penawaran: string;
+  pelanggan_id?: string | null;
+  status: "DRAFT" | "SENT" | "ACCEPTED" | "CONVERTED" | "CANCELLED" | "EXPIRED";
+  total_jumlah: number;
+  tanggal: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  nomor_po: string;
+  vendor_id?: string | null;
+  status: "DRAFT" | "SENT" | "PARTIAL_RECEIVED" | "RECEIVED" | "CANCELLED";
+  total_jumlah: number;
+  tanggal: string;
+}
+
+export interface StockOpname {
+  id: string;
+  nomor_opname: string;
+  tanggal: string;
+  status: "DRAFT" | "POSTED" | "CANCELLED";
+  total_delta_qty: number;
+  total_delta_value: number;
 }
 
 /**
