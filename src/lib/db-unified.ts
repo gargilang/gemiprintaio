@@ -1517,8 +1517,8 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       id, nama_toko, slogan, bank_nama, bank_nomor, bank_atas_nama,
       catatan_faktur, catatan_struk
     ) VALUES (
-      'default', 'Gemiprint', 'Digital Printing & Advertising', 'BCA',
-      '6881276507', 'Grafika Estetika Media Internusa',
+      'default', 'gemiprint', 'Digital Printing & Advertising', 'BCA',
+      '6881276507', 'PT. Grafika Estetika Media Internusa',
       'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.',
       'Barang yang sudah dibeli tidak dapat dikembalikan'
     );
@@ -2367,7 +2367,7 @@ function ensureServerSQLiteSyncV2Schema(db: any) {
       {
         name: "bank_atas_nama",
         sql: "bank_atas_nama TEXT",
-        defaultValue: "Grafika Estetika Media Internusa",
+        defaultValue: "PT. Grafika Estetika Media Internusa",
       },
       {
         name: "catatan_faktur",

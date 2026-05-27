@@ -4,12 +4,14 @@ A full-featured business management application for printing companies — cover
 
 Available on four platforms:
 
-| Platform | Stack | Storage | URL / Distribution |
-|----------|-------|---------|--------------------|
-| **Web** | Next.js on Vercel | Supabase (cloud Postgres) | [app.gemiprint.com](https://app.gemiprint.com) |
-| **Desktop** | Tauri + Next.js standalone | Local SQLite + sync to Supabase | [GitHub Releases](https://github.com/gargilang/gemiprintaio/releases) |
-| **Mobile** | Flutter (Android) | Online-only via Next.js API | Google Play (coming soon) |
-| **Mobile Web** | Flutter Web | Online-only via Next.js API | [m.gemiprint.com](https://m.gemiprint.com) |
+
+| Platform       | Stack                      | Storage                         | URL / Distribution                                                    |
+| -------------- | -------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| **Web**        | Next.js on Vercel          | Supabase (cloud Postgres)       | [app.gemiprint.com](https://app.gemiprint.com)                        |
+| **Desktop**    | Tauri + Next.js standalone | Local SQLite + sync to Supabase | [GitHub Releases](https://github.com/gargilang/gemiprintaio/releases) |
+| **Mobile**     | Flutter (Android)          | Online-only via Next.js API     | Google Play (coming soon)                                             |
+| **Mobile Web** | Flutter Web                | Online-only via Next.js API     | [m.gemiprint.com](https://m.gemiprint.com)                            |
+
 
 ## Architecture
 
@@ -21,7 +23,7 @@ Available on four platforms:
                                │
                     ┌──────────┴──────────┐
                     │                     │
-          ┌─────────▼─────────┐ ┌─────────▼─────────┐
+          ┌─────────▼─────────┐ ┌─────────▼──────────┐
           │   Next.js API     │ │   Supabase Direct  │
           │ app.gemiprint.com │ │   (service-role)   │
           │  (Vercel)         │ │                    │
@@ -97,9 +99,9 @@ The desktop auto-updater requires a private signing key to sign new releases. Th
 **On a new computer, before you can run `npm run release:desktop`:**
 
 1. Download `gemiprint.key` from the private Google Drive folder:
-   https://drive.google.com/drive/folders/11N6siiUWBKXrQDNRHZgWpn8A-HA9gH74?usp=drive_link
+  [https://drive.google.com/drive/folders/11N6siiUWBKXrQDNRHZgWpn8A-HA9gH74?usp=drive_link](https://drive.google.com/drive/folders/11N6siiUWBKXrQDNRHZgWpn8A-HA9gH74?usp=drive_link)
 2. Place it at: `%APPDATA%\.tauri\gemiprint.key`
-   (Full path example: `C:\Users\<you>\AppData\Roaming\.tauri\gemiprint.key`)
+  (Full path example: `C:\Users\<you>\AppData\Roaming\.tauri\gemiprint.key`)
 3. Verify the file exists, then you are ready to build and release.
 
 > **Note:** This Google Drive folder is access-restricted to the project owner only.
@@ -140,7 +142,7 @@ cd flutter && flutter run -d edge --web-port=8080 --web-renderer html
 cd flutter && flutter run -d edge --web-port=8080 --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
-**Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka **`http://localhost:8080/login`** atau **`http://localhost:8080/`** (akan redirect). URL `/#/login` bisa memunculkan layar putih.
+**Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka `**http://localhost:8080/login`** atau `**http://localhost:8080/**` (akan redirect). URL `/#/login` bisa memunculkan layar putih.
 
 Login ke API production dari `localhost` membutuhkan header **CORS** di server Next.js — sudah ditambahkan di `src/middleware.ts`; deploy ke Vercel supaya `app.gemiprint.com` mengizinkan origin `http://localhost:8080`.
 
@@ -157,6 +159,7 @@ npm run tauri:build
 ```
 
 Output:
+
 - `src-tauri/target/release/bundle/msi/gemiprint_x.x.x_x64_en-US.msi`
 - `src-tauri/target/release/bundle/nsis/gemiprint_x.x.x_x64-setup.exe`
 
@@ -224,6 +227,7 @@ npm run release:desktop
 ```
 
 The `release:desktop` script automatically:
+
 1. Signs the installer with the private key
 2. Creates a GitHub Release and uploads the installer
 3. Updates `updates/latest.json` and pushes to `main`
@@ -281,3 +285,4 @@ gemiprintaio/
 - **Auth:** JWT sessions with bcrypt password hashing
 - **PDF:** jsPDF + jspdf-autotable for report printing
 - **AI Tools Used:** GitHub Copilot, Cursor
+

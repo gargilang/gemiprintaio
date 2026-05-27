@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS pengaturan_toko (
 );
 
 INSERT INTO pengaturan_toko (id, nama_toko)
-VALUES ('default', 'Gemiprint')
+VALUES ('default', 'gemiprint')
 ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE pengaturan_toko ENABLE ROW LEVEL SECURITY;

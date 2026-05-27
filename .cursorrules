@@ -176,3 +176,39 @@ Before declaring done: `npm run type-check`, `npm run build`, and run any tests 
 ### 12. Ask only when truly blocked, otherwise pick the pragmatic default
 
 The owner explicitly trusts technical judgment. Pick reasonable defaults, document assumptions in the final summary. Block only on: destructive prod actions, money/access rules that cannot be inferred, or genuinely 50/50 architectural choices with significant trade-offs.
+
+### 13. New page wrapper must be `<div className="space-y-6">`, never a second `<main>`
+
+The layout shell already provides `<main>` with padding. Returning `<main className="space-y-5 p-6">` from a page component double-wraps the content and makes it appear shrunken and misaligned. Always return `<div className="space-y-6">` as the root element.
+
+### 14. Every new page needs a gradient title card
+
+Pattern: `<div className="bg-gradient-to-br from-X to-Y rounded-2xl shadow-lg p-6 text-white">` with icon, uppercase title, and subtitle. Color follows the page theme. Reference: `src/app/finance/page.tsx`, `src/app/surat-jalan/page.tsx`.
+
+### 15. Dark mode is mandatory on every element
+
+Every color class needs a `dark:` counterpart. Common pairs: `bg-white dark:bg-slate-900`, `text-slate-800 dark:text-slate-100`, `border-slate-200 dark:border-slate-700`. Never ship a new page or component without dark mode. Check for typos like `dark:bg-slate-8000` (invalid — extra zero).
+
+### 16. Icons in stat cards use `text-white`, background uses `bg-white/20`
+
+Never set icon color to match the card gradient (e.g. `text-yellow-500` on a yellow card). The icon becomes invisible. Always: icon wrapper = `bg-white/20 rounded-lg`, icon = `text-white`.
+
+### 17. Badges with white text need solid background, not `-50` shade
+
+`bg-emerald-50 text-white` is unreadable — the `-50` shade is near-white. Use `bg-emerald-500` (or equivalent solid shade) for any badge/number that contains white text.
+
+### 18. `onSuccess` for new items must pass `null`, not the raw result
+
+When a create modal calls `onSuccess(message, updatedItem)`, pass `null` for new items so the parent calls `reload()`. Passing the raw API result causes the parent to call `updateInState` instead of appending, so the new item never appears in the list.
+
+### 19. Seed SQL column names must match actual migrations
+
+Before writing seed SQL, verify column names in `supabase/migrations/`. For `pengaturan_toko`: bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama`. Default settings rows must use `ON CONFLICT DO UPDATE SET` (not `DO NOTHING`) so `supabase:local:reset` always restores correct defaults.
+
+### 20. Menu labels must not be abbreviated
+
+If other menu items use full names, do not abbreviate. "PO" → "Purchase Order". Check `src/components/menuConfig.tsx` for both the `label` field and the breadcrumb map.
+
+### 21. Finance categories: `display_name` is primary, `category_code` is secondary
+
+In any UI listing categories: show `display_name` as the main label (normal font, slate color). Show `category_code` as secondary (small, monospace, amber, with quotes). Never show raw codes as the primary user-facing text. In formula autocomplete (`ExpressionAssistant`), suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"` (stable for formulas).

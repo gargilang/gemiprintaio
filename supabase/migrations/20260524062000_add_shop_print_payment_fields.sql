@@ -11,7 +11,7 @@ UPDATE pengaturan_toko
 SET
   bank_nama = COALESCE(bank_nama, 'BCA'),
   bank_nomor = COALESCE(bank_nomor, '6881276507'),
-  bank_atas_nama = COALESCE(bank_atas_nama, 'Grafika Estetika Media Internusa'),
+  bank_atas_nama = COALESCE(bank_atas_nama, 'PT. Grafika Estetika Media Internusa'),
   catatan_faktur = COALESCE(catatan_faktur, 'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.'),
   catatan_struk = COALESCE(catatan_struk, 'Barang yang sudah dibeli tidak dapat dikembalikan')
 WHERE id = 'default';

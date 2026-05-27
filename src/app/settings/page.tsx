@@ -220,7 +220,7 @@ function CompanyTab() {
     setNotice(null);
     try {
       const updated = await updateShopSettingsAction({
-        nama_toko: (form.nama_toko || "").trim() || "Gemiprint",
+        nama_toko: (form.nama_toko || "").trim() || "gemiprint",
         slogan: (form.slogan || "").trim() || null,
         alamat: (form.alamat || "").trim() || null,
         telepon: (form.telepon || "").trim() || null,
@@ -285,7 +285,7 @@ function CompanyTab() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextInput label="Nama Usaha" value={form.nama_toko || ""} onChange={(value) => updateField("nama_toko", value)} placeholder="Gemiprint" />
+              <TextInput label="Nama Usaha" value={form.nama_toko || ""} onChange={(value) => updateField("nama_toko", value)} placeholder="gemiprint" />
               <TextInput label="Slogan / Tagline" value={form.slogan || ""} onChange={(value) => updateField("slogan", value)} placeholder="Digital Printing & Advertising" />
               <TextInput label="No. Telepon" value={form.telepon || ""} onChange={(value) => updateField("telepon", value)} placeholder="0812 3456 0525" />
               <TextInput label="Email" value={form.email || ""} onChange={(value) => updateField("email", value)} placeholder="cs@gemiprint.com" />

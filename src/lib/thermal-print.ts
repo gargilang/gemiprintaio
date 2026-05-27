@@ -55,7 +55,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     biaya_tambahan,
   } = data;
 
-  const shopName = shop?.nama_toko?.trim() || "Gemiprint";
+  const shopName = shop?.nama_toko?.trim() || "gemiprint";
   const shopSlogan = shop?.slogan?.trim() || "Digital Printing & Advertising";
   const shopPhone = shop?.telepon?.trim() || "0812 3456 0525";
   const shopEmail = shop?.email?.trim() || "cs@gemiprint.com";

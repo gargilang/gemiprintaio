@@ -46,7 +46,7 @@ export interface SuratJalanData {
 }
 
 const SHOP_INFO = {
-  nama_toko: "Gemiprint",
+  nama_toko: "gemiprint",
   slogan: "Digital Printing & Advertising",
   alamat:
     "Cifest Walk, Ruko Pasadena Blok RA No. 18A,<br>Kel. Ciantra, Cikarang Selatan - Bekasi, 17531",

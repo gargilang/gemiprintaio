@@ -102,7 +102,7 @@ export function generateFakturPembelianHTML(
   const sisa = Math.max(0, total - jumlah_dibayar);
   const tanggalDisplay = formatJakartaDate(tanggal);
   const itemsHTML = items.map(renderItemRow).join("");
-  const shopName = shop?.nama_toko?.trim() || "Gemiprint";
+  const shopName = shop?.nama_toko?.trim() || "gemiprint";
   const shopSlogan = shop?.slogan?.trim() || "Digital Printing & Advertising";
 
   const statusColor =

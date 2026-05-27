@@ -210,3 +210,26 @@ SELECT
 FROM spesifikasi_cepat_barang
 WHERE kategori_id = 'cat-kertas'
 ON CONFLICT (id) DO NOTHING;
+
+-- Default shop settings
+INSERT INTO pengaturan_toko (
+  id, nama_toko, slogan, bank_nama, bank_nomor, bank_atas_nama,
+  catatan_faktur, catatan_struk
+) VALUES (
+  'default',
+  'gemiprint',
+  'Digital Printing & Advertising',
+  'BCA',
+  '6881276507',
+  'PT. Grafika Estetika Media Internusa',
+  'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.',
+  'Barang yang sudah dibeli tidak dapat dikembalikan'
+)
+ON CONFLICT (id) DO UPDATE SET
+  nama_toko = EXCLUDED.nama_toko,
+  slogan = EXCLUDED.slogan,
+  bank_nama = EXCLUDED.bank_nama,
+  bank_nomor = EXCLUDED.bank_nomor,
+  bank_atas_nama = EXCLUDED.bank_atas_nama,
+  catatan_faktur = EXCLUDED.catatan_faktur,
+  catatan_struk = EXCLUDED.catatan_struk;

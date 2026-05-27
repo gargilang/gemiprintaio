@@ -7,7 +7,7 @@ const SHOP_SETTINGS_ID = "default";
 
 const DEFAULT_SHOP_SETTINGS: PengaturanToko = {
   id: SHOP_SETTINGS_ID,
-  nama_toko: "Gemiprint",
+  nama_toko: "gemiprint",
   slogan: "Digital Printing & Advertising",
   alamat: null,
   telepon: null,
