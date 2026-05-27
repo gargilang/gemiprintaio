@@ -110,3 +110,69 @@ Ask first only if:
 - Changing domain, DNS (GoDaddy), or billing.
 - Ambiguous business rules (pricing, access for new users, etc.).
 - Large changes that cannot be rolled back easily.
+
+## Iron rules — apply unprompted
+
+These are non-negotiable patterns the owner expects on every feature. The owner is non-technical and **will not remember to ask** for them. Read [docs/agent-playbook.md](./docs/agent-playbook.md) for full context, but enforce these by default:
+
+### 1. New page that fetches data → use `useCachedData`, not `useAsyncData`
+
+`useAsyncData` refetches on every mount. `useCachedData` (SWR-backed) gives instant paint from cache + background revalidation. Reference: [src/app/materials/page.tsx](./src/app/materials/page.tsx), [src/app/vendors/page.tsx](./src/app/vendors/page.tsx). Pick a stable cache key (e.g. `"penawaran-init"`, or `` `movement-ledger:${JSON.stringify(filters)}` `` when the data is filter-dependent). When migrating, derive locals so existing `data.X` / `reload()` callers don't have to change.
+
+### 2. Schema change → migration AND `database/sqlite-schema.sql` AND `src/lib/db-unified.ts` runtime check
+
+Three places must stay in sync because the app runs on both Supabase (web) and SQLite (Tauri):
+
+- `supabase/migrations/<timestamp>_<name>.sql` — additive, `IF NOT EXISTS`, default values for backward compat.
+- `database/sqlite-schema.sql` — fresh-install template.
+- `src/lib/db-unified.ts` — `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` so existing local SQLite installs migrate on app start.
+
+Migration files that already exist on the cloud cannot be edited. If a change is needed, write a new migration with a new timestamp.
+
+### 3. Inventory mutation → goes through `inventory-service.postInventoryMovement`, never raw `db.update("barang", …)`
+
+The ledger is the source of truth for stock and AVCO. Bypassing it desyncs `barang.jumlah_stok`, `average_cost_per_base_unit`, and roll variants. Same applies to roll conversions: use `convertRollVariant`. See [src/lib/services/inventory-service.ts](./src/lib/services/inventory-service.ts).
+
+### 4. Money/cashbook mutation → through `keuangan` table with `[REF:<id>]` in keperluan
+
+Every cashbook entry must be traceable back to its source transaction. Pattern is a `[REF:<id>]` token in the `keperluan` text. Void/revert flows search by this token. See `createPurchase` in [src/lib/services/purchases-service.ts](./src/lib/services/purchases-service.ts).
+
+### 5. Server action that mutates → wrap in `requireAdminOrManager()`
+
+Read actions can be open. Write actions go through [src/lib/auth-guard-server.ts](./src/lib/auth-guard-server.ts) guards. Use `s.uid` from the returned session as `dibuat_oleh` so the audit trail captures who acted.
+
+### 6. Roll/dimensional barang has special rules
+
+For barang with `butuh_dimensi_status = 1`:
+- `jumlah` (m²) = `jumlah_roll × panjang × lebar`. Never compute as `panjang × lebar` only.
+- Stock decrement uses **roll-width-aligned** length, not order dimensions, via `barang_roll_variants` and `linear_delta_m`.
+- Conversions (cutting one width into multiple) are atomic via `convertRollVariant` and are AVCO-neutral.
+- See [docs/agent-playbook.md](./docs/agent-playbook.md) section "Roll inventory model" before touching this area.
+
+### 7. Modals must be consistent
+
+Every modal: ESC to close, click-outside to close, header X button, focus on the primary action. Theme colors signal the domain:
+- **Emerald** — material/inventory operations (e.g. roll conversion from materials page).
+- **Purple** — purchase-transaction operations (e.g. roll split during receipt).
+- **Amber** — warnings, unassigned/manual buckets.
+- **Rose** — destructive (waste, delete).
+
+### 8. Period-closed guard on dated mutations
+
+`postInventoryMovement` and finance mutations that accept `tanggal` must respect closed accounting periods (`accounting-periods-service.isDateInClosedPeriod`). Don't silently bypass — throw a friendly error directing the user to the current open period.
+
+### 9. Sync columns on every new table
+
+Tables that participate in the offline/sync engine need: `sync_status`, `last_synced_at`, `sync_version`, `updated_at_server`, `updated_by_device`, `change_version`, `is_deleted`, `deleted_at`, `client_mutation_id`. Pattern visible on every table in [supabase/schema.sql](./supabase/schema.sql). Also register the table in [src/lib/sync-config.ts](./src/lib/sync-config.ts).
+
+### 10. Idempotent IDs for inventory ledger
+
+When a transaction creates a movement, derive the movement id from the source line id (e.g. `mov-${itemId}`, `void-${original.id}`, `${conversionId}-out`). This makes void/revert lookups deterministic and prevents duplicate posts on retry. See `postInventoryMovement` callers.
+
+### 11. Verification loop is mandatory, even if owner doesn't mention it
+
+Before declaring done: `npm run type-check`, `npm run build`, and run any tests in `src/lib/__tests__/` whose subject your change touches. The owner **expects this** and will be unhappy if a regression makes it to `main`. Pre-existing warnings (e.g. lint exhaustive-deps) are not blockers; new ones from your change are.
+
+### 12. Ask only when truly blocked, otherwise pick the pragmatic default
+
+The owner explicitly trusts technical judgment. Pick reasonable defaults, document assumptions in the final summary. Block only on: destructive prod actions, money/access rules that cannot be inferred, or genuinely 50/50 architectural choices with significant trade-offs.
