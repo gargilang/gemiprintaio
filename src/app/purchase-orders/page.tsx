@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { PurchaseOrderFlowIcon } from "@/components/icons/PageIcons";
 import {
   createPurchaseOrderAction,
@@ -38,10 +38,15 @@ const money = (value: number) =>
 const initial = { purchaseOrders: [], materials: [], vendors: [] };
 
 export default function PurchaseOrdersPage() {
-  const { data, loading, reload } = useAsyncData<any>(
-    () => getPurchaseOrdersInitAction(),
-    initial
+  const { data: rawData, isLoading, mutate } = useCachedData<any>(
+    "purchase-orders-init",
+    getPurchaseOrdersInitAction
   );
+  const data = rawData ?? initial;
+  const loading = isLoading && !rawData;
+  const reload = async () => {
+    await mutate();
+  };
   const [vendorId, setVendorId] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [catatan, setCatatan] = useState("");

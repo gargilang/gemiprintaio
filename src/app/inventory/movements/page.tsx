@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { MovementLedgerIcon } from "@/components/icons/PageIcons";
 import { getMovementLedgerAction } from "./actions";
 import type { InventoryMovementType } from "@/lib/services/inventory-service";
@@ -75,7 +75,9 @@ export default function MovementLedgerPage() {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [pendingFilters, setPendingFilters] = useState<Filters>(initialFilters);
 
-  const loader = useCallback(
+  const cacheKey = `movement-ledger:${JSON.stringify(filters)}`;
+  const { data: rawData, isLoading, mutate } = useCachedData<any>(
+    cacheKey,
     () =>
       getMovementLedgerAction({
         ...filters,
@@ -85,14 +87,13 @@ export default function MovementLedgerPage() {
         reference: filters.reference || undefined,
         date_from: filters.date_from || undefined,
         date_to: filters.date_to || undefined,
-      }),
-    [filters]
+      })
   );
-
-  const { data, loading, reload } = useAsyncData<typeof initialPayload>(
-    loader,
-    initialPayload
-  );
+  const data = rawData ?? initialPayload;
+  const loading = isLoading && !rawData;
+  const reload = async () => {
+    await mutate();
+  };
 
   function applyFilters() {
     setFilters(pendingFilters);
@@ -104,11 +105,11 @@ export default function MovementLedgerPage() {
   }
 
   const totalDelta = useMemo(
-    () => data.movements.reduce((sum, row: any) => sum + Number(row.qty_delta || 0), 0),
+    () => data.movements.reduce((sum: number, row: any) => sum + Number(row.qty_delta || 0), 0),
     [data.movements]
   );
   const totalValue = useMemo(
-    () => data.movements.reduce((sum, row: any) => sum + Number(row.value_delta || 0), 0),
+    () => data.movements.reduce((sum: number, row: any) => sum + Number(row.value_delta || 0), 0),
     [data.movements]
   );
 

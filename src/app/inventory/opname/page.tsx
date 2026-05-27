@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { StockOpnameIcon } from "@/components/icons/PageIcons";
 import {
   cancelStockOpnameAction,
@@ -12,10 +12,15 @@ import {
 } from "./actions";
 
 export default function StockOpnamePage() {
-  const { data: sessions, loading, reload } = useAsyncData<any[]>(
-    () => getStockOpnamesAction(),
-    []
+  const { data: sessionsData, isLoading, mutate } = useCachedData<any[]>(
+    "stock-opname-list",
+    getStockOpnamesAction
   );
+  const sessions = sessionsData ?? [];
+  const loading = isLoading && !sessionsData;
+  const reload = async () => {
+    await mutate();
+  };
   const [selectedId, setSelectedId] = useState("");
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState("");

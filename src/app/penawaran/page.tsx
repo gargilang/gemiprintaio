@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { QuotationIcon } from "@/components/icons/PageIcons";
 import {
   convertQuotationToSaleAction,
@@ -29,10 +29,15 @@ const money = (value: number) =>
 const initial = { quotations: [], customers: [], materials: [] };
 
 export default function PenawaranPage() {
-  const { data, loading, reload } = useAsyncData<any>(
-    () => getPenawaranInitAction(),
-    initial
+  const { data: rawData, isLoading, mutate } = useCachedData<any>(
+    "penawaran-init",
+    getPenawaranInitAction
   );
+  const data = rawData ?? initial;
+  const loading = isLoading && !rawData;
+  const reload = async () => {
+    await mutate();
+  };
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [customerId, setCustomerId] = useState("");

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { SalesReturnIcon } from "@/components/icons/PageIcons";
 import { createSalesReturnAction, getSalesReturnInitAction } from "./actions";
 
@@ -16,10 +16,15 @@ const money = (value: number) =>
 const initial = { sales: [], returns: [] };
 
 export default function SalesReturnsPage() {
-  const { data, loading, reload } = useAsyncData<any>(
-    () => getSalesReturnInitAction(),
-    initial
+  const { data: rawData, isLoading, mutate } = useCachedData<any>(
+    "sales-returns-init",
+    getSalesReturnInitAction
   );
+  const data = rawData ?? initial;
+  const loading = isLoading && !rawData;
+  const reload = async () => {
+    await mutate();
+  };
   const [saleId, setSaleId] = useState("");
   const [qtyByItem, setQtyByItem] = useState<Record<string, number>>({});
   const [reason, setReason] = useState("");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { StockAdjustmentIcon } from "@/components/icons/PageIcons";
 import {
   createInventoryAdjustmentAction,
@@ -12,10 +12,15 @@ import {
 const initial = { materials: [], movements: [] };
 
 export default function StockAdjustmentsPage() {
-  const { data, loading, reload } = useAsyncData<any>(
-    () => getAdjustmentInitAction(),
-    initial
+  const { data: rawData, isLoading, mutate } = useCachedData<any>(
+    "stock-adjustments-init",
+    getAdjustmentInitAction
   );
+  const data = rawData ?? initial;
+  const loading = isLoading && !rawData;
+  const reload = async () => {
+    await mutate();
+  };
   const [barangId, setBarangId] = useState("");
   const [mode, setMode] = useState<"ADJUSTMENT" | "WASTE">("ADJUSTMENT");
   const [adjReason, setAdjReason] = useState<"MANUAL" | "WASTE" | "CORRECTION">("MANUAL");

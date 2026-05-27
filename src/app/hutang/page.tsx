@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAsyncData } from "@/hooks/use-async-data";
+import { useCachedData } from "@/lib/use-cached-data";
 import { DebtIcon } from "@/components/icons/PageIcons";
 import { getDebtsAction, payDebtAction, revertDebtPaymentAction } from "./actions";
 
@@ -13,10 +13,15 @@ const money = (value: number) =>
   }).format(Number(value || 0));
 
 export default function HutangPage() {
-  const { data: debts, loading, reload } = useAsyncData<any[]>(
-    () => getDebtsAction(),
-    []
+  const { data: debtsData, isLoading, mutate } = useCachedData<any[]>(
+    "hutang-list",
+    getDebtsAction
   );
+  const debts = debtsData ?? [];
+  const loading = isLoading && !debtsData;
+  const reload = async () => {
+    await mutate();
+  };
   const [vendor, setVendor] = useState("");
   const [status, setStatus] = useState("");
   const [amountByDebt, setAmountByDebt] = useState<Record<string, number>>({});
