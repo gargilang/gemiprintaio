@@ -25,57 +25,10 @@ import { hashPayload } from "./payload-hash-util";
 // NORMALIZATION UTILITIES
 // ============================================================================
 
-/**
- * Normalize record for consistency between SQLite and Supabase
- * - Boolean conversion (SQLite 0/1 ↔ Supabase true/false)
- * - Timestamp fields already consistent (dibuat_pada, diperbarui_pada)
- */
-export function normalizeRecord(
-  record: Record<string, any>,
-  direction: "toSupabase" | "fromSupabase" | "toSQLite" | "fromSQLite"
-): Record<string, any> {
-  const normalized: Record<string, any> = { ...record };
-
-  // Boolean normalization only (timestamps already consistent)
-  if (direction === "toSupabase" || direction === "fromSQLite") {
-    // SQLite → Supabase: 0/1 → false/true
-    Object.keys(normalized).forEach((key) => {
-      if (
-        typeof normalized[key] === "number" &&
-        (normalized[key] === 0 || normalized[key] === 1)
-      ) {
-        // Only convert fields that are likely booleans
-        if (
-          key.includes("aktif") ||
-          key.includes("is_") ||
-          key.includes("has_") ||
-          key.includes("status") ||
-          key.includes("privat")
-        ) {
-          normalized[key] = normalized[key] === 1;
-        }
-      }
-    });
-  } else if (direction === "toSQLite" || direction === "fromSupabase") {
-    // Supabase → SQLite: true/false → 1/0; JSONB/objects → TEXT
-    Object.keys(normalized).forEach((key) => {
-      const value = normalized[key];
-      if (typeof value === "boolean") {
-        normalized[key] = value ? 1 : 0;
-      } else if (value === undefined) {
-        normalized[key] = null;
-      } else if (value !== null && typeof value === "object") {
-        if (value instanceof Date) {
-          normalized[key] = value.toISOString();
-        } else if (!Buffer.isBuffer(value)) {
-          normalized[key] = JSON.stringify(value);
-        }
-      }
-    });
-  }
-
-  return normalized;
-}
+// normalizeRecord dipindah ke modul murni `normalize-record.ts` (D-I2) supaya
+// deteksi boolean memakai whitelist yang aman + bisa di-unit-test.
+import { normalizeRecord } from "./normalize-record";
+export { normalizeRecord };
 
 /**
  * Generate consistent UUID
