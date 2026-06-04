@@ -17,7 +17,7 @@ import {
 import { hitungPpn } from "../ppn-helpers";
 
 /**
- * Build purchase DTOs from pembelian rows using db-unified (Supabase / SQLite).
+ * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
  */
 async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase[]> {
   if (pembelianRows.length === 0) return [];
@@ -277,9 +277,9 @@ async function nextNomorPembelian(): Promise<string> {
 }
 
 /**
- * Generate the next maklon purchase number (`MK-NNNNN`). Uses a separate
- * counter from PO so subcontract purchases are visually distinct in lists
- * and reports. Falls back to `MK-00001` if no prior maklon PO exists.
+ * Buat nomor pembelian maklon berikutnya (`MK-NNNNN`). Memakai counter
+ * terpisah dari PO supaya pembelian subkontrak terlihat berbeda di list
+ * dan laporan. Jatuh balik ke `MK-00001` kalau belum ada PO maklon sebelumnya.
  */
 async function nextNomorPembelianMaklon(): Promise<string> {
   const rows = await db.queryRaw<{ nomor_pembelian: string }>(
@@ -334,9 +334,9 @@ export interface Purchase {
   void_reason?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
-  /** Maklon support: distinguishes auto-generated subcontract PO from regular purchase. */
+  /** Dukungan maklon: membedakan PO subkontrak otomatis dari pembelian biasa. */
   tipe_pembelian?: "BARANG" | "MAKLON";
-  /** Sale ID that triggered this maklon PO (null for regular purchases). */
+  /** ID penjualan yang memicu PO maklon ini (null untuk pembelian biasa). */
   penjualan_id_sumber?: string | null;
   items?: PurchaseItem[];
 }
@@ -367,7 +367,7 @@ export interface InitData {
 }
 
 /**
- * Get all purchases with items
+ * Ambil semua pembelian beserta itemnya
  */
 export async function getPurchases(): Promise<Purchase[]> {
   try {
@@ -445,11 +445,11 @@ export async function getPurchases(): Promise<Purchase[]> {
 }
 
 /**
- * Get init data for purchases page (aggregate)
+ * Ambil data awal halaman pembelian (agregat)
  */
 export async function getInitData(): Promise<InitData> {
   try {
-    // Parallel queries for speed
+    // Query paralel untuk kecepatan
     const [
       purchasesResult,
       materialsResult,
@@ -487,7 +487,7 @@ export async function getInitData(): Promise<InitData> {
 }
 
 /**
- * Create new purchase with items
+ * Buat pembelian baru beserta itemnya
  */
 export async function createPurchase(data: {
   nomor_pembelian?: string;
@@ -518,7 +518,7 @@ export async function createPurchase(data: {
     /** Jumlah roll fisik dengan dimensi yang sama (default 1). */
     jumlah_roll?: number | null;
     /**
-     * Optional: pecah roll yang baru diterima jadi beberapa lebar.
+     * Opsional: pecah roll yang baru diterima jadi beberapa lebar.
      * Setiap batch = N roll dengan pola potongan yang sama. Total
      * lebar di tiap pola harus sama dengan lebar roll. Total roll_count
      * dari semua batch tidak boleh melebihi `jumlah_roll`. Roll yang
@@ -554,8 +554,8 @@ export async function createPurchase(data: {
     // Generate ID
     const purchaseId = generateId("purchase");
 
-    // Calculate total (subtotal sum). Kalau metode INKLUSIF, total ini
-    // sudah termasuk PPN. RPC/path TS yang akan extract DPP dari total ini.
+    // Hitung total (jumlah subtotal). Kalau metode INKLUSIF, total ini
+    // sudah termasuk PPN. Jalur RPC/TS yang akan ekstrak DPP dari total ini.
     const total_harga = data.items.reduce(
       (sum, item) => sum + item.jumlah * item.harga_satuan,
       0
@@ -704,7 +704,7 @@ export async function createPurchase(data: {
     }
 
     await db.transaction(async () => {
-      // Create purchase header
+      // Buat header pembelian
       const purchase = {
         id: purchaseId,
         nomor_pembelian: nomorPembelian,
@@ -734,7 +734,7 @@ export async function createPurchase(data: {
         throw purchaseResult.error;
       }
 
-      // Create items + stock adjustment
+      // Buat item + sesuaikan stok
       for (const item of data.items) {
         const itemId = generateId("pi");
         const subtotal = item.jumlah * item.harga_satuan;
@@ -774,7 +774,7 @@ export async function createPurchase(data: {
           throw itemResult.error;
         }
 
-        // Inventory unit cost pakai DPP per unit base, supaya HPP bersih
+        // Biaya unit inventori pakai DPP per unit dasar, supaya HPP bersih
         // dari PPN. PPN masukan akan dikreditkan terpisah saat lapor pajak.
         const faktorKonversi = positiveNumber(item.faktor_konversi) || 1;
         const qtyBase = item.jumlah * faktorKonversi;
@@ -871,8 +871,8 @@ export async function createPurchase(data: {
               (catatanTrim.length > 25 ? "..." : "")
             : null;
 
-        // Build keperluan: show PO number only when it differs from the
-        // vendor's faktur number to avoid "inv-002 (inv-002)" duplication.
+        // Bangun keperluan: tampilkan nomor PO hanya kalau berbeda dengan
+        // nomor faktur vendor untuk hindari duplikasi seperti "inv-002 (inv-002)".
         const poLabel =
           nomorPembelian && nomorPembelian !== nomorFakturNorm
             ? `${nomorPembelian} / Faktur ${nomorFakturNorm}`
@@ -941,21 +941,21 @@ export async function createPurchase(data: {
 }
 
 /**
- * Create a maklon (subcontract) purchase order linked to a sale.
+ * Buat order pembelian maklon (subkontrak) yang ditautkan ke penjualan.
  *
- * One call per (vendor, payment method) group on a sale — so a single sale
- * can produce multiple maklon POs if it spans multiple vendors or mixes
- * CASH+NET30 to the same vendor.
+ * Satu panggilan per grup (vendor, metode bayar) di sebuah penjualan — jadi
+ * satu penjualan bisa membuat beberapa PO maklon kalau menyangkut banyak
+ * vendor atau mencampur CASH+NET30 ke vendor yang sama.
  *
- * Inserts:
- *   - 1 pembelian row with `tipe_pembelian='MAKLON'` and `penjualan_id_sumber`
- *   - 1 item_pembelian row per maklon line (placeholder barang `barang-jasa-maklon`,
- *     skips moving-average since maklon is not stocked inventory)
- *   - CASH: 1 keuangan row (kategori `MAKLON`, kredit) with `[REF:<purchaseId>]`
- *   - NET30: 1 hutang_pembelian row (jatuh_tempo +30 days)
+ * Sisipkan:
+ *   - 1 baris pembelian dengan `tipe_pembelian='MAKLON'` dan `penjualan_id_sumber`
+ *   - 1 baris item_pembelian per baris maklon (barang placeholder `barang-jasa-maklon`,
+ *     melewati moving-average karena maklon bukan inventori bersaldo)
+ *   - CASH: 1 baris keuangan (kategori `MAKLON`, kredit) dengan `[REF:<purchaseId>]`
+ *   - NET30: 1 baris hutang_pembelian (jatuh_tempo +30 hari)
  *
- * Returns the new pembelian.id so the caller can link
- * `item_penjualan.pembelian_id_terkait` for each maklon line in the group.
+ * Mengembalikan pembelian.id baru supaya pemanggil bisa menautkan
+ * `item_penjualan.pembelian_id_terkait` untuk tiap baris maklon di grup.
  */
 export async function createMaklonPurchase(input: {
   saleId: string;
@@ -965,7 +965,7 @@ export async function createMaklonPurchase(input: {
   tanggal: string;
   catatan?: string;
   dibuatOleh?: string | null;
-  /** One entry per maklon line in this vendor+payment group. */
+  /** Satu entri per baris maklon di grup vendor+metode bayar ini. */
   items: Array<{
     deskripsi_pekerjaan: string;
     jumlah: number;
@@ -987,9 +987,9 @@ export async function createMaklonPurchase(input: {
 
   const purchaseId = generateId("maklon");
   const nomorPembelian = await nextNomorPembelianMaklon();
-  // Auto-generated faktur number; user can edit later when the vendor sends
-  // a real invoice. Always unique because saleInvoiceNumber + groupSeq is
-  // unique per (vendor, payment method) group.
+  // Nomor faktur otomatis; pengguna bisa edit nanti saat vendor mengirim
+  // faktur sesungguhnya. Selalu unik karena saleInvoiceNumber + groupSeq
+  // tidak akan bertabrakan per (vendor, metode bayar).
   const groupSeq = `${input.vendorId.slice(0, 6)}-${input.metodeBayar}`;
   const nomorFaktur = `MAKLON-${input.saleInvoiceNumber}-${groupSeq}`;
 
@@ -1023,8 +1023,8 @@ export async function createMaklonPurchase(input: {
     const purchaseResult = await db.insert("pembelian", purchase);
     if (purchaseResult.error) throw purchaseResult.error;
 
-    // Insert line items pointing at the placeholder barang. We do NOT call
-    // applyPurchaseCostToMaterial — maklon is not stocked inventory.
+    // Sisipkan baris item yang menunjuk ke barang placeholder. Kita TIDAK memanggil
+    // applyPurchaseCostToMaterial — maklon bukan inventori bersaldo.
     for (const item of input.items) {
       const itemId = generateId("pi");
       const subtotal =
@@ -1101,15 +1101,15 @@ export async function createMaklonPurchase(input: {
     }
   });
 
-  // No recalc here — the caller (createSale) triggers recalc once at the end
-  // for the whole transaction.
+  // Tidak ada recalc di sini — pemanggil (createSale) memicu recalc sekali
+  // di akhir untuk seluruh transaksi.
   return { id: purchaseId };
 }
 
 /**
- * Delete every maklon purchase that was auto-created for a given sale.
- * Reverses linked finance entries (via [REF:<purchaseId>]) and outstanding
- * hutang rows. Used by deleteSale to keep the books consistent.
+ * Hapus semua pembelian maklon yang dibuat otomatis untuk sebuah penjualan.
+ * Membatalkan entri keuangan terkait (via [REF:<purchaseId>]) dan baris hutang
+ * yang masih outstanding. Dipakai oleh deleteSale supaya pembukuan konsisten.
  */
 export async function deleteMaklonPurchasesForSale(
   saleId: string
@@ -1131,7 +1131,7 @@ export async function deleteMaklonPurchasesForSale(
 }
 
 /**
- * Get single purchase by ID
+ * Ambil satu pembelian berdasarkan ID
  */
 export async function getPurchaseById(id: string): Promise<Purchase | null> {
   try {
@@ -1205,7 +1205,7 @@ export async function getPurchaseById(id: string): Promise<Purchase | null> {
 }
 
 /**
- * Update an existing purchase
+ * Perbarui pembelian yang sudah ada
  */
 export async function updatePurchase(
   id: string,
@@ -1244,7 +1244,7 @@ export async function updatePurchase(
       throw new Error("Minimal harus ada 1 item pembelian");
     }
 
-    // Check if purchase exists
+    // Cek apakah pembelian ada
     const existing = await db.queryOne("pembelian", { where: { id } });
     if (existing.error || !existing.data) {
       throw new Error("Pembelian tidak ditemukan");
@@ -1270,13 +1270,13 @@ export async function updatePurchase(
       0
     );
 
-    // Get old items to reverse stock
+    // Ambil item lama untuk membalik stok
     const oldItemsResult = await db.query<PurchaseItem>("item_pembelian", {
       where: { pembelian_id: id },
     });
     const oldItems = oldItemsResult.data || [];
 
-    // Reverse old stock and inventory value changes
+    // Balikkan stok lama dan perubahan nilai inventori
     for (const oldItem of oldItems) {
       await reversePurchaseCostFromMaterial(oldItem);
     }
@@ -1286,7 +1286,7 @@ export async function updatePurchase(
       await db.delete("item_pembelian", oldItem.id);
     }
 
-    // Update purchase header
+    // Perbarui header pembelian
     const metodePembayaran = normalizePaymentMethod(data.metode_pembayaran);
     const jumlahDibayar = isCashPayment(metodePembayaran) ? total_harga : 0;
     const statusPembayaran = isCashPayment(metodePembayaran) ? "LUNAS" : "HUTANG";
@@ -1437,7 +1437,7 @@ export async function updatePurchase(
 }
 
 /**
- * Get all purchases with outstanding debt
+ * Ambil semua pembelian yang masih punya hutang outstanding
  */
 export async function getDebts(): Promise<any[]> {
   try {
@@ -1540,7 +1540,7 @@ export async function voidPurchase(
       }
     }
 
-    // Get items to reverse stock
+    // Ambil item untuk membalik stok
     const itemsResult = await db.query<PurchaseItem>("item_pembelian", {
       where: { pembelian_id: id },
     });
@@ -1585,7 +1585,7 @@ export async function voidPurchase(
             where: { id: sm.source_id },
           });
           if (saleResult.data) {
-            const inv = saleResult.data.nomor_invoice || sm.source_id;
+            const inv = saleResult.data.nomor_faktur || sm.source_id;
             const tgl = saleResult.data.dibuat_pada
               ? new Date(saleResult.data.dibuat_pada).toLocaleDateString(
                   "id-ID",
@@ -1608,8 +1608,8 @@ export async function voidPurchase(
       );
     }
 
-    // Append reversal movements. If stock has already been consumed, this
-    // throws a friendly insufficient-stock error and leaves the purchase posted.
+    // Tambahkan movement pembalik. Kalau stok sudah dipakai, ini melempar
+    // error stok-tidak-cukup yang ramah dan pembelian tetap dianggap posted.
     for (const item of items) {
       const original = movements.find((movement) => {
         return (
@@ -1696,15 +1696,15 @@ export async function voidPurchase(
 }
 
 /**
- * Compatibility wrapper: old callers still ask to delete, but posted
- * purchases are now voided so inventory history remains auditable.
+ * Pembungkus kompatibilitas: pemanggil lama masih meminta delete, tapi pembelian
+ * yang sudah posted sekarang di-void supaya histori inventori tetap auditabel.
  */
 export async function deletePurchase(id: string): Promise<void> {
   return voidPurchase(id, "Pembelian dibatalkan");
 }
 
 /**
- * Revert payment - change purchase from LUNAS back to HUTANG
+ * Revert pembayaran - ubah pembelian dari LUNAS kembali ke HUTANG
  */
 export async function revertPayment(
   purchaseId: string
@@ -1789,7 +1789,7 @@ export async function revertPayment(
 }
 
 /**
- * Pay debt for a purchase
+ * Bayar hutang untuk sebuah pembelian
  */
 export async function payDebt(data: {
   purchase_id: string;
@@ -1810,7 +1810,7 @@ export async function payDebt(data: {
       throw new Error("Jumlah pembayaran harus lebih dari 0");
     }
 
-    // Get purchase
+    // Ambil pembelian
     const purchase = await getPurchaseById(data.purchase_id);
     if (!purchase) {
       throw new Error("Pembelian tidak ditemukan");
@@ -1831,7 +1831,7 @@ export async function payDebt(data: {
       (purchase as any).total_jumlah ?? purchase.total_harga ?? 0
     );
 
-    // Get or create hutang_pembelian record
+    // Ambil atau buat record hutang_pembelian
     const hutangRow = await db.queryOne<any>("hutang_pembelian", {
       where: { id_pembelian: data.purchase_id },
     });
@@ -1904,9 +1904,9 @@ export async function payDebt(data: {
       data.purchase_id
     }]`;
 
-    // Use MAKLON category when paying off a maklon vendor PO so the cashbook
-    // reports it under "Biaya Maklon" instead of "Supply". For regular
-    // BARANG purchases, keep the legacy SUPPLY category.
+    // Pakai kategori MAKLON saat melunasi PO maklon vendor supaya buku kas
+    // melaporkannya di bawah "Biaya Maklon" alih-alih "Supply". Untuk pembelian
+    // BARANG biasa, tetap pakai kategori legacy SUPPLY.
     const kategoriPembayaran =
       (purchase as any).tipe_pembelian === "MAKLON" ? "MAKLON" : "SUPPLY";
 

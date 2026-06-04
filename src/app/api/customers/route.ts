@@ -5,21 +5,21 @@ import {
   rowExistsEq,
 } from "@/lib/duplicate-check";
 import {
-  createCustomer,
-  deleteCustomer,
-  getCustomerById,
-  getCustomers,
-  updateCustomer,
+  createPelanggan,
+  deletePelanggan,
+  getPelangganById,
+  getPelanggan,
+  updatePelanggan,
 } from "@/lib/services/customers-service";
 
 export async function GET() {
   try {
-    const pelanggan = await getCustomers();
+    const pelanggan = await getPelanggan();
     return NextResponse.json({ pelanggan });
   } catch (error: any) {
-    console.error("Error fetching pelanggan:", error);
+    console.error("Gagal mengambil pelanggan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch pelanggan" },
+      { error: error.message || "Gagal mengambil pelanggan" },
       { status: 500 }
     );
   }
@@ -54,13 +54,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const customerType =
+    const tipePelanggan =
       nama_perusahaan && String(nama_perusahaan).trim()
         ? tipe_pelanggan || "perusahaan"
         : "perorangan";
 
-    const created = await createCustomer({
-      tipe_pelanggan: customerType,
+    const created = await createPelanggan({
+      tipe_pelanggan: tipePelanggan,
       nama: nama.trim(),
       nama_perusahaan: nama_perusahaan?.trim() || null,
       npwp: npwp?.trim() || null,
@@ -77,12 +77,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const customer = await getCustomerById(created.id);
-    return NextResponse.json({ customer }, { status: 201 });
+    const pelangganBaru = await getPelangganById(created.id);
+    return NextResponse.json({ customer: pelangganBaru }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creating customer:", error);
+    console.error("Gagal membuat pelanggan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create customer" },
+      { error: error.message || "Gagal membuat pelanggan" },
       { status: 500 }
     );
   }
@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const existing = await getCustomerById(id);
+    const existing = await getPelangganById(id);
     if (!existing) {
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
@@ -130,13 +130,13 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const customerType =
+    const tipePelanggan =
       nama_perusahaan && String(nama_perusahaan).trim()
         ? tipe_pelanggan || "perusahaan"
         : "perorangan";
 
-    await updateCustomer(id, {
-      tipe_pelanggan: customerType,
+    await updatePelanggan(id, {
+      tipe_pelanggan: tipePelanggan,
       nama: nama.trim(),
       nama_perusahaan: nama_perusahaan?.trim() || null,
       npwp: npwp?.trim() || null,
@@ -146,12 +146,12 @@ export async function PUT(req: NextRequest) {
       member_status: member_status ? 1 : 0,
     });
 
-    const updatedCustomer = await getCustomerById(id);
-    return NextResponse.json({ customer: updatedCustomer });
+    const pelangganDiperbarui = await getPelangganById(id);
+    return NextResponse.json({ customer: pelangganDiperbarui });
   } catch (error: any) {
-    console.error("Error updating customer:", error);
+    console.error("Gagal memperbarui pelanggan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update customer" },
+      { error: error.message || "Gagal memperbarui pelanggan" },
       { status: 500 }
     );
   }
@@ -166,7 +166,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
     }
 
-    const existing = await getCustomerById(id);
+    const existing = await getPelangganById(id);
     if (!existing) {
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
@@ -185,12 +185,12 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await deleteCustomer(id);
+    await deletePelanggan(id);
     return NextResponse.json({ message: "Pelanggan berhasil dihapus" });
   } catch (error: any) {
-    console.error("Error deleting customer:", error);
+    console.error("Gagal menghapus pelanggan:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete customer" },
+      { error: error.message || "Gagal menghapus pelanggan" },
       { status: 500 }
     );
   }

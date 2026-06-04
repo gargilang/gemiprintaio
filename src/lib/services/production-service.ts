@@ -18,7 +18,7 @@ export interface ProductionOrder {
   id: string;
   penjualan_id: string;
   nomor_spk: string;
-  nomor_invoice?: string;
+  nomor_faktur?: string;
   pelanggan_nama?: string;
   total_item: number;
   status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN";
@@ -92,11 +92,11 @@ export interface FinishingItem {
 }
 
 /**
- * Get all production orders with items and finishing
+ * Ambil semua order produksi beserta item dan finishing
  */
 export async function getProductionOrders(): Promise<ProductionOrder[]> {
   try {
-    // Get all production orders
+    // Ambil semua order produksi
     const ordersResult = await db.query<ProductionOrder>("order_produksi", {
       orderBy: { column: "dibuat_pada", ascending: false },
     });
@@ -107,32 +107,32 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 
     const orders = ordersResult.data || [];
 
-    // Get penjualan data for enrichment
+    // Ambil data penjualan untuk pengayaan
     const penjualanResult = await db.query("penjualan");
     const penjualanList = penjualanResult.data || [];
 
-    // Get pelanggan data for enrichment
+    // Ambil data pelanggan untuk pengayaan
     const pelangganResult = await db.query("pelanggan");
     const pelangganList = pelangganResult.data || [];
 
-    // Get profil data for operator names
+    // Ambil data profil untuk nama operator
     const profilResult = await db.query("profil");
     const profilList = profilResult.data || [];
 
-    // Enrich orders with invoice and customer data, and get items
+    // Lengkapi order dengan data faktur dan pelanggan, dan ambil item
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
-        // Find penjualan
+        // Cari penjualan
         const penjualan = penjualanList.find(
           (p: any) => p.id === order.penjualan_id
         );
 
-        // Find pelanggan
+        // Cari pelanggan
         const pelanggan = pelangganList.find(
           (pel: any) => pel.id === penjualan?.pelanggan_id
         );
 
-        // Get items
+        // Ambil item
         const itemsResult = await db.query<ProductionItem>("item_produksi", {
           where: { order_produksi_id: order.id },
           orderBy: { column: "dibuat_pada", ascending: true },
@@ -140,7 +140,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 
         const items = itemsResult.data || [];
 
-        // Get finishing for each item
+        // Ambil finishing untuk setiap item
         const itemsWithFinishing = await Promise.all(
           items.map(async (item) => {
             const finishingResult = await db.query<FinishingItem>(
@@ -153,7 +153,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 
             const finishing = finishingResult.data || [];
 
-            // Enrich finishing with operator names
+            // Lengkapi finishing dengan nama operator
             const finishingWithOperator = finishing.map((fin) => {
               const operator = profilList.find(
                 (prof: any) => prof.id === fin.operator_id
@@ -164,7 +164,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
               };
             });
 
-            // Enrich item with operator name
+            // Lengkapi item dengan nama operator
             const operator = profilList.find(
               (prof: any) => prof.id === item.operator_id
             );
@@ -201,14 +201,14 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 
         return {
           ...order,
-          nomor_invoice: penjualan?.nomor_invoice || undefined,
+          nomor_faktur: penjualan?.nomor_faktur || undefined,
           pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
           items: itemsWithFinishing,
         };
       })
     );
 
-    // Sort by priority (KILAT first) then by date
+    // Urutkan berdasarkan prioritas (KILAT duluan) lalu tanggal
     return ordersWithItems.sort((a, b) => {
       if (a.prioritas === "KILAT" && b.prioritas !== "KILAT") return -1;
       if (a.prioritas !== "KILAT" && b.prioritas === "KILAT") return 1;
@@ -224,7 +224,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 }
 
 /**
- * Get single production order by ID
+ * Ambil satu order produksi berdasarkan ID
  */
 export async function getProductionOrderById(
   id: string
@@ -240,13 +240,13 @@ export async function getProductionOrderById(
 
     const order = orderResult.data;
 
-    // Get penjualan
+    // Ambil penjualan
     const penjualanResult = await db.queryOne("penjualan", {
       where: { id: order.penjualan_id },
     });
     const penjualan = penjualanResult.data;
 
-    // Get pelanggan if exists
+    // Ambil pelanggan kalau ada
     let pelanggan = null;
     if (penjualan?.pelanggan_id) {
       const pelangganResult = await db.queryOne("pelanggan", {
@@ -255,7 +255,7 @@ export async function getProductionOrderById(
       pelanggan = pelangganResult.data;
     }
 
-    // Get items
+    // Ambil item
     const itemsResult = await db.query<ProductionItem>("item_produksi", {
       where: { order_produksi_id: id },
       orderBy: { column: "dibuat_pada", ascending: true },
@@ -263,7 +263,7 @@ export async function getProductionOrderById(
 
     const items = itemsResult.data || [];
 
-    // Get finishing and operator names
+    // Ambil finishing dan nama operator
     const itemsWithFinishing = await Promise.all(
       items.map(async (item) => {
         const finishingResult = await db.query<FinishingItem>(
@@ -276,7 +276,7 @@ export async function getProductionOrderById(
 
         const finishing = finishingResult.data || [];
 
-        // Enrich finishing with operator names
+        // Lengkapi finishing dengan nama operator
         const finishingWithOperator = await Promise.all(
           finishing.map(async (fin) => {
             if (fin.operator_id) {
@@ -292,7 +292,7 @@ export async function getProductionOrderById(
           })
         );
 
-        // Enrich item with operator name
+        // Lengkapi item dengan nama operator
         let operator_nama = undefined;
         if (item.operator_id) {
           const operatorResult = await db.queryOne("profil", {
@@ -333,7 +333,7 @@ export async function getProductionOrderById(
 
     return {
       ...order,
-      nomor_invoice: penjualan?.nomor_invoice || undefined,
+      nomor_faktur: penjualan?.nomor_faktur || undefined,
       pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
       items: itemsWithFinishing,
     };
@@ -344,7 +344,7 @@ export async function getProductionOrderById(
 }
 
 /**
- * Create new production order with items
+ * Buat order produksi baru beserta itemnya
  */
 export async function createProductionOrder(data: {
   penjualan_id: string;
@@ -452,10 +452,10 @@ export async function createProductionOrder(data: {
       pelanggan_nama = pelangganResult.data?.nama || null;
     }
 
-    // Generate order ID
+    // Buat ID order
     const orderId = `OP-${Date.now()}`;
 
-    // Create order_produksi
+    // Buat order_produksi
     const order = {
       id: orderId,
       penjualan_id: data.penjualan_id,
@@ -474,7 +474,7 @@ export async function createProductionOrder(data: {
       throw orderResult.error;
     }
 
-    // Create item_produksi for each item
+    // Buat item_produksi untuk tiap item
     for (const item of data.items) {
       const itemId = `IP-${Date.now()}-${Math.random()
         .toString(36)
@@ -507,7 +507,7 @@ export async function createProductionOrder(data: {
         throw itemResult.error;
       }
 
-      // Create finishing items if any
+      // Buat item finishing kalau ada
       if (item.finishing && item.finishing.length > 0) {
         for (const fin of item.finishing) {
           const finId = `FIN-${Date.now()}-${Math.random()
@@ -539,7 +539,7 @@ export async function createProductionOrder(data: {
 }
 
 /**
- * Update production order status
+ * Perbarui status order produksi
  */
 export async function updateProductionOrderStatus(
   id: string,
@@ -802,7 +802,7 @@ export async function voidProductionMaterialConsumption(
 }
 
 /**
- * Update production item status
+ * Perbarui status item produksi
  */
 export async function updateProductionItemStatus(
   itemId: string,
@@ -865,18 +865,18 @@ export async function updateProductionItemStatus(
 }
 
 /**
- * Delete production order (cascade delete items and finishing)
+ * Hapus order produksi (cascade delete item dan finishing)
  */
 export async function deleteProductionOrder(id: string): Promise<boolean> {
   try {
-    // Get all items
+    // Ambil semua item
     const itemsResult = await db.query("item_produksi", {
       where: { order_produksi_id: id },
     });
 
     const items = itemsResult.data || [];
 
-    // Delete finishing items first
+    // Hapus item finishing dulu
     for (const item of items) {
       const finishingResult = await db.query("item_finishing", {
         where: { item_produksi_id: item.id },
@@ -887,11 +887,11 @@ export async function deleteProductionOrder(id: string): Promise<boolean> {
         await db.delete("item_finishing", fin.id);
       }
 
-      // Delete production item
+      // Hapus item produksi
       await db.delete("item_produksi", item.id);
     }
 
-    // Delete production order
+    // Hapus order produksi
     const result = await db.delete("order_produksi", id);
 
     if (result.error) {

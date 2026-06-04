@@ -1,13 +1,19 @@
 /**
- * Customers Service
- * Universal API for Customers on Tauri and Web
+ * Layanan Pelanggan
+ * API universal untuk Pelanggan di Tauri dan Web.
+ *
+ * Catatan migrasi:
+ * - Nama identifier primer sekarang Bahasa Indonesia (`Pelanggan`, `getPelanggan`, dll).
+ * - Alias huruf Inggris (`Customer`, `getCustomers`, dll) tetap di-export sebagai
+ *   alias `@deprecated` supaya pemanggil yang ada tidak putus selama transisi.
+ *   Hapus alias setelah semua consumer migrasi (Fase 3 lanjutan).
  */
 
 import "server-only";
 
 import { db } from "../db-unified";
 
-export interface Customer {
+export interface Pelanggan {
   id: string;
   tipe_pelanggan: string;
   nama: string;
@@ -21,12 +27,15 @@ export interface Customer {
   diperbarui_pada?: string;
 }
 
+/** @deprecated Pakai `Pelanggan`. */
+export type Customer = Pelanggan;
+
 /**
- * Get all customers
+ * Ambil semua pelanggan
  */
-export async function getCustomers(): Promise<Customer[]> {
+export async function getPelanggan(): Promise<Pelanggan[]> {
   try {
-    const result = await db.query<Customer>("pelanggan", {
+    const result = await db.query<Pelanggan>("pelanggan", {
       orderBy: { column: "nama", ascending: true },
     });
 
@@ -36,17 +45,17 @@ export async function getCustomers(): Promise<Customer[]> {
 
     return result.data || [];
   } catch (error) {
-    console.error("Error fetching customers:", error);
+    console.error("Gagal mengambil daftar pelanggan:", error);
     throw error;
   }
 }
 
 /**
- * Get single customer by ID
+ * Ambil satu pelanggan berdasarkan ID
  */
-export async function getCustomerById(id: string): Promise<Customer | null> {
+export async function getPelangganById(id: string): Promise<Pelanggan | null> {
   try {
-    const result = await db.queryOne<Customer>("pelanggan", {
+    const result = await db.queryOne<Pelanggan>("pelanggan", {
       where: { id },
     });
 
@@ -56,23 +65,23 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
 
     return result.data;
   } catch (error) {
-    console.error("Error fetching customer:", error);
+    console.error("Gagal mengambil pelanggan:", error);
     return null;
   }
 }
 
 /**
- * Create new customer
+ * Buat pelanggan baru
  */
-export async function createCustomer(
-  customer: Omit<Customer, "id" | "dibuat_pada" | "diperbarui_pada">
+export async function createPelanggan(
+  pelanggan: Omit<Pelanggan, "id" | "dibuat_pada" | "diperbarui_pada">
 ): Promise<{ id: string } | null> {
   try {
-    const customerId = crypto.randomUUID();
+    const pelangganId = crypto.randomUUID();
 
     const result = await db.insert("pelanggan", {
-      id: customerId,
-      ...customer,
+      id: pelangganId,
+      ...pelanggan,
       dibuat_pada: new Date().toISOString(),
       diperbarui_pada: new Date().toISOString(),
     });
@@ -81,22 +90,22 @@ export async function createCustomer(
       throw result.error;
     }
 
-    return { id: customerId };
+    return { id: pelangganId };
   } catch (error) {
-    console.error("Error creating customer:", error);
+    console.error("Gagal membuat pelanggan:", error);
     throw error;
   }
 }
 
 /**
- * Update customer
+ * Perbarui pelanggan
  */
-export async function updateCustomer(
+export async function updatePelanggan(
   id: string,
-  customer: Partial<Customer>
+  pelanggan: Partial<Pelanggan>
 ): Promise<boolean> {
   try {
-    const { dibuat_pada, ...updateData } = customer as any;
+    const { dibuat_pada, ...updateData } = pelanggan as any;
 
     const result = await db.update("pelanggan", id, {
       ...updateData,
@@ -109,15 +118,15 @@ export async function updateCustomer(
 
     return true;
   } catch (error) {
-    console.error("Error updating customer:", error);
+    console.error("Gagal memperbarui pelanggan:", error);
     throw error;
   }
 }
 
 /**
- * Delete customer
+ * Hapus pelanggan
  */
-export async function deleteCustomer(id: string): Promise<boolean> {
+export async function deletePelanggan(id: string): Promise<boolean> {
   try {
     const result = await db.delete("pelanggan", id);
 
@@ -127,7 +136,18 @@ export async function deleteCustomer(id: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error("Error deleting customer:", error);
+    console.error("Gagal menghapus pelanggan:", error);
     throw error;
   }
 }
+
+/** @deprecated Pakai `getPelanggan`. */
+export const getCustomers = getPelanggan;
+/** @deprecated Pakai `getPelangganById`. */
+export const getCustomerById = getPelangganById;
+/** @deprecated Pakai `createPelanggan`. */
+export const createCustomer = createPelanggan;
+/** @deprecated Pakai `updatePelanggan`. */
+export const updateCustomer = updatePelanggan;
+/** @deprecated Pakai `deletePelanggan`. */
+export const deleteCustomer = deletePelanggan;

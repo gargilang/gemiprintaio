@@ -229,7 +229,7 @@ export default function POSPage() {
   // Cart & Transaction State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [roundCartPrices, setRoundCartPrices] = useState(true);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+  const [selectedPelanggan, setSelectedPelanggan] = useState<Customer | null>(
     null
   );
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
@@ -251,13 +251,13 @@ export default function POSPage() {
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
   const [printType, setPrintType] = useState<PrintType>("thermal");
-  // Walk-in faktur info captured when user picks faktur but no customer is selected
-  const [walkInFaktur, setWalkInFaktur] = useState<{
+  // Info faktur pelanggan umum yang ditangkap saat pengguna pilih faktur tapi belum memilih pelanggan
+  const [fakturUmum, setFakturUmum] = useState<{
     nama: string;
     kota: string;
   } | null>(null);
-  const [showWalkInFakturModal, setShowWalkInFakturModal] = useState(false);
-  const [walkInFakturInput, setWalkInFakturInput] = useState({
+  const [showFakturUmumModal, setShowFakturUmumModal] = useState(false);
+  const [fakturUmumInput, setFakturUmumInput] = useState({
     nama: "",
     kota: "Bekasi",
   });
@@ -281,11 +281,11 @@ export default function POSPage() {
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
   // Search states
-  const [customerSearch, setCustomerSearch] = useState("");
+  const [pencarianPelanggan, setPencarianPelanggan] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
   const [materialCategoryFilter, setMaterialCategoryFilter] = useState("ALL");
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [selectedCustomerIndex, setSelectedCustomerIndex] = useState(-1);
+  const [showDropdownPelanggan, setShowDropdownPelanggan] = useState(false);
+  const [indexPelangganTerpilih, setIndexPelangganTerpilih] = useState(-1);
 
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const productFormRef = useRef<HTMLDivElement>(null);
@@ -315,7 +315,7 @@ export default function POSPage() {
         customerDropdownRef.current &&
         !customerDropdownRef.current.contains(e.target as Node)
       ) {
-        setShowCustomerDropdown(false);
+        setShowDropdownPelanggan(false);
       }
     };
 
@@ -375,7 +375,7 @@ export default function POSPage() {
     );
     if (!billed) return null;
     const area = billed.panjang * billed.lebar;
-    const hargaPerSatuan = selectedCustomer?.member_status
+    const hargaPerSatuan = selectedPelanggan?.member_status
       ? selectedUnit.harga_member || selectedUnit.harga_jual
       : selectedUnit.harga_jual;
     const subtotalRaw = billed.area * hargaPerSatuan;
@@ -394,7 +394,7 @@ export default function POSPage() {
     parsedPanjang,
     parsedLebar,
     selectedUnit,
-    selectedCustomer,
+    selectedPelanggan,
   ]);
 
   const loadAllData = async () => {
@@ -414,8 +414,8 @@ export default function POSPage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
-  const filteredCustomers = customers.filter((c) =>
-    c.nama.toLowerCase().includes(customerSearch.toLowerCase())
+  const filteredPelanggan = customers.filter((c) =>
+    c.nama.toLowerCase().includes(pencarianPelanggan.toLowerCase())
   );
 
   const materialCategories = useMemo(() => {
@@ -451,36 +451,36 @@ export default function POSPage() {
     });
   }, [materials, materialSearch, materialCategoryFilter]);
 
-  const handleSelectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setCustomerSearch(customer.nama);
-    setShowCustomerDropdown(false);
-    setSelectedCustomerIndex(-1);
+  const handlePilihPelanggan = (customer: Customer) => {
+    setSelectedPelanggan(customer);
+    setPencarianPelanggan(customer.nama);
+    setShowDropdownPelanggan(false);
+    setIndexPelangganTerpilih(-1);
   };
 
-  const handleCustomerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showCustomerDropdown || filteredCustomers.length === 0) return;
+  const handlePelangganKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdownPelanggan || filteredPelanggan.length === 0) return;
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setSelectedCustomerIndex((prev) =>
-          prev < filteredCustomers.length - 1 ? prev + 1 : prev
+        setIndexPelangganTerpilih((prev) =>
+          prev < filteredPelanggan.length - 1 ? prev + 1 : prev
         );
         break;
       case "ArrowUp":
         e.preventDefault();
-        setSelectedCustomerIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        setIndexPelangganTerpilih((prev) => (prev > 0 ? prev - 1 : -1));
         break;
       case "Enter":
         e.preventDefault();
-        if (selectedCustomerIndex >= 0) {
-          handleSelectCustomer(filteredCustomers[selectedCustomerIndex]);
+        if (indexPelangganTerpilih >= 0) {
+          handlePilihPelanggan(filteredPelanggan[indexPelangganTerpilih]);
         }
         break;
       case "Escape":
-        setShowCustomerDropdown(false);
-        setSelectedCustomerIndex(-1);
+        setShowDropdownPelanggan(false);
+        setIndexPelangganTerpilih(-1);
         break;
     }
   };
@@ -556,7 +556,7 @@ export default function POSPage() {
       }
     }
 
-    const hargaPerSatuan = selectedCustomer?.member_status
+    const hargaPerSatuan = selectedPelanggan?.member_status
       ? selectedUnit.harga_member || selectedUnit.harga_jual
       : selectedUnit.harga_jual;
 
@@ -790,9 +790,9 @@ export default function POSPage() {
       show: true,
       title: "Batalkan Pembayaran Piutang",
       message: `Apakah Anda yakin ingin membatalkan pembayaran piutang untuk transaksi ${
-        sale.nomor_invoice
+        sale.nomor_faktur
       }?\n\nPelanggan: ${
-        sale.pelanggan_nama || "Walk-in"
+        sale.pelanggan_nama || "Pelanggan Umum"
       }\nTotal Transaksi: Rp ${sale.total_jumlah.toLocaleString(
         "id-ID"
       )}\nStatus Sekarang: ${currentStatus}\n${
@@ -829,20 +829,20 @@ export default function POSPage() {
       return;
     }
 
-    // If user typed a name in the search box but didn't select from dropdown,
-    // treat it as a walk-in name and save it automatically — no modal needed.
-    const typedName = customerSearch.trim();
-    if (!selectedCustomer && typedName && !walkInFaktur) {
-      setWalkInFaktur({ nama: typedName, kota: "Bekasi" });
+    // Jika pengguna mengetik nama di kotak pencarian tapi tidak memilih dari dropdown,
+    // anggap sebagai nama pelanggan umum dan simpan otomatis — tidak perlu modal.
+    const typedName = pencarianPelanggan.trim();
+    if (!selectedPelanggan && typedName && !fakturUmum) {
+      setFakturUmum({ nama: typedName, kota: "Bekasi" });
     }
 
-    // If user wants to print faktur but is a walk-in (no customer selected) and
-    // hasn't filled the kota yet, prompt for kota only.
+    // Jika pengguna mau cetak faktur tapi pelanggan umum (belum dipilih) dan
+    // belum mengisi kota, minta kota saja.
     const wantsFaktur = printType === "faktur" || printType === "both";
-    const resolvedWalkIn = walkInFaktur ?? (typedName ? { nama: typedName, kota: "Bekasi" } : null);
-    if (wantsFaktur && !selectedCustomer && !resolvedWalkIn) {
-      setWalkInFakturInput({ nama: "", kota: "Bekasi" });
-      setShowWalkInFakturModal(true);
+    const resolvedFakturUmum = fakturUmum ?? (typedName ? { nama: typedName, kota: "Bekasi" } : null);
+    if (wantsFaktur && !selectedPelanggan && !resolvedFakturUmum) {
+      setFakturUmumInput({ nama: "", kota: "Bekasi" });
+      setShowFakturUmumModal(true);
       return;
     }
 
@@ -926,12 +926,12 @@ export default function POSPage() {
       }));
 
       const result = await createSaleAction({
-        pelanggan_id: selectedCustomer?.id,
+        pelanggan_id: selectedPelanggan?.id,
         pelanggan_nama_snapshot:
-          !selectedCustomer
-            ? (walkInFaktur?.nama || customerSearch.trim() || undefined)
+          !selectedPelanggan
+            ? (fakturUmum?.nama || pencarianPelanggan.trim() || undefined)
             : undefined,
-        pelanggan_kota: walkInFaktur?.kota || undefined,
+        pelanggan_kota: fakturUmum?.kota || undefined,
         items: saleItems,
         total_jumlah: total,
         jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
@@ -970,7 +970,7 @@ export default function POSPage() {
 
       showMsg(
         "success",
-        `Transaksi berhasil! Invoice: ${result.nomor_invoice} | SPK: ${result.spk_number}`
+        `Transaksi berhasil! Faktur: ${result.nomor_faktur} | SPK: ${result.spk_number}`
       );
 
       // Print receipt and/or faktur based on user's choice
@@ -996,7 +996,7 @@ export default function POSPage() {
 
         try {
           const { getShopSettingsAction } = await import(
-            "@/app/settings/actions"
+            "@/app/pengaturan/actions"
           );
           const settings = await getShopSettingsAction();
           shopSettings = {
@@ -1019,12 +1019,12 @@ export default function POSPage() {
         }
 
         const buildThermalData = () => ({
-          nomor_invoice: result.nomor_invoice,
+          nomor_faktur: result.nomor_faktur,
           tanggal: tanggalIso,
           shop: shopSettings,
           pelanggan_nama:
-            selectedCustomer?.nama || walkInFaktur?.nama || customerSearch.trim() || undefined,
-          pelanggan_telepon: selectedCustomer?.telepon,
+            selectedPelanggan?.nama || fakturUmum?.nama || pencarianPelanggan.trim() || undefined,
+          pelanggan_telepon: selectedPelanggan?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
           items: cart.map((item, index) => ({
             nama:
@@ -1107,19 +1107,19 @@ export default function POSPage() {
             : undefined;
 
           return {
-            nomor_invoice: result.nomor_invoice,
+            nomor_faktur: result.nomor_faktur,
             tanggal: tanggalIso,
             pelanggan_nama:
-              selectedCustomer?.nama || walkInFaktur?.nama || customerSearch.trim() || "",
+              selectedPelanggan?.nama || fakturUmum?.nama || pencarianPelanggan.trim() || "",
             pelanggan_detail: [
-              selectedCustomer?.kontak_person
-                ? `Kontak: ${selectedCustomer.kontak_person}`
+              selectedPelanggan?.kontak_person
+                ? `Kontak: ${selectedPelanggan.kontak_person}`
                 : "",
-              selectedCustomer?.telepon ? `Telp: ${selectedCustomer.telepon}` : "",
-              selectedCustomer?.email ? `Email: ${selectedCustomer.email}` : "",
-              selectedCustomer?.alamat || "",
+              selectedPelanggan?.telepon ? `Telp: ${selectedPelanggan.telepon}` : "",
+              selectedPelanggan?.email ? `Email: ${selectedPelanggan.email}` : "",
+              selectedPelanggan?.alamat || "",
             ].filter(Boolean),
-            kota: walkInFaktur?.kota || "Bekasi",
+            kota: fakturUmum?.kota || "Bekasi",
             items: cart.map((item, index) => ({
               // For maklon lines, the customer-facing item name is the
               // deskripsi_pekerjaan; the placeholder barang name should
@@ -1181,7 +1181,7 @@ export default function POSPage() {
             }
           }
         } catch (printError) {
-          console.error("Error printing invoice:", printError);
+          console.error("Error mencetak faktur:", printError);
           showMsg(
             "error",
             "Transaksi tersimpan, tetapi gagal menyiapkan dokumen untuk dicetak."
@@ -1191,8 +1191,8 @@ export default function POSPage() {
 
       // Reset form
       setCart([]);
-      setSelectedCustomer(null);
-      setCustomerSearch("");
+      setSelectedPelanggan(null);
+      setPencarianPelanggan("");
       setCatatan("");
       setPaymentMethod("CASH");
       setJumlahBayar("");
@@ -1201,7 +1201,7 @@ export default function POSPage() {
       setSelectedRollSize(null);
       setPpnFaktur(null);
       setRoundCartPrices(true);
-      setWalkInFaktur(null);
+      setFakturUmum(null);
       setBiayaTambahan([]);
 
       // Reload data
@@ -1252,33 +1252,33 @@ export default function POSPage() {
                 <div className="relative flex-1 min-w-0" ref={customerDropdownRef}>
                 <input
                   type="text"
-                  value={customerSearch}
+                  value={pencarianPelanggan}
                   onChange={(e) => {
-                    setCustomerSearch(e.target.value);
-                    setShowCustomerDropdown(true);
-                    setSelectedCustomerIndex(-1);
+                    setPencarianPelanggan(e.target.value);
+                    setShowDropdownPelanggan(true);
+                    setIndexPelangganTerpilih(-1);
                   }}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  onKeyDown={handleCustomerKeyDown}
-                  placeholder="Cari pelanggan atau ketik nama walk-in..."
+                  onFocus={() => setShowDropdownPelanggan(true)}
+                  onKeyDown={handlePelangganKeyDown}
+                  placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
                   className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                 />
 
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                {showDropdownPelanggan && filteredPelanggan.length > 0 && (
                   <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                    {filteredCustomers.map((customer, index) => (
+                    {filteredPelanggan.map((customer, index) => (
                       <div
                         key={customer.id}
-                        onClick={() => handleSelectCustomer(customer)}
+                        onClick={() => handlePilihPelanggan(customer)}
                         className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
-                          index === selectedCustomerIndex
+                          index === indexPelangganTerpilih
                             ? "bg-[#00afef] text-white"
                             : "hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
                         <div
                           className={`font-semibold ${
-                            index === selectedCustomerIndex
+                            index === indexPelangganTerpilih
                               ? "text-white"
                               : "text-gray-800 dark:text-slate-100"
                           }`}
@@ -1288,7 +1288,7 @@ export default function POSPage() {
                         {customer.member_status === 1 && (
                           <span
                             className={`text-xs px-2 py-1 rounded ${
-                              index === selectedCustomerIndex
+                              index === indexPelangganTerpilih
                                 ? "bg-white dark:bg-slate-900 text-[#00afef]"
                                 : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                             }`}
@@ -1310,23 +1310,23 @@ export default function POSPage() {
                 </div>
               </div>
 
-              {selectedCustomer && (
+              {selectedPelanggan && (
                 <div className="mt-3 p-3 bg-white dark:bg-slate-900 rounded-lg border-2 border-[#00afef]/50">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-bold text-gray-800 dark:text-slate-100">
-                        {selectedCustomer.nama}
+                        {selectedPelanggan.nama}
                       </div>
-                      {selectedCustomer.telepon && (
+                      {selectedPelanggan.telepon && (
                         <div className="text-sm text-gray-600 dark:text-slate-300">
-                          {selectedCustomer.telepon}
+                          {selectedPelanggan.telepon}
                         </div>
                       )}
                     </div>
                     <button
                       onClick={() => {
-                        setSelectedCustomer(null);
-                        setCustomerSearch("");
+                        setSelectedPelanggan(null);
+                        setPencarianPelanggan("");
                       }}
                       className="text-red-500 hover:text-red-700"
                     >
@@ -1593,7 +1593,7 @@ export default function POSPage() {
                             {selectedMaterial.unit_prices.map((unit) => (
                               <option key={unit.id} value={unit.id}>
                                 {unit.nama_satuan} - Rp{" "}
-                                {(selectedCustomer?.member_status
+                                {(selectedPelanggan?.member_status
                                   ? unit.harga_member || unit.harga_jual
                                   : unit.harga_jual
                                 ).toLocaleString("id-ID")}
@@ -1743,7 +1743,7 @@ export default function POSPage() {
                                     );
                                     if (!billed) return null;
                                     const area = billed.area;
-                                    const harga = selectedCustomer?.member_status
+                                    const harga = selectedPelanggan?.member_status
                                       ? selectedUnit?.harga_member ||
                                         selectedUnit?.harga_jual ||
                                         0
@@ -1846,7 +1846,7 @@ export default function POSPage() {
               biayaTambahan={biayaTambahan}
               onBiayaTambahanChange={setBiayaTambahan}
               customerName={
-                selectedCustomer?.nama || customerSearch.trim() || undefined
+                selectedPelanggan?.nama || pencarianPelanggan.trim() || undefined
               }
             />
           </div>
@@ -1970,12 +1970,12 @@ export default function POSPage() {
         defaultPpnMetode="EKSKLUSIF"
         defaultKodeTransaksi="01"
         pelanggan={
-          selectedCustomer
+          selectedPelanggan
             ? {
-                nama: selectedCustomer.nama,
-                npwp: (selectedCustomer as any).npwp,
-                alamat_npwp: (selectedCustomer as any).alamat_npwp,
-                nama_di_npwp: (selectedCustomer as any).nama_di_npwp,
+                nama: selectedPelanggan.nama,
+                npwp: (selectedPelanggan as any).npwp,
+                alamat_npwp: (selectedPelanggan as any).alamat_npwp,
+                nama_di_npwp: (selectedPelanggan as any).nama_di_npwp,
               }
             : null
         }
@@ -1998,7 +1998,7 @@ export default function POSPage() {
         />
       )}
 
-      {showWalkInFakturModal && (
+      {showFakturUmumModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
@@ -2017,9 +2017,9 @@ export default function POSPage() {
                 </label>
                 <input
                   type="text"
-                  value={walkInFakturInput.nama}
+                  value={fakturUmumInput.nama}
                   onChange={(e) =>
-                    setWalkInFakturInput((prev) => ({
+                    setFakturUmumInput((prev) => ({
                       ...prev,
                       nama: e.target.value,
                     }))
@@ -2035,9 +2035,9 @@ export default function POSPage() {
                 </label>
                 <input
                   type="text"
-                  value={walkInFakturInput.kota}
+                  value={fakturUmumInput.kota}
                   onChange={(e) =>
-                    setWalkInFakturInput((prev) => ({
+                    setFakturUmumInput((prev) => ({
                       ...prev,
                       kota: e.target.value,
                     }))
@@ -2049,7 +2049,7 @@ export default function POSPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowWalkInFakturModal(false)}
+                  onClick={() => setShowFakturUmumModal(false)}
                   className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
                 >
                   Batal
@@ -2057,11 +2057,11 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setWalkInFaktur({
-                      nama: walkInFakturInput.nama.trim(),
-                      kota: walkInFakturInput.kota.trim() || "Bekasi",
+                    setFakturUmum({
+                      nama: fakturUmumInput.nama.trim(),
+                      kota: fakturUmumInput.kota.trim() || "Bekasi",
                     });
-                    setShowWalkInFakturModal(false);
+                    setShowFakturUmumModal(false);
                     // re-trigger checkout now that the info is captured
                     setTimeout(() => handleCheckout(), 0);
                   }}

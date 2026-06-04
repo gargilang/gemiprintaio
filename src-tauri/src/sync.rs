@@ -4,14 +4,14 @@ use std::env;
 use rusqlite::types::Value as SqlValue;
 use std::collections::HashSet;
 
-/// Supabase sync configuration
+/// Konfigurasi sinkronisasi Supabase
 pub struct SupabaseConfig {
     pub url: String,
     pub anon_key: String,
 }
 
 impl SupabaseConfig {
-    /// Load from environment variables
+    /// Muat dari environment variable
     pub fn from_env() -> Option<Self> {
         let url = env::var("NEXT_PUBLIC_SUPABASE_URL").ok()?;
         let anon_key = env::var("NEXT_PUBLIC_SUPABASE_ANON_KEY").ok()?;
@@ -20,7 +20,7 @@ impl SupabaseConfig {
     }
 }
 
-/// Sync operation from queue
+/// Operasi sinkronisasi dari antrian
 #[derive(Debug)]
 pub struct SyncOperation {
     pub id: String,
@@ -30,7 +30,7 @@ pub struct SyncOperation {
     pub data: Option<String>,
 }
 
-/// Result of sync operation
+/// Hasil operasi sinkronisasi
 #[derive(Debug)]
 pub struct SyncResult {
     pub synced: i32,
@@ -63,13 +63,13 @@ fn is_table_allowed(table_name: &str, allowlist: &Option<HashSet<String>>) -> bo
     }
 }
 
-/// Sync pending operations to Supabase
-/// Returns operations data for async processing
+/// Sinkronkan operasi pending ke Supabase
+/// Mengembalikan data operasi untuk diproses async
 pub fn get_operations_for_sync(conn: &Connection) -> Result<Vec<SyncOperation>, String> {
     get_pending_operations(conn)
 }
 
-/// Process sync operations (async, no DB connection needed)
+/// Proses operasi sinkronisasi (async, tidak butuh koneksi DB)
 pub async fn process_sync_operations(
     operations: Vec<SyncOperation>,
     config: &SupabaseConfig,
@@ -98,7 +98,7 @@ pub async fn process_sync_operations(
     results
 }
 
-/// Update sync status in database
+/// Update status sinkronisasi di database
 pub fn update_sync_status(
     conn: &Connection,
     results: Vec<(String, Result<(), String>)>,
@@ -125,7 +125,7 @@ pub fn update_sync_status(
     Ok(SyncResult { synced, failed })
 }
 
-/// Get pending operations from sync_queue
+/// Ambil operasi pending dari sync_queue
 fn get_pending_operations(conn: &Connection) -> Result<Vec<SyncOperation>, String> {
     let mut stmt = conn
         .prepare(
@@ -154,7 +154,7 @@ fn get_pending_operations(conn: &Connection) -> Result<Vec<SyncOperation>, Strin
     Ok(operations)
 }
 
-/// Sync single operation to Supabase
+/// Sinkronkan satu operasi ke Supabase
 async fn sync_single_operation(
     client: &reqwest::Client,
     config: &SupabaseConfig,
@@ -342,7 +342,7 @@ async fn log_conflict(
     Ok(())
 }
 
-/// Mark operation as synced
+/// Tandai operasi sudah ter-sinkronisasi
 fn mark_as_synced(conn: &Connection, op_id: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE sync_queue SET synced_at = ?1, status = 'synced' WHERE id = ?2",
@@ -353,7 +353,7 @@ fn mark_as_synced(conn: &Connection, op_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Mark operation as failed
+/// Tandai operasi gagal
 fn mark_as_failed(conn: &Connection, op_id: &str, error: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE sync_queue SET status = 'failed', error_message = ?1 WHERE id = ?2",
@@ -371,7 +371,7 @@ const WAVE1_TABLES: &[&str] = &[
     "item_pembelian",
     "inventory_movements",
     "keuangan",
-    // Authentication-critical tables must always sync even at wave 1.
+    // Tabel autentikasi-kritis harus selalu sync bahkan di gelombang 1.
     "profil",
     "kredensial",
 ];

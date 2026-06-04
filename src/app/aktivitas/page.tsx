@@ -7,7 +7,7 @@
  *   - Pembelian dibatalkan (siapa, kapan, alasan)
  *   - Penjualan dibatalkan
  *   - Adjustment stok manual
- *   - Material rusak (waste)
+ *   - Barang rusak
  *   - NSFP yang dibatalkan
  *
  * Tidak ada tombol edit/delete — audit log harus immutable.
@@ -55,7 +55,7 @@ const KIND_META: Record<
     icon: "⚖️",
   },
   WASTE: {
-    label: "Material rusak",
+    label: "Barang rusak",
     color: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
     icon: "🗑",
   },
@@ -176,7 +176,7 @@ export default function AktivitasPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Aktivitas Audit</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Catatan permanen pembatalan transaksi, adjustment stok, material rusak, dan pembatalan NSFP.
+            Catatan permanen pembatalan transaksi, penyesuaian stok, barang rusak, dan pembatalan NSFP.
           </p>
         </div>
       </div>
@@ -195,8 +195,8 @@ export default function AktivitasPage() {
               <option value="ALL">Semua</option>
               <option value="PURCHASE_VOID">Pembelian dibatalkan</option>
               <option value="SALE_VOID">Penjualan dibatalkan</option>
-              <option value="ADJUSTMENT">Adjustment stok</option>
-              <option value="WASTE">Material rusak</option>
+              <option value="ADJUSTMENT">Penyesuaian stok</option>
+              <option value="WASTE">Barang rusak</option>
               <option value="NSFP_CANCEL">NSFP batal</option>
             </select>
           </div>

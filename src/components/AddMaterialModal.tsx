@@ -50,7 +50,7 @@ export default function AddMaterialModal({
   const [specsData, setSpecsData] = useState<any[]>([]);
   const [loadingMaster, setLoadingMaster] = useState(true);
 
-  // Helper function to format number as Rupiah
+  // Helper untuk format angka sebagai Rupiah
   const formatRupiah = (value: number): string => {
     if (!value || value === 0) return "Rp 0";
     return new Intl.NumberFormat("id-ID", {
@@ -78,11 +78,11 @@ export default function AddMaterialModal({
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Click outside to close modal
+  // Klik di luar untuk tutup modal
   const modalRef = useRef<HTMLDivElement>(null);
   useClickOutside(modalRef, onClose, isOpen);
 
-  // Load master data
+  // Muat data master
   useEffect(() => {
     if (isOpen) {
       loadMasterData();
@@ -131,10 +131,10 @@ export default function AddMaterialModal({
     }
   };
 
-  // Initialize form
+  // Inisialisasi form
   useEffect(() => {
     if (isOpen && editData) {
-      // Edit mode
+      // Mode edit
       setFormData({
         name: editData.nama,
         description: editData.deskripsi || "",
@@ -150,7 +150,7 @@ export default function AddMaterialModal({
 
       setUnitPrices(editData.unit_prices || []);
     } else if (isOpen && categoriesData.length > 0) {
-      // Add new mode
+      // Mode tambah baru
       const firstCategory = categoriesData[0]?.nama || "";
       const firstSubcat = subcategoriesData.find(
         (s) => s.category_name === firstCategory
@@ -173,7 +173,7 @@ export default function AddMaterialModal({
         requires_dimension: isMediaCetak, // Auto-check for Media Cetak
       });
 
-      // Initialize with one default unit price
+      // Inisialisasi dengan satu baris harga satuan default
       setUnitPrices([
         {
           nama_satuan: firstUnit,
@@ -208,7 +208,7 @@ export default function AddMaterialModal({
     });
 
     if (isMediaCetak) {
-      // Sync default unit price label to m² so storage stays consistent.
+      // Sinkronkan label harga satuan utama ke m² supaya penyimpanan tetap konsisten.
       setUnitPrices((prev) =>
         prev.length === 0
           ? prev
@@ -231,7 +231,7 @@ export default function AddMaterialModal({
     }));
 
     if (checked) {
-      // Mirror the unit name on the default (faktor_konversi = 1) row.
+      // Cermin nama satuan ke baris utama (faktor_konversi = 1).
       setUnitPrices((prev) =>
         prev.length === 0
           ? prev
@@ -247,7 +247,7 @@ export default function AddMaterialModal({
   const handleBaseUnitChange = (newBaseUnit: string) => {
     setFormData({ ...formData, base_unit: newBaseUnit });
 
-    // Update default unit price if exists
+    // Update harga satuan utama kalau ada
     const updatedUnitPrices = unitPrices.map((up) => {
       if (up.faktor_konversi === 1) {
         return { ...up, nama_satuan: newBaseUnit };
@@ -259,7 +259,7 @@ export default function AddMaterialModal({
   };
 
   const addUnitPrice = () => {
-    // Get default unit for reference pricing
+    // Ambil satuan utama untuk referensi pricing
     const defaultUnit = unitPrices.find((up) => up.default_status);
 
     setUnitPrices([
@@ -291,7 +291,7 @@ export default function AddMaterialModal({
     const updated = [...unitPrices];
     const defaultUnit = unitPrices.find((up) => up.default_status);
 
-    // If changing conversion factor, auto-calculate prices based on default unit
+    // Kalau faktor konversi diubah, hitung otomatis harga berdasar satuan utama
     if (
       field === "faktor_konversi" &&
       defaultUnit &&
@@ -312,7 +312,7 @@ export default function AddMaterialModal({
       updated[index] = { ...updated[index], [field]: value };
     }
 
-    // If setting as default, unset others
+    // Kalau di-set sebagai utama, batalkan utama yang lain
     if (field === "default_status" && value === true) {
       updated.forEach((up, i) => {
         if (i !== index) up.default_status = false;
@@ -342,14 +342,14 @@ export default function AddMaterialModal({
         return;
       }
 
-      // Check if at least one unit price is set as default
+      // Pastikan setidaknya satu harga satuan ditetapkan sebagai utama
       const hasDefault = unitPrices.some((up) => up.default_status);
       if (!hasDefault) {
         alert("Minimal harus ada 1 satuan yang dijadikan default");
         return;
       }
 
-      // Validate unit prices
+      // Validasi harga satuan
       for (const up of unitPrices) {
         if (!up.nama_satuan || !up.nama_satuan.trim()) {
           alert("Nama satuan tidak boleh kosong");
@@ -386,7 +386,7 @@ export default function AddMaterialModal({
           }
         }
 
-        // When the dimension flag is freshly turned on, the unit changes from
+        // Saat flag dimensi baru saja dinyalakan, satuan beralih dari
         // linear (e.g. meter) to area (m²). Existing stock numbers are no
         // longer comparable, so reset to 0 and let the user re-enter via a
         // purchase. Already-dimension materials keep their current stock.
@@ -416,10 +416,10 @@ export default function AddMaterialModal({
 
         let result;
         if (editData) {
-          // Update existing material
+          // Perbarui barang yang sudah ada
           result = await onUpdateMaterial(editData.id, payload);
         } else {
-          // Create new material
+          // Buat barang baru
           result = await onCreateMaterial(payload);
         }
 
@@ -429,10 +429,10 @@ export default function AddMaterialModal({
           return;
         }
 
-        // Close modal first, then show notification in parent
+        // Tutup modal dulu, lalu tampilkan notifikasi di parent
         onClose();
 
-        // For edits, pass the updated material back with ID; for new items pass null
+        // Untuk edit, kembalikan barang yang diperbarui beserta ID; untuk item baru kirim null
         const updatedMaterial = editData
           ? { id: editData.id }
           : null;
@@ -462,13 +462,13 @@ export default function AddMaterialModal({
     ]
   );
 
-  // Keyboard event handler - Enter to submit, ESC to close
+  // Handler keyboard - Enter untuk submit, ESC untuk tutup
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
       if (e.key === "Enter" && !e.shiftKey) {
-        // Prevent submit if user is typing in textarea
+        // Cegah submit kalau pengguna sedang mengetik di textarea
         const target = e.target as HTMLElement;
         if (target.tagName === "TEXTAREA") return;
 
@@ -589,7 +589,7 @@ export default function AddMaterialModal({
                           JSON.stringify({ formData, unitPrices })
                         );
                         router.push(
-                          "/settings?tab=setup&subtab=materials&manage=category"
+                          "/pengaturan?tab=setup&subtab=materials&manage=category"
                         );
                       }}
                       className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
@@ -863,7 +863,7 @@ export default function AddMaterialModal({
                             className="w-4 h-4 text-blue-500"
                           />
                           <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
-                            Default
+                            Utama
                           </span>
                         </label>
                       </div>
@@ -927,7 +927,7 @@ export default function AddMaterialModal({
                                 JSON.stringify({ formData, unitPrices })
                               );
                               router.push(
-                                "/settings?tab=setup&subtab=materials&manage=unit"
+                                "/pengaturan?tab=setup&subtab=materials&manage=unit"
                               );
                             }}
                             className="text-blue-600 dark:text-blue-300 hover:underline font-semibold"

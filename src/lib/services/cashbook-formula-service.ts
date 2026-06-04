@@ -1,10 +1,10 @@
 /**
- * Persistence layer for AST cashbook formulas + partners.
+ * Layer persistensi untuk formula AST buku kas + partner.
  *
- * Talks directly to Supabase (when available) or the native SQLite
- * connection (in Tauri / standalone server). We bypass the generic
- * `db.insert/update/delete` helpers because those auto-inject Indonesian
- * timestamp columns that don't exist on these tables.
+ * Berkomunikasi langsung dengan Supabase (kalau tersedia) atau koneksi
+ * SQLite native (di Tauri / standalone server). Kita melewati helper generik
+ * `db.insert/update/delete` karena helper itu menyuntikkan kolom timestamp
+ * Indonesia yang tidak ada di tabel-tabel ini.
  */
 
 import "server-only";
@@ -66,8 +66,8 @@ function rowToFormula(r: FormulaRow): FormulaDefinition {
     r.formula_group && validGroups.has(r.formula_group)
       ? (r.formula_group as FormulaDefinition["formulaGroup"])
       : "custom";
-  // Visibility default mirrors the SQL migration: actor-driven groups are
-  // visible by default, summary + custom are hidden until opt-in.
+  // Default visibility mengikuti migrasi SQL: grup driven-by-actor terlihat
+  // by default, summary + custom disembunyikan sampai di-opt-in.
   const visibleDefault =
     group === "profit_share" || group === "cash_advance" || group === "bonus";
   return {
@@ -117,8 +117,8 @@ async function withSqlite<T>(
 // ── Formulas ───────────────────────────────────────────────────────────────
 
 /**
- * Fetch formulas from DB without triggering seedDefaultsIfEmpty.
- * Use this when the caller has already seeded (e.g. the summary-v2 route)
+ * Ambil formula dari DB tanpa memicu seedDefaultsIfEmpty.
+ * Pakai ini saat pemanggil sudah melakukan seeding (mis. route summary-v2)
  * to avoid redundant DB writes on every request.
  */
 export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
@@ -150,8 +150,8 @@ export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
 }
 
 export async function listFormulas(): Promise<FormulaDefinition[]> {
-  // Ensure system formulas exist before reading. seedDefaultsIfEmpty is
-  // idempotent — it only writes when rows are actually missing.
+  // Pastikan formula sistem ada sebelum membaca. seedDefaultsIfEmpty
+  // bersifat idempoten — hanya menulis kalau baris benar-benar belum ada.
   await seedDefaultsIfEmpty();
   return listFormulasRaw();
 }
@@ -185,7 +185,7 @@ export async function upsertFormula(
   formula: Omit<FormulaDefinition, "id"> & { id?: string }
 ): Promise<FormulaDefinition> {
   const id = formula.id ?? `formula-${generateId()}`;
-  // Resolve semantic key — fall back to legacy db_column for old code paths.
+  // Resolve key semantik — jatuh balik ke db_column legacy untuk jalur kode lama.
   const formulaKey = formula.formulaKey || formula.dbColumn;
   const formulaGroup = formula.formulaGroup ?? "custom";
   const visibleDefault =
@@ -395,14 +395,13 @@ export async function deletePartner(id: string): Promise<void> {
 // ── Seeding ────────────────────────────────────────────────────────────────
 
 /**
- * Ensure the 5 system default formulas exist. Idempotent — safe to call
- * on every list / formula write. Uses upsert semantics so an install
- * that lost its system formulas (because of a buggy cleanup, manual
- * deletion, etc.) gets them restored on the next API call.
+ * Pastikan 5 formula sistem default ada. Idempoten — aman dipanggil di setiap
+ * list / formula write. Memakai semantik upsert supaya instalasi yang
+ * kehilangan formula sistem (karena cleanup yang bermasalah, penghapusan
+ * manual, dll) bisa dipulihkan di pemanggilan API berikutnya.
  *
- * Per-actor formulas (kasbon, bagi hasil, bonus) are NOT seeded here —
- * those are generated dynamically via `syncFormulasForActor` from the
- * Pengurus tab.
+ * Formula per-actor (kasbon, bagi hasil, bonus) TIDAK di-seed di sini —
+ * itu di-generate dinamis lewat `syncFormulasForActor` dari tab Pengurus.
  */
 export async function seedDefaultsIfEmpty(): Promise<{
   formulasInserted: number;
@@ -413,15 +412,15 @@ export async function seedDefaultsIfEmpty(): Promise<{
 
   const sb = getServerSupabaseClient();
   if (sb) {
-    // Find which system formulas are missing and only insert those.
+    // Cari formula sistem mana yang hilang dan hanya insert yang itu.
     const ids = DEFAULT_FORMULAS.map((f) => f.id);
     const { data: existing } = await sb
       .from("cashbook_formula")
       .select("id")
       .in("id", ids);
     const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
-    // Upsert all system formulas so AST changes in defaults.ts propagate
-    // to existing installs without requiring a manual DB migration.
+    // Upsert semua formula sistem supaya perubahan AST di defaults.ts menyebar
+    // ke instalasi yang sudah ada tanpa perlu migrasi DB manual.
     const { error } = await sb.from("cashbook_formula").upsert(
       DEFAULT_FORMULAS.map((f) => ({
         id: f.id,

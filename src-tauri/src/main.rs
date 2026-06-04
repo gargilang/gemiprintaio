@@ -1,4 +1,4 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+// Cegah jendela console tambahan di Windows saat release, JANGAN DIHAPUS!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod sync;
@@ -67,29 +67,29 @@ fn slog(msg: &str) {
     println!("{msg}");
 }
 
-// Initialize database connection
+// Inisialisasi koneksi database
 fn init_database(app_handle: &tauri::AppHandle) -> SqlResult<Connection> {
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
         .expect("Failed to get app data directory");
     
-    // Create directory if it doesn't exist
+    // Buat direktori kalau belum ada
     std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data directory");
     
     let db_path = app_data_dir.join("gemiprint.db");
     println!("Database path: {:?}", db_path);
     
-    // Check if database doesn't exist yet (first run)
+    // Cek apakah database belum ada (first run)
     let is_first_run = !db_path.exists();
     
     if is_first_run {
         println!("First run detected - copying template database...");
         
-        // Embedded database template (from /database/gemiprint.db)
+        // Template database tertanam (dari /database/gemiprint.db)
         let template_db = include_bytes!("../../database/gemiprint.db");
         
-        // Write template to app data directory
+        // Tulis template ke direktori data app
         std::fs::write(&db_path, template_db)
             .expect("Failed to copy template database");
         
@@ -100,21 +100,21 @@ fn init_database(app_handle: &tauri::AppHandle) -> SqlResult<Connection> {
     
     let conn = Connection::open(db_path)?;
     
-    // Enable foreign keys (doesn't return results)
+    // Aktifkan foreign keys (tidak mengembalikan hasil)
     conn.execute("PRAGMA foreign_keys = ON", [])?;
     
     // Set WAL mode (returns results, need to use pragma_update or query_row)
     conn.pragma_update(None, "journal_mode", "WAL")?;
     
-    // Initialize schema if needed
+    // Inisialisasi schema kalau perlu
     init_schema(&conn)?;
     
     Ok(conn)
 }
 
-// Initialize database schema
+// Inisialisasi schema database
 fn init_schema(conn: &Connection) -> SqlResult<()> {
-    // Check if database is already initialized
+    // Cek apakah database sudah diinisialisasi
     let table_exists: bool = conn
         .query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='profil'",
@@ -129,12 +129,12 @@ fn init_schema(conn: &Connection) -> SqlResult<()> {
     if !table_exists {
         println!("Initializing database schema...");
         
-        // For development, just skip schema initialization if file has issues
-        // Schema should be initialized manually or via migration tool
+        // Untuk development, lewati saja inisialisasi schema kalau file bermasalah
+        // Schema sebaiknya diinisialisasi manual atau lewat migration tool
         println!("NOTE: Skipping automatic schema initialization.");
         println!("Please ensure database is initialized manually if needed.");
         
-        // Uncomment below to force schema initialization:
+        // Buka komentar di bawah untuk memaksa inisialisasi schema:
         /*
         let schema = include_str!("../../database/sqlite-schema.sql");
         conn.execute_batch(schema)?;
@@ -538,7 +538,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
     Ok(())
 }
 
-// Tauri command: Execute query and return all rows
+// Tauri command: Eksekusi query dan kembalikan semua baris
 #[tauri::command]
 async fn db_query(
     state: State<'_, AppState>,
@@ -580,7 +580,7 @@ async fn db_query(
     Ok(result)
 }
 
-// Tauri command: Execute query and return single row
+// Tauri command: Eksekusi query dan kembalikan satu baris
 #[tauri::command]
 async fn db_query_one(
     state: State<'_, AppState>,
@@ -619,7 +619,7 @@ async fn db_query_one(
     }
 }
 
-// Tauri command: Insert record
+// Tauri command: Sisipkan record
 #[tauri::command]
 async fn db_insert(
     state: State<'_, AppState>,
@@ -631,7 +631,7 @@ async fn db_insert(
     
     let obj = data.as_object().ok_or("Data must be an object")?;
     
-    // Get or generate ID
+    // Ambil atau buat ID
     let id = if let Some(id_value) = obj.get("id") {
         if let Some(id_str) = id_value.as_str() {
             id_str.to_string()
@@ -663,7 +663,7 @@ async fn db_insert(
     Ok(id)
 }
 
-// Tauri command: Update record
+// Tauri command: Perbarui record
 #[tauri::command]
 async fn db_update(
     state: State<'_, AppState>,
@@ -696,7 +696,7 @@ async fn db_update(
     Ok(())
 }
 
-// Tauri command: Delete record
+// Tauri command: Hapus record
 #[tauri::command]
 async fn db_delete(
     state: State<'_, AppState>,
@@ -714,7 +714,7 @@ async fn db_delete(
     Ok(())
 }
 
-// Tauri command: Execute non-query SQL (for updates, deletes, etc.)
+// Tauri command: Eksekusi SQL non-query (untuk update, delete, dll.)
 #[tauri::command]
 async fn db_execute(
     state: State<'_, AppState>,
@@ -778,7 +778,7 @@ fn row_value_to_json(row: &rusqlite::Row, index: usize) -> SqlResult<serde_json:
     })
 }
 
-// Helper for base64 encoding (simple implementation)
+// Helper untuk encoding base64 (implementasi sederhana)
 mod base64 {
     pub fn encode(data: &[u8]) -> String {
         use std::fmt::Write;
@@ -790,7 +790,7 @@ mod base64 {
     }
 }
 
-// Sync operations - Queue for background sync to Supabase
+// Operasi sinkronisasi - Antrian untuk sync background ke Supabase
 #[tauri::command]
 async fn queue_sync_operation(
     state: State<'_, AppState>,
@@ -822,7 +822,7 @@ async fn queue_sync_operation(
         [],
     ).ok();
     
-    // Insert sync operation
+    // Sisipkan operasi sync
     let id = Uuid::new_v4().to_string();
     let created_at = chrono::Utc::now().to_rfc3339();
     
@@ -835,7 +835,7 @@ async fn queue_sync_operation(
     Ok(())
 }
 
-// Count pending sync operations
+// Hitung operasi sinkronisasi yang pending
 #[tauri::command]
 async fn count_pending_sync(
     state: State<'_, AppState>,
@@ -843,7 +843,7 @@ async fn count_pending_sync(
     let db_guard = state.db.lock().map_err(|e| e.to_string())?;
     let conn = db_guard.as_ref().ok_or("Database not initialized")?;
     
-    // Check if sync_queue table exists
+    // Cek apakah tabel sync_queue ada
     let table_exists: bool = conn
         .query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
@@ -859,7 +859,7 @@ async fn count_pending_sync(
         return Ok(0);
     }
     
-    // Count pending operations
+    // Hitung operasi pending
     let count: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM sync_queue WHERE synced_at IS NULL",
@@ -871,7 +871,7 @@ async fn count_pending_sync(
     Ok(count)
 }
 
-// Sync to cloud - Process pending sync operations
+// Sync ke cloud - Proses operasi sync yang pending
 #[tauri::command]
 async fn sync_to_cloud(
     state: State<'_, AppState>,
@@ -881,7 +881,7 @@ async fn sync_to_cloud(
         let db_guard = state.db.lock().map_err(|e| e.to_string())?;
         let conn = db_guard.as_ref().ok_or("Database not initialized")?;
         
-        // Check if sync_queue table exists
+        // Cek apakah tabel sync_queue ada
         let table_exists: bool = conn
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sync_queue'",
@@ -901,7 +901,7 @@ async fn sync_to_cloud(
             }));
         }
         
-        // Get operations
+        // Ambil daftar operasi
         sync::get_operations_for_sync(conn)?
     }; // Lock released here
     
@@ -913,7 +913,7 @@ async fn sync_to_cloud(
         }));
     }
     
-    // Try to get Supabase config
+    // Coba ambil konfigurasi Supabase
     let config = match sync::SupabaseConfig::from_env() {
         Some(c) => c,
         None => {
@@ -1073,7 +1073,7 @@ fn spawn_next_process(
         .stdout(Stdio::from(stdout_file))
         .stderr(Stdio::from(stderr_file));
 
-    // Forward env vars the Next.js server needs (set via .env or parent process).
+    // Teruskan env var yang dibutuhkan server Next.js (di-set lewat .env atau parent process).
     // SUPABASE_SERVICE_ROLE_KEY is intentionally omitted: RLS policies on the
     // remote database allow the public anon key to perform all operations the
     // desktop app requires, so the privileged key never needs to leave the server.
@@ -1095,7 +1095,7 @@ fn spawn_next_process(
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // Hide the console window; all output goes to the log files above.
+        // Sembunyikan jendela console; semua output masuk ke file log di atas.
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
@@ -1266,7 +1266,7 @@ fn ensure_session_secret() {
         return;
     }
 
-    // Generate using two UUIDs: 128 bits × 2 = 256 bits of randomness.
+    // Buat memakai dua UUID: 128 bit × 2 = 256 bit randomness.
     let secret = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
 
     let config_path = init_log_dir().join(".env.local");
@@ -1289,7 +1289,7 @@ fn ensure_session_secret() {
         }
     }
 
-    // Set for the current process so it is forwarded to the Node.js server.
+    // Set untuk proses saat ini supaya diteruskan ke server Node.js.
     std::env::set_var("SESSION_SECRET", &secret);
     slog("SESSION_SECRET set (auto-generated)");
 }
@@ -1403,7 +1403,7 @@ fn list_system_printers() -> Result<Vec<PrinterInfo>, String> {
 }
 
 fn main() {
-    // Truncate log if it exceeds 1 MB
+    // Potong log kalau melebihi 1 MB
     let log_file = init_log_dir().join("server.log");
     if log_file.exists() {
         if let Ok(m) = std::fs::metadata(&log_file) {

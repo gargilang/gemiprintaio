@@ -45,12 +45,12 @@ export default function SearchableSelect({
     isOpen
   );
 
-  // Filter options based on search
+  // Filter opsi berdasarkan pencarian
   const filteredOptions = options.filter((opt) =>
     opt.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get selected option label
+  // Ambil label opsi yang dipilih
   const selectedOption = options.find((opt) => opt.value === value);
   const selectedLabel = selectedOption?.label || "";
 
@@ -87,7 +87,7 @@ export default function SearchableSelect({
           filteredOptions.length - 1
         );
         setHighlightedIndex(nextIndex);
-        // Scroll option into view
+        // Scroll opsi ke dalam view
         optionsRef.current[nextIndex]?.scrollIntoView({
           block: "nearest",
         });
@@ -97,7 +97,7 @@ export default function SearchableSelect({
       if (isOpen && filteredOptions.length > 0) {
         const prevIndex = Math.max(highlightedIndex - 1, 0);
         setHighlightedIndex(prevIndex);
-        // Scroll option into view
+        // Scroll opsi ke dalam view
         optionsRef.current[prevIndex]?.scrollIntoView({
           block: "nearest",
         });
@@ -111,7 +111,7 @@ export default function SearchableSelect({
     }
   };
 
-  // Reset highlighted index when filtered options change
+  // Reset indeks yang di-highlight saat opsi terfilter berubah
   useEffect(() => {
     setHighlightedIndex(-1);
   }, [searchQuery]);

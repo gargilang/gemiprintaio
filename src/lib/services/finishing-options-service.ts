@@ -22,7 +22,7 @@ export interface FinishingOption {
 // ============================================================================
 
 /**
- * Get all finishing options (including inactive)
+ * Ambil semua opsi finishing (termasuk yang nonaktif)
  */
 export async function getFinishingOptions(): Promise<FinishingOption[]> {
   try {
@@ -44,7 +44,7 @@ export async function getFinishingOptions(): Promise<FinishingOption[]> {
   }
 }
 
-/** Active-only finishing options (e.g. POS / picker). */
+/** Hanya opsi finishing yang aktif (mis. POS / picker). */
 export async function getActiveFinishingOptions(): Promise<FinishingOption[]> {
   try {
     const result = await db.query<FinishingOption>("opsi_finishing", {
@@ -67,7 +67,7 @@ export async function getActiveFinishingOptions(): Promise<FinishingOption[]> {
 }
 
 /**
- * Create new finishing option
+ * Buat opsi finishing baru
  */
 export async function createFinishingOption(data: {
   nama: string;
@@ -77,7 +77,7 @@ export async function createFinishingOption(data: {
       throw new Error("Nama opsi tidak boleh kosong");
     }
 
-    // Check if nama already exists
+    // Cek apakah nama sudah ada
     const existing = await db.query("opsi_finishing", {
       where: { nama: data.nama.trim() },
     });
@@ -86,7 +86,7 @@ export async function createFinishingOption(data: {
       throw new Error("Opsi dengan nama ini sudah ada");
     }
 
-    // Get max urutan_tampilan
+    // Ambil urutan_tampilan tertinggi
     const allOptions = await db.query("opsi_finishing", {
       orderBy: { column: "urutan_tampilan", ascending: false },
       limit: 1,
@@ -114,7 +114,7 @@ export async function createFinishingOption(data: {
 }
 
 /**
- * Update finishing option name
+ * Perbarui nama opsi finishing
  */
 export async function updateFinishingOption(
   id: string,
@@ -156,7 +156,7 @@ export async function updateFinishingOption(
 }
 
 /**
- * Delete finishing option (soft delete)
+ * Hapus opsi finishing (soft delete)
  */
 export async function deleteFinishingOption(id: string): Promise<void> {
   try {
@@ -173,7 +173,7 @@ export async function deleteFinishingOption(id: string): Promise<void> {
 }
 
 /**
- * Reorder finishing options
+ * Susun ulang urutan opsi finishing
  */
 export async function reorderFinishingOptions(
   updates: Array<{ id: string; urutan_tampilan: number }>

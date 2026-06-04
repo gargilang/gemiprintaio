@@ -31,7 +31,7 @@ class ProductionOrder {
       id: json['id'] as String,
       penjualanId: json['penjualan_id'] as String?,
       nomorSpk: json['nomor_spk'] as String?,
-      nomorInvoice: json['nomor_invoice'] as String?,
+      nomorInvoice: json['nomor_faktur'] as String?,
       pelangganNama: json['pelanggan_nama'] as String?,
       status: (json['status'] ?? 'ANTRIAN') as String,
       prioritas: (json['prioritas'] ?? 'NORMAL') as String,

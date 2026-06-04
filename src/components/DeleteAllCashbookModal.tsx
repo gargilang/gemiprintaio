@@ -16,7 +16,7 @@ export default function DeleteAllCashbookModal({
   onConfirm,
   deleting,
 }: DeleteAllCashbookModalProps) {
-  // Click outside to close modal (only when not deleting)
+  // Klik di luar untuk tutup modal (hanya saat tidak sedang menghapus)
   const modalRef = useRef<HTMLDivElement>(null);
   useClickOutside(modalRef, onClose, show && !deleting);
 
@@ -115,7 +115,7 @@ export default function DeleteAllCashbookModal({
             <ul className="list-disc list-inside pl-2 text-blue-700 dark:text-blue-300">
               <li>Arsip Tutup Buku</li>
               <li>Data Pelanggan, Material, Vendor</li>
-              <li>Data Invoice</li>
+              <li>Data Faktur</li>
               <li>Data Pengguna</li>
             </ul>
           </div>

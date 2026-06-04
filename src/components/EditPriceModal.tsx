@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Modal for overriding the price of a single cart line.
+ * Modal untuk menimpa harga sebuah baris keranjang.
  *
- * Two modes:
- *  - "harga": user edits harga_satuan (per-unit price). Subtotal recalculates.
- *  - "subtotal": user edits the final subtotal directly. harga_satuan is
- *    derived as subtotal / jumlah (display-only).
+ * Dua mode:
+ *  - "harga": pengguna edit harga_satuan (harga per-unit). Subtotal dihitung ulang.
+ *  - "subtotal": pengguna edit subtotal akhir langsung. harga_satuan diturunkan
+ *    sebagai subtotal / jumlah (hanya tampilan).
  *
- * Reset button restores the original catalog price (harga_satuan_original).
+ * Tombol Reset memulihkan harga katalog asli (harga_satuan_original).
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,13 +18,13 @@ export interface EditPriceModalProps {
   show: boolean;
   itemName: string;
   jumlah: number;
-  /** Catalog price (the price before any override). Used for Reset. */
+  /** Harga katalog (harga sebelum override apa pun). Dipakai untuk Reset. */
   hargaOriginal: number;
-  /** Current effective price (may already be overridden). */
+  /** Harga efektif saat ini (mungkin sudah ditimpa). */
   hargaCurrent: number;
   onClose: () => void;
   /**
-   * Save handler. Pass the new harga_satuan; subtotal is derived elsewhere.
+   * Handler simpan. Kirim harga_satuan baru; subtotal diturunkan di tempat lain.
    * If `useOriginal` is true, caller should clear the override marker.
    */
   onSave: (newHargaSatuan: number, useOriginal: boolean) => void;

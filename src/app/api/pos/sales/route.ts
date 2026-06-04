@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       success: true,
       sale: {
         id: result.id,
-        nomor_invoice: result.nomor_invoice,
+        nomor_faktur: result.nomor_faktur,
       },
       spk_number: result.spk_number,
     });

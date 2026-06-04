@@ -53,7 +53,7 @@ export interface SuratJalan {
   tanggal_diterima?: string | null;
   diterima_oleh?: string | null;
   // Enriched
-  nomor_invoice?: string | null;
+  nomor_faktur?: string | null;
   dibuat_oleh_nama?: string | null;
   items?: SuratJalanItem[];
 }
@@ -156,7 +156,7 @@ export async function getSuratJalan(limit: number = 200): Promise<SuratJalan[]> 
       const [itemsRes, penjualanRes, usersRes] = await Promise.all([
         supabase.from("item_surat_jalan").select("*").in("surat_jalan_id", sjIds),
         penjualanIds.length > 0
-          ? supabase.from("penjualan").select("id,nomor_invoice").in("id", penjualanIds)
+          ? supabase.from("penjualan").select("id,nomor_faktur").in("id", penjualanIds)
           : Promise.resolve({ data: [], error: null }),
         userIds.length > 0
           ? supabase.from("profil").select("id,nama_lengkap,nama_pengguna").in("id", userIds)
@@ -187,7 +187,7 @@ export async function getSuratJalan(limit: number = 200): Promise<SuratJalan[]> 
         return {
           ...sj,
           items,
-          nomor_invoice: penjualan?.nomor_invoice || null,
+          nomor_faktur: penjualan?.nomor_faktur || null,
           dibuat_oleh_nama: user?.nama_lengkap || user?.nama_pengguna || null,
         } as SuratJalan;
       });
@@ -209,12 +209,12 @@ export async function getSuratJalan(limit: number = 200): Promise<SuratJalan[]> 
           (a, b) => (a.urutan ?? 0) - (b.urutan ?? 0)
         );
 
-        let nomor_invoice: string | null = null;
+        let nomor_faktur: string | null = null;
         if (sj.penjualan_id) {
-          const p = await db.queryOne<{ nomor_invoice: string }>("penjualan", {
+          const p = await db.queryOne<{ nomor_faktur: string }>("penjualan", {
             where: { id: sj.penjualan_id },
           });
-          nomor_invoice = p.data?.nomor_invoice || null;
+          nomor_faktur = p.data?.nomor_faktur || null;
         }
         let dibuat_oleh_nama: string | null = null;
         if (sj.dibuat_oleh) {
@@ -225,7 +225,7 @@ export async function getSuratJalan(limit: number = 200): Promise<SuratJalan[]> 
           dibuat_oleh_nama = u.data?.nama_lengkap || u.data?.nama_pengguna || null;
         }
 
-        return { ...sj, items, nomor_invoice, dibuat_oleh_nama };
+        return { ...sj, items, nomor_faktur, dibuat_oleh_nama };
       })
     );
   } catch (error) {
@@ -342,7 +342,7 @@ export async function updateSuratJalan(
   const existing = await db.queryOne<SuratJalan>("surat_jalan", { where: { id } });
   if (!existing.data) throw new Error("Surat jalan tidak ditemukan");
   if (existing.data.status !== "DRAFT") {
-    throw new Error("Hanya surat jalan berstatus DRAFT yang bisa diedit");
+    throw new Error("Hanya surat jalan berstatus DRAF yang bisa diedit");
   }
 
   const patch: Record<string, any> = {
@@ -409,7 +409,7 @@ export async function deleteSuratJalan(id: string): Promise<void> {
   const existing = await db.queryOne<SuratJalan>("surat_jalan", { where: { id } });
   if (!existing.data) return;
   if (existing.data.status !== "DRAFT") {
-    throw new Error("Hanya surat jalan berstatus DRAFT yang bisa dihapus");
+    throw new Error("Hanya surat jalan berstatus DRAF yang bisa dihapus");
   }
 
   // Items cascade-delete via FK on Supabase; on SQLite ON DELETE CASCADE handles it.
@@ -426,7 +426,7 @@ export async function buildItemsFromSale(
   saleId: string
 ): Promise<{
   penjualan_id: string;
-  nomor_invoice: string | null;
+  nomor_faktur: string | null;
   pelanggan_nama: string | null;
   pelanggan_alamat: string | null;
   pelanggan_telepon: string | null;
@@ -498,7 +498,7 @@ export async function buildItemsFromSale(
 
   return {
     penjualan_id: saleId,
-    nomor_invoice: sale.nomor_invoice || null,
+    nomor_faktur: sale.nomor_faktur || null,
     pelanggan_nama: pelangganNama,
     pelanggan_alamat: pelangganAlamat,
     pelanggan_telepon: pelangganTelepon,

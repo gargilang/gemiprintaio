@@ -28,11 +28,11 @@ export async function importNsfpRange(input: {
     throw new Error("Nomor seri NSFP harus berupa angka bulat");
   }
   if (input.nomor_awal <= 0 || input.nomor_akhir < input.nomor_awal) {
-    throw new Error("Range NSFP tidak valid");
+    throw new Error("Rentang NSFP tidak valid");
   }
-  // Sanity check: 1000 sekali import. Range besar harus dipecah.
+  // Sanity check: 1000 sekali impor. Rentang besar harus dipecah.
   if (input.nomor_akhir - input.nomor_awal + 1 > 1000) {
-    throw new Error("Maksimum 1.000 NSFP per import. Pecah jadi beberapa batch.");
+    throw new Error("Maksimum 1.000 NSFP per impor. Pecah jadi beberapa batch.");
   }
 
   let inserted = 0;

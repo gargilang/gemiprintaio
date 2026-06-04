@@ -1,7 +1,7 @@
 /**
- * Rebuilds database/gemiprint.db from database/sqlite-schema.sql + sqlite-default-values.sql
- * (used as Tauri's include_bytes! template and for local parity with Supabase seed data).
- * Run: npm run db:build-template
+ * Bangun ulang database/gemiprint.db dari database/sqlite-schema.sql + sqlite-default-values.sql
+ * (dipakai sebagai template include_bytes! Tauri dan untuk paritas lokal dengan data seed Supabase).
+ * Jalankan: npm run db:build-template
  */
 import { readFileSync, existsSync, copyFileSync, renameSync, unlinkSync } from "node:fs";
 import { join, dirname } from "node:path";

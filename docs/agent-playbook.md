@@ -8,19 +8,37 @@ The owner is **non-technical**. He asks for outcomes ("add auto-PO", "add stock 
 
 ## Table of contents
 
-1. [Architecture overview](#architecture-overview)
-2. [Caching pattern (SWR via useCachedData)](#caching-pattern)
-3. [Database change pattern (3-way sync)](#database-change-pattern)
-4. [Inventory ledger model](#inventory-ledger-model)
-5. [Roll inventory model (dimensional materials)](#roll-inventory-model)
-6. [Money flow & cashbook traceability](#money-flow)
-7. [Auth guards on server actions](#auth-guards)
-8. [Modal UX consistency](#modal-ux)
-9. [Period-closed guard](#period-closed-guard)
-10. [Sync columns & sync-config](#sync-columns)
-11. [Idempotent ledger IDs](#idempotent-ledger-ids)
-12. [Verification before done](#verification)
-13. [Default reasoning when ambiguous](#default-reasoning)
+1. [Standar bahasa aplikasi](#standar-bahasa-aplikasi)
+2. [Architecture overview](#architecture-overview)
+3. [Caching pattern (SWR via useCachedData)](#caching-pattern)
+4. [Database change pattern (3-way sync)](#database-change-pattern)
+5. [Inventory ledger model](#inventory-ledger-model)
+6. [Roll inventory model (dimensional materials)](#roll-inventory-model)
+7. [Money flow & cashbook traceability](#money-flow)
+8. [Auth guards on server actions](#auth-guards)
+9. [Modal UX consistency](#modal-ux)
+10. [Period-closed guard](#period-closed-guard)
+11. [Sync columns & sync-config](#sync-columns)
+12. [Idempotent ledger IDs](#idempotent-ledger-ids)
+13. [Verification before done](#verification)
+14. [Default reasoning when ambiguous](#default-reasoning)
+
+---
+
+## Standar bahasa aplikasi
+
+**Iron rule: semua artefak milik aplikasi memakai standar Indonesia-first.** UI, folder/domain route, API milik aplikasi, komponen, komentar, docs internal, script internal, tabel/kolom database domain, dan migrasi skema baru harus memakai Bahasa Indonesia.
+
+English hanya boleh untuk hal yang memang milik framework/library/protokol atau kontrak teknis eksternal: `src`, `page.tsx`, `route.ts`, React props, SQL keywords, package npm, tipe bawaan, generated/vendor code, serta migrasi lama yang sudah pernah diterapkan.
+
+Aturan praktis:
+
+- UI harus selalu Bahasa Indonesia, termasuk menu, tombol, placeholder, toast, empty state, validasi, dialog, report/print label, dan API error yang dibaca pengguna.
+- Nama baru milik domain aplikasi harus Bahasa Indonesia. Contoh benar: `ModalKategoriPembelian`; contoh salah: `PurchaseKategoriModal`.
+- Kontrak database/API yang sudah deployed tidak boleh di-rename langsung. Tambahkan alias kompatibilitas atau migrasi baru, update consumer bertahap, lalu hapus alias lama setelah aman.
+- Komentar/JSDoc baru di application-owned code harus Bahasa Indonesia. English boleh tetap untuk generated/vendor/framework context atau legacy comment di luar scope.
+- Docs baru di `docs/` harus Bahasa Indonesia. Legacy English di file ini boleh dimigrasikan bertahap, tapi setiap edit baru wajib bergerak ke standar Indonesia-first.
+- Sebelum mengerjakan normalisasi bahasa, baca [panduan bahasa](./panduan-bahasa.md) dan [progres seragam bahasa](./progres-seragam-bahasa.md).
 
 ---
 
@@ -372,6 +390,10 @@ These were seen on the project and corrected after — do not repeat:
 17. **`onSuccess` for new item passing `result` instead of `null`.** When a modal creates a new item and calls `onSuccess(message, updatedItem)`, pass `null` as `updatedItem` for new items so the parent does a full `reload()`. Passing the raw `result` object causes the parent to try `updateInState` instead of appending, so the new item never appears in the list.
 18. **Seed data using wrong column names.** Always verify column names against the actual migration files before writing seed SQL. For `pengaturan_toko`: bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama` — not `nama_bank`, `nomor_rekening`, `nama_rekening`. Check `supabase/migrations/` for the definitive column names.
 19. **Seed using `ON CONFLICT DO NOTHING` for settings rows.** Default settings (like `pengaturan_toko`) should use `ON CONFLICT DO UPDATE SET ...` so that `supabase:local:reset` always restores the correct defaults, even if the row already exists from a previous run.
-20. **Menu label abbreviated when others are not.** Keep menu labels consistent — if other items use full names, do not abbreviate. "PO" should be "Purchase Order", etc. Check `src/components/menuConfig.tsx`.
+20. **Menu label abbreviated when others are not.** Keep menu labels consistent and Indonesia-first. "PO" should be "Pesanan Pembelian", not "Purchase Order". Check `src/components/menuConfig.tsx`.
 21. **`category_code` shown as primary label in UI.** Always show `display_name` as the primary label and `category_code` as secondary (smaller, monospace, amber color with quotes). Never show raw codes as the main user-facing text.
 22. **Formula autocomplete showing `category_code` instead of `display_name`.** In `ExpressionAssistant`, suggestion `label` must be `c.label` (display name) and `hint` must be `kode: ${c.code}`. The `insert` value stays as `"${c.code}"` so the formula remains stable even if display names change.
+23. **English-mentah seperti `Import`, `Export`, `Upload`, `Refresh`, `Preview`, `Override`, `Default`, `Generate`, `Window`.** UI dan toast wajib pakai ejaan baku Indonesia: `Impor`, `Ekspor`, `Unggah`, `Muat Ulang`, `Pratinjau`, `Penggantian`, `Bawaan`, `Buat`, `Jendela`. Lihat `.cursorrules` rule 22 dan `docs/panduan-bahasa.md` untuk daftar lengkap.
+24. **Rename identifier kode/route/API/database saat batch UI Fase 1.** Batch UI Fase 1 hanya menyentuh string literal yang dilihat pengguna (label, tombol, placeholder, toast, modal, empty/loading/error state, print/PDF). Identifier internal (`walkInFaktur`, `customerSearch`), file path, route Next.js, API path, kolom DB tidak boleh diubah di Fase 1. Lihat `.cursorrules` rule 23 untuk batasan tepatnya.
+25. **Fallback `Walk-in` di tampilan pengguna.** Selalu pakai `Pelanggan Umum` (di tabel sempit boleh `Umum`). Termasuk di placeholder pencarian pelanggan, fallback nama di SPK/POS/laporan, dan keperluan kasbook (`pos-service.ts`).
+26. **Mode bilingual (i18n) dadakan untuk UI internal.** Standar internal adalah Bahasa Indonesia. Mode bilingual hanya boleh ada untuk artefak yang memang dipakai pihak luar (mis. brief generator AI yang dipakai vendor desain di `src/app/production/ai-prompt/page.tsx`). Jangan tambah toggle ID/EN baru untuk halaman internal.

@@ -72,9 +72,9 @@ interface FormulaSchemaResponse {
   inputColumns: SchemaColumn[];
   formulaKeys: SchemaFormulaKey[];
   helpers: SchemaHelper[];
-  /** Optional legacy letter → formula_key map (e.g. "J" → "saldo"). */
+  /** Map huruf legacy → formula_key opsional (mis. "J" → "saldo"). */
   columnLetterMap?: Record<string, string>;
-  /** Active transaction categories (e.g. OMZET, BIAYA). */
+  /** Kategori transaksi aktif (mis. OMZET, BIAYA). */
   categories?: SchemaCategory[];
 }
 
@@ -87,8 +87,8 @@ export interface ExpressionAssistantProps {
   onCancel: () => void;
   saving?: boolean;
   /**
-   * The canonical default AST for this formula (from defaults.ts).
-   * When provided and the current AST differs from it, a "Reset ke default"
+   * AST default kanonik untuk formula ini (dari defaults.ts).
+   * Ketika diisi dan AST saat ini berbeda darinya, tombol "Kembali ke Bawaan"
    * button appears so the user can restore the factory formula.
    */
   defaultAst?: ASTNode | null;
@@ -116,9 +116,9 @@ const SAMPLE_ROWS: Array<{ C: string; D: number; E: number; F: string }> = [
 
 /**
  * Convert DSL source to HTML with syntax-coloured spans.
- * Uses the tokenizer only — no full parse needed.
+ * Hanya memakai tokenizer — tidak perlu parse penuh.
  *
- * Colour scheme:
+ * Skema warna:
  *   [kolom]   → emerald (green)
  *   FUNGSI(   → violet (purple)
  *   "string"  → amber (orange)
@@ -130,7 +130,7 @@ function highlightDsl(src: string): string {
   if (!src) return "";
   const { tokens } = tokenize(src);
 
-  // Build a map of start → token for fast lookup
+  // Bangun map start → token untuk lookup cepat
   const byStart = new Map(tokens.map((t) => [t.start, t]));
 
   let html = "";
@@ -139,7 +139,7 @@ function highlightDsl(src: string): string {
   while (i < src.length) {
     const tok = byStart.get(i);
     if (!tok || tok.kind === "eof") {
-      // Whitespace or unrecognised char — emit as-is (escaped)
+      // Whitespace atau karakter tidak dikenali — keluarkan apa adanya (di-escape)
       html += escHtml(src[i]);
       i += 1;
       continue;
@@ -168,12 +168,12 @@ function highlightDsl(src: string): string {
         break;
       }
       case "rbracket":
-        // Already consumed above; emit raw if we reach here
+        // Sudah dikonsumsi di atas; keluarkan mentah kalau sampai sini
         html += escHtml(raw);
         i = tok.end;
         break;
       case "ident": {
-        // Check if followed by "(" → function call
+        // Cek kalau diikuti "(" → panggilan fungsi
         const nextTok = tokens[tokens.indexOf(tok) + 1];
         if (nextTok && nextTok.kind === "lparen") {
           html += `<span class="text-violet-600 font-semibold">${escHtml(raw)}</span>`;
@@ -220,7 +220,7 @@ function highlightDsl(src: string): string {
     }
   }
 
-  // Preserve trailing newline so backdrop height matches textarea
+  // Pertahankan trailing newline supaya tinggi backdrop cocok dengan textarea
   if (src.endsWith("\n")) html += " ";
   return html;
 }
@@ -242,7 +242,7 @@ function escHtml(s: string): string {
 // ── Tutorial panel ────────────────────────────────────────────────────────────
 
 /**
- * Reference panel that replaces the formula explanation. Two modes:
+ * Panel referensi yang menggantikan penjelasan formula. Dua mode:
  *
  *   1. "Tulis sendiri" — sintaks cheatsheet untuk user yang menulis rumus
  *      langsung di textarea.
@@ -257,7 +257,7 @@ function TutorialPanel({ schema }: { schema: FormulaSchemaResponse | null }) {
   const [mode, setMode] = useState<"manual" | "ai" | "library">("manual");
   const [copied, setCopied] = useState(false);
 
-  // Build the AI prompt template using the live schema so the LLM sees
+  // Bangun template prompt AI memakai schema live supaya LLM melihat
   // exactly which columns, formula keys, and categories are available.
   const aiPrompt = useMemo(() => buildAiPrompt(schema), [schema]);
 
@@ -309,7 +309,7 @@ function TutorialPanel({ schema }: { schema: FormulaSchemaResponse | null }) {
   );
 }
 
-/** Compact cheatsheet for hand-written formulas. */
+/** Cheatsheet ringkas untuk formula yang ditulis tangan. */
 function ManualCheatsheet() {
   return (
     <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
@@ -385,7 +385,7 @@ function FunctionLibraryCatalog() {
   const [filter, setFilter] = useState("");
   const [copiedFn, setCopiedFn] = useState<string | null>(null);
 
-  // Group by category, in display order.
+  // Kelompokkan berdasarkan kategori, dalam display order.
   const grouped = useMemo(() => {
     const order: FunctionCategory[] = [
       "logic",
@@ -512,7 +512,7 @@ const CATEGORY_LABEL: Record<FunctionCategory, string> = {
 };
 
 /**
- * Build the AI prompt template from the live schema. We list every
+ * Bangun template prompt AI dari schema live. Kita list setiap
  * available column, formula key, and category so the LLM can produce
  * formulas that reference real names.
  */
@@ -627,7 +627,7 @@ export default function ExpressionAssistant({
     for (const c of schema.inputColumns) inputColumns[c.name] = c.column;
     return {
       inputColumns,
-      // We keep self in formulaKeys because cumulative formulas legitimately
+      // Kita simpan diri sendiri di formulaKeys karena formula kumulatif legitimately
       // reference themselves via PREV([self]) — filtering it out would cause
       // every running-total formula (Saldo, Omzet, Laba Bersih) to flag its
       // own previous-row reference as "unknown identifier".
@@ -668,7 +668,7 @@ export default function ExpressionAssistant({
   const isValid = parseResult.ast !== null && parseResult.diagnostics.length === 0;
 
   // ── Auto-resize textarea to match content ────────────────────────────────
-  // Without this, the textarea stays at rows={1} while the backdrop div
+  // Tanpa ini, textarea akan diam di rows={1} sementara backdrop div
   // grows with wrapped content, causing the highlighted text to render
   // outside the textarea border.
   const autoResize = useCallback(() => {
@@ -723,7 +723,7 @@ export default function ExpressionAssistant({
   }, [schema]);
 
   /**
-   * Detect the current "token" being typed for autocomplete:
+   * Deteksi "token" yang sedang diketik untuk autocomplete:
    *   - After "[" → match column/formula names
    *   - Uppercase letter sequence → match function names
    *   - Otherwise (lowercase/mixed letters) → match columns + categories
@@ -746,7 +746,7 @@ export default function ExpressionAssistant({
       };
     }
 
-    // Uppercase function name (≥2 chars to avoid hijacking the bare-letter mode)
+    // Nama fungsi UPPERCASE (≥2 karakter supaya tidak menabrak mode bare-letter)
     const fnMatch = upTo.match(/[A-Z][A-Z0-9_]+$/);
     if (fnMatch) {
       return {
@@ -757,12 +757,12 @@ export default function ExpressionAssistant({
       };
     }
 
-    // Bare letters in free position — only when not preceded by an open
+    // Huruf telanjang di posisi bebas — hanya saat tidak didahului tanda kurung buka
     // string quote (we don't want to autocomplete inside a half-typed
     // string literal).
     const freeMatch = upTo.match(/(^|[^A-Za-z0-9_"])([A-Za-z][A-Za-z0-9_]*)$/);
     if (freeMatch) {
-      // Count unescaped quotes before the match — odd count = inside string.
+      // Hitung tanda kutip yang tidak di-escape sebelum match — jumlah ganjil = di dalam string.
       const before = upTo.slice(0, caret - freeMatch[2].length);
       const quoteCount = (before.match(/"/g) ?? []).length;
       if (quoteCount % 2 === 0) {
@@ -819,7 +819,7 @@ export default function ExpressionAssistant({
       let replaceStart = currentToken.start;
 
       if (currentToken.mode === "bracket") {
-        // Replace from the "[" character so we don't end up with "[[name]"
+        // Ganti dari karakter "[" supaya tidak berakhir dengan "[[name]"
         replaceStart = currentToken.start - 1;
       }
       // For "free" mode: replace just the bare letters with whatever the
@@ -910,7 +910,7 @@ export default function ExpressionAssistant({
   }
 
   // ── Reset to default ────────────────────────────────────────────────────
-  // Compare current AST with defaultAst to decide whether to show the
+  // Bandingkan AST saat ini dengan defaultAst untuk menentukan apakah
   // "Reset ke default" button. We compare via JSON so structural equality
   // is checked, not reference equality.
   const isModifiedFromDefault = useMemo(() => {
@@ -995,7 +995,7 @@ export default function ExpressionAssistant({
           aria-hidden
           className="absolute left-4 right-4 top-3 font-mono text-sm border border-transparent rounded-md px-3 py-2 overflow-hidden pointer-events-none select-none"
           style={{
-            // Must match textarea exactly
+            // Harus persis match dengan textarea
             lineHeight: "1.5rem",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
@@ -1149,7 +1149,7 @@ export default function ExpressionAssistant({
               className="px-3 py-1.5 text-xs rounded border border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-200 hover:bg-slate-50 dark:hover:bg-white/5"
               title="Kembalikan rumus ini ke setelan pabrikan"
             >
-              ↺ Reset ke default
+              ↺ Kembali ke Bawaan
             </button>
           )}
         </div>

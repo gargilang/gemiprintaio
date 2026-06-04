@@ -51,7 +51,7 @@ beforeEach(() => {
 });
 
 describe("stock-opname-service", () => {
-  it("createStockOpname snapshots tracked materials only", async () => {
+  it("createStockOpname snapshot hanya barang yang dilacak", async () => {
     const result = await createStockOpname({ tanggal: "2026-05-25" });
     expect(result.nomor_opname).toBe("SO-20260525-001");
     const items = Array.from(mockTable("stock_opname_items").values());
@@ -62,7 +62,7 @@ describe("stock-opname-service", () => {
     expect(headers[0].total_items).toBe(2);
   });
 
-  it("updateStockOpnameCounts computes delta and persists totals", async () => {
+  it("updateStockOpnameCounts menghitung delta dan menyimpan total", async () => {
     await createStockOpname({ tanggal: "2026-05-25" });
     const session = Array.from(mockTable("stock_opnames").values())[0];
     const items = Array.from(mockTable("stock_opname_items").values()).filter(
@@ -83,7 +83,7 @@ describe("stock-opname-service", () => {
     expect(mockTable("stock_opname_items").get(kertas.id)!.delta_qty).toBe(5);
   });
 
-  it("postStockOpname creates ADJUSTMENT movement only for non-zero deltas", async () => {
+  it("postStockOpname membuat movement ADJUSTMENT hanya untuk delta non-zero", async () => {
     await createStockOpname({ tanggal: "2026-05-25" });
     const session = Array.from(mockTable("stock_opnames").values())[0];
     const items = Array.from(mockTable("stock_opname_items").values()).filter(
@@ -109,18 +109,18 @@ describe("stock-opname-service", () => {
     expect(mockTable("stock_opnames").get(session.id)!.status).toBe("POSTED");
   });
 
-  it("rejects post on already posted opname", async () => {
+  it("menolak post pada opname yang sudah diposting", async () => {
     await createStockOpname({ tanggal: "2026-05-25" });
     const session = Array.from(mockTable("stock_opnames").values())[0];
     await postStockOpname(session.id);
     await expect(postStockOpname(session.id)).rejects.toThrow(/diposting|batal/);
   });
 
-  it("cancel only allowed on DRAFT", async () => {
+  it("cancel hanya boleh saat status DRAF", async () => {
     await createStockOpname({ tanggal: "2026-05-25" });
     const session = Array.from(mockTable("stock_opnames").values())[0];
     await cancelStockOpname(session.id);
     expect(mockTable("stock_opnames").get(session.id)!.status).toBe("CANCELLED");
-    await expect(cancelStockOpname(session.id)).rejects.toThrow(/DRAFT/);
+    await expect(cancelStockOpname(session.id)).rejects.toThrow(/DRAF/);
   });
 });

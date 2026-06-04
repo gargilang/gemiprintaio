@@ -1,27 +1,27 @@
 /**
- * Default seed formulas for the cashbook AST engine.
+ * Formula default seed untuk engine AST buku kas.
  *
- * Only the 5 system-wide formulas (Omzet, Biaya Operasional, Biaya Bahan,
- * Saldo, Laba Bersih) ship as defaults. Per-person formulas (kasbon,
- * bagi hasil, bonus) are created dynamically from the "Kelola Orang" UI,
- * so a fresh install starts with no real names anywhere.
+ * Hanya 5 formula sistem (Omzet, Biaya Operasional, Biaya Bahan,
+ * Saldo, Laba Bersih) yang dikirim sebagai default. Formula per-orang (kasbon,
+ * bagi hasil, bonus) dibuat dinamis dari UI "Kelola Orang", jadi instalasi
+ * fresh dimulai tanpa nama nyata di mana pun.
  *
- * Legacy fields `column` (G/H/I/J/K) and `dbColumn` remain populated so
- * existing UI/recalc code keeps working during the migration window. New
- * code should reference formulas by `formulaKey` (semantic).
+ * Field legacy `column` (G/H/I/J/K) dan `dbColumn` tetap diisi supaya
+ * kode UI/recalc yang ada tetap jalan selama window migrasi. Kode baru
+ * sebaiknya merujuk formula via `formulaKey` (semantik).
  *
- * Mapping legacy letter → formulaKey → keuangan DB column:
+ * Mapping huruf legacy → formulaKey → kolom DB keuangan:
  *   G → omzet              → omzet
  *   H → biaya_operasional  → biaya_operasional
  *   I → biaya_bahan        → biaya_bahan
  *   J → saldo              → saldo
  *   K → laba_bersih        → laba_bersih
  *
- * Legacy person-specific formulas (Kasbon Suri, Bagi Hasil Suri, Bagi
- * Hasil Gemi, Kasbon Cahaya) used to be seeded here as well. They were
- * removed as part of the finance scalability refactor — the same shapes
- * are now generated on-demand by `formula-service.ts` when a user adds
- * a business_actor with the corresponding role.
+ * Formula legacy spesifik-orang (Kasbon Suri, Bagi Hasil Suri, Bagi
+ * Hasil Gemi, Kasbon Cahaya) dulu juga di-seed di sini. Mereka sudah
+ * dihapus sebagai bagian dari refactor skalabilitas keuangan — bentuk
+ * yang sama sekarang di-generate on-demand oleh `formula-service.ts`
+ * saat pengguna menambah business_actor dengan peran terkait.
  */
 
 import type {
@@ -73,7 +73,7 @@ const isReturPenjualan = (): ASTNode =>
   );
 
 /**
- * Default partners. Intentionally empty — partners (real people) are added
+ * Partner default. Sengaja kosong — partner (orang sungguhan) ditambahkan
  * by the user through the "Kelola Orang" UI, never seeded by code. The
  * export is kept so callers that still import it stay compile-safe.
  */
@@ -130,7 +130,7 @@ const astBiayaOps: ASTNode = iff(
 /**
  * I: BIAYA BAHAN / HPP
  *   =IF(ROW()=2, 0, IF(C="HPP", I_prev + E, I_prev))
- * Purchases stay as cash/inventory movements; they become cost when sold.
+ * Pembelian tetap sebagai pergerakan kas/inventori; mereka jadi cost saat dijual.
  */
 const astBiayaBahan: ASTNode = iff(
   or(op("=", col("C"), lit("HPP")), op("=", col("C"), lit("RETUR_HPP"))),
@@ -346,7 +346,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
   },
 ];
 
-/** Deep clone helper for callers that intend to mutate seeded values. */
+/** Helper deep clone untuk pemanggil yang berniat memutasi nilai seed. */
 export function cloneDefaults<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T;
 }

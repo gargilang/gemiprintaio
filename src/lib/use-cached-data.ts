@@ -5,22 +5,22 @@ import { useCallback } from "react";
 import { useSWRConfig } from "swr";
 
 /**
- * Thin wrapper around SWR for the common case where data comes from a Next.js
- * Server Action rather than a URL.
+ * Pembungkus tipis SWR untuk kasus umum di mana data datang dari Server Action
+ * Next.js, bukan dari URL.
  *
- * Usage:
+ * Pemakaian:
  *
- *   const { data: customers, isLoading, mutate, refresh } =
- *     useCachedData("customers", () => getCustomersAction());
+ *   const { data: pelanggan, isLoading, mutate, refresh } =
+ *     useCachedData("pelanggan", () => getCustomersAction());
  *
- * Notes:
- * - `key` should be a stable, globally unique string (e.g. "customers",
- *   `customer:${id}`). It is what tags the cache entry.
- * - The fetcher must return a value that JSON.stringify can handle so it can
- *   be persisted in localStorage.
- * - The provider in `swr-provider.tsx` shows the last known value instantly
- *   on first paint, so most pages will not display a spinner after the very
- *   first load.
+ * Catatan:
+ * - `key` harus berupa string yang stabil dan unik secara global (mis. "pelanggan",
+ *   `pelanggan:${id}`). Itulah yang menandai entri cache.
+ * - Fetcher harus mengembalikan nilai yang bisa di-JSON.stringify supaya
+ *   bisa disimpan di localStorage.
+ * - Provider di `swr-provider.tsx` menampilkan nilai terakhir yang diketahui
+ *   secara instan saat paint pertama, jadi kebanyakan halaman tidak menampilkan
+ *   spinner setelah load pertama.
  */
 export function useCachedData<T>(
   key: string | null,
@@ -37,12 +37,12 @@ export function useCachedData<T>(
 }
 
 /**
- * Hook returning the global SWR mutator. Useful for invalidating cache from
- * mutation handlers, e.g.:
+ * Hook yang mengembalikan mutator SWR global. Berguna untuk invalidasi cache
+ * dari handler mutasi, mis.:
  *
  *   const invalidate = useInvalidate();
  *   await createCustomerAction(form);
- *   invalidate("customers");
+ *   invalidate("pelanggan");
  */
 export function useInvalidate() {
   const { mutate } = useSWRConfig();

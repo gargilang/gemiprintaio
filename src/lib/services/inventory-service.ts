@@ -228,9 +228,9 @@ export async function postInventoryMovement(
     throw new Error("Jumlah pergerakan stok tidak boleh 0");
   }
 
-  // Period guard: tolak movement yang tanggalnya jatuh di periode CLOSED.
-  // Postgres RPC sudah cek lewat `assert_period_open`, tapi path SQLite/
-  // Tauri tidak melalui RPC, jadi cek di TS supaya offline-mode juga aman.
+  // Period guard: tolak pergerakan stok yang tanggalnya jatuh di periode TUTUP.
+  // Postgres RPC sudah cek lewat `assert_period_open`, tapi jalur SQLite/
+  // Tauri tidak melalui RPC, jadi cek di TS supaya mode offline juga aman.
   if (input.tanggal && (await isDateInClosedPeriod(input.tanggal))) {
     throw new Error(
       `Tanggal ${input.tanggal} jatuh di periode yang sudah ditutup. Gunakan jurnal pembalik di periode berjalan.`
@@ -394,7 +394,7 @@ export async function createInventoryAdjustment(input: {
   dibuat_oleh?: string | null;
 }): Promise<InventoryMovement | null> {
   if (!input.reason?.trim()) {
-    throw new Error("Alasan adjustment stok wajib diisi");
+    throw new Error("Alasan penyesuaian stok wajib diisi");
   }
 
   const reasonCode = (input.adjustment_reason || "MANUAL").toUpperCase();
@@ -414,9 +414,9 @@ export async function createInventoryAdjustment(input: {
 }
 
 /**
- * Catat material rusak/scrap (misprint, sisa potongan yang tidak terpakai,
+ * Catat barang rusak/scrap (misprint, sisa potongan yang tidak terpakai,
  * dll). Selalu mengurangi stok (qty_delta negatif). Tidak revalue AVCO —
- * material dianggap hilang dengan nilai average cost saat ini, sehingga
+ * barang dianggap hilang dengan nilai average cost saat ini, sehingga
  * sisa stok tetap pada cost yang sama dan biaya scrap masuk ke value_delta
  * untuk laporan biaya operasional.
  */
@@ -428,11 +428,11 @@ export async function createWasteMovement(input: {
   dibuat_oleh?: string | null;
 }): Promise<InventoryMovement | null> {
   if (!input.reason?.trim()) {
-    throw new Error("Alasan/keterangan material rusak wajib diisi");
+    throw new Error("Alasan/keterangan barang rusak wajib diisi");
   }
   const qty = Number(input.qty);
   if (!Number.isFinite(qty) || qty <= 0) {
-    throw new Error("Jumlah material rusak harus lebih dari 0");
+    throw new Error("Jumlah barang rusak harus lebih dari 0");
   }
 
   return postInventoryMovement({

@@ -332,7 +332,7 @@ export async function getFinancialReport(
     }
 
     if (!cashBooks || cashBooks.length === 0) {
-      throw new Error("No data found for this archive");
+      throw new Error("Tidak ada data untuk arsip ini");
     }
 
     let totalIncome = 0;
@@ -590,10 +590,10 @@ export async function getFormalAccountingReport(data: {
         ? (customerMap.get(sale.pelanggan_id) as any)
         : null;
       return {
-        invoice: String(sale.nomor_invoice || ""),
+        invoice: String(sale.nomor_faktur || ""),
         date: toDateKey(sale.tanggal ?? sale.dibuat_pada),
         customerName: String(
-          customer?.nama || customer?.nama_perusahaan || "Walk-in",
+          customer?.nama || customer?.nama_perusahaan || "Pelanggan Umum",
         ),
         revenue: saleRevenue,
         cogs: saleCogs,
@@ -615,9 +615,9 @@ export async function getFormalAccountingReport(data: {
         ? (customerMap.get(sale.pelanggan_id) as any)
         : null;
       return {
-        invoice: String(sale?.nomor_invoice || ""),
+        invoice: String(sale?.nomor_faktur || ""),
         customerName: String(
-          customer?.nama || customer?.nama_perusahaan || "Walk-in",
+          customer?.nama || customer?.nama_perusahaan || "Pelanggan Umum",
         ),
         amount: num(row.jumlah_piutang),
         paid: num(row.jumlah_terbayar),

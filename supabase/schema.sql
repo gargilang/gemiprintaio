@@ -404,7 +404,7 @@ CREATE INDEX IF NOT EXISTS idx_kredensial_sync_status ON kredensial(sync_status)
 -- Table: penjualan (Sales)
 CREATE TABLE IF NOT EXISTS penjualan (
   id TEXT PRIMARY KEY,
-  nomor_invoice TEXT UNIQUE NOT NULL,
+  nomor_faktur TEXT UNIQUE NOT NULL,
   pelanggan_id TEXT,
   pelanggan_nama_snapshot TEXT,
   pelanggan_kota TEXT,

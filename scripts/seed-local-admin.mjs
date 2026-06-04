@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Seed a local admin user into ./database/gemiprint.db (SQLite only).
+ * Seed satu pengguna admin lokal ke ./database/gemiprint.db (hanya SQLite).
  *
- * Idempotent: if a user with the same `nama_pengguna` already exists, the
- * password is reset (and role/aktif_status forced to admin/active) so that
- * developers always have a known set of credentials to QA the new pages.
+ * Idempoten: kalau pengguna dengan `nama_pengguna` yang sama sudah ada,
+ * password di-reset (dan role/aktif_status dipaksa ke admin/active) supaya
+ * developer selalu punya kredensial yang diketahui untuk QA halaman baru.
  *
  * Usage:
  *   node scripts/seed-local-admin.mjs               # admin / admin123

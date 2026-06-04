@@ -4,7 +4,7 @@
  * Surat Jalan list table.
  *
  * Shows: nomor SJ, tanggal, penerima, ref invoice (if any), status badge, aksi.
- * Click row to expand and see items. Status flow buttons:
+ * Klik baris untuk expand dan lihat item. Tombol alur status:
  *   DRAFT → TERKIRIM → DITERIMA (each step is one click)
  *   DRAFT can be edited / deleted; TERKIRIM/DITERIMA are read-only.
  */
@@ -58,11 +58,17 @@ function StatusBadge({ status }: { status: SuratJalanStatus }) {
     BATAL:
       "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800/50",
   };
+  const labels: Record<SuratJalanStatus, string> = {
+    DRAFT: "DRAF",
+    TERKIRIM: "TERKIRIM",
+    DITERIMA: "DITERIMA",
+    BATAL: "BATAL",
+  };
   return (
     <span
       className={`inline-block px-2 py-1 rounded-lg text-xs font-semibold border ${styles[status]}`}
     >
-      {status}
+      {labels[status]}
     </span>
   );
 }
@@ -85,7 +91,7 @@ export default function SuratJalanTable({
     return (
       sj.nomor_sj.toLowerCase().includes(q) ||
       sj.pelanggan_nama?.toLowerCase().includes(q) ||
-      sj.nomor_invoice?.toLowerCase().includes(q)
+      sj.nomor_faktur?.toLowerCase().includes(q)
     );
   });
 
@@ -105,7 +111,7 @@ export default function SuratJalanTable({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nomor SJ, penerima, atau ref invoice..."
+            placeholder="Cari nomor SJ, penerima, atau ref faktur..."
             className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
@@ -134,7 +140,7 @@ export default function SuratJalanTable({
                 <th className="px-4 py-3 text-left text-xs font-semibold">No. SJ</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold">Tanggal</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold">Penerima</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">Ref. Invoice</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold">Ref. Faktur</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold">Item</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold">Status</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold">Aksi</th>
@@ -175,7 +181,7 @@ export default function SuratJalanTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
-                      {sj.nomor_invoice || (
+                      {sj.nomor_faktur || (
                         <span className="text-gray-400 italic">manual</span>
                       )}
                     </td>
@@ -192,7 +198,7 @@ export default function SuratJalanTable({
                         <button
                           onClick={() => onPreview(sj)}
                           className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                          title="Preview surat jalan"
+                          title="Pratinjau surat jalan"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

@@ -36,7 +36,7 @@ final List<dynamic> _menuEntries = [
   const _MenuItemData(
     path: '/dashboard',
     icon: Icons.dashboard_rounded,
-    label: 'Dashboard',
+    label: 'Beranda',
   ),
   const _MenuGroupData(
     label: 'Penjualan',
@@ -327,7 +327,7 @@ class AppShell extends ConsumerWidget {
 
   String _titleForPath(String path) {
     const titles = {
-      '/dashboard': 'Dashboard',
+      '/dashboard': 'Beranda',
       '/pos': 'POS / Kasir',
       '/production': 'Produksi',
       '/materials': 'Data Barang',

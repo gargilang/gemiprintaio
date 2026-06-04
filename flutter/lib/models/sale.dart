@@ -48,7 +48,7 @@ class Sale {
     final hasPelunasanRaw = json['has_pelunasan'];
     return Sale(
       id: json['id'] as String,
-      nomorInvoice: (json['nomor_invoice'] ?? '') as String,
+      nomorInvoice: (json['nomor_faktur'] ?? '') as String,
       pelangganId: json['pelanggan_id'] as String?,
       pelangganNama: json['pelanggan_nama'] as String?,
       totalHarga:

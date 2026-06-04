@@ -1,7 +1,7 @@
 /**
- * Drops and recreates the `public` schema (same SQL as wipe-public-schema.sql).
- * Requires DATABASE_URL or DIRECT_URL in .env.local (Supabase → Settings → Database).
- * Usage: npm run supabase:wipe
+ * Drop dan buat ulang skema `public` (SQL yang sama dengan wipe-public-schema.sql).
+ * Butuh DATABASE_URL atau DIRECT_URL di .env.local (Supabase → Settings → Database).
+ * Pemakaian: npm run supabase:wipe
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

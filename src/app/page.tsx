@@ -13,7 +13,7 @@ export default function Home() {
       const user = await fetchSessionUser();
       if (cancelled) return;
       if (user?.id && user.aktif_status) {
-        router.push("/dashboard");
+        router.push("/beranda");
       } else {
         router.push("/auth/login");
       }
@@ -23,7 +23,7 @@ export default function Home() {
     };
   }, [router]);
 
-  /* Full viewport: not inside MainShell (see layout). Spinner matches dashboard-style loaders. */
+  /* Viewport penuh: tidak di dalam MainShell (lihat layout). Spinner mengikuti gaya loader beranda. */
   return (
     <div className="min-h-[100dvh] flex items-center justify-center px-4">
       <div className="text-center">

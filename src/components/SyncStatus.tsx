@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { isTauriApp } from "@/lib/client-utils";
-import { getPendingSyncCountAction } from "@/app/settings/actions";
+import { getPendingSyncCountAction } from "@/app/pengaturan/actions";
 import {
   getClientSyncStatus,
   getLastSyncSuccessAt,
@@ -35,11 +35,11 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Check if running in Tauri
+    // Cek apakah jalan di Tauri
     const tauri = isTauriApp();
     setIsTauri(tauri);
 
-    // Web mode: skip all polling. The widget renders nothing and there's
+    // Mode web: lewati semua polling. Widget tidak merender apa pun dan tidak ada
     // no local queue / cache to surface — Supabase is the source of truth.
     if (!tauri) return;
 
@@ -60,7 +60,7 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
       }
     };
 
-    // Check pending operations
+    // Cek operasi yang pending
     const checkPending = async () => {
       try {
         const status = getClientSyncStatus(
@@ -77,16 +77,16 @@ export default function SyncStatus({ className = "" }: SyncStatusProps) {
       }
     };
 
-    // Initial check
+    // Cek awal
     checkOnline();
     checkPending();
     checkCloudStatus();
 
-    // Listen for online/offline events
+    // Dengarkan event online/offline
     window.addEventListener("online", checkOnline);
     window.addEventListener("offline", checkOnline);
 
-    // Check pending operations periodically
+    // Cek operasi yang pending periodically
     const interval = setInterval(() => {
       checkPending();
       checkCloudStatus();

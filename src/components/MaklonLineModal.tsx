@@ -1,18 +1,18 @@
 "use client";
 
 /**
- * Modal for adding (or editing) a Maklon (subcontract) entry on a POS sale.
+ * Modal untuk menambah (atau edit) entri Maklon (subkontrak) di penjualan POS.
  *
- * Maklon entry shape — one form = one vendor + one payment method, but
- * supports multiple line items in a single submission. Each line independently
- * carries its own description, qty, sell price and vendor cost.
+ * Bentuk entri Maklon — satu form = satu vendor + satu metode pembayaran, tapi
+ * mendukung beberapa baris item dalam satu submission. Setiap baris membawa
+ * deskripsi, qty, harga jual, dan biaya vendor sendiri.
  *
- * On save, the parent (POSPage) explodes the form value into N CartItems,
- * one per line, all sharing the same vendor + metode_bayar_vendor.
+ * Saat disimpan, parent (POSPage) memecah nilai form ke N CartItem,
+ * satu per baris, semua berbagi vendor + metode_bayar_vendor yang sama.
  *
- * Margin per line = (jumlah * harga_satuan) - biaya_subkontrak.
- * Total margin = sum of all line margins. Surfaced in footer; negative totals
- * trigger a warning but are not blocked.
+ * Margin per baris = (jumlah * harga_satuan) - biaya_subkontrak.
+ * Total margin = jumlah margin semua baris. Ditampilkan di footer; total negatif
+ * memicu peringatan tapi tidak diblokir.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -114,7 +114,7 @@ export default function MaklonLineModal({
   );
   const [drafts, setDrafts] = useState<LineDraft[]>([{ ...EMPTY_LINE }]);
 
-  // Reset whenever the modal opens with a new initialValue.
+  // Reset setiap kali modal dibuka dengan initialValue baru.
   useEffect(() => {
     if (!show) return;
     setVendorId(initialValue?.vendor_subkontrak_id ?? "");
@@ -292,7 +292,7 @@ export default function MaklonLineModal({
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-gray-700 dark:text-slate-300 space-y-0.5">
               <div>
-                Total tagih ke customer:{" "}
+                Total tagih ke pelanggan:{" "}
                 <span className="font-bold text-gray-900 dark:text-slate-100">
                   Rp {totalCustomer.toLocaleString("id-ID")}
                 </span>

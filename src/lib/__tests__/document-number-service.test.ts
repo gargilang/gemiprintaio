@@ -24,7 +24,7 @@ describe("generateDailyDocumentNumber", () => {
     queryFn.mockReset();
   });
 
-  it("starts at 001 when no rows exist", async () => {
+  it("mulai dari 001 ketika belum ada baris", async () => {
     queryFn.mockResolvedValueOnce({ data: [], error: null });
     const result = await generateDailyDocumentNumber(
       "penawaran",
@@ -35,7 +35,7 @@ describe("generateDailyDocumentNumber", () => {
     expect(result).toBe("QUO-20260525-001");
   });
 
-  it("increments past the highest existing sequence on the same day", async () => {
+  it("naik dari urutan tertinggi yang ada di hari yang sama", async () => {
     queryFn.mockResolvedValueOnce({
       data: [
         { nomor_penawaran: "QUO-20260525-001" },
@@ -54,7 +54,7 @@ describe("generateDailyDocumentNumber", () => {
     expect(result).toBe("QUO-20260525-008");
   });
 
-  it("ignores rows with a different prefix on the same day", async () => {
+  it("mengabaikan baris dengan prefix berbeda di hari yang sama", async () => {
     queryFn.mockResolvedValueOnce({
       data: [
         { nomor_po: "PO-20260525-002" },
@@ -90,7 +90,7 @@ describe("generateDailyDocumentNumber", () => {
     expect(result).toBe(expected);
   });
 
-  it("propagates db errors", async () => {
+  it("meneruskan error db", async () => {
     const error = new Error("simulated db failure");
     queryFn.mockResolvedValueOnce({ data: null, error });
     await expect(
@@ -98,7 +98,7 @@ describe("generateDailyDocumentNumber", () => {
     ).rejects.toBe(error);
   });
 
-  it("ignores malformed sequences and returns the next number", async () => {
+  it("mengabaikan urutan yang malformed dan kembalikan nomor berikutnya", async () => {
     queryFn.mockResolvedValueOnce({
       data: [
         { nomor_retur: "RJ-20260525-XYZ" },
@@ -116,7 +116,7 @@ describe("generateDailyDocumentNumber", () => {
     expect(result).toBe("RJ-20260525-006");
   });
 
-  it("formats sequences > 999 without breaking padding", async () => {
+  it("memformat urutan > 999 tanpa memutus padding", async () => {
     queryFn.mockResolvedValueOnce({
       data: [{ nomor: "PO-20260525-1234" }],
       error: null,

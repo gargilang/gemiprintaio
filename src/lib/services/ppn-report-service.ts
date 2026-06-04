@@ -16,7 +16,7 @@ import { db, getServerSupabaseClient } from "@/lib/db-unified";
 
 export interface PpnRowKeluaran {
   penjualan_id: string;
-  nomor_invoice: string;
+  nomor_faktur: string;
   tanggal_faktur_pajak: string | null;
   tanggal_transaksi: string;
   nsfp: string | null;
@@ -85,7 +85,7 @@ export async function getPpnReport(input: {
     const { data: salesData, error: salesErr } = await sb
       .from("penjualan")
       .select(
-        "id, nomor_invoice, tanggal_faktur_pajak, dibuat_pada, status_transaksi, " +
+        "id, nomor_faktur, tanggal_faktur_pajak, dibuat_pada, status_transaksi, " +
           "kena_ppn, ppn_persen, dpp_total, ppn_total, total_jumlah, " +
           "nsfp_kode_transaksi, nsfp_tahun, nsfp_nomor_seri, " +
           "pelanggan_id, pelanggan_npwp_snapshot, pelanggan_alamat_npwp_snapshot, " +
@@ -175,7 +175,7 @@ export async function getPpnReport(input: {
       const pl = r.pelanggan_id ? pelangganMap.get(r.pelanggan_id) : null;
       return {
         penjualan_id: r.id,
-        nomor_invoice: r.nomor_invoice,
+        nomor_faktur: r.nomor_faktur,
         tanggal_faktur_pajak: r.tanggal_faktur_pajak,
         tanggal_transaksi: r.dibuat_pada
           ? String(r.dibuat_pada).split("T")[0]

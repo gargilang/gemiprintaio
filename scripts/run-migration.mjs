@@ -1,16 +1,15 @@
 /**
- * Applies one or more migration SQL files directly to the Supabase Postgres
- * database via DATABASE_URL (bypassing the Supabase CLI which requires a
- * Linux binary).
+ * Terapkan satu atau beberapa file SQL migrasi langsung ke database Supabase
+ * Postgres via DATABASE_URL (melewati Supabase CLI yang butuh binary Linux).
  *
- * Usage (from project root):
+ * Pemakaian (dari root project):
  *   node --env-file=.env.local scripts/run-migration.mjs <file1.sql> [file2.sql ...]
  *
- * If no files are given, it applies all pending migrations in
- * supabase/migrations/ that are not yet recorded in the migration tracking
- * table. "Pending" is determined simply by checking whether a table called
- * `_migration_log` has a row for that filename; it does NOT use Supabase's
- * internal schema_migrations table (which requires the CLI).
+ * Kalau tidak ada file yang diberikan, terapkan semua migrasi pending di
+ * supabase/migrations/ yang belum tercatat di tabel pelacak migrasi. "Pending"
+ * ditentukan dengan cek apakah tabel bernama `_migration_log` punya baris
+ * untuk nama file itu; TIDAK memakai tabel schema_migrations internal Supabase
+ * (yang butuh CLI).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, basename } from "node:path";

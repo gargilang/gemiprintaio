@@ -22,7 +22,7 @@ interface Purchase {
   total_harga: number;
   jumlah_dibayar?: number;
   dibuat_pada?: string;
-  /** Type of purchase (BARANG default, MAKLON for subcontract jobs). */
+  /** Tipe pembelian (BARANG default, MAKLON untuk pekerjaan subkontrak). */
   tipe_pembelian?: "BARANG" | "MAKLON";
   /** Sale ID that triggered this maklon PO (for back-link to invoice). */
   penjualan_id_sumber?: string | null;
@@ -81,7 +81,7 @@ const PurchaseRow = memo(
           | undefined;
         try {
           const { getShopSettingsAction } = await import(
-            "@/app/settings/actions"
+            "@/app/pengaturan/actions"
           );
           const settings = await getShopSettingsAction();
           shop = { nama_toko: settings.nama_toko, slogan: settings.slogan };
@@ -140,7 +140,7 @@ const PurchaseRow = memo(
           | undefined;
         try {
           const { getShopSettingsAction } = await import(
-            "@/app/settings/actions"
+            "@/app/pengaturan/actions"
           );
           const settings = await getShopSettingsAction();
           shop = {
@@ -182,7 +182,7 @@ const PurchaseRow = memo(
         setPrinting(false);
       }
     };
-    // Parse date as local date (YYYY-MM-DD format from database)
+    // Parse tanggal sebagai tanggal lokal (format YYYY-MM-DD dari database)
     // Don't use new Date() directly as it treats YYYY-MM-DD as UTC midnight
     const [year, month, day] = purchase.tanggal.split("-").map(Number);
     const tanggalFormatted = new Date(year, month - 1, day).toLocaleDateString(
@@ -265,7 +265,7 @@ const PurchaseRow = memo(
                 onClick={handlePreview}
                 disabled={printing}
                 className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-50"
-                title="Preview faktur pembelian (floating window)"
+                title="Pratinjau faktur pembelian (jendela mengambang)"
               >
                 <svg
                   className="w-5 h-5"
@@ -472,11 +472,11 @@ export default function PurchaseTable({
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Filter and sort
+  // Filter dan urutkan
   const filteredPurchases = useMemo(() => {
     let filtered = [...purchases];
 
-    // Search filter
+    // Filter pencarian
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -496,20 +496,20 @@ export default function PurchaseTable({
       } else if (sortBy === "total") {
         comparison = a.total_harga - b.total_harga;
       } else if (sortBy === "status") {
-        // Sort by status: HUTANG > SEBAGIAN > LUNAS
+        // Urutkan berdasarkan status: HUTANG > SEBAGIAN > LUNAS
         const statusOrder = { HUTANG: 0, SEBAGIAN: 1, LUNAS: 2 };
         const aStatus = a.status_pembayaran || "LUNAS";
         const bStatus = b.status_pembayaran || "LUNAS";
         comparison =
           (statusOrder[aStatus as keyof typeof statusOrder] || 3) -
           (statusOrder[bStatus as keyof typeof statusOrder] || 3);
-        // If same status, sort by date (oldest first for debts)
+        // Kalau status sama, urut tanggal (terlama duluan untuk hutang)
         if (comparison === 0) {
           comparison =
             new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
         }
       } else if (sortBy === "created") {
-        // Sort by creation date (dibuat_pada)
+        // Urut berdasarkan tanggal pembuatan (dibuat_pada)
         const aTime = a.dibuat_pada ? new Date(a.dibuat_pada).getTime() : 0;
         const bTime = b.dibuat_pada ? new Date(b.dibuat_pada).getTime() : 0;
         comparison = aTime - bTime;

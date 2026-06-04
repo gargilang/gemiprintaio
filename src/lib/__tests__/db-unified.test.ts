@@ -9,8 +9,8 @@ import {
 } from "../db-unified";
 
 describe("normalizeRecord", () => {
-  describe("toSupabase conversion", () => {
-    it("should convert SQLite to Supabase format", () => {
+  describe("konversi toSupabase", () => {
+    it("seharusnya konversi format SQLite ke Supabase", () => {
       const input = {
         aktif: 1,
         privat_status: 0,
@@ -27,7 +27,7 @@ describe("normalizeRecord", () => {
       expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
 
-    it("should convert 0 to false for boolean fields", () => {
+    it("seharusnya konversi 0 ke false untuk field boolean", () => {
       const input = {
         aktif: 0,
         is_active: 0,
@@ -41,7 +41,7 @@ describe("normalizeRecord", () => {
       expect(output.has_permission).toBe(false);
     });
 
-    it("should not convert non-boolean numeric fields", () => {
+    it("seharusnya tidak konversi field numerik non-boolean", () => {
       const input = {
         jumlah_stok: 100,
         harga: 50000,
@@ -54,8 +54,8 @@ describe("normalizeRecord", () => {
     });
   });
 
-  describe("toSQLite conversion", () => {
-    it("should convert Supabase to SQLite format", () => {
+  describe("konversi toSQLite", () => {
+    it("seharusnya konversi format Supabase ke SQLite", () => {
       const input = {
         aktif: true,
         privat_status: false,
@@ -72,7 +72,7 @@ describe("normalizeRecord", () => {
       expect(output.diperbarui_pada).toBe("2025-11-14T11:00:00Z");
     });
 
-    it("should convert false to 0", () => {
+    it("seharusnya konversi false ke 0", () => {
       const input = {
         aktif: false,
         is_active: false,
@@ -85,8 +85,8 @@ describe("normalizeRecord", () => {
     });
   });
 
-  describe("fromSQLite conversion", () => {
-    it("should convert SQLite to app format", () => {
+  describe("konversi fromSQLite", () => {
+    it("seharusnya konversi SQLite ke format aplikasi", () => {
       const input = {
         aktif: 1,
         is_active: 0,
@@ -99,8 +99,8 @@ describe("normalizeRecord", () => {
     });
   });
 
-  describe("fromSupabase conversion", () => {
-    it("should convert Supabase to app format", () => {
+  describe("konversi fromSupabase", () => {
+    it("seharusnya konversi Supabase ke format aplikasi", () => {
       const input = {
         aktif: true,
         is_active: false,
@@ -112,7 +112,7 @@ describe("normalizeRecord", () => {
       expect(output.is_active).toBe(0);
     });
 
-    it("should stringify JSONB fields for SQLite binding", () => {
+    it("seharusnya men-stringify field JSONB untuk binding SQLite", () => {
       const input = {
         metric_contributions: [{ column: "omzet", amount_field: "debit", sign: 1 }],
       };
@@ -125,7 +125,7 @@ describe("normalizeRecord", () => {
     });
   });
 
-  it("should preserve other fields unchanged", () => {
+  it("seharusnya mempertahankan field lain tanpa perubahan", () => {
     const input = {
       id: "mat-123",
       nama: "Kertas A4",
@@ -144,7 +144,7 @@ describe("normalizeRecord", () => {
 });
 
 describe("generateId", () => {
-  it("should generate valid UUID v4", () => {
+  it("seharusnya menghasilkan UUID v4 yang valid", () => {
     const id = generateId();
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -152,14 +152,14 @@ describe("generateId", () => {
     expect(id).toMatch(uuidRegex);
   });
 
-  it("should generate unique IDs", () => {
+  it("seharusnya menghasilkan ID yang unik", () => {
     const id1 = generateId();
     const id2 = generateId();
 
     expect(id1).not.toBe(id2);
   });
 
-  it("should generate IDs with correct version (v4)", () => {
+  it("seharusnya menghasilkan ID dengan versi yang benar (v4)", () => {
     const id = generateId();
     const parts = id.split("-");
 
@@ -169,21 +169,21 @@ describe("generateId", () => {
 });
 
 describe("getCurrentTimestamp", () => {
-  it("should return ISO 8601 timestamp", () => {
+  it("seharusnya mengembalikan timestamp ISO 8601", () => {
     const ts = getCurrentTimestamp();
     const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
     expect(ts).toMatch(iso8601Regex);
   });
 
-  it("should return valid date", () => {
+  it("seharusnya mengembalikan tanggal yang valid", () => {
     const ts = getCurrentTimestamp();
     const date = new Date(ts);
 
     expect(date.toString()).not.toBe("Invalid Date");
   });
 
-  it("should return current time (within 1 second)", () => {
+  it("seharusnya mengembalikan waktu saat ini (dalam 1 detik)", () => {
     const before = Date.now();
     const ts = getCurrentTimestamp();
     const after = Date.now();
@@ -194,22 +194,22 @@ describe("getCurrentTimestamp", () => {
     expect(tsTime).toBeLessThanOrEqual(after);
   });
 
-  it("should return UTC timezone", () => {
+  it("seharusnya mengembalikan zona waktu UTC", () => {
     const ts = getCurrentTimestamp();
 
     expect(ts).toMatch(/Z$/); // Should end with Z (UTC)
   });
 });
 
-describe("Edge Cases", () => {
-  it("should handle empty object", () => {
+describe("Edge Case", () => {
+  it("seharusnya menangani objek kosong", () => {
     const input = {};
     const output = normalizeRecord(input, "toSupabase");
 
     expect(output).toEqual({});
   });
 
-  it("should handle null values", () => {
+  it("seharusnya menangani nilai null", () => {
     const input = {
       nama: null,
       deskripsi: null,
@@ -221,7 +221,7 @@ describe("Edge Cases", () => {
     expect(output.deskripsi).toBeNull();
   });
 
-  it("should handle undefined values", () => {
+  it("seharusnya menangani nilai undefined", () => {
     const input = {
       nama: "Test",
       deskripsi: undefined,
@@ -233,7 +233,7 @@ describe("Edge Cases", () => {
     expect(output.deskripsi).toBeUndefined();
   });
 
-  it("should handle mixed data types", () => {
+  it("seharusnya menangani tipe data campuran", () => {
     const input = {
       id: "123",
       nama: "Test",

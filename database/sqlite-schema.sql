@@ -961,7 +961,7 @@ CREATE INDEX idx_pembelian_purchase_order ON pembelian(purchase_order_id);
 -- Table: penjualan
 CREATE TABLE penjualan (
       id TEXT PRIMARY KEY,
-      nomor_invoice TEXT UNIQUE NOT NULL,
+      nomor_faktur TEXT UNIQUE NOT NULL,
       pelanggan_id TEXT,
       pelanggan_nama_snapshot TEXT,
       pelanggan_kota TEXT,

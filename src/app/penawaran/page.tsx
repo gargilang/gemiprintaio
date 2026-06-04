@@ -171,7 +171,7 @@ export default function PenawaranPage() {
 <div style="font-size:13px;color:#475569;">No: ${quote.nomor_penawaran}</div>
 <div class="meta">
   <div>
-    <div><strong>Kepada:</strong> ${quote.pelanggan_nama_snapshot || "Walk-in customer"}</div>
+    <div><strong>Kepada:</strong> ${quote.pelanggan_nama_snapshot || "Pelanggan Umum"}</div>
     <div>${quote.pelanggan_kota || ""}</div>
   </div>
   <div style="text-align:right;">
@@ -186,7 +186,7 @@ export default function PenawaranPage() {
 </table>
 <div class="total">Total: ${money(quote.total_jumlah)}</div>
 ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan}</div>` : ""}
-<div class="footer">Dokumen ini dihasilkan otomatis. Silakan konfirmasi sebelum konversi ke invoice.</div>
+<div class="footer">Dokumen ini dihasilkan otomatis. Silakan konfirmasi sebelum konversi ke faktur.</div>
 <script>window.onload=()=>{window.print();}</script>
 </body></html>`;
     win.document.write(html);
@@ -202,7 +202,7 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
             <QuotationIcon size={28} className="text-white" />
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-wide">Penawaran</h2>
-              <p className="text-white/90 text-sm">Draft, kirim, cetak, dan konversi ke invoice.</p>
+              <p className="text-white/90 text-sm">Draf, kirim, cetak, dan konversi ke faktur.</p>
             </div>
           </div>
           {notice ? <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">{notice}</div> : null}
@@ -214,7 +214,7 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
           <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">Buat Penawaran</h2>
           <div className="space-y-3">
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-              <option value="">Walk-in customer</option>
+              <option value="">Pelanggan Umum</option>
               {data.customers.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.nama}</option>
               ))}
@@ -240,8 +240,8 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
             </div>
             <textarea className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2" placeholder="Catatan" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={status} onChange={(e) => setStatus(e.target.value as "DRAFT" | "SENT")}>
-              <option value="DRAFT">DRAFT</option>
-              <option value="SENT">SENT</option>
+              <option value="DRAFT">Draf</option>
+              <option value="SENT">Terkirim</option>
             </select>
             <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-100">
               <span>Total</span>
@@ -272,13 +272,13 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
               ) : data.quotations.map((quote: any) => (
                 <tr key={quote.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200">
                   <td className="p-3 font-medium">{quote.nomor_penawaran}</td>
-                  <td className="p-3">{quote.pelanggan_nama_snapshot || "Walk-in"}</td>
-                  <td className="p-3">{quote.status}{quote.converted_penjualan_id ? <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">→ invoice</span> : null}</td>
+                  <td className="p-3">{quote.pelanggan_nama_snapshot || "Umum"}</td>
+                  <td className="p-3">{quote.status}{quote.converted_penjualan_id ? <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">→ faktur</span> : null}</td>
                   <td className="p-3 text-right">{money(quote.total_jumlah)}</td>
                   <td className="space-x-2 p-3">
-                    <button className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => printQuote(quote)}>Print</button>
-                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "ACCEPTED"} className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors" onClick={() => changeStatus(quote.id, "ACCEPTED")}>Accept</button>
-                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "CANCELLED" || quote.status === "EXPIRED"} className="rounded bg-emerald-600 px-2 py-1 text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors" onClick={() => openConvert(quote)}>Convert</button>
+                    <button className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => printQuote(quote)}>Cetak</button>
+                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "ACCEPTED"} className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors" onClick={() => changeStatus(quote.id, "ACCEPTED")}>Terima</button>
+                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "CANCELLED" || quote.status === "EXPIRED"} className="rounded bg-emerald-600 px-2 py-1 text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors" onClick={() => openConvert(quote)}>Konversi</button>
                   </td>
                 </tr>
               ))}
@@ -296,11 +296,11 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
             </div>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between rounded bg-slate-50 dark:bg-slate-800 p-3">
-                <span className="text-slate-600 dark:text-slate-300">Total invoice</span>
+                <span className="text-slate-600 dark:text-slate-300">Total faktur</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">{money(convertTarget.total_jumlah)}</span>
               </div>
               <label className="block">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Tanggal invoice</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Tanggal faktur</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
@@ -346,4 +346,3 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
     </div>
   );
 }
-

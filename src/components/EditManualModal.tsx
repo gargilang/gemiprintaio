@@ -46,7 +46,7 @@ export default function EditManualModal({
         initialData[key] = ((cashBook as any)[key] || 0).toString();
       });
       setFormData(initialData);
-      setTouchedFields(new Set()); // Reset touched fields when modal opens
+      setTouchedFields(new Set()); // Reset field yang sudah disentuh saat modal dibuka
     }
   }, [cashBook]);
 
@@ -60,7 +60,7 @@ export default function EditManualModal({
     try {
       const updateData: { [key: string]: number } = {};
 
-      // Only include fields that were actually touched/edited by user
+      // Hanya kirim field yang benar-benar disentuh/diedit oleh pengguna
       EDITABLE_FIELDS.forEach(({ key }) => {
         if (
           touchedFields.has(key) &&
@@ -74,14 +74,14 @@ export default function EditManualModal({
         }
       });
 
-      // Check if at least one field is being updated
+      // Pastikan minimal ada satu field yang akan diperbarui
       if (Object.keys(updateData).length === 0) {
         setError("Tidak ada field yang diubah");
         setSaving(false);
         return;
       }
 
-      console.log("Sending override request:", {
+      console.log("Mengirim permintaan penggantian manual:", {
         id: cashBook.id,
         url: `/api/cashbook/override/${cashBook.id}`,
         data: updateData,
@@ -94,7 +94,7 @@ export default function EditManualModal({
       });
 
       const data = await res.json();
-      console.log("Override response:", data);
+      console.log("Respons penggantian manual:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Gagal mengupdate data");
@@ -117,10 +117,10 @@ export default function EditManualModal({
   };
 
   const handleChange = (key: string, value: string) => {
-    // Only allow numbers and decimal point
+    // Hanya izinkan angka dan titik desimal
     const sanitized = value.replace(/[^0-9.-]/g, "");
     setFormData({ ...formData, [key]: sanitized });
-    // Mark this field as touched
+    // Tandai field ini sudah disentuh
     setTouchedFields(new Set(touchedFields).add(key));
   };
 
@@ -146,7 +146,7 @@ export default function EditManualModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-xl font-bold text-white truncate">
-                Edit Manual (Override)
+                Edit Manual (Penggantian)
               </h3>
               <p className="text-white/90 text-sm mt-1 truncate">
                 Transaksi tgl: {cashBook.tanggal} | Kategori:{" "}
@@ -200,17 +200,17 @@ export default function EditManualModal({
     >
         <form id="edit-manual-form" onSubmit={handleSubmit}>
           <div className="p-6 space-y-5">
-            {/* Info Box */}
+            {/* Kotak info */}
             <div className="bg-orange-50 dark:bg-slate-800 border-2 border-orange-200 dark:border-orange-800/50 rounded-xl p-4 text-sm text-orange-800 dark:text-orange-200">
-              <div className="font-bold mb-1">🔧 Fitur Override Manual</div>
+              <div className="font-bold mb-1">🔧 Fitur Penggantian Manual</div>
               <p>
-                Nilai yang Anda edit akan di-override dan tidak akan dihitung
-                ulang secara otomatis. Kolom yang di-override ditandai dengan
+                Nilai yang Anda edit akan diganti manual dan tidak akan dihitung
+                ulang secara otomatis. Kolom yang diganti ditandai dengan
                 ikon 🔒.
               </p>
             </div>
 
-            {/* Transaction Info */}
+            {/* Info transaksi */}
             <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm border-2 border-gray-200 dark:border-slate-800">
               <div>
                 <span className="text-gray-500 dark:text-slate-400">Debit:</span>{" "}
@@ -232,7 +232,7 @@ export default function EditManualModal({
               </div>
             </div>
 
-            {/* Editable Fields */}
+            {/* Field yang dapat diedit */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
               {EDITABLE_FIELDS.map(({ key, label }) => (
                 <div key={key}>
@@ -241,7 +241,7 @@ export default function EditManualModal({
                     {isOverridden(key) && (
                       <span
                         className="ml-2 text-yellow-500"
-                        title="Nilai ini di-override"
+                        title="Nilai ini diganti manual"
                       >
                         <svg
                           className="w-4 h-4"
@@ -275,7 +275,7 @@ export default function EditManualModal({
               ))}
             </div>
 
-            {/* Error */}
+            {/* Pesan kesalahan */}
             {error && (
               <div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-3 text-sm text-red-800 dark:text-red-200 font-medium">
                 {error}

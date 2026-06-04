@@ -68,8 +68,8 @@ function saldoSequence(rows: InputRow[]): number[] {
   return evaluateDataset(rows, formulas).map((row) => Number(row.J || 0));
 }
 
-describe("cashbook AST: retur-related metric contributions", () => {
-  it("RETUR_PENJUALAN reduces both omzet and saldo when refund is in cash", () => {
+describe("AST buku kas: kontribusi metrik terkait retur", () => {
+  it("RETUR_PENJUALAN mengurangi omzet dan saldo saat refund tunai", () => {
     const rows: InputRow[] = [
       { C: "OMZET", D: 100000, E: 0, F: "Inv-1" },
       { C: "RETUR_PENJUALAN", D: 0, E: 30000, F: "Refund Inv-1" },
@@ -78,7 +78,7 @@ describe("cashbook AST: retur-related metric contributions", () => {
     expect(saldoSequence(rows)).toEqual([100000, 70000]);
   });
 
-  it("RETUR_PENJUALAN_NONCASH reduces omzet without touching saldo", () => {
+  it("RETUR_PENJUALAN_NONCASH mengurangi omzet tanpa menyentuh saldo", () => {
     const rows: InputRow[] = [
       { C: "OMZET", D: 100000, E: 0, F: "Inv-1" },
       { C: "RETUR_PENJUALAN_NONCASH", D: 0, E: 40000, F: "Pengurangan piutang Inv-1" },
@@ -88,7 +88,7 @@ describe("cashbook AST: retur-related metric contributions", () => {
     expect(saldoSequence(rows)).toEqual([100000, 100000]);
   });
 
-  it("RETUR_HPP reduces biaya_bahan but not saldo", () => {
+  it("RETUR_HPP mengurangi biaya_bahan tapi tidak saldo", () => {
     const rows: InputRow[] = [
       { C: "HPP", D: 0, E: 60000, F: "HPP Inv-1" },
       { C: "RETUR_HPP", D: 25000, E: 0, F: "Pembalik HPP Inv-1" },
@@ -98,7 +98,7 @@ describe("cashbook AST: retur-related metric contributions", () => {
     expect(saldoSequence(rows)).toEqual([0, 0]);
   });
 
-  it("RETUR_PEMBELIAN refund flows into saldo as a debit (cash inflow)", () => {
+  it("RETUR_PEMBELIAN refund masuk ke saldo sebagai debit (arus kas masuk)", () => {
     const rows: InputRow[] = [
       { C: "BIAYA", D: 0, E: 50000, F: "Pembelian" },
       { C: "RETUR_PEMBELIAN", D: 12000, E: 0, F: "Refund vendor" },
@@ -109,7 +109,7 @@ describe("cashbook AST: retur-related metric contributions", () => {
     expect(saldoSequence(rows)).toEqual([-50000, -38000]);
   });
 
-  it("Mixed scenario: cash + non-cash retur produce correct cumulative values", () => {
+  it("Skenario campuran: retur tunai + non-tunai menghasilkan nilai kumulatif yang benar", () => {
     const rows: InputRow[] = [
       { C: "OMZET", D: 100000, E: 0, F: "Inv cash" },
       { C: "PIUTANG", D: 200000, E: 0, F: "Inv credit" },

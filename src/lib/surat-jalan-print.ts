@@ -25,7 +25,7 @@ export interface SuratJalanItem {
 export interface SuratJalanData {
   nomor_sj: string;
   tanggal: string; // ISO or YYYY-MM-DD
-  nomor_invoice?: string | null; // optional back-link to source sale
+  nomor_faktur?: string | null; // optional back-link to source sale
   pelanggan_nama?: string | null;
   pelanggan_alamat?: string | null;
   pelanggan_telepon?: string | null;
@@ -94,7 +94,7 @@ export function generateSuratJalanHTML(data: SuratJalanData): string {
   const {
     nomor_sj,
     tanggal,
-    nomor_invoice,
+    nomor_faktur,
     pelanggan_nama,
     pelanggan_alamat,
     pelanggan_telepon,
@@ -421,10 +421,10 @@ export function generateSuratJalanHTML(data: SuratJalanData): string {
           <span class="meta-value">${escapeHtml(tanggalDisplay)}</span>
         </div>
         ${
-          nomor_invoice
+          nomor_faktur
             ? `<div class="meta-row">
                  <span class="meta-label">Ref. Faktur:</span>
-                 <span class="meta-value">${escapeHtml(nomor_invoice)}</span>
+                 <span class="meta-value">${escapeHtml(nomor_faktur)}</span>
                </div>`
             : ""
         }

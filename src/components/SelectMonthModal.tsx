@@ -33,7 +33,7 @@ export default function SelectMonthModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Click outside to close modal
+  // Klik di luar untuk tutup modal
   const modalRef = useRef<HTMLDivElement>(null);
   useClickOutside(modalRef, onClose, show);
 

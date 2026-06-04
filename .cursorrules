@@ -5,7 +5,7 @@
 - The project owner is **not a programmer**. Do not rely on them to choose technical patterns, architecture, or complex trade-offs.
 - **Trust technical decisions to the agent**; explain in simple language what changed and why (briefly).
 - The app is used **internally only (~2–5 people)**. Priorities: **fast, stable, fits business needs**, with **reasonable security** (not enterprise hardening).
-- **Long-term goal:** the codebase must remain readable by **other programmers** after the owner stops maintaining it. Prefer clear English in source comments; keep the product UI in Indonesian for end users.
+- **Long-term goal:** the codebase must remain readable by **other programmers** after the owner stops maintaining it. Use clear Bahasa Indonesia consistently for application-owned artifacts; keep the product UI in Bahasa Indonesia for end users.
 
 ## Work goals
 
@@ -58,11 +58,12 @@ When **scanning, analyzing, or implementing**:
 
 **Every time** you open or edit a source file (`src/`, `src-tauri/`, `flutter/lib/`, etc.):
 
-1. **Write new comments in English only** — no new Indonesian in `//`, `/* */`, JSDoc, or `{/* dev notes */}`.
-2. **If you see existing Indonesian comments**, translate them to English in the **same change** (same PR/commit scope as your task). Do not leave them for “later” and do not ask the owner for permission to translate comments.
-3. **Do not translate** user-facing UI strings, API error messages for end users, or database/API identifiers — see Language below.
+1. **Write new application-owned comments in Bahasa Indonesia** for `//`, `/* */`, JSDoc, and `{/* dev notes */}`.
+2. **If you touch a nearby English application-owned comment**, translate it to Bahasa Indonesia in the same change when the meaning is clear and the edit stays scoped.
+3. **Do not translate** framework/library/protocol names, generated/vendor comments, SQL keywords, package names, or migrations that have already been applied.
+4. **Do not anglicize** user-facing UI strings, API error messages for end users, database identifiers, or API identifiers that are already Bahasa Indonesia.
 
-Most of `src/` was already migrated; **some files may still have Indonesian comments**. Treat any you find as technical debt to fix immediately, not optional cleanup.
+The repo still has legacy English comments and mixed names. Treat touched areas as an opportunity to move toward the Indonesia-first standard, but avoid broad unrelated rewrites.
 
 ## Verification before done
 
@@ -97,10 +98,14 @@ Guidelines:
 ## Language
 
 - **Communication with the owner:** **Bahasa Indonesia**, clear and not overly technical.
-- **Code comments and JSDoc:** **English only** (see “Code comments (ongoing — required)” above).
+- **Decision standard:** **Indonesia-first for every application-owned artifact.** UI, folder/domain routes, application API names, components, comments, internal docs, internal scripts, database domain tables/columns, and schema migrations should use Bahasa Indonesia.
+- **Allowed English exceptions:** framework/library/protocol terms and fixed filenames such as `src`, `page.tsx`, `route.ts`, React props, SQL keywords, npm package names, built-in types, generated/vendor code, and migration files that have already been applied.
 - **User-facing UI** (labels, buttons, placeholders, toasts, dialogs, validation messages shown in the app, and API error messages intended for end users): **Bahasa Indonesia** — all users are Indonesian; do **not** anglicize the interface unless explicitly requested.
-- **Commits:** clear messages; Indonesian or English, consistent with repo history.
-- Database column names, enums, and domain terms in Indonesian (e.g. `dibuat_pada`, `kategori_transaksi`) stay as-is; only **comments** are translated, not identifiers or UI strings.
+- **Code comments and JSDoc:** Bahasa Indonesia for application-owned code; English may remain only for framework/library/protocol/generated context or legacy comments outside the touched scope.
+- **Commits:** clear messages in Bahasa Indonesia unless repository history around the change strongly requires otherwise.
+- **Database/API identifiers:** new application-owned identifiers should use Bahasa Indonesia. Existing deployed identifiers are migrated gradually with compatibility aliases and new migrations; never rename deployed database/API contracts casually.
+- **Docs:** internal docs in `docs/` should be Bahasa Indonesia. If a legacy doc is still English, new sections and future edits should move it toward Bahasa Indonesia.
+- **Reference guide:** use [docs/panduan-bahasa.md](./docs/panduan-bahasa.md) and [docs/progres-seragam-bahasa.md](./docs/progres-seragam-bahasa.md) before starting language-normalization work.
 
 ## When to confirm with the owner
 
@@ -114,6 +119,10 @@ Ask first only if:
 ## Iron rules — apply unprompted
 
 These are non-negotiable patterns the owner expects on every feature. The owner is non-technical and **will not remember to ask** for them. Read [docs/agent-playbook.md](./docs/agent-playbook.md) for full context, but enforce these by default:
+
+### 0. Language consistency is an iron rule
+
+All new application-owned work follows the Indonesia-first standard in the Language section. UI must always be Bahasa Indonesia. Do not introduce mixed names such as `PurchaseKategoriModal`; use one consistent Bahasa Indonesia domain name, e.g. `ModalKategoriPembelian`, unless the English term is a framework/library/protocol exception.
 
 ### 1. New page that fetches data → use `useCachedData`, not `useAsyncData`
 
@@ -207,8 +216,49 @@ Before writing seed SQL, verify column names in `supabase/migrations/`. For `pen
 
 ### 20. Menu labels must not be abbreviated
 
-If other menu items use full names, do not abbreviate. "PO" → "Purchase Order". Check `src/components/menuConfig.tsx` for both the `label` field and the breadcrumb map.
+If other menu items use full names, do not abbreviate. "PO" must become "Pesanan Pembelian", not "Purchase Order". Check `src/components/menuConfig.tsx` for both the `label` field and the breadcrumb map.
 
 ### 21. Finance categories: `display_name` is primary, `category_code` is secondary
 
 In any UI listing categories: show `display_name` as the main label (normal font, slate color). Show `category_code` as secondary (small, monospace, amber, with quotes). Never show raw codes as the primary user-facing text. In formula autocomplete (`ExpressionAssistant`), suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"` (stable for formulas).
+
+### 22. Pakai ejaan baku Indonesia, bukan campur English-mentah
+
+UI dan toast harus pakai ejaan baku Indonesia, bukan kata Inggris yang sekadar diserap setengah. Ini iron rule turunan dari standar bahasa.
+
+| Salah (English mentah) | Benar (Indonesia) |
+|---|---|
+| Import | Impor |
+| Export | Ekspor |
+| Upload | Unggah |
+| Download | Unduh |
+| Refresh | Muat Ulang |
+| Preview | Pratinjau |
+| Override / di-override | Penggantian / Diganti manual |
+| Default | Bawaan (atau "Utama" untuk default unit/option) |
+| Reset Default | Kembali ke Bawaan |
+| Range (rentang nomor/tanggal) | Rentang |
+| Window (UI) | Jendela |
+| Generate | Buat |
+| Generating... | Membuat... |
+| Draft | Draf |
+| Walk-in / Walk-in Customer | Pelanggan Umum (boleh "Umum" di tabel sempit) |
+| Manager / Staff | Manajer / Staf |
+| All-in-One Management System | Sistem Manajemen Terpadu |
+| Professional Printing Services | Layanan Percetakan Profesional |
+| Toggle X ON | Aktifkan X otomatis |
+
+Lihat [docs/panduan-bahasa.md](./docs/panduan-bahasa.md) untuk daftar lengkap dan keputusan tertunda (mis. `Invoice` -> `Faktur`).
+
+### 23. Jangan rename identifier internal saat menerjemahkan label UI di Fase 1
+
+Saat batch Fase 1 (UI terlihat pengguna), batasi perubahan hanya pada string literal UI, toast, modal, empty/loading/error state, print/PDF, label menu, dan kolom laporan. Jangan rename:
+
+- Nama file (`page.tsx`, `route.ts`, dll).
+- Nama route Next.js (`/customers`, `/materials`, dll) — itu Fase 4.
+- Nama API route (`/api/...`) — Fase 4.
+- Identifier kode (`walkInFaktur`, `customerId`, `customerSearch`, dll) — Fase 3.
+- Nama tabel/kolom database (`nomor_invoice`, `pelanggan_id`, dll) — Fase 5.
+- Migrasi yang sudah pernah diterapkan ke cloud.
+
+Cara aman: cari string literal UI dengan `rg`, edit nilai string saja, biarkan identifier surrounding tetap. Komentar di area yang sama boleh ikut diterjemahkan ke Bahasa Indonesia (sesuai aturan komentar Indonesia-first).

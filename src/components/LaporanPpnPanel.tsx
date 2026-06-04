@@ -22,7 +22,7 @@ import { formatNpwp } from "@/lib/ppn-helpers";
 
 interface KeluaranRow {
   penjualan_id: string;
-  nomor_invoice: string;
+  nomor_faktur: string;
   tanggal_faktur_pajak: string | null;
   tanggal_transaksi: string;
   nsfp: string | null;
@@ -117,7 +117,7 @@ export default function LaporanPpnPanel() {
         "Tanggal Faktur Pajak",
         "Tanggal Transaksi",
         "NSFP / No. Faktur Pajak Vendor",
-        "Nomor Invoice / Pembelian",
+        "Nomor Faktur / Pembelian",
         "Nama Lawan Transaksi",
         "NPWP Lawan",
         "DPP",
@@ -135,7 +135,7 @@ export default function LaporanPpnPanel() {
           r.tanggal_faktur_pajak || "",
           r.tanggal_transaksi,
           r.nsfp || "",
-          r.nomor_invoice,
+          r.nomor_faktur,
           r.pelanggan_nama || "",
           r.pelanggan_npwp || "",
           r.dpp_total,
@@ -246,7 +246,7 @@ export default function LaporanPpnPanel() {
             disabled={!report}
             className="px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800 disabled:opacity-50"
           >
-            Export CSV
+            Ekspor CSV
           </button>
         </div>
       </div>
@@ -307,7 +307,7 @@ export default function LaporanPpnPanel() {
                   <tr>
                     <th className="px-3 py-2 text-left">Tgl Faktur</th>
                     <th className="px-3 py-2 text-left">NSFP</th>
-                    <th className="px-3 py-2 text-left">Invoice</th>
+                    <th className="px-3 py-2 text-left">Faktur</th>
                     <th className="px-3 py-2 text-left">Pelanggan</th>
                     <th className="px-3 py-2 text-left">NPWP</th>
                     <th className="px-3 py-2 text-right">DPP</th>
@@ -332,7 +332,7 @@ export default function LaporanPpnPanel() {
                           {r.tanggal_faktur_pajak || r.tanggal_transaksi}
                         </td>
                         <td className="px-3 py-2 font-mono text-xs">{r.nsfp || "—"}</td>
-                        <td className="px-3 py-2">{r.nomor_invoice}</td>
+                        <td className="px-3 py-2">{r.nomor_faktur}</td>
                         <td className="px-3 py-2">{r.pelanggan_nama || "—"}</td>
                         <td className="px-3 py-2 text-xs font-mono">
                           {r.pelanggan_npwp ? formatNpwp(r.pelanggan_npwp) : "—"}

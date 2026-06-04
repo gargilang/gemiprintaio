@@ -1,6 +1,6 @@
 /**
- * Next standalone expects `.next/static` (and usually `public`) beside the server.
- * Run before Tauri bundles the app (see beforeBundleCommand in tauri.conf.json).
+ * Next standalone butuh `.next/static` (dan biasanya `public`) di samping server.
+ * Jalankan sebelum Tauri membundel aplikasi (lihat beforeBundleCommand di tauri.conf.json).
  */
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";

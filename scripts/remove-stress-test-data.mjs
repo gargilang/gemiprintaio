@@ -1,8 +1,8 @@
 /**
- * Removes all stress-test master data (IDs prefixed with "stress-seed-").
- * Does NOT touch user-created rows (random UUID ids).
+ * Hapus semua data master stress-test (ID berawalan "stress-seed-").
+ * TIDAK menyentuh baris yang dibuat pengguna (id UUID acak).
  *
- * Run: npm run supabase:stress:remove
+ * Jalankan: npm run supabase:stress:remove
  */
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";

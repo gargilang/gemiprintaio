@@ -25,13 +25,13 @@ interface PurchaseItem {
   faktor_konversi?: number;
   jumlah: number;
   harga_beli: number;
-  // Filled only for materials with butuh_dimensi_status = 1.
-  // jumlah is then derived as jumlah_roll * panjang * lebar (m²).
+  // Hanya diisi untuk barang dengan butuh_dimensi_status = 1.
+  // jumlah lalu diturunkan sebagai jumlah_roll * panjang * lebar (m²).
   panjang?: number | null;
   lebar?: number | null;
   /** Jumlah roll fisik dengan dimensi sama (default 1). */
   jumlah_roll?: number;
-  // Optional: pecah roll lebar ini ke beberapa lebar baru saat receipt.
+  // Opsional: pecah roll lebar ini ke beberapa lebar baru saat penerimaan.
   // Setiap batch = N roll dengan pola potongan yang sama.
   split_enabled?: boolean;
   split_batches?: SplitBatch[];
@@ -102,7 +102,7 @@ function parseSplitTargets(text: string | undefined | null): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 
-/** Sum of roll counts in valid (non-empty) batches. */
+/** Jumlah roll di batch yang valid (non-kosong). */
 function sumBatchRolls(batches: SplitBatch[] | undefined): number {
   if (!batches) return 0;
   return batches.reduce(
@@ -155,7 +155,7 @@ export default function PurchaseForm({
   const [splitModalIndex, setSplitModalIndex] = useState<number | null>(null);
   const [splitModalDraft, setSplitModalDraft] = useState<SplitBatch[]>([]);
 
-  // Keyboard shortcuts to add and remove items
+  // Pintasan keyboard untuk menambah dan menghapus item
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // ESC closes the split-batches modal first if it's open
@@ -165,7 +165,7 @@ export default function PurchaseForm({
         setSplitModalDraft([]);
         return;
       }
-      // Only run when Ctrl/Cmd is pressed
+      // Hanya jalan saat Ctrl/Cmd ditekan
       const isModifierPressed = e.ctrlKey || e.metaKey;
 
       if (!saving && isModifierPressed) {
@@ -185,10 +185,10 @@ export default function PurchaseForm({
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [saving, formData.items.length, splitModalIndex]);
 
-  // Load edit data
+  // Muat data edit
   useEffect(() => {
     if (editData) {
-      // Handle tanggal safely - could be from dibuat_pada
+      // Tangani tanggal dengan aman - bisa dari dibuat_pada
       let tanggalValue = getTodayJakarta();
       if (editData.tanggal) {
         tanggalValue = editData.tanggal.split("T")[0];
@@ -229,7 +229,7 @@ export default function PurchaseForm({
     }
   }, [editData]);
 
-  // Calculate total
+  // Hitung total
   const totalHarga = useMemo(() => {
     return formData.items.reduce(
       (sum, item) => sum + item.jumlah * item.harga_beli,
@@ -303,7 +303,7 @@ export default function PurchaseForm({
       }
     }
 
-    // Set satuan info when unit changes
+    // Atur info satuan saat satuan berubah
     if (field === "id_satuan" && value) {
       const material = materials.find(
         (m) => m.id === newItems[index].id_barang
@@ -321,7 +321,7 @@ export default function PurchaseForm({
       }
     }
 
-    // Recompute jumlah (m²) whenever panjang/lebar/jumlah_roll changes for
+    // Hitung ulang jumlah (m²) saat panjang/lebar/jumlah_roll berubah untuk
     // dimensional items. jumlah = jumlah_roll × panjang × lebar.
     if (field === "panjang" || field === "lebar" || field === "jumlah_roll") {
       const p = Number(newItems[index].panjang) || 0;
@@ -365,7 +365,7 @@ export default function PurchaseForm({
   };
 
   /**
-   * Open the split-pattern modal for a given item. Loads the existing
+   * Buka modal pola-potong untuk satu item. Memuat split_batches yang sudah ada.
    * batches as draft, or seeds a single default batch covering all rolls.
    */
   const handleOpenSplit = (index: number) => {
@@ -654,7 +654,7 @@ export default function PurchaseForm({
           : "Pembelian berhasil ditambahkan!"
       );
 
-      // Reset form if adding new
+      // Reset form kalau menambah baru
       if (!editData) {
         setFormData({
           tanggal: new Date().toISOString().split("T")[0],

@@ -1,11 +1,11 @@
 /**
- * Apply one Supabase migration file without wiping the database.
+ * Terapkan satu file migrasi Supabase tanpa menghapus database.
  *
- * Usage:
+ * Pemakaian:
  *   node --env-file=.env.local scripts/apply-migration.mjs
  *   node --env-file=.env.local scripts/apply-migration.mjs supabase/migrations/20260521090000_business_actors_v2.sql
  *
- * Requires DATABASE_URL or DIRECT_URL in .env.local (Postgres URI from
+ * Butuh DATABASE_URL atau DIRECT_URL di .env.local (Postgres URI dari
  * Supabase → Settings → Database).
  */
 import { readFileSync, existsSync } from "node:fs";

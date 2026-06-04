@@ -1,11 +1,11 @@
 /**
- * Inline boot script that applies the user's preferred theme BEFORE React
+ * Skrip boot inline yang menerapkan tema yang dipilih pengguna SEBELUM React
  * hydrates. Rendered into <head>, so it runs synchronously on first paint
- * and prevents a flash of light theme when the user prefers dark.
+ * dan mencegah kedipan tema light saat pengguna memilih dark.
  *
- * Implementation note: the script reads the same key (`gemiprint_theme`)
- * and follows the same resolution logic as `src/lib/theme.ts`. Keep them
- * in sync if either changes.
+ * Catatan implementasi: skrip ini membaca key yang sama (`gemiprint_theme`)
+ * dan mengikuti logika resolusi yang sama dengan `src/lib/theme.ts`. Jaga
+ * keduanya tetap sinkron kalau salah satu berubah.
  */
 
 import { THEME_KEY } from "@/lib/theme";

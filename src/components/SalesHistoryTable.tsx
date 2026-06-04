@@ -19,7 +19,7 @@ interface SaleItemRow {
 
 interface Sale {
   id: string;
-  nomor_invoice: string;
+  nomor_faktur: string;
   pelanggan_nama: string | null;
   pelanggan_nama_snapshot?: string | null;
   pelanggan_kota?: string | null;
@@ -61,6 +61,7 @@ export default function SalesHistoryTable({
     invoiceNumber: string;
   } | null>(null);
   const [fakturPromptSale, setFakturPromptSale] = useState<Sale | null>(null);
+  const [fakturPromptMode, setFakturPromptMode] = useState<"preview" | "print">("print");
   const [fakturPromptInput, setFakturPromptInput] = useState({
     nama: "",
     kota: "Bekasi",
@@ -68,7 +69,7 @@ export default function SalesHistoryTable({
 
   const filteredSales = sales.filter(
     (sale) =>
-      sale.nomor_invoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.nomor_faktur.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.pelanggan_nama_snapshot?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -197,7 +198,7 @@ export default function SalesHistoryTable({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -229,7 +230,7 @@ export default function SalesHistoryTable({
       const total = sale.total_jumlah;
       const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       printThermalInvoice({
-        nomor_invoice: sale.nomor_invoice,
+        nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
         shop,
         pelanggan_nama:
@@ -265,6 +266,7 @@ export default function SalesHistoryTable({
         nama: "",
         kota: sale.pelanggan_kota || "Bekasi",
       });
+      setFakturPromptMode("preview");
       setFakturPromptSale(sale);
       return;
     }
@@ -288,7 +290,7 @@ export default function SalesHistoryTable({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -321,7 +323,7 @@ export default function SalesHistoryTable({
       const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       const sisa = Math.max(0, total - bayar);
       const html = generateFakturHTML({
-        nomor_invoice: sale.nomor_invoice,
+        nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
         pelanggan_nama: nama,
         kota: overrideKota || sale.pelanggan_kota || "Bekasi",
@@ -334,7 +336,7 @@ export default function SalesHistoryTable({
       });
       window.dispatchEvent(
         new CustomEvent("gemi:preview-faktur", {
-          detail: { html, title: `Faktur ${sale.nomor_invoice}` },
+          detail: { html, title: `Faktur ${sale.nomor_faktur}` },
         })
       );
     } catch (e) {
@@ -356,11 +358,12 @@ export default function SalesHistoryTable({
       sale.pelanggan_nama_snapshot ||
       "";
     if (!nama) {
-      // Open prompt for old sales without snapshot data
+      // Buka prompt untuk penjualan lama tanpa data snapshot
       setFakturPromptInput({
         nama: "",
         kota: sale.pelanggan_kota || "Bekasi",
       });
+      setFakturPromptMode("print");
       setFakturPromptSale(sale);
       return;
     }
@@ -384,7 +387,7 @@ export default function SalesHistoryTable({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/settings/actions");
+        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -417,7 +420,7 @@ export default function SalesHistoryTable({
       const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       const sisa = Math.max(0, total - bayar);
       printFaktur({
-        nomor_invoice: sale.nomor_invoice,
+        nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
         pelanggan_nama: nama,
         kota: overrideKota || sale.pelanggan_kota || "Bekasi",
@@ -456,7 +459,7 @@ export default function SalesHistoryTable({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari invoice atau pelanggan..."
+            placeholder="Cari faktur atau pelanggan..."
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
@@ -534,7 +537,7 @@ export default function SalesHistoryTable({
             <thead className="bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold">
-                  Invoice
+                  Faktur
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold">
                   Pelanggan
@@ -569,7 +572,7 @@ export default function SalesHistoryTable({
                   >
                     <td className="px-4 py-3">
                       <div className="font-bold text-gray-800 dark:text-slate-100">
-                        {sale.nomor_invoice}
+                        {sale.nomor_faktur}
                       </div>
                       {sale.status_transaksi === "VOIDED" && (
                         <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 rounded text-xs font-semibold">
@@ -585,7 +588,7 @@ export default function SalesHistoryTable({
                     <td className="px-4 py-3">
                       <div className="text-gray-800 dark:text-slate-100">
                         {sale.pelanggan_nama || sale.pelanggan_nama_snapshot || (
-                          <span className="text-gray-400 italic">Walk-in</span>
+                          <span className="text-gray-400 italic">Umum</span>
                         )}
                       </div>
                     </td>
@@ -622,7 +625,7 @@ export default function SalesHistoryTable({
                           }}
                           disabled={printingId === sale.id}
                           className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-indigo-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Preview faktur (floating window)"
+                          title="Pratinjau faktur (jendela mengambang)"
                         >
                           <svg
                             className="w-5 h-5 text-indigo-600 dark:text-indigo-300"
@@ -768,7 +771,7 @@ export default function SalesHistoryTable({
                               setConfirmDialog({
                                 show: true,
                                 saleId: sale.id,
-                                invoiceNumber: sale.nomor_invoice,
+                                invoiceNumber: sale.nomor_faktur,
                               });
                             }}
                             disabled={
@@ -913,11 +916,15 @@ export default function SalesHistoryTable({
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
               <h3 className="text-white font-bold text-lg">
-                Info untuk Faktur
+                {fakturPromptMode === "preview"
+                  ? "Info untuk Pratinjau Faktur"
+                  : "Info untuk Faktur"}
               </h3>
               <p className="text-white/90 text-xs mt-0.5">
-                Transaksi {fakturPromptSale.nomor_invoice} tidak menyimpan data
-                pelanggan. Isi info untuk dicetak di faktur.
+                Transaksi {fakturPromptSale.nomor_faktur} tidak menyimpan data
+                pelanggan. Isi info untuk{" "}
+                {fakturPromptMode === "preview" ? "ditampilkan" : "dicetak"} di
+                faktur.
               </p>
             </div>
             <div className="p-5 space-y-4">
@@ -972,13 +979,17 @@ export default function SalesHistoryTable({
                     const kota = fakturPromptInput.kota.trim() || "Bekasi";
                     setFakturPromptSale(null);
                     if (sale && nama) {
-                      reprintFaktur(sale, nama, kota);
+                      if (fakturPromptMode === "preview") {
+                        previewFaktur(sale, nama, kota);
+                      } else {
+                        reprintFaktur(sale, nama, kota);
+                      }
                     }
                   }}
                   disabled={!fakturPromptInput.nama.trim()}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cetak Faktur
+                  {fakturPromptMode === "preview" ? "Pratinjau" : "Cetak Faktur"}
                 </button>
               </div>
             </div>

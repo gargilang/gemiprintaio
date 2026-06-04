@@ -207,19 +207,19 @@ export async function receivePurchaseOrder(input: {
   items: Array<{ purchase_order_item_id: string; qty: number }>;
 }) {
   const po = await getPurchaseOrderById(input.purchase_order_id);
-  if (!po) throw new Error("PO tidak ditemukan");
-  if (po.status === "CANCELLED") throw new Error("PO sudah dibatalkan");
+  if (!po) throw new Error("Pesanan pembelian tidak ditemukan");
+  if (po.status === "CANCELLED") throw new Error("Pesanan pembelian sudah dibatalkan");
   if (!input.items?.length) throw new Error("Minimal satu line penerimaan");
 
   const lines = input.items
     .map((line) => {
       const item = (po.items || []).find((it: any) => it.id === line.purchase_order_item_id);
-      if (!item) throw new Error(`Item PO ${line.purchase_order_item_id} tidak ditemukan`);
+      if (!item) throw new Error(`Item pesanan pembelian ${line.purchase_order_item_id} tidak ditemukan`);
       const remaining = numeric(item.jumlah) - numeric(item.qty_received);
       const qty = positiveNumber(line.qty);
       if (qty <= 0) return null;
       if (qty > remaining + 0.000001) {
-        throw new Error(`Qty terima ${item.barang_nama || item.id} melebihi sisa PO`);
+        throw new Error(`Qty terima ${item.barang_nama || item.id} melebihi sisa pesanan pembelian`);
       }
       return {
         poItem: item,
@@ -255,9 +255,9 @@ export async function receivePurchaseOrder(input: {
     })),
   });
 
-  // For credit-based payments (e.g. NET30) the user can record an optional
-  // down payment. createPurchase always opens a hutang for the full amount;
-  // we apply the DP via payDebt so cashbook + hutang stay consistent.
+  // Untuk pembayaran berbasis kredit (mis. NET30) pengguna bisa mencatat
+  // down payment opsional. createPurchase selalu membuka hutang untuk total
+  // penuh; kita terapkan DP via payDebt supaya buku kas + hutang tetap konsisten.
   const dp =
     typeof input.jumlah_dibayar === "number" ? Math.max(0, input.jumlah_dibayar) : 0;
   if (dp > 0 && input.metode_pembayaran && input.metode_pembayaran !== "CASH" && input.metode_pembayaran !== "TRANSFER") {

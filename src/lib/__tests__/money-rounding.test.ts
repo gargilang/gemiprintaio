@@ -7,14 +7,14 @@ import {
 } from "../money-rounding";
 
 describe("roundUpToThousand", () => {
-  it("rounds up to nearest thousand", () => {
+  it("membulatkan ke ribuan terdekat ke atas", () => {
     expect(roundUpToThousand(81250)).toBe(82000);
     expect(roundUpToThousand(81000)).toBe(81000);
   });
 });
 
 describe("allocateCartLineCharges", () => {
-  it("rounds transaction total once and adjusts last line", () => {
+  it("membulatkan total transaksi sekali dan menyesuaikan baris terakhir", () => {
     const items = [{ subtotalRaw: 81250 }, { subtotalRaw: 146250 }];
     expect(allocateCartLineCharges(items, false)).toEqual([81250, 146250]);
     expect(allocateCartLineCharges(items, true)).toEqual([81250, 146750]);
@@ -23,7 +23,7 @@ describe("allocateCartLineCharges", () => {
 });
 
 describe("formatRollCartDetailLine", () => {
-  it("shows print length × roll with catalog rate", () => {
+  it("menampilkan panjang cetak × roll dengan tarif katalog", () => {
     const line = formatRollCartDetailLine({
       billedPanjang: 1.3,
       billedLebar: 2.5,

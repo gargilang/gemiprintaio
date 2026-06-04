@@ -10,15 +10,15 @@ export interface ModalFormShellProps {
   footer: ReactNode;
   children: ReactNode;
   maxWidthClass?: string;
-  /** When false, backdrop click and Escape do not close the dialog */
+  /** Saat false, klik backdrop dan Escape tidak menutup dialog */
   allowDismiss?: boolean;
   zIndexClass?: string;
   backdropClassName?: string;
 }
 
 /**
- * Shared layout: fixed header, scrollable body, fixed footer.
- * Backdrop click + Escape close when allowDismiss is true.
+ * Layout bersama: header tetap, body yang bisa di-scroll, footer tetap.
+ * Klik backdrop + Escape menutup saat allowDismiss true.
  */
 export default function ModalFormShell({
   open,

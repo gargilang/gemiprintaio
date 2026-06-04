@@ -14,7 +14,7 @@ interface AuthWrapperProps {
 }
 
 /**
- * Wraps pages that require authentication (cookie session).
+ * Membungkus halaman yang membutuhkan autentikasi (sesi cookie).
  */
 export default function AuthWrapper({ children, fallback }: AuthWrapperProps) {
   const router = useRouter();

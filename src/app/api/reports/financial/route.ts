@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     if (!label || !at) {
       return NextResponse.json(
-        { error: "Missing required params: label and at" },
+        { error: "Parameter wajib belum lengkap: label dan at" },
         { status: 400 }
       );
     }
@@ -19,17 +19,17 @@ export async function GET(request: NextRequest) {
     const report = await getFinancialReport(label, at);
     return NextResponse.json(report);
   } catch (error: unknown) {
-    console.error("Generate financial report error:", error);
+    console.error("Gagal membuat laporan keuangan:", error);
     const msg = error instanceof Error ? error.message : "";
-    if (msg.includes("No data found for this archive")) {
+    if (msg.includes("Tidak ada data untuk arsip ini")) {
       return NextResponse.json(
-        { error: "No data found for this archive" },
+        { error: "Tidak ada data untuk arsip ini" },
         { status: 404 }
       );
     }
-    if (msg.includes("Missing required params")) {
+    if (msg.includes("Parameter wajib belum lengkap")) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
-    return apiError("Failed to generate report", 500, error);
+    return apiError("Gagal membuat laporan", 500, error);
   }
 }

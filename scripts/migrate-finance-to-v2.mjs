@@ -1,20 +1,20 @@
 /**
  * migrate-finance-to-v2.mjs
  *
- * Non-destructive data migration: seeds business_actors from legacy
- * finance_participants, links cashbook_formula.actor_id, and backfills
- * transaction_computed from the legacy hardcoded columns on keuangan.
+ * Migrasi data non-destruktif: seed business_actors dari finance_participants
+ * legacy, taut cashbook_formula.actor_id, dan isi ulang transaction_computed
+ * dari kolom hardcoded legacy di keuangan.
  *
- * Run against local SQLite:
+ * Jalankan terhadap SQLite lokal:
  *   node scripts/migrate-finance-to-v2.mjs
  *
- * Run against Supabase (requires DATABASE_URL or DIRECT_URL in .env.local):
+ * Jalankan terhadap Supabase (butuh DATABASE_URL atau DIRECT_URL di .env.local):
  *   node --env-file=.env.local scripts/migrate-finance-to-v2.mjs --supabase
  *
- * Flags:
- *   --dry-run   Print what would happen without writing anything
- *   --supabase  Also apply to Supabase (in addition to SQLite)
- *   --verbose   Extra logging
+ * Flag:
+ *   --dry-run   Cetak apa yang akan terjadi tanpa menulis apa pun
+ *   --supabase  Terapkan ke Supabase juga (selain SQLite)
+ *   --verbose   Logging tambahan
  */
 
 import { existsSync } from "node:fs";

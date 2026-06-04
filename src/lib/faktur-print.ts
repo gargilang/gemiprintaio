@@ -34,7 +34,7 @@ export interface FakturItem {
 }
 
 export interface FakturData {
-  nomor_invoice: string;
+  nomor_faktur: string;
   /** ISO date string of the sale. */
   tanggal: string;
   /** Customer "Kepada Yth" name. Empty string if walk-in with no name. */
@@ -144,7 +144,7 @@ function renderItemRow(item: FakturItem, index: number): string {
 
 export function generateFakturHTML(data: FakturData): string {
   const {
-    nomor_invoice,
+    nomor_faktur,
     tanggal,
     pelanggan_nama,
     pelanggan_detail,
@@ -268,7 +268,7 @@ export function generateFakturHTML(data: FakturData): string {
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Faktur - ${escapeHtml(nomor_invoice)}</title>
+  <title>Faktur - ${escapeHtml(nomor_faktur)}</title>
   <style>
     @font-face {
       font-family: 'Bauhaus 93';
@@ -678,8 +678,8 @@ export function generateFakturHTML(data: FakturData): string {
       <h1>FAKTUR PENJUALAN</h1>
       <div class="doc-meta">
         <div class="meta-row">
-          <span class="meta-label">No. Invoice :</span>
-          <span class="meta-value">${escapeHtml(nomor_invoice)}</span>
+          <span class="meta-label">No. Faktur :</span>
+          <span class="meta-value">${escapeHtml(nomor_faktur)}</span>
         </div>
         <div class="meta-row">
           <span class="meta-label">Tanggal :</span>
@@ -824,7 +824,7 @@ export function generateQuotationHTML(data: {
   shop?: FakturData["shop"];
 }): string {
   return generateFakturHTML({
-    nomor_invoice: "—",
+    nomor_faktur: "—",
     tanggal: data.tanggal,
     pelanggan_nama: data.pelanggan_nama || "—",
     kota: data.kota,

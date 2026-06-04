@@ -1,13 +1,13 @@
 /**
  * business-actor-service
  *
- * CRUD for the generic, name-free people/roles tables:
- *   • actor_roles      — job-title catalogue (Pemilik, Manager, Sales, …)
- *   • business_actors  — every real person / entity that appears in finance
+ * CRUD untuk tabel orang/peran yang generik (tanpa nama hardcoded):
+ *   • actor_roles      — katalog jabatan (Pemilik, Manajer, Sales, …)
+ *   • business_actors  — setiap orang / entitas nyata yang muncul di keuangan
  *
- * Role is a display label only. Which formula types an actor receives
- * (profit share, kasbon, bonus) is determined independently by which calc
- * fields are non-null on the actor row — any combination is valid.
+ * Peran hanya label tampilan. Tipe formula yang diterima actor (bagi hasil,
+ * kasbon, bonus) ditentukan independen oleh field calc mana yang non-null
+ * di baris actor — kombinasi apa pun valid.
  */
 
 import "server-only";
@@ -19,14 +19,14 @@ import {
   getServerSupabaseClient,
 } from "@/lib/db-unified";
 
-/** Display category for organising job titles in the UI — not a formula type. */
+/** Kategori tampilan untuk mengelompokkan jabatan di UI — bukan tipe formula. */
 export type RoleGroup = "owner" | "management" | "sales" | "staff" | "other";
 
 export interface ActorRole {
   id: string;
   role_code: string;
   role_label: string;
-  /** Display category (owner / management / sales / staff / other). */
+  /** Kategori tampilan (owner / management / sales / staff / other). */
   role_group: RoleGroup;
   description: string | null;
   display_order: number;
@@ -39,19 +39,19 @@ export interface BusinessActor {
   is_active: number;
   display_order: number;
   notes: string | null;
-  /** Non-null → generates a "bagi_hasil_<slug>" formula. */
+  /** Non-null → menghasilkan formula "bagi_hasil_<slug>". */
   profit_share_percent: number | null;
-  /** Non-empty → generates a "kasbon_<slug>" formula. */
+  /** Non-empty → menghasilkan formula "kasbon_<slug>". */
   cash_advance_categories: string[] | null;
-  /** Narrow kasbon to rows where `keperluan` contains this substring. */
+  /** Persempit kasbon ke baris yang `keperluan`-nya mengandung substring ini. */
   keperluan_keyword: string | null;
-  /** Non-null → generates a "bonus_<slug>" formula. */
+  /** Non-null → menghasilkan formula "bonus_<slug>". */
   bonus_percent: number | null;
-  /** Formula key that bonus_percent is applied to (default "omzet"). */
+  /** Key formula yang dijadikan dasar bonus_percent (default "omzet"). */
   bonus_source_formula_key: string | null;
-  /** ISO timestamp. */
+  /** Timestamp ISO. */
   created_at: string;
-  /** ISO timestamp. */
+  /** Timestamp ISO. */
   updated_at: string;
 }
 
@@ -91,7 +91,7 @@ function parseCategoriesField(raw: unknown): string[] | null {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) return parsed.map((s) => String(s)).filter(Boolean);
     } catch {
-      // Treat as comma-separated string.
+      // Anggap sebagai string yang dipisah koma.
       return trimmed
         .split(",")
         .map((s) => s.trim())
@@ -233,7 +233,7 @@ function serializeCategories(
 }
 
 /**
- * Slugify a display name into a stable formula_key suffix.
+ * Slugify nama tampilan jadi suffix formula_key yang stabil.
  * "Andi Sales" → "andi_sales"
  */
 export function slugifyActorName(name: string): string {
@@ -282,7 +282,7 @@ export async function createBusinessActor(
 
   const sb = getServerSupabaseClient();
   if (sb) {
-    // Supabase expects JSONB array, not a serialized string.
+    // Supabase butuh array JSONB, bukan string yang sudah di-serialisasi.
     const supaPayload = {
       ...payload,
       cash_advance_categories: input.cash_advance_categories ?? null,
@@ -338,7 +338,7 @@ export async function updateBusinessActor(
   const sb = getServerSupabaseClient();
   if (sb) {
     const supaFields = { ...fields };
-    // Supabase wants JSONB array, not the serialized string.
+    // Supabase butuh array JSONB, bukan string yang sudah di-serialisasi.
     if (patch.cash_advance_categories !== undefined) {
       supaFields.cash_advance_categories =
         patch.cash_advance_categories ?? null;
@@ -360,8 +360,9 @@ export async function updateBusinessActor(
 }
 
 /**
- * Soft delete (nonaktifkan): preserves all historical computed values.
- * Hard delete is only allowed when no transaction_computed row references
+ * Soft delete (nonaktifkan): mempertahankan semua nilai computed historis.
+ * Hard delete hanya boleh saat tidak ada baris transaction_computed yang merujuk
+ * ke actor ini.
  * any formula owned by this actor.
  */
 export async function deactivateBusinessActor(
@@ -381,13 +382,13 @@ export async function reactivateBusinessActor(
 }
 
 /**
- * Permanent delete. Refuses when historical computed values exist so we
- * never quietly lose audit data.
+ * Hapus permanen. Menolak kalau ada nilai computed historis supaya tidak
+ * pernah diam-diam kehilangan data audit.
  */
 export async function deleteBusinessActor(
   id: string
 ): Promise<{ error: Error | null }> {
-  // Look up linked formula keys.
+  // Cari key formula yang tertaut.
   let linkedKeys: string[] = [];
   try {
     const rows = await db.queryRaw<{ formula_key: string }>(
@@ -396,7 +397,7 @@ export async function deleteBusinessActor(
     );
     linkedKeys = rows.map((r) => r.formula_key).filter(Boolean);
   } catch {
-    // Old install without actor_id column — treat as no linked rows.
+    // Instalasi lama tanpa kolom actor_id — anggap tidak ada baris terkait.
   }
 
   if (linkedKeys.length > 0) {
@@ -418,7 +419,7 @@ export async function deleteBusinessActor(
     }
   }
 
-  // Delete linked formulas first so the FK constraint doesn't block.
+  // Hapus formula tertaut dulu supaya constraint FK tidak memblokir.
   try {
     const sb = getServerSupabaseClient();
     if (sb) {
@@ -426,7 +427,7 @@ export async function deleteBusinessActor(
     }
     await db.executeRaw("DELETE FROM cashbook_formula WHERE actor_id = ?", [id]);
   } catch {
-    // Best-effort; will be caught by the actor delete below if it really fails.
+    // Best-effort; akan tertangkap di delete actor di bawah kalau benar-benar gagal.
   }
 
   const sb = getServerSupabaseClient();

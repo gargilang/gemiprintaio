@@ -36,7 +36,7 @@ const SIDEBAR_COLLAPSED_KEY = "gemiprint_sidebar_collapsed";
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  // Do not read sessionStorage in useState — SSR and client must render the same (null) first.
+  // Jangan baca sessionStorage di useState; SSR dan client harus render nilai awal yang sama.
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
@@ -50,7 +50,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     orientation?: "landscape" | "portrait";
   } | null>(null);
 
-  // Global event bus: any component can fire "gemi:preview-faktur" with { html, title, orientation? }
+  // Event bus global untuk membuka preview faktur dari komponen mana pun.
   useEffect(() => {
     const handler = (e: Event) => {
       const { html, title, orientation } = (
@@ -95,7 +95,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     [user?.role]
   );
 
-  // Clear user session when window/app is closed (Tauri + browser)
+  // Bersihkan sesi saat window/app ditutup (Tauri + browser).
   useTauriWindowClose();
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  // Open sidebar group (e.g. Relasi) automatically when the active route is under it
+  // Buka grup sidebar otomatis ketika route aktif berada di dalam grup itu.
   useEffect(() => {
     if (!pathname) return;
     for (const entry of MENU_ENTRIES) {
@@ -141,18 +141,17 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  // Route-level role guard. Whenever the active page or current user
-  // changes, kick the user back to /dashboard if they're not allowed
-  // on this route. /dashboard is reachable by every role.
+  // Guard role per route. Jika pengguna tidak boleh membuka route aktif,
+  // arahkan kembali ke /beranda yang bisa dibuka semua role.
   useEffect(() => {
     if (!user || !pathname) return;
     if (pathname.startsWith("/auth/")) return;
     if (!canAccessPath(user.role, pathname)) {
-      router.replace("/dashboard");
+      router.replace("/beranda");
     }
   }, [user, pathname, router]);
 
-  // Restore sidebar scroll position before paint to prevent flicker
+  // Pulihkan posisi scroll sidebar sebelum paint agar tidak berkedip.
   useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
@@ -160,13 +159,13 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     if (saved) el.scrollTop = parseInt(saved, 10) || 0;
   }, [pathname]);
 
-  // Separate effect for scroll saving (doesn't depend on pathname)
+  // Effect terpisah untuk menyimpan scroll; tidak bergantung pada pathname.
   useEffect(() => {
     const key = "sidebarScroll";
     const el = navRef.current;
     if (!el) return;
 
-    // Save scroll position continuously
+    // Simpan posisi scroll terus-menerus.
     const onScroll = () => {
       sessionStorage.setItem(key, String(el.scrollTop));
     };
@@ -175,17 +174,17 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     return () => {
       el.removeEventListener("scroll", onScroll);
     };
-  }, []); // Empty deps - only runs once
+  }, []); // Dependency kosong berarti hanya berjalan sekali.
 
 
   const computedTitle = useMemo(() => {
-    if (!pathname) return "Dashboard";
+    if (!pathname) return "Beranda";
     const exact = PAGE_TITLE_MAP[pathname];
     if (exact) return exact;
     const found = Object.keys(PAGE_TITLE_MAP).find((k) =>
       pathname.startsWith(k)
     );
-    return found ? PAGE_TITLE_MAP[found] : "Dashboard";
+    return found ? PAGE_TITLE_MAP[found] : "Beranda";
   }, [pathname]);
 
   const handleLogout = useCallback(() => {
@@ -195,7 +194,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     })();
   }, [router]);
 
-  // Development helper: Clear session with Ctrl+Shift+L
+  // Bantuan development: bersihkan sesi dengan Ctrl+Shift+L.
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "L") {
@@ -208,7 +207,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [router]);
 
-  // Match SSR and first hydration output; show shell after mount + auth.
+  // Samakan output SSR dan hidrasi awal; tampilkan shell setelah mount + auth.
   if (!authReady || !user) {
     return null;
   }
@@ -482,8 +481,8 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  title="Logout"
-                  aria-label="Logout"
+                  title="Keluar"
+                  aria-label="Keluar"
                   className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-950/40 dark:hover:bg-red-500/10 transition-colors"
                 >
                   <LogoutIcon size={17} />
@@ -517,7 +516,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                   className="w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-950/40 dark:hover:bg-red-500/10 flex items-center justify-center gap-2 py-2.5 text-base font-semibold border-t border-red-100 dark:border-red-900/40 transition-colors"
                 >
                   <LogoutIcon size={20} />
-                  Logout
+                  Keluar
                 </button>
               </div>
             )}
@@ -525,9 +524,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Content Area */}
+      {/* Area konten */}
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        {/* Header with indicators */}
+        {/* Header dengan indikator */}
         <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-30 border-b border-gray-200 dark:border-slate-800">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3 min-w-0">
@@ -562,7 +561,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
 
-              {/* Sync Status Component */}
+              {/* Komponen status sinkronisasi */}
               <SyncStatus className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700" />
             </div>
           </div>
@@ -581,7 +580,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
       <FloatingFakturPreview
         open={fakturPreview !== null}
         html={fakturPreview?.html ?? ""}
-        title={fakturPreview?.title ?? "Preview Faktur"}
+        title={fakturPreview?.title ?? "Pratinjau Faktur"}
         orientation={fakturPreview?.orientation}
         onClose={() => setFakturPreview(null)}
       />

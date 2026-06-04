@@ -284,7 +284,7 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
   };
 }
 
-/** Active transaction categories for dropdowns (Kelola Orang kasbon picker, etc.). */
+/** Kategori transaksi aktif untuk dropdown (Kelola Orang kasbon picker, dll.). */
 export async function listFinanceCategories(): Promise<
   Pick<FinanceCategoryDefinition, "category_code" | "display_name" | "direction">[]
 > {
@@ -304,7 +304,7 @@ export async function listFinanceCategories(): Promise<
       }));
     }
   } catch {
-    // Table missing on very old installs — fall through to defaults.
+    // Tabel hilang di instalasi sangat lama — fall-through ke default.
   }
   return DEFAULT_CATEGORIES.map((c) => ({
     category_code: c.category_code,
@@ -323,25 +323,25 @@ export async function getProfitSharePartnersForRecalc() {
 
 // ── Column Rules ──────────────────────────────────────────────────────────
 
-/** Auto-provision finance_metric_column_rules in Supabase if it doesn't exist. */
+/** Auto-provision finance_metric_column_rules di Supabase kalau belum ada. */
 async function ensureColumnRulesTable(): Promise<void> {
   const sb = getServerSupabaseClient();
   if (!sb) return;
   try {
-    // Try to insert seed rows — if table doesn't exist this will fail and we'll create it
+    // Coba insert seed rows — kalau tabelnya tidak ada akan gagal lalu kita buat
     const { error: checkErr } = await sb
       .from("finance_metric_column_rules")
       .select("id")
       .limit(1);
 
     if (checkErr && checkErr.message.includes("does not exist")) {
-      // Create table via raw SQL using service role (pg REST endpoint isn't available,
-      // so we use a direct approach: insert via Supabase admin endpoint)
-      // Fall back silently — next app restart will try again
+      // Buat tabel via SQL mentah memakai service role (endpoint REST pg tidak tersedia,
+      // jadi pakai pendekatan langsung: insert via endpoint admin Supabase)
+      // Diam-diam jatuh balik — restart app berikutnya akan coba lagi
       return;
     }
 
-    // Table exists — seed it if empty
+    // Tabel ada — seed kalau masih kosong
     const { data: existingRules } = await sb
       .from("finance_metric_column_rules")
       .select("id")
@@ -361,7 +361,7 @@ async function ensureColumnRulesTable(): Promise<void> {
         }))
       );
 
-      // Seed category contributions
+      // Seed kontribusi kategori
       const seedContributions = [
         { codes: ["OMZET", "PIUTANG", "LUNAS"], contrib: [{ column: "omzet", amount_field: "debit", sign: 1 }] },
         { codes: ["BIAYA", "TABUNGAN", "KOMISI"], contrib: [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }] },
@@ -379,11 +379,11 @@ async function ensureColumnRulesTable(): Promise<void> {
       }
     }
   } catch {
-    // Don't crash — just use defaults
+    // Jangan crash — pakai default saja
   }
 }
 
-/** Load all column rules from DB, falling back to defaults if table missing. */
+/** Muat semua aturan kolom dari DB, jatuh balik ke default kalau tabel hilang. */
 export async function getColumnRules(): Promise<FinanceColumnRule[]> {
   await ensureColumnRulesTable();
   try {
@@ -426,12 +426,12 @@ export async function getColumnRules(): Promise<FinanceColumnRule[]> {
       }
     }
   } catch {
-    // Table might not exist yet — fall back to defaults
+    // Tabel mungkin belum ada — jatuh balik ke default
   }
   return DEFAULT_COLUMN_RULES;
 }
 
-/** Returns column rules + categories-with-contributions for the recalc engine. */
+/** Mengembalikan column rules + categories-with-contributions untuk engine recalc. */
 export async function getColumnRulesForRecalc(): Promise<{
   columnRules: FinanceColumnRule[];
   categories: CategoryWithContributions[];
@@ -460,13 +460,13 @@ export async function getColumnRulesForRecalc(): Promise<{
       }));
     }
   } catch {
-    // Fall back to empty (DEFAULT_CATEGORY_CONTRIBUTIONS used in engine)
+    // Jatuh balik ke kosong (DEFAULT_CATEGORY_CONTRIBUTIONS dipakai di engine)
   }
 
   return { columnRules, categories };
 }
 
-/** Save formula or kasbon_conditions for a column rule. */
+/** Simpan formula atau kasbon_conditions untuk satu aturan kolom. */
 export async function updateColumnRule(
   id: string,
   input: {
@@ -492,24 +492,24 @@ export async function updateColumnRule(
       .from("finance_metric_column_rules")
       .update(payload)
       .eq("id", id);
-    // If table doesn't exist yet (migration pending), skip gracefully
+    // Kalau tabel belum ada (migrasi tertunda), lewati dengan tenang
     if (error && !error.message.includes("does not exist") && !error.message.includes("schema cache")) {
       return { data: null, error: new Error(error.message) };
     }
   }
 
-  // SQLite mirror
+  // Mirror SQLite
   try {
     await db.queryRaw(
       `UPDATE finance_metric_column_rules SET ${Object.keys(payload).map((k) => `${k} = ?`).join(", ")} WHERE id = ?`,
       [...Object.values(payload), id]
     );
-  } catch { /* SQLite table might not exist yet */ }
+  } catch { /* Tabel SQLite mungkin belum ada */ }
 
   return { data: { id }, error: null };
 }
 
-/** Save metric_contributions JSON for a category. */
+/** Simpan JSON metric_contributions untuk sebuah kategori. */
 export async function updateCategoryContributions(
   categoryId: string,
   contributions: import("@/lib/formula-engine").CategoryContributionRule[]
@@ -521,7 +521,7 @@ export async function updateCategoryContributions(
       .from("finance_category_definitions")
       .update({ metric_contributions: contributions, updated_at: new Date().toISOString() })
       .eq("id", categoryId);
-    // Column might not exist yet if migration is pending
+    // Kolom mungkin belum ada kalau migrasi tertunda
     if (error && !error.message.includes("does not exist") && !error.message.includes("schema cache")) {
       return { data: null, error: new Error(error.message) };
     }
@@ -532,7 +532,7 @@ export async function updateCategoryContributions(
       `UPDATE finance_category_definitions SET metric_contributions = ?, updated_at = ? WHERE id = ?`,
       [json, new Date().toISOString(), categoryId]
     );
-  } catch { /* SQLite column might not exist yet */ }
+  } catch { /* Kolom SQLite mungkin belum ada */ }
 
   return { data: { id: categoryId }, error: null };
 }
@@ -652,17 +652,17 @@ export async function setupBagiHasilPartner(input: {
 
   const config = await getFinanceConfig();
 
-  // Active participant IDs - slots referencing inactive participants are treated as orphans
+  // ID partisipan aktif - slot yang merujuk ke partisipan nonaktif dianggap orphan
   const activeParticipantIds = new Set(config.participants.map((p) => p.id));
 
-  // Resolve slot: prefer explicitly-requested source_column, then find free/orphan slot
+  // Resolve slot: utamakan source_column yang diminta eksplisit, lalu cari slot kosong/orphan
   let slot = input.source_column
     ? slotForSourceColumn(input.source_column) ?? null
     : null;
 
   if (!slot) {
-    // Find first slot without any mapping, OR with a mapping that has no participant,
-    // OR with a mapping whose participant is no longer active
+    // Cari slot pertama tanpa mapping, ATAU dengan mapping yang tidak punya partisipan,
+    // ATAU dengan mapping yang partisipannya sudah tidak aktif
     for (const s of PROFIT_SHARE_SLOTS) {
       const m = config.metricMappings.find(
         (mm) => mm.metric_group === "profit_share" && mm.source_column === s.sourceColumn
@@ -688,7 +688,7 @@ export async function setupBagiHasilPartner(input: {
       m.metric_group === "profit_share" && m.source_column === slot!.sourceColumn
   );
 
-  // Only block if slot is taken by an ACTIVE participant
+  // Hanya blokir kalau slot diambil oleh partisipan AKTIF
   if (existing?.participant_id && activeParticipantIds.has(existing.participant_id)) {
     return {
       data: null,
@@ -698,13 +698,13 @@ export async function setupBagiHasilPartner(input: {
     };
   }
 
-  // Count existing active profit_share participants to calculate equal split
+  // Hitung partisipan profit_share aktif yang sudah ada untuk hitung pembagian merata
   const existingPartners = config.participants.filter(
     (p) => p.role_type === "profit_share" && p.is_active !== 0
   );
   const newCount = existingPartners.length + 1;
   const equalPercent = Math.round((100 / newCount) * 100) / 100;
-  // Adjust first existing partner to absorb rounding remainder
+  // Sesuaikan partner pertama supaya menyerap sisa pembulatan
   const firstPercent = Math.round((100 - equalPercent * (newCount - 1)) * 100) / 100;
 
   const formula: ProfitFormula = "percentage_based";
@@ -716,8 +716,8 @@ export async function setupBagiHasilPartner(input: {
     .toUpperCase()
     .slice(0, 16) || `MITRA${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
-  // Try to reactivate an existing inactive participant with the same code
-  // before creating a new one (avoids unique constraint violations)
+  // Coba reaktivasi partisipan nonaktif yang sudah ada dengan kode yang sama
+  // sebelum membuat yang baru (menghindari pelanggaran constraint unik)
   let participantId: string | null = null;
   const sb = getServerSupabaseClient();
   if (sb) {
@@ -759,7 +759,7 @@ export async function setupBagiHasilPartner(input: {
     participantId = (created.data as { id: string })?.id ?? null;
   }
 
-  // Redistribute percentages for existing partners equally
+  // Distribusikan ulang persentase untuk partner lama secara merata
   for (let i = 0; i < existingPartners.length; i++) {
     const p = existingPartners[i];
     const pct = i === 0 ? firstPercent : equalPercent;
@@ -826,7 +826,7 @@ export async function removeBagiHasilPartner(participantId: string) {
   const mappings = config.metricMappings.filter(
     (m) => m.participant_id === participantId && m.metric_group === "profit_share"
   );
-  // Unlink participant from mapping (set participant_id = null) so the slot stays reusable
+  // Lepas partisipan dari mapping (set participant_id = null) supaya slot bisa dipakai ulang
   for (const m of mappings) {
     if (m.id) {
       const unlinked = await updateFinanceMetricMapping(m.id, {
@@ -839,7 +839,7 @@ export async function removeBagiHasilPartner(participantId: string) {
   const result = await deleteFinanceParticipant(participantId);
   if (result.error) return result;
 
-  // Redistribute percentages equally among remaining active profit_share partners
+  // Distribusikan ulang persentase secara merata di antara partner profit_share aktif yang tersisa
   const remaining = config.participants.filter(
     (p) =>
       p.role_type === "profit_share" &&
@@ -955,9 +955,9 @@ export async function createFinanceCategory(input: {
   const code = input.category_code.toUpperCase().trim();
   const displayOrder = await nextDisplayOrderCategories();
 
-  // If a soft-deleted row with the same category_code already exists,
-  // reactivate it instead of inserting a new row (avoids unique constraint
-  // violation on category_code).
+  // Kalau ada baris soft-deleted dengan category_code yang sama, reaktivasi
+  // alih-alih menyisipkan baris baru (menghindari pelanggaran constraint unik
+  // di category_code).
   const sb = getServerSupabaseClient();
   if (sb) {
     const { data: existing } = await sb

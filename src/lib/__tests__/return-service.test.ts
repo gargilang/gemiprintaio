@@ -71,7 +71,7 @@ function seedSale(opts: {
   const hppSatuan = opts.hppSatuan ?? 600;
   mockTable("penjualan").set(opts.saleId, {
     id: opts.saleId,
-    nomor_invoice: `INV-${opts.saleId}`,
+    nomor_faktur: `INV-${opts.saleId}`,
     status_transaksi: "POSTED",
     total_jumlah: jumlah * harga,
   });
@@ -155,7 +155,7 @@ beforeEach(() => {
 });
 
 describe("createSalesReturn", () => {
-  it("rejects qty > sisa invoice", async () => {
+  it("menolak qty > sisa faktur", async () => {
     seedSale({ saleId: "sale-1", itemId: "item-1", jumlah: 5 });
     await expect(
       createSalesReturn({
@@ -166,7 +166,7 @@ describe("createSalesReturn", () => {
     ).rejects.toThrow(/melebihi sisa qty/);
   });
 
-  it("posts SALE_RETURN movement, reduces piutang, and writes RETUR_HPP cashbook entry", async () => {
+  it("memposting movement SALE_RETURN, mengurangi piutang, dan menulis entri buku kas RETUR_HPP", async () => {
     seedSale({ saleId: "sale-1", itemId: "item-1", jumlah: 10, hargaSatuan: 1000, hppSatuan: 600 });
     const result = await createSalesReturn({
       sale_id: "sale-1",
@@ -199,7 +199,7 @@ describe("createSalesReturn", () => {
     expect(hpp?.debit).toBe(2400);
   });
 
-  it("when invoice is partially paid, refund only the paid portion + non-cash for the rest", async () => {
+  it("saat faktur terbayar sebagian, refund hanya bagian yang sudah dibayar + non-tunai untuk sisanya", async () => {
     // Total invoice 10000, sudah dibayar 3000 → sisa piutang 7000.
     seedSale({
       saleId: "sale-1",
@@ -242,7 +242,7 @@ describe("createSalesReturn", () => {
     expect(cb2.find((r) => r.kategori_transaksi === "RETUR_PENJUALAN_NONCASH")?.kredit).toBe(4000);
   });
 
-  it("when no piutang row exists at all (cash sale), refund full retur", async () => {
+  it("saat tidak ada baris piutang sama sekali (penjualan tunai), refund seluruh retur", async () => {
     seedSale({
       saleId: "sale-cash",
       itemId: "item-cash",
@@ -273,7 +273,7 @@ describe("createPurchaseReturn", () => {
     ).rejects.toThrow(/melebihi sisa qty/);
   });
 
-  it("unpaid: full debt_reduction, no refund", async () => {
+  it("belum dibayar: pengurangan hutang penuh, tidak ada refund", async () => {
     seedPurchase({
       purchaseId: "p-1",
       itemId: "ip-1",
@@ -296,7 +296,7 @@ describe("createPurchaseReturn", () => {
     expect(cashbook.find((r) => r.kategori_transaksi === "RETUR_PEMBELIAN")).toBeUndefined();
   });
 
-  it("partial paid: covers sisa hutang first, refund the rest", async () => {
+  it("dibayar sebagian: tutup sisa hutang dulu, refund sisanya", async () => {
     seedPurchase({
       purchaseId: "p-1",
       itemId: "ip-1",
@@ -321,7 +321,7 @@ describe("createPurchaseReturn", () => {
     expect(refund?.debit).toBe(10000);
   });
 
-  it("fully paid (no debt row): refund vendor for full amount", async () => {
+  it("sudah lunas (tidak ada baris hutang): refund vendor untuk jumlah penuh", async () => {
     seedPurchase({
       purchaseId: "p-1",
       itemId: "ip-1",
@@ -344,7 +344,7 @@ describe("createPurchaseReturn", () => {
     expect(refund?.debit).toBe(15000);
   });
 
-  it("posts a PURCHASE_RETURN inventory movement (negative qty)", async () => {
+  it("memposting movement inventori PURCHASE_RETURN (qty negatif)", async () => {
     seedPurchase({
       purchaseId: "p-1",
       itemId: "ip-1",

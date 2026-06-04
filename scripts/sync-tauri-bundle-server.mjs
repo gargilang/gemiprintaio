@@ -1,6 +1,6 @@
 /**
- * Copy the freshly built Next standalone tree into tauri-bundle so it can be
- * packaged with the MSI/NSIS installer (see bundle.resources in tauri.conf.json).
+ * Salin tree Next standalone yang baru di-build ke tauri-bundle supaya bisa
+ * di-package bersama installer MSI/NSIS (lihat bundle.resources di tauri.conf.json).
  */
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";

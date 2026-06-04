@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * Modal for creating or editing a Surat Jalan (delivery note).
+ * Modal untuk membuat atau edit Surat Jalan.
  *
- * Two modes:
- *  - Create new (initialValue null): blank form, optionally seeded from sale
- *  - Edit existing (only if status=DRAFT)
+ * Dua mode:
+ *  - Buat baru (initialValue null): form kosong, opsional di-seed dari penjualan
+ *  - Edit yang ada (hanya kalau status=DRAF)
  *
- * Items are an editable list — user can add, remove, reorder.
+ * Item adalah list yang dapat diedit — pengguna bisa tambah, hapus, susun ulang.
  */
 
 import { useEffect, useState } from "react";

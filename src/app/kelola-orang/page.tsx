@@ -12,7 +12,7 @@ export default function KelolaOrangRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/finance");
+    router.replace("/keuangan");
   }, [router]);
 
   return (

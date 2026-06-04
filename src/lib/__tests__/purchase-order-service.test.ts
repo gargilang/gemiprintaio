@@ -63,7 +63,7 @@ describe("purchase-order-service", () => {
     seedBarang();
   });
 
-  it("creates a PO with correct totals and DRAFT status", async () => {
+  it("membuat PO dengan total benar dan status DRAF", async () => {
     const result = await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     expect(result.nomor_po).toBe("PO-20260525-001");
     const po = Array.from(mockTable("purchase_orders").values())[0];
@@ -74,7 +74,7 @@ describe("purchase-order-service", () => {
     expect(items[0].qty_received).toBe(0);
   });
 
-  it("partial receipt sets PARTIAL_RECEIVED and increments qty_received", async () => {
+  it("penerimaan parsial menyetel PARTIAL_RECEIVED dan menambah qty_received", async () => {
     createPurchaseMock.mockImplementation(async (input) => {
       const id = "purchase-1";
       mockTable("pembelian").set(id, { id, ...input });
@@ -110,7 +110,7 @@ describe("purchase-order-service", () => {
     expect(createPurchaseMock.mock.calls[0][0].metode_pembayaran).toBe("NET30");
   });
 
-  it("full receipt across multiple calls flips status to RECEIVED", async () => {
+  it("penerimaan penuh lewat beberapa panggilan mengubah status jadi RECEIVED", async () => {
     createPurchaseMock.mockImplementation(async () => ({ id: `purchase-${Date.now()}` }));
     await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     const po = Array.from(mockTable("purchase_orders").values())[0];
@@ -132,7 +132,7 @@ describe("purchase-order-service", () => {
     expect(mockTable("purchase_order_items").get(itemId)!.qty_received).toBe(10);
   });
 
-  it("rejects qty > sisa PO", async () => {
+  it("menolak qty > sisa pesanan pembelian", async () => {
     createPurchaseMock.mockImplementation(async () => ({ id: `purchase-${Date.now()}` }));
     await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     const po = Array.from(mockTable("purchase_orders").values())[0];
@@ -144,10 +144,10 @@ describe("purchase-order-service", () => {
         metode_pembayaran: "CASH",
         items: [{ purchase_order_item_id: itemId, qty: 11 }],
       })
-    ).rejects.toThrow(/melebihi sisa PO/);
+    ).rejects.toThrow(/melebihi sisa pesanan pembelian/);
   });
 
-  it("rejects receive on cancelled PO", async () => {
+  it("menolak penerimaan pada PO yang sudah dibatalkan", async () => {
     await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     const po = Array.from(mockTable("purchase_orders").values())[0];
     const itemId = Array.from(mockTable("purchase_order_items").values())[0].id;
@@ -162,7 +162,7 @@ describe("purchase-order-service", () => {
     ).rejects.toThrow(/dibatalkan/);
   });
 
-  it("forwards optional jumlah_dibayar via payDebt for credit-based receive", async () => {
+  it("meneruskan jumlah_dibayar opsional via payDebt untuk penerimaan berbasis kredit", async () => {
     createPurchaseMock.mockImplementation(async () => ({ id: "p-1" }));
     await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     const po = Array.from(mockTable("purchase_orders").values())[0];
@@ -182,7 +182,7 @@ describe("purchase-order-service", () => {
     });
   });
 
-  it("does not call payDebt when metode is CASH (purchase already lunas)", async () => {
+  it("tidak memanggil payDebt saat metode CASH (pembelian sudah lunas)", async () => {
     createPurchaseMock.mockImplementation(async () => ({ id: "p-2" }));
     await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
     const po = Array.from(mockTable("purchase_orders").values())[0];

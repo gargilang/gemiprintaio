@@ -1,5 +1,5 @@
 export interface ThermalInvoiceData {
-  nomor_invoice: string;
+  nomor_faktur: string;
   tanggal: string;
   shop?: {
     nama_toko?: string | null;
@@ -40,7 +40,7 @@ function escapeHtml(input: string): string {
 
 export function generateThermalInvoice(data: ThermalInvoiceData): string {
   const {
-    nomor_invoice,
+    nomor_faktur,
     tanggal,
     pelanggan_nama,
     pelanggan_telepon,
@@ -68,7 +68,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Invoice - ${nomor_invoice}</title>
+  <title>Faktur - ${nomor_faktur}</title>
   <style>
     @font-face {
       font-family: 'Bauhaus 93';
@@ -255,12 +255,12 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     ${shopWebsite ? `<div class="contact">${escapeHtml(shopWebsite)}</div>` : ""}
   </div>
 
-  <div class="invoice-title">INVOICE PENJUALAN</div>
+  <div class="invoice-title">FAKTUR PENJUALAN</div>
 
   <div class="info-section">
     <div class="info-row">
-      <span class="info-label">No. Invoice:</span>
-      <span>${nomor_invoice}</span>
+      <span class="info-label">No. Faktur:</span>
+      <span>${nomor_faktur}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Tanggal:</span>

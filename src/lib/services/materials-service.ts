@@ -1,6 +1,11 @@
 /**
- * Materials Service
- * Universal API for Materials on Tauri and Web
+ * Layanan Barang (Materials)
+ * API universal untuk Barang di Tauri dan Web.
+ *
+ * Catatan migrasi:
+ * - Nama identifier primer akan bertahap pindah ke Bahasa Indonesia (`Barang`,
+ *   `getBarang`, dll). Untuk sekarang internal masih memakai `Material` untuk
+ *   minimalisir risiko regresi; alias Indonesia di-export di bawah.
  */
 
 import "server-only";
@@ -447,7 +452,7 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       for (const sid of saleIds) {
         const s = await db.queryOne<any>("penjualan", { where: { id: sid } });
         if (s.data) {
-          const label = s.data.nomor_invoice || sid;
+          const label = s.data.nomor_faktur || sid;
           const tgl = s.data.dibuat_pada
             ? new Date(s.data.dibuat_pada).toLocaleDateString("id-ID", {
                 day: "numeric",
@@ -527,3 +532,31 @@ export async function getUnits() {
   });
   return result.data || [];
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Alias Bahasa Indonesia (untuk consumer baru). Internal tetap pakai
+// `Material` sampai semua consumer migrasi.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Alias Bahasa Indonesia untuk `Material`. */
+export type Barang = Material;
+/** Alias Bahasa Indonesia untuk `UnitPrice`. */
+export type HargaSatuan = UnitPrice;
+
+/** Ambil semua barang beserta harga satuannya. Lihat `getMaterials`. */
+export const getBarang = getMaterials;
+/** Ambil satu barang berdasarkan ID. Lihat `getMaterialById`. */
+export const getBarangById = getMaterialById;
+/** Buat barang baru. Lihat `createMaterial`. */
+export const createBarang = createMaterial;
+/** Perbarui barang. Lihat `updateMaterial`. */
+export const updateBarang = updateMaterial;
+/** Hapus barang. Lihat `deleteMaterial`. */
+export const deleteBarang = deleteMaterial;
+/** Ambil daftar kategori barang. Lihat `getMaterialCategories`. */
+export const getKategoriBarang = getMaterialCategories;
+/** Ambil daftar subkategori barang. Lihat `getMaterialSubcategories`. */
+export const getSubkategoriBarang = getMaterialSubcategories;
+/** Ambil daftar satuan. Lihat `getUnits`. */
+export const getSatuan = getUnits;
+

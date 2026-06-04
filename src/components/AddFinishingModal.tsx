@@ -40,20 +40,20 @@ export default function AddFinishingModal({
   const [finishingOptions, setFinishingOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Click outside to close
+  // Klik di luar untuk tutup
   useClickOutside(modalRef, onClose);
 
   useEffect(() => {
     loadFinishingOptions();
   }, []);
 
-  // Keyboard navigation
+  // Navigasi keyboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
       } else if (e.key === "Enter" && !e.shiftKey) {
-        // If in add form and has selected type, add finishing
+        // Kalau di form tambah dan sudah pilih jenis, tambahkan finishing
         if (selectedType && document.activeElement?.tagName !== "BUTTON") {
           e.preventDefault();
           handleAddFinishing();
@@ -71,7 +71,7 @@ export default function AddFinishingModal({
       setFinishingOptions(options.map((opt) => opt.nama));
     } catch (error) {
       console.error("Error loading finishing options:", error);
-      // Fallback to default options
+      // Jatuh balik ke opsi default
       setFinishingOptions([
         "Laminating Glossy",
         "Laminating Doff",
@@ -166,7 +166,7 @@ export default function AddFinishingModal({
                 <button
                   type="button"
                   onClick={() =>
-                    router.push("/settings?tab=setup&subtab=finishing")
+                    router.push("/pengaturan?tab=setup&subtab=finishing")
                   }
                   className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
                 >
@@ -180,7 +180,7 @@ export default function AddFinishingModal({
                 className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-amber-700 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="">
-                  {loading ? "Loading..." : "Pilih Finishing..."}
+                  {loading ? "Memuat..." : "Pilih Finishing..."}
                 </option>
                 {finishingOptions.map((option) => (
                   <option key={option} value={option}>

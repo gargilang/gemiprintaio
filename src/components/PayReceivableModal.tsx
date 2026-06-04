@@ -7,7 +7,7 @@ import { MoneyIcon } from "./icons/PageIcons";
 interface Receivable {
   id: string;
   id_penjualan: string;
-  nomor_invoice?: string;
+  nomor_faktur?: string;
   pelanggan_nama?: string | null;
   jumlah_piutang: number;
   jumlah_terbayar: number;
@@ -264,10 +264,10 @@ export default function PayReceivableModal({
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <div className="font-bold text-gray-800 dark:text-slate-100">
-                              {receivable.nomor_invoice}
+                              {receivable.nomor_faktur}
                             </div>
                             <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
-                              {receivable.pelanggan_nama || "Walk-in Customer"}
+                              {receivable.pelanggan_nama || "Pelanggan Umum"}
                             </div>
                             {receivable.dibuat_pada && (
                               <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
@@ -350,7 +350,7 @@ export default function PayReceivableModal({
 
                     <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-[#00afef]/30 rounded-lg">
                       <div className="text-sm text-gray-600 dark:text-slate-300 mb-2">
-                        Invoice: {selectedReceivable.nomor_invoice}
+                        Faktur: {selectedReceivable.nomor_faktur}
                       </div>
                       <div className="text-2xl font-bold text-gray-800 dark:text-slate-100">
                         Sisa Piutang

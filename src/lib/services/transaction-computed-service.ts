@@ -1,39 +1,40 @@
 /**
  * transaction-computed-service
  *
- * Read/aggregate helpers for the v2 `transaction_computed` table. This is
- * what the new Keuangan UI bars (Bagi Hasil, Kasbon, Bonus) consume to
- * render per-person totals without hitting the legacy hardcoded columns
- * on the `keuangan` table.
+ * Helper baca/agregasi untuk tabel `transaction_computed` v2. Inilah
+ * yang dikonsumsi UI Keuangan baru (Bagi Hasil, Kasbon, Bonus) untuk
+ * merender total per-orang tanpa menyentuh kolom hardcoded legacy
+ * di tabel `keuangan`.
  */
 
 import "server-only";
 
 import { db, getServerSupabaseClient } from "@/lib/db-unified";
 
-/** Map of `formula_key` → cumulative value across a query window. */
+/** Map dari `formula_key` → nilai kumulatif sepanjang window query. */
 export type ComputedSummary = Record<string, number>;
 
-/** One transaction's computed values, keyed by formula_key. */
+/** Nilai computed untuk satu transaksi, dikunci oleh formula_key. */
 export type ComputedRowMap = Record<string, number>;
 
 /**
- * Aggregate the latest value per formula_key across all transactions in a
- * given YYYY-MM month (or globally when month is omitted).
+ * Agregasikan nilai terakhir per formula_key di seluruh transaksi pada
+ * bulan YYYY-MM tertentu (atau global kalau bulan tidak diisi).
  *
- * For cumulative metrics (omzet, saldo, laba_bersih) this returns the
- * value from the LAST row of the period because the AST engine treats
- * those formulas as running totals. For per-transaction metrics this
- * returns the SUM.
+ * Untuk metrik kumulatif (omzet, saldo, laba_bersih) ini mengembalikan
+ * nilai dari baris TERAKHIR di periode itu karena engine AST memperlakukan
+ * formula tersebut sebagai running total. Untuk metrik per-transaksi ini
+ * mengembalikan SUM.
  *
- * Strategy:
- *   • Pull all (transaction_id, formula_key, value) rows for the period
+ * Strategi:
+ *   • Tarik semua baris (transaction_id, formula_key, value) untuk periode
  *   • Group by formula_key
- *   • For now, return SUM — caller can switch to "last" with a flag
+ *   • Untuk sekarang, kembalikan SUM — pemanggil bisa beralih ke "last"
+ *     dengan flag
  *
- * Cumulative vs incremental treatment is a known follow-up; the v2 UI
- * starts by surfacing raw sums so the user immediately sees their
- * actors' per-month totals, then we refine.
+ * Penanganan kumulatif vs inkremental adalah follow-up yang sudah diketahui;
+ * UI v2 dimulai dengan menampilkan jumlah mentah supaya pengguna langsung
+ * melihat total per-bulan actor mereka, lalu nanti di-refine.
  */
 export async function getMonthSummary(
   yearMonth?: string
@@ -61,27 +62,27 @@ export async function getMonthSummary(
     }
     return out;
   } catch {
-    // Table missing on installs without the migration — return empty.
+    // Tabel hilang di instalasi tanpa migrasi — kembalikan kosong.
     return {};
   }
 }
 
 /**
- * Latest value per formula_key — useful for cumulative metrics where the
- * "last row of the period" is the right number to show.
+ * Nilai terakhir per formula_key — berguna untuk metrik kumulatif di mana
+ * "baris terakhir di periode" adalah angka yang benar untuk ditampilkan.
  */
 export async function getLatestPerFormulaKey(
   yearMonth?: string
 ): Promise<ComputedSummary> {
-  // Approach: for each formula_key, pick the value from the latest
-  // transaction (by urutan_tampilan, then dibuat_pada) in the window.
+  // Pendekatan: untuk tiap formula_key, ambil nilai dari transaksi terbaru
+  // (urut urutan_tampilan, lalu dibuat_pada) di window.
   const sb = getServerSupabaseClient();
   if (sb) {
     let q = sb
       .from("transaction_computed")
       .select("transaction_id, formula_key, value, keuangan!inner(tanggal, urutan_tampilan, dibuat_pada)");
     if (yearMonth) {
-      // Supabase doesn't support strftime — fall back to range filter.
+      // Supabase tidak mendukung strftime — jatuh balik ke filter rentang.
       const [year, month] = yearMonth.split("-").map(Number);
       if (year && month) {
         const start = new Date(year, month - 1, 1).toISOString().slice(0, 10);
@@ -93,9 +94,9 @@ export async function getLatestPerFormulaKey(
     }
     const { data } = await q;
     if (Array.isArray(data) && data.length > 0) {
-      // Group: for each formula_key, keep the row with highest urutan_tampilan.
-      // Supabase may return the joined row as an array or single object
-      // depending on the relationship cardinality — normalize both.
+      // Group: untuk tiap formula_key, simpan baris dengan urutan_tampilan tertinggi.
+      // Supabase bisa mengembalikan baris yang di-join sebagai array atau objek
+      // tunggal tergantung kardinalitas relasi — normalisasi keduanya.
       const grouped = new Map<string, { order: number; val: number }>();
       type JoinRow = {
         formula_key: string;
@@ -150,7 +151,7 @@ export async function getLatestPerFormulaKey(
   }
 }
 
-/** All computed values for a single transaction. */
+/** Semua nilai computed untuk satu transaksi. */
 export async function getComputedRow(
   transactionId: string
 ): Promise<ComputedRowMap> {
@@ -167,7 +168,7 @@ export async function getComputedRow(
   }
 }
 
-/** All computed values for one actor's linked formulas in a period. */
+/** Semua nilai computed untuk formula yang tertaut ke satu actor di sebuah periode. */
 export async function getActorMetrics(
   actorId: string,
   yearMonth?: string
@@ -205,7 +206,7 @@ export async function getActorMetrics(
   }
 }
 
-/** Persist a manual override that wins over recalculation. */
+/** Simpan override manual yang menang dari hasil perhitungan ulang. */
 export async function setOverride(
   transactionId: string,
   formulaKey: string,

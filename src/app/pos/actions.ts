@@ -1,8 +1,8 @@
 "use server";
 
 /**
- * Server Actions for POS Page
- * Provides server-side data operations for client components
+ * Server Action untuk Halaman POS
+ * Menyediakan operasi data sisi-server untuk komponen klien.
  */
 
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
@@ -17,45 +17,42 @@ import {
   type Sale,
   type CreateSaleData,
 } from "@/lib/services/pos-service";
-import {
-  createCustomer,
-  type Customer,
-} from "@/lib/services/customers-service";
+import { createPelanggan } from "@/lib/services/customers-service";
 import { getFinishingOptions } from "@/lib/services/finishing-options-service";
 
 /**
- * Get initial data for POS (materials, customers, etc.)
+ * Ambil data awal untuk POS (barang, pelanggan, dll.)
  */
 export async function getPOSInitDataAction() {
   try {
     return await getPOSInitData();
   } catch (error) {
-    console.error("Error in getPOSInitDataAction:", error);
+    console.error("Gagal getPOSInitDataAction:", error);
     throw error;
   }
 }
 
 /**
- * Create a new sale
+ * Buat penjualan baru
  */
 export async function createSaleAction(data: CreateSaleData) {
   try {
     return await createSale(data);
   } catch (error) {
-    console.error("Error in createSaleAction:", error);
+    console.error("Gagal createSaleAction:", error);
     throw error;
   }
 }
 
 /**
- * Delete a sale
+ * Hapus penjualan
  */
 export async function deleteSaleAction(id: string): Promise<boolean> {
   try {
     await requireAdminOrManager();
     return await deleteSale(id);
   } catch (error) {
-    console.error("Error in deleteSaleAction:", error);
+    console.error("Gagal deleteSaleAction:", error);
     throw error;
   }
 }
@@ -68,13 +65,13 @@ export async function voidSaleAction(
     const s = await requireAdminOrManager();
     return await voidSale(id, reason, s.uid);
   } catch (error) {
-    console.error("Error in voidSaleAction:", error);
+    console.error("Gagal voidSaleAction:", error);
     throw error;
   }
 }
 
 /**
- * Revert sale payment (make receivable active again)
+ * Revert pembayaran penjualan (jadikan piutang aktif lagi)
  */
 export async function revertSalePaymentAction(data: {
   sale_id: string;
@@ -82,13 +79,13 @@ export async function revertSalePaymentAction(data: {
   try {
     return await revertSalePayment(data);
   } catch (error) {
-    console.error("Error in revertSalePaymentAction:", error);
+    console.error("Gagal revertSalePaymentAction:", error);
     throw error;
   }
 }
 
 /**
- * Create a new customer
+ * Buat pelanggan baru
  */
 export async function createCustomerAction(data: {
   tipe_pelanggan: string;
@@ -100,27 +97,27 @@ export async function createCustomerAction(data: {
   member_status: number;
 }) {
   try {
-    return await createCustomer(data as any);
+    return await createPelanggan(data as any);
   } catch (error) {
-    console.error("Error in createCustomerAction:", error);
+    console.error("Gagal createCustomerAction:", error);
     throw error;
   }
 }
 
 /**
- * Get all active receivables
+ * Ambil semua piutang aktif
  */
 export async function getReceivablesAction() {
   try {
     return await getReceivables();
   } catch (error) {
-    console.error("Error in getReceivablesAction:", error);
+    console.error("Gagal getReceivablesAction:", error);
     throw error;
   }
 }
 
 /**
- * Pay receivable (piutang)
+ * Bayar piutang
  */
 export async function payReceivableAction(data: {
   piutang_id: string;
@@ -134,19 +131,20 @@ export async function payReceivableAction(data: {
   try {
     return await payReceivable(data);
   } catch (error) {
-    console.error("Error in payReceivableAction:", error);
+    console.error("Gagal payReceivableAction:", error);
     throw error;
   }
 }
 
 /**
- * Get finishing options for POS finishing modal
+ * Ambil opsi finishing untuk modal finishing di POS
  */
 export async function getFinishingOptionsAction() {
   try {
     return await getFinishingOptions();
   } catch (error) {
-    console.error("Error in getFinishingOptionsAction:", error);
+    console.error("Gagal getFinishingOptionsAction:", error);
     throw error;
   }
 }
+

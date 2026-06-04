@@ -27,7 +27,7 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside
+  // Tutup saat klik di luar
   useClickOutside(
     modalRef,
     () => {
@@ -36,12 +36,13 @@ export default function ConfirmDialog({
     show
   );
 
-  // Handle keyboard shortcuts
+  // Tangani pintasan keyboard
   useEffect(() => {
     if (!show) return;
 
-    // Add a small delay to prevent immediate Enter key from triggering confirm
-    // This prevents the Enter key that opened the dialog from also confirming it
+    // Tambahkan jeda kecil supaya Enter yang baru saja membuka dialog tidak juga
+    // memicu konfirmasi.
+    // Ini mencegah Enter yang membuka dialog langsung mengkonfirmasi.
     let isReady = false;
     const readyTimeout = setTimeout(() => {
       isReady = true;

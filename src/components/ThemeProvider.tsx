@@ -24,18 +24,18 @@ import {
 } from "@/lib/theme";
 
 type ThemeContextValue = {
-  /** Stored preference: "light" | "dark" | "system". */
+  /** Preferensi tersimpan: "light" | "dark" | "system". */
   theme: Theme;
-  /** Resolved effective theme: "light" | "dark". */
+  /** Tema efektif yang sudah di-resolve: "light" | "dark". */
   effective: EffectiveTheme;
-  /** Update the stored preference and apply it immediately. */
+  /** Update preferensi yang tersimpan dan terapkan langsung. */
   setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
- * Provides theme state and keeps <html> in sync.
+ * Menyediakan state tema dan menjaga <html> tetap sinkron.
  *
  * Responsibilities:
  *  - Initialize state from localStorage on mount (matches the boot script).
@@ -54,20 +54,20 @@ export default function ThemeProvider({
   const [effective, setEffective] = useState<EffectiveTheme>("light");
   const printPrevRef = useRef<EffectiveTheme | null>(null);
 
-  // Initial load (after mount).
+  // Pemuatan awal (setelah mount).
   useEffect(() => {
     const stored = getStoredTheme();
     setThemeState(stored);
     setEffective(resolveTheme(stored));
   }, []);
 
-  // Whenever the stored preference changes, apply to <html>.
+  // Setiap kali preferensi tersimpan berubah, terapkan ke <html>.
   useEffect(() => {
     applyTheme(theme);
     setEffective(resolveTheme(theme));
   }, [theme]);
 
-  // Follow the OS-level color scheme while in "system" mode.
+  // Ikuti color scheme tingkat OS saat dalam mode "system".
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (theme !== "system") return;
@@ -113,7 +113,7 @@ export default function ThemeProvider({
     };
   }, []);
 
-  // Force light during print, restore after.
+  // Paksa light saat print, kembalikan setelahnya.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onBefore = () => {
@@ -149,7 +149,7 @@ export default function ThemeProvider({
   );
 }
 
-/** Hook to read/update the current theme. Must be used inside <ThemeProvider>. */
+/** Hook untuk membaca/mengubah tema saat ini. Wajib dipakai di dalam <ThemeProvider>. */
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

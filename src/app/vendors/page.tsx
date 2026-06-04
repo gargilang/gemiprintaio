@@ -870,7 +870,7 @@ export default function VendorsPage() {
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     Syarat pembayaran (contoh: NET 30 = bayar 30 hari setelah
-                    invoice)
+                    faktur)
                   </p>
                 </div>
 

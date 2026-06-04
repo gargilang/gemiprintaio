@@ -637,7 +637,7 @@ class _PosPageState extends ConsumerState<PosPage>
       });
       if (mounted) {
         final invoice =
-            result['sale']?['nomor_invoice'] ?? result['nomor_invoice'] ?? '';
+            result['sale']?['nomor_faktur'] ?? result['nomor_faktur'] ?? '';
         final spk = result['spk_number'] ?? '';
         showSuccessSnackbar(context, 'Invoice $invoice berhasil! SPK: $spk');
         setState(() {
@@ -1629,7 +1629,7 @@ class _TerimapiutangSheetState extends State<_TerimapiutangSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  r['nomor_invoice']?.toString() ?? '-',
+                                  r['nomor_faktur']?.toString() ?? '-',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,

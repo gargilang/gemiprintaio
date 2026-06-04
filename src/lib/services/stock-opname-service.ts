@@ -108,8 +108,8 @@ export async function updateStockOpnameCounts(
   items: Array<{ stock_opname_item_id: string; counted_qty: number; catatan?: string | null }>
 ) {
   const session = await getStockOpnameById(id);
-  if (!session) throw new Error("Stock opname tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAFT yang bisa diedit");
+  if (!session) throw new Error("Opname stok tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAF yang bisa diedit");
 
   let totalDeltaQty = 0;
   let totalDeltaValue = 0;
@@ -142,8 +142,8 @@ export async function updateStockOpnameCounts(
 
 export async function postStockOpname(id: string, actorId?: string | null) {
   const session = await getStockOpnameById(id);
-  if (!session) throw new Error("Stock opname tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Stock opname sudah diposting/batal");
+  if (!session) throw new Error("Opname stok tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Opname stok sudah diposting/batal");
 
   let totalDeltaQty = 0;
   let totalDeltaValue = 0;
@@ -187,8 +187,8 @@ export async function postStockOpname(id: string, actorId?: string | null) {
 
 export async function cancelStockOpname(id: string) {
   const session = await getStockOpnameById(id);
-  if (!session) throw new Error("Stock opname tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAFT yang bisa dibatalkan");
+  if (!session) throw new Error("Opname stok tidak ditemukan");
+  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAF yang bisa dibatalkan");
   const upd = await db.update("stock_opnames", id, { status: "CANCELLED" });
   if (upd.error) throw upd.error;
 }

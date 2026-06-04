@@ -78,7 +78,7 @@ export async function getAuditLog(filters: {
       id: `sv-${row.id}`,
       kind: "SALE_VOID",
       occurred_at: row.voided_at,
-      title: `Penjualan dibatalkan: ${row.nomor_invoice || row.id}`,
+      title: `Penjualan dibatalkan: ${row.nomor_faktur || row.id}`,
       reason: row.void_reason,
       actor_id: row.voided_by,
       ref_id: row.id,
@@ -122,7 +122,7 @@ export async function getAuditLog(filters: {
       occurred_at: row.dibuat_pada,
       title:
         row.movement_type === "WASTE"
-          ? `Material rusak: ${nama}`
+          ? `Barang rusak: ${nama}`
           : `Adjustment stok: ${nama}`,
       reason: row.catatan,
       actor_id: row.dibuat_oleh,

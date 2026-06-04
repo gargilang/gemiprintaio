@@ -1,5 +1,5 @@
-// Menu Items Configuration for MainShell
-// Extracted to separate file for better code splitting and reusability
+// Konfigurasi menu untuk MainShell.
+// Dipisahkan agar code splitting dan pemakaian ulang lebih mudah.
 
 import {
   HomeIcon,
@@ -35,8 +35,8 @@ export interface MenuItem {
   label: string;
   color: string;
   /**
-   * Roles that can see and access this menu item. If omitted, the item is
-   * visible to every authenticated user (e.g. Dashboard).
+   * Role yang bisa melihat dan membuka menu ini. Jika kosong, menu terlihat
+   * untuk semua pengguna yang sudah login.
    */
   allowedRoles?: UserRole[];
 }
@@ -56,7 +56,7 @@ export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
   return "kind" in entry && (entry as MenuGroup).kind === "group";
 }
 
-/** Flatten leaf links for access checks and route matching. */
+/** Ratakan link daun untuk pemeriksaan akses dan pencocokan route. */
 export function* iterateMenuLeaves(
   entries: MenuEntry[]
 ): Generator<MenuItem, void, unknown> {
@@ -71,7 +71,7 @@ export function* iterateMenuLeaves(
   }
 }
 
-// Convenience role groups
+// Grup role praktis untuk aturan akses menu.
 const FULL_STAFF: UserRole[] = ["admin", "manager", "staff"];
 const OPERATIONAL: UserRole[] = ["admin", "manager", "staff", "kasir", "operator"];
 const FRONT_OF_HOUSE: UserRole[] = ["admin", "manager", "staff", "kasir"];
@@ -79,11 +79,11 @@ const ADMIN_ONLY: UserRole[] = ["admin", "manager"];
 
 export const MENU_ENTRIES: MenuEntry[] = [
   {
-    href: "/dashboard",
+    href: "/beranda",
     icon: <HomeIcon size={18} />,
-    label: "Dashboard",
+    label: "Beranda",
     color: "from-[#00afef] to-[#2fd3ff]",
-    // No allowedRoles -> visible to every role, including "user".
+    // Tanpa allowedRoles berarti terlihat untuk semua role, termasuk "user".
   },
   {
     kind: "group",
@@ -114,7 +114,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FRONT_OF_HOUSE,
       },
       {
-        href: "/sales-returns",
+        href: "/retur-penjualan",
         icon: <SalesReturnIcon size={18} />,
         label: "Retur Penjualan",
         color: "from-rose-500 to-pink-600",
@@ -130,16 +130,16 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-[#ef4444] to-[#dc2626]",
     children: [
       {
-        href: "/production/spk",
+        href: "/produksi/spk",
         icon: <PrinterIcon size={18} />,
         label: "SPK",
         color: "from-[#f97316] to-[#dc2626]",
         allowedRoles: OPERATIONAL,
       },
       {
-        href: "/production/ai-prompt",
+        href: "/produksi/ai-prompt",
         icon: <SparklesIcon size={18} />,
-        label: "AI Prompt",
+        label: "Prompt AI",
         color: "from-[#00afef] to-[#dc2626]",
         allowedRoles: OPERATIONAL,
       },
@@ -153,23 +153,23 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-[#6366f1] to-[#8b5cf6]",
     children: [
       {
-        href: "/purchases",
+        href: "/pembelian",
         icon: <PurchaseOrderIcon size={18} />,
         label: "Pembelian",
         color: "from-[#6366f1] to-[#8b5cf6]",
         allowedRoles: FULL_STAFF,
       },
       {
-        href: "/purchase-returns",
+        href: "/retur-pembelian",
         icon: <PurchaseReturnIcon size={18} />,
         label: "Retur Pembelian",
         color: "from-amber-500 to-orange-600",
         allowedRoles: FULL_STAFF,
       },
       {
-        href: "/purchase-orders",
+        href: "/pesanan-pembelian",
         icon: <PurchaseOrderFlowIcon size={18} />,
-        label: "Purchase Order",
+        label: "Pesanan Pembelian",
         color: "from-indigo-500 to-violet-600",
         allowedRoles: FULL_STAFF,
       },
@@ -190,30 +190,30 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-[#10b981] to-[#059669]",
     children: [
       {
-        href: "/materials",
+        href: "/barang",
         icon: <BoxIcon size={18} />,
         label: "Data Barang",
         color: "from-[#10b981] to-[#059669]",
         allowedRoles: FULL_STAFF,
       },
       {
-        href: "/inventory/adjustments",
+        href: "/inventori/adjustments",
         icon: <StockAdjustmentIcon size={18} />,
-        label: "Stock Adjustment",
+        label: "Penyesuaian Stok",
         color: "from-emerald-500 to-teal-600",
         allowedRoles: FULL_STAFF,
       },
       {
-        href: "/inventory/opname",
+        href: "/inventori/opname",
         icon: <StockOpnameIcon size={18} />,
-        label: "Stock Opname",
+        label: "Opname Stok",
         color: "from-lime-500 to-emerald-600",
         allowedRoles: FULL_STAFF,
       },
       {
-        href: "/inventory/movements",
+        href: "/inventori/movements",
         icon: <MovementLedgerIcon size={18} />,
-        label: "Movement Ledger",
+        label: "Riwayat Mutasi Stok",
         color: "from-slate-600 to-slate-800",
         allowedRoles: FULL_STAFF,
       },
@@ -227,7 +227,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-[#14b8a6] to-[#0a1b3d]",
     children: [
       {
-        href: "/customers",
+        href: "/pelanggan",
         icon: <UsersIcon size={18} />,
         label: "Pelanggan",
         color: "from-[#14b8a6] to-[#06b6d4]",
@@ -250,7 +250,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-[#ff2f91] to-orange-500",
     children: [
       {
-        href: "/finance",
+        href: "/keuangan",
         icon: <MoneyIcon size={18} />,
         label: "Keuangan",
         color: "from-orange-500 to-pink-600",
@@ -264,7 +264,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: ADMIN_ONLY,
       },
       {
-        href: "/reports",
+        href: "/laporan",
         icon: <ChartIcon size={18} />,
         label: "Laporan",
         color: "from-[#ff2f91] to-[#2266ff]",
@@ -280,16 +280,16 @@ export const MENU_ENTRIES: MenuEntry[] = [
     color: "from-gray-500 to-[#0a1b3d]",
     children: [
       {
-        href: "/settings",
+        href: "/pengaturan",
         icon: <SettingsIcon size={18} />,
         label: "Umum",
         color: "from-gray-500 to-gray-600",
         allowedRoles: ADMIN_ONLY,
       },
       {
-        href: "/users",
+        href: "/pengguna",
         icon: <UserIcon size={18} />,
-        label: "Manajemen User",
+        label: "Manajemen Pengguna",
         color: "from-[#0a1b3d] to-[#00afef]",
         allowedRoles: ADMIN_ONLY,
       },
@@ -298,37 +298,37 @@ export const MENU_ENTRIES: MenuEntry[] = [
 ];
 
 export const PAGE_TITLE_MAP: { [key: string]: string } = {
-  "/dashboard": "Dashboard",
+  "/beranda": "Beranda",
   "/pos": "POS / Kasir",
   "/surat-jalan": "Surat Jalan",
   "/penawaran": "Penawaran",
-  "/sales-returns": "Retur Penjualan",
-  "/production": "Produksi",
-  "/production/spk": "SPK",
-  "/production/ai-prompt": "AI Prompt",
-  "/materials": "Data Barang",
-  "/inventory/adjustments": "Stock Adjustment",
-  "/inventory/opname": "Stock Opname",
-  "/inventory/movements": "Movement Ledger",
-  "/customers": "Pelanggan",
+  "/retur-penjualan": "Retur Penjualan",
+  "/produksi": "Produksi",
+  "/produksi/spk": "SPK",
+  "/produksi/ai-prompt": "Prompt AI",
+  "/barang": "Data Barang",
+  "/inventori/adjustments": "Penyesuaian Stok",
+  "/inventori/opname": "Opname Stok",
+  "/inventori/movements": "Riwayat Mutasi Stok",
+  "/pelanggan": "Pelanggan",
   "/vendors": "Vendor",
-  "/purchases": "Pembelian",
-  "/purchase-returns": "Retur Pembelian",
-  "/purchase-orders": "Purchase Order",
+  "/pembelian": "Pembelian",
+  "/retur-pembelian": "Retur Pembelian",
+  "/pesanan-pembelian": "Pesanan Pembelian",
   "/hutang": "Hutang",
-  "/finance": "Keuangan",
-  "/reports": "Laporan",
+  "/keuangan": "Keuangan",
+  "/laporan": "Laporan",
   "/laporan-ppn": "Laporan PPN",
   "/aktivitas": "Log Audit",
-  "/users": "Manajemen User",
-  "/settings": "Pengaturan",
+  "/pengguna": "Manajemen Pengguna",
+  "/pengaturan": "Pengaturan",
 };
 
 const HIDDEN_ROUTE_ACCESS: Record<string, UserRole[]> = {
   "/laporan-ppn": ADMIN_ONLY,
 };
 
-/** Find the menu item that owns a given pathname (longest prefix match). */
+/** Cari menu pemilik pathname dengan prefix terpanjang. */
 function findMenuForPath(pathname: string): MenuItem | undefined {
   let matched: MenuItem | undefined;
   for (const item of iterateMenuLeaves(MENU_ENTRIES)) {
@@ -342,9 +342,9 @@ function findMenuForPath(pathname: string): MenuItem | undefined {
 }
 
 /**
- * Returns true if the given role can access the page that owns `pathname`.
- * Pages not registered under MENU_ENTRIES leaves (e.g. /, /auth/...) are allowed by
- * default — those are guarded elsewhere.
+ * Mengembalikan true jika role boleh membuka halaman pemilik `pathname`.
+ * Halaman yang tidak terdaftar di MENU_ENTRIES (mis. / atau /auth/...) tetap
+ * diizinkan karena guard-nya ada di tempat lain.
  */
 export function canAccessPath(
   role: string | undefined | null,

@@ -41,6 +41,7 @@
     "bundle:tauri-resources": "npm run prepare:standalone && node scripts/sync-tauri-bundle-server.mjs",
     "start": "next start",
     "lint": "eslint",
+    "audit:bahasa": "node scripts/audit-bahasa.mjs",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",

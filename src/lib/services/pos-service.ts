@@ -26,12 +26,12 @@ import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
 
 // ============================================================================
-// TYPES
+// TIPE
 // ============================================================================
 
 export interface Sale {
   id: string;
-  nomor_invoice: string;
+  nomor_faktur: string;
   pelanggan_id?: string | null;
   pelanggan_nama?: string;
   pelanggan_nama_snapshot?: string | null;
@@ -86,7 +86,7 @@ export interface SaleItem {
 export interface Receivable {
   id: string;
   id_penjualan: string;
-  nomor_invoice?: string;
+  nomor_faktur?: string;
   pelanggan_id?: string | null;
   pelanggan_nama?: string;
   pelanggan_telepon?: string;
@@ -107,7 +107,7 @@ export interface POSInitData {
   customers: any[];
   materials: any[];
   sales: Sale[];
-  /** Vendors that can be used as maklon subcontractors (tipe SUBKONTRAKTOR or KEDUANYA). */
+  /** Vendor yang bisa dipakai sebagai subkontraktor maklon (tipe SUBKONTRAKTOR atau KEDUANYA). */
   subkontraktor: any[];
 }
 
@@ -134,19 +134,19 @@ export interface CreateSaleData {
       keterangan?: string;
     }>;
     /**
-     * Sale line type. `BARANG` (default) is a regular inventory item;
-     * `MAKLON` is a subcontract line where another print shop produces
-     * the work — auto-generates a linked pembelian to that vendor.
-     * `JASA` is a non-inventory service line (no auto-PO).
+     * Tipe baris penjualan. `BARANG` (default) adalah barang inventori biasa;
+     * `MAKLON` adalah baris subkontrak yang dikerjakan oleh percetakan lain —
+     * otomatis membuat pembelian terkait ke vendor itu.
+     * `JASA` adalah baris layanan non-inventori (tidak ada auto-PO).
      */
     tipe_item?: "BARANG" | "JASA" | "MAKLON";
-    /** Required when `tipe_item === 'MAKLON'`. */
+    /** Wajib saat `tipe_item === 'MAKLON'`. */
     vendor_subkontrak_id?: string | null;
-    /** Total subcontract cost for this line (becomes HPP + maklon PO line). */
+    /** Total biaya subkontrak untuk baris ini (jadi HPP + baris PO maklon). */
     biaya_subkontrak?: number | null;
-    /** Required when `tipe_item === 'MAKLON'`. */
+    /** Wajib saat `tipe_item === 'MAKLON'`. */
     metode_bayar_vendor?: "CASH" | "NET30" | null;
-    /** Free-text description used on faktur + thermal receipt for maklon lines. */
+    /** Deskripsi bebas yang dipakai di faktur + struk thermal untuk baris maklon. */
     deskripsi_pekerjaan?: string | null;
   }>;
   total_jumlah: number;
@@ -177,14 +177,14 @@ export interface CreateSaleData {
   pelanggan_alamat_npwp_snapshot?: string;
   pelanggan_nama_npwp_snapshot?: string;
   /**
-   * Header-level extra charges (ongkir, biaya pasang, dll). Each row gets a
-   * free-text label + nominal. Total is rolled up to penjualan.biaya_tambahan_total.
+   * Biaya tambahan tingkat header (ongkir, biaya pasang, dll). Tiap baris diisi
+   * label bebas + nominal. Total digulung ke penjualan.biaya_tambahan_total.
    */
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 // ============================================================================
-// HELPER FUNCTIONS
+// FUNGSI HELPER
 // ============================================================================
 
 function getTodayJakarta(): string {
@@ -299,7 +299,7 @@ async function generateInvoiceNumber(tanggal: string): Promise<string> {
   const datePart = getDatePart(tanggal, reset, format);
 
   const lastInvoiceResult = await db.query("penjualan", {
-    orderBy: { column: "nomor_invoice", ascending: false },
+    orderBy: { column: "nomor_faktur", ascending: false },
     limit: 1,
   });
 
@@ -307,7 +307,7 @@ async function generateInvoiceNumber(tanggal: string): Promise<string> {
   if (lastInvoiceResult.data && lastInvoiceResult.data.length > 0) {
     const lastInvoice = lastInvoiceResult.data[0] as any;
     seq = extractSeqFromNumber(
-      lastInvoice.nomor_invoice || "",
+      lastInvoice.nomor_faktur || "",
       prefix,
       format,
       datePart,
@@ -364,21 +364,21 @@ async function generateSPKNumber(): Promise<string> {
 // ============================================================================
 
 /**
- * Get init data for POS page (customers, materials, recent sales)
+ * Ambil data awal halaman POS (pelanggan, barang, penjualan terkini)
  */
 export async function getPOSInitData(): Promise<POSInitData> {
   try {
-    // Get customers
+    // Ambil pelanggan
     const customersResult = await db.query("pelanggan", {
       orderBy: { column: "nama", ascending: true },
     });
 
-    // Get materials with categories
+    // Ambil barang beserta kategori
     const materialsResult = await db.query("barang", {
       orderBy: { column: "frekuensi_terjual", ascending: false },
     });
 
-    // Get categories for enrichment
+    // Ambil kategori untuk pengayaan data
     const categoriesResult = await db.query("kategori_barang");
     const subcategoriesResult = await db.query("subkategori_barang");
 
@@ -386,7 +386,7 @@ export async function getPOSInitData(): Promise<POSInitData> {
     const subcategories = subcategoriesResult.data || [];
     const materials = materialsResult.data || [];
 
-    // Enrich materials with unit prices and category names
+    // Lengkapi barang dengan harga satuan dan nama kategori
     const materialsWithPrices = await Promise.all(
       materials.map(async (material: any) => {
         const unitPricesResult = await db.query("harga_barang_satuan", {
@@ -410,12 +410,12 @@ export async function getPOSInitData(): Promise<POSInitData> {
       })
     );
 
-    // Get recent sales (limit 100)
+    // Ambil penjualan terkini (limit 100)
     const sales = await getSales(100);
 
-    // Subcontractor vendors for the maklon line picker. Filter at fetch time
-    // to keep the payload small. Falls back gracefully on installs that
-    // haven't run the maklon migration yet (the column will be missing).
+    // Vendor subkontraktor untuk pemilih baris maklon. Difilter saat fetch
+    // supaya payload kecil. Aman jatuh-balik di instalasi yang belum
+    // menjalankan migrasi maklon (kolomnya tidak ada).
     let subkontraktor: any[] = [];
     try {
       const vendorsResult = await db.query<any>("vendor", {
@@ -443,22 +443,22 @@ export async function getPOSInitData(): Promise<POSInitData> {
 }
 
 /**
- * Get sales transactions — optimised batch version.
+ * Ambil data transaksi penjualan — versi batch yang sudah dioptimasi.
  *
- * Old approach: N+1 queries (100 sales × items × barang + pelunasan checks)
- * New approach: 6 flat queries, all joins done in-memory.
+ * Pendekatan lama: query N+1 (100 sale × item × barang + cek pelunasan).
+ * Pendekatan baru: 6 query datar, semua join dilakukan di memori.
  *
- * For Supabase (web) we use the JS client's .in() filter directly.
- * For SQLite (Tauri) we fall back to the old sequential approach because
- * the db adapter does not yet expose a whereIn helper.
+ * Untuk Supabase (web) memakai filter `.in()` dari klien JS langsung.
+ * Untuk SQLite (Tauri) tetap pakai pendekatan lama yang berurutan karena
+ * adapter db belum menyediakan helper whereIn.
  */
 export async function getSales(limit: number = 100): Promise<Sale[]> {
   try {
     const supabase = getServerSupabaseClient();
 
-    // ── Supabase fast-path (web) ──────────────────────────────────────────────
+    // ── Jalur cepat Supabase (web) ────────────────────────────────────────────
     if (supabase) {
-      // 1. Sales
+      // 1. Penjualan
       const { data: sales, error: salesErr } = await supabase
         .from("penjualan")
         .select("*")
@@ -471,7 +471,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const pelangganIds = [...new Set(sales.map((s: any) => s.pelanggan_id).filter(Boolean))];
       const kasirIds = [...new Set(sales.map((s: any) => s.kasir_id).filter(Boolean))];
 
-      // 2–7. Batch fetch all related data in parallel
+      // 2–7. Ambil semua data terkait sekaligus secara paralel
       const [
         itemsRes,
         piutangRes,
@@ -488,9 +488,9 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         kasirIds.length > 0
           ? supabase.from("profil").select("id,nama_pengguna").in("id", kasirIds)
           : Promise.resolve({ data: [], error: null }),
-        // We need pelunasan to know has_pelunasan — fetch all at once
+        // Pelunasan dibutuhkan untuk tahu has_pelunasan — diambil sekaligus
         supabase.from("pelunasan_piutang").select("id,id_piutang"),
-        // Header-level biaya tambahan
+        // Biaya tambahan tingkat header
         supabase
           .from("biaya_tambahan_penjualan")
           .select("*")
@@ -507,7 +507,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const allPelunasan: any[] = pelunasanRes.data || [];
       const allBiayaTambahan: any[] = biayaTambahanRes.data || [];
 
-      // Fetch barang names for all unique barang_ids in one query
+      // Ambil nama barang untuk semua barang_id unik dalam satu query
       const barangIds = [...new Set(allItems.map((i: any) => i.barang_id).filter(Boolean))];
       const barangMap = new Map<string, string>();
       if (barangIds.length > 0) {
@@ -520,7 +520,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         }
       }
 
-      // Build lookup maps
+      // Bangun peta lookup
       const itemsByPenjualanId = new Map<string, any[]>();
       for (const item of allItems) {
         const list = itemsByPenjualanId.get(item.penjualan_id) || [];
@@ -549,7 +549,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         });
         biayaTambahanBySaleId.set(b.penjualan_id, list);
       }
-      // Sort each list by urutan
+      // Urutkan setiap list berdasarkan urutan
       for (const [, list] of biayaTambahanBySaleId) {
         list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
       }
@@ -580,7 +580,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       });
     }
 
-    // ── SQLite fallback (Tauri) — sequential, same as before ─────────────────
+    // ── Jalur SQLite (Tauri) — berurutan, sama seperti sebelumnya ─────────────
     const salesResult = await db.query<Sale>("penjualan", {
       orderBy: { column: "dibuat_pada", ascending: false },
       limit,
@@ -621,7 +621,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           });
           has_pelunasan = (pelunasanResult.data?.length || 0) > 0;
         }
-        // Fetch biaya tambahan for this sale (SQLite path is sequential)
+        // Ambil biaya tambahan untuk penjualan ini (jalur SQLite berurutan)
         const biayaRes = await db.query<any>("biaya_tambahan_penjualan", {
           where: { penjualan_id: sale.id },
         });
@@ -655,15 +655,15 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
 }
 
 /**
- * Create new sale transaction
+ * Buat transaksi penjualan baru
  */
 export async function createSale(data: CreateSaleData): Promise<{
   id: string;
-  nomor_invoice: string;
+  nomor_faktur: string;
   spk_number: string;
 }> {
   try {
-    // Validation
+    // Validasi
     if (!data.items || data.items.length === 0) {
       throw new Error("Items tidak boleh kosong");
     }
@@ -672,8 +672,8 @@ export async function createSale(data: CreateSaleData): Promise<{
       throw new Error("Total jumlah harus lebih dari 0");
     }
 
-    // Per-line maklon validation. Surface errors before opening the
-    // transaction so we don't leave partial state behind.
+    // Validasi maklon per baris. Tampilkan error sebelum membuka transaksi
+    // supaya tidak meninggalkan state parsial.
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
       if (item.tipe_item === "MAKLON") {
@@ -737,7 +737,7 @@ export async function createSale(data: CreateSaleData): Promise<{
     const tanggalSale = data.tanggal || getTodayJakarta();
     const invoiceNumber = await generateInvoiceNumber(tanggalSale);
 
-    // Determine payment status
+    // Tentukan status pembayaran
     const actualPaid = data.jumlah_dibayar || 0;
     const isFullPaymentMethod = ["CASH", "TRANSFER", "QRIS", "DEBIT"].includes(
       data.metode_pembayaran
@@ -767,17 +767,16 @@ export async function createSale(data: CreateSaleData): Promise<{
       }
     }
 
-    // Track inserted maklon item ids so we can update pembelian_id_terkait
-    // after the auto-PO is generated. Keyed by item index in the original
-    // request payload.
+    // Lacak id item maklon yang sudah disisipkan supaya bisa update pembelian_id_terkait
+    // setelah auto-PO dibuat. Key-nya adalah indeks item di payload request asal.
     const maklonItemIds = new Map<number, string>();
 
-    // Execute in transaction
+    // Eksekusi di dalam transaksi
     const saleResultPayload = await db.transaction(async () => {
-      // Create sale record
+      // Buat record penjualan
       const sale = {
         id: saleId,
-        nomor_invoice: invoiceNumber,
+        nomor_faktur: invoiceNumber,
         pelanggan_id: data.pelanggan_id || null,
         pelanggan_nama_snapshot: data.pelanggan_nama_snapshot?.trim() || null,
         pelanggan_kota: data.pelanggan_kota?.trim() || null,
@@ -808,7 +807,7 @@ export async function createSale(data: CreateSaleData): Promise<{
       const saleResult = await db.insert("penjualan", sale);
       if (saleResult.error) throw saleResult.error;
 
-      // Insert biaya tambahan rows (ongkir, biaya pasang, dll). Skip rows
+      // Sisipkan baris biaya tambahan (ongkir, biaya pasang, dll). Lewati baris
       // dengan label kosong atau nominal 0.
       if (data.biaya_tambahan && data.biaya_tambahan.length > 0) {
         for (let i = 0; i < data.biaya_tambahan.length; i++) {
@@ -844,7 +843,7 @@ export async function createSale(data: CreateSaleData): Promise<{
         });
         if (!nsfpRow.data) {
           throw new Error(
-            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} tidak ditemukan di pool. Import dulu dari Coretax.`
+            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} tidak ditemukan di pool. Impor dulu dari Coretax.`
           );
         }
         if (nsfpRow.data.status !== "TERSEDIA") {
@@ -860,16 +859,16 @@ export async function createSale(data: CreateSaleData): Promise<{
         if (upd.error) throw upd.error;
       }
 
-      // Insert sale items and update stock
+      // Sisipkan baris penjualan dan perbarui stok
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = generateId();
         const isMaklon = item.tipe_item === "MAKLON";
         const isJasa = item.tipe_item === "JASA";
 
-        // For BARANG: HPP comes from the material's moving-average cost.
-        // For MAKLON: HPP = biaya_subkontrak (what we pay the partner shop).
-        // For JASA: HPP = 0 (no underlying material; pure margin).
+        // BARANG: HPP berasal dari biaya rata-rata bergerak barang.
+        // MAKLON: HPP = biaya_subkontrak (yang dibayar ke percetakan rekanan).
+        // JASA: HPP = 0 (tidak ada barang dasar; murni margin).
         let hppSatuan = 0;
         let hppTotal = 0;
         let material: any = null;
@@ -923,8 +922,8 @@ export async function createSale(data: CreateSaleData): Promise<{
         const saleItem = {
           id: itemId,
           penjualan_id: saleId,
-          // Maklon lines use the seeded placeholder barang to keep the FK valid
-          // without introducing a fake stock row in the catalog.
+          // Baris maklon memakai barang placeholder yang sudah di-seed agar FK valid
+          // tanpa memasukkan baris stok palsu di katalog.
           barang_id: isMaklon ? "barang-jasa-maklon" : item.barang_id,
           harga_satuan_id: isMaklon
             ? "harga-jasa-maklon-pcs"
@@ -961,8 +960,8 @@ export async function createSale(data: CreateSaleData): Promise<{
 
         if (isMaklon) {
           maklonItemIds.set(i, itemId);
-          // Maklon lines never touch stock or material frequency — there is
-          // no underlying material in our catalog.
+          // Baris maklon tidak pernah menyentuh stok atau frekuensi terjual
+          // — karena tidak ada barang dasar di katalog kita.
         } else if (material && material.lacak_inventori_status && !rollInventoryDeferred) {
           const stockReduction = item.jumlah * item.faktor_konversi;
           await postInventoryMovement({
@@ -984,15 +983,15 @@ export async function createSale(data: CreateSaleData): Promise<{
             frekuensi_terjual: (material.frekuensi_terjual || 0) + 1,
           });
         } else if (material) {
-          // Non-tracked inventory (lacak_inventori_status=0): just bump
-          // popularity so the POS material grid sorts correctly.
+          // Inventori non-tracked (lacak_inventori_status=0): cukup naikkan
+          // popularitas supaya grid barang POS berurut benar.
           await db.update("barang", item.barang_id, {
             frekuensi_terjual: (material.frekuensi_terjual || 0) + 1,
           });
         }
       }
 
-      // Create finance entry if LUNAS
+      // Buat entri keuangan kalau LUNAS
       if (isLunas) {
         await createFinanceEntry({
           tanggal: tanggalSale,
@@ -1028,7 +1027,7 @@ export async function createSale(data: CreateSaleData): Promise<{
         });
       }
 
-      // Create piutang if needed
+      // Buat piutang kalau perlu
       if (isPiutang) {
         const piutangId = generateId();
         const jatuhTempo =
@@ -1072,7 +1071,7 @@ export async function createSale(data: CreateSaleData): Promise<{
         const piutangResult = await db.insert("piutang_penjualan", piutang);
         if (piutangResult.error) throw piutangResult.error;
 
-        // If there's a partial payment, record it in finance
+        // Kalau ada pembayaran sebagian, catat di keuangan
         if (jumlahTerbayar > 0) {
           await createFinanceEntry({
             tanggal: tanggalSale,
@@ -1095,7 +1094,7 @@ export async function createSale(data: CreateSaleData): Promise<{
         }
       }
 
-      // Create production order
+      // Buat order produksi
       const spkNumber = await generateSPKNumber();
       const orderId = `OP-${Date.now()}`;
 
@@ -1118,12 +1117,12 @@ export async function createSale(data: CreateSaleData): Promise<{
       const orderResult = await db.insert("order_produksi", productionOrder);
       if (orderResult.error) throw orderResult.error;
 
-      // Create production items
+      // Buat item produksi
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const isMaklon = item.tipe_item === "MAKLON";
 
-        // Get the created item_penjualan
+        // Ambil item_penjualan yang sudah dibuat
         const itemPenjualanResult = await db.query("item_penjualan", {
           where: { penjualan_id: saleId },
           orderBy: { column: "dibuat_pada", ascending: true },
@@ -1137,9 +1136,9 @@ export async function createSale(data: CreateSaleData): Promise<{
             .toString(36)
             .substr(2, 9)}`;
 
-          // For maklon lines we use the deskripsi_pekerjaan as the production
-          // item name (it's a free-text job description, not a catalog item).
-          // For BARANG/JASA we look up the material name as before.
+          // Untuk baris maklon kita pakai deskripsi_pekerjaan sebagai nama item
+          // produksi (deskripsi bebas pekerjaan, bukan item katalog).
+          // Untuk BARANG/JASA kita lookup nama barang seperti biasa.
           let barangNama = "Unknown";
           if (isMaklon) {
             barangNama = item.deskripsi_pekerjaan?.trim()
@@ -1179,7 +1178,7 @@ export async function createSale(data: CreateSaleData): Promise<{
           );
           if (prodItemResult.error) throw prodItemResult.error;
 
-          // Create finishing items if specified
+          // Buat item finishing kalau ada
           if (item.finishing && item.finishing.length > 0) {
             for (const fin of item.finishing) {
               const finId = `FIN-${Date.now()}-${Math.random()
@@ -1206,23 +1205,22 @@ export async function createSale(data: CreateSaleData): Promise<{
 
       return {
         id: saleId,
-        nomor_invoice: invoiceNumber,
+        nomor_faktur: invoiceNumber,
         spk_number: spkNumber,
       };
     });
 
-    // Maklon: auto-create vendor PO(s) for maklon lines on this sale.
-    // Done OUTSIDE the main sale transaction so that:
-    //   1. Each maklon PO runs in its own db.transaction (cleaner rollback).
-    //   2. Failures here don't roll back the customer-facing sale, which is
-    //      what the kasir actually cares about. Errors are logged + surfaced
-    //      via the returned payload but the sale itself stays committed.
+    // Maklon: otomatis buat PO vendor untuk baris maklon di penjualan ini.
+    // Dilakukan DI LUAR transaksi penjualan utama supaya:
+    //   1. Tiap PO maklon jalan di db.transaction-nya sendiri (rollback lebih bersih).
+    //   2. Kegagalan di sini tidak rollback penjualan ke pelanggan, yang
+    //      adalah hal utama yang dipedulikan kasir. Error tetap dicatat dan
+    //      ditampilkan via payload yang dikembalikan, tapi penjualan tetap commit.
     if (maklonItemIds.size > 0) {
-      // Group maklon items by (vendor_subkontrak_id, metode_bayar_vendor).
-      // One PO per group: same vendor, same payment method = single invoice
-      // from their side. Mixed payment methods to the same vendor split into
-      // separate POs because the bookkeeping shape differs (CASH writes to
-      // keuangan, NET30 writes to hutang_pembelian).
+      // Kelompokkan item maklon berdasarkan (vendor_subkontrak_id, metode_bayar_vendor).
+      // Satu PO per grup: vendor sama + metode bayar sama = satu faktur dari sisi vendor.
+      // Beda metode bayar ke vendor yang sama dipecah jadi PO berbeda karena
+      // bentuk pembukuannya beda (CASH masuk keuangan, NET30 masuk hutang_pembelian).
       type GroupKey = string;
       const groups = new Map<
         GroupKey,
@@ -1274,7 +1272,7 @@ export async function createSale(data: CreateSaleData): Promise<{
               biaya_subkontrak: g.biaya_subkontrak,
             })),
           });
-          // Back-link each maklon sale line to the PO that fulfils it.
+          // Tautkan kembali tiap baris penjualan maklon ke PO yang memenuhinya.
           for (const g of group.items) {
             await db.update("item_penjualan", g.saleItemId, {
               pembelian_id_terkait: pembelianId,
@@ -1286,7 +1284,7 @@ export async function createSale(data: CreateSaleData): Promise<{
             group.vendorId,
             err
           );
-          // Surface but don't throw — the sale itself is already committed.
+          // Tampilkan tapi jangan throw — penjualan sendiri sudah commit.
         }
       }
     }
@@ -1300,17 +1298,17 @@ export async function createSale(data: CreateSaleData): Promise<{
 }
 
 /**
- * Delete sale (revert stock and finance).
+ * Hapus penjualan (kembalikan stok dan keuangan).
  *
- * Best-effort cleanup pattern: each step is wrapped individually so a
- * single failed step doesn't abort the rest. The sale row itself is
- * deleted last — if everything else succeeded, even partially, we still
- * remove the sale so it doesn't reappear in the history. Failures are
- * collected and surfaced in the thrown error so the user knows exactly
- * what was left orphaned.
+ * Pola pembersihan best-effort: tiap langkah dibungkus terpisah supaya
+ * satu langkah gagal tidak membatalkan langkah lain. Baris penjualan itu
+ * sendiri dihapus terakhir — kalau langkah lain berhasil walau sebagian,
+ * penjualan tetap dihapus supaya tidak muncul lagi di riwayat. Kegagalan
+ * dikumpulkan dan ditampilkan via error yang dilempar supaya pengguna tahu
+ * persis apa yang ter-orphan.
  *
- * For full atomic transactions across these steps, migrate to a Postgres
- * RPC function (see roadmap in repo docs).
+ * Untuk transaksi atomik penuh lintas langkah, migrasikan ke fungsi RPC
+ * Postgres (lihat roadmap di docs repo).
  */
 export async function voidSale(
   id: string,
@@ -1487,29 +1485,29 @@ export async function deleteSale(id: string): Promise<boolean> {
 
   const failures: string[] = [];
 
-  // Cascade-delete auto-created maklon POs first.
+  // Hapus berantai PO maklon yang dibuat otomatis terlebih dahulu.
   try {
     await deleteMaklonPurchasesForSale(id);
   } catch (e: any) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[deleteSale] failed to cascade-delete maklon POs:", e);
-    failures.push(`maklon PO cleanup: ${msg}`);
+    console.error("[deleteSale] gagal hapus berantai PO maklon:", e);
+    failures.push(`pembersihan PO maklon: ${msg}`);
   }
 
-  // Confirm sale exists before continuing.
+  // Pastikan penjualan ada sebelum lanjut.
   const saleResult = await db.queryOne("penjualan", { where: { id } });
   if (!saleResult.data) {
     throw new Error("Transaksi tidak ditemukan");
   }
 
-  // Gather sale items so we can revert stock + clean linked rows.
+  // Kumpulkan baris penjualan supaya bisa kembalikan stok + bersihkan baris terkait.
   const itemsResult = await db.query("item_penjualan", {
     where: { penjualan_id: id },
   });
   const items = itemsResult.data || [];
 
-  // Step 1: reverse stock for inventory-tracked items. Per-item try/catch
-  // so a single missing material doesn't break the rest of the pipeline.
+  // Langkah 1: kembalikan stok untuk barang yang dilacak inventori. Try/catch
+  // per item supaya satu barang yang hilang tidak merusak alur lain.
   for (const item of items as any[]) {
     if (item.tipe_item === "MAKLON" || item.tipe_item === "JASA") {
       continue;
@@ -1537,8 +1535,8 @@ export async function deleteSale(id: string): Promise<boolean> {
     }
   }
 
-  // Step 2: delete finance entries linked by [REF:<saleId>]. These are
-  // OMZET/HPP/PIUTANG rows that POS injected at sale-creation time.
+  // Langkah 2: hapus entri keuangan yang ditautkan via [REF:<saleId>]. Itu
+  // baris OMZET/HPP/PIUTANG yang disuntikkan POS saat penjualan dibuat.
   try {
     const financeResult = await db.query("keuangan");
     const financeEntries = financeResult.data || [];
@@ -1564,7 +1562,7 @@ export async function deleteSale(id: string): Promise<boolean> {
     failures.push(`scan keuangan: ${msg}`);
   }
 
-  // Step 3: delete piutang + pelunasan rows linked to this sale.
+  // Langkah 3: hapus baris piutang + pelunasan yang ditautkan ke penjualan ini.
   try {
     const piutangResult = await db.query("piutang_penjualan", {
       where: { id_penjualan: id },
@@ -1607,7 +1605,7 @@ export async function deleteSale(id: string): Promise<boolean> {
     failures.push(`scan piutang_penjualan: ${msg}`);
   }
 
-  // Step 4: delete sale items.
+  // Langkah 4: hapus baris penjualan.
   for (const item of items) {
     try {
       const del = await db.delete("item_penjualan", (item as any).id);
@@ -1618,9 +1616,9 @@ export async function deleteSale(id: string): Promise<boolean> {
     }
   }
 
-  // Step 5: delete the sale itself. This is the only step we treat as
-  // hard-fatal — if the header survives, the sale is still visible to
-  // the user and they can retry deletion.
+  // Langkah 5: hapus header penjualan itu sendiri. Ini satu-satunya langkah
+  // yang dianggap fatal — kalau header bertahan, penjualan masih terlihat
+  // ke pengguna dan mereka bisa mencoba hapus ulang.
   const deleteResult = await db.delete("penjualan", id);
   if (deleteResult.error) {
     const deleteError: any = deleteResult.error;
@@ -1638,8 +1636,8 @@ export async function deleteSale(id: string): Promise<boolean> {
 
   await recalculateCashbookIfAvailable();
 
-  // If we made it here but there were partial failures, surface them so
-  // the kasir knows manual cleanup may be needed for orphaned rows.
+  // Sampai sini berarti penghapusan berhasil tapi ada kegagalan parsial — tampilkan
+  // supaya kasir tahu mungkin perlu pembersihan manual untuk baris orphan.
   if (failures.length > 0) {
     console.warn(
       `[deleteSale] sale ${id} deleted with ${failures.length} non-fatal failures:`,
@@ -1654,33 +1652,33 @@ export async function deleteSale(id: string): Promise<boolean> {
 }
 
 /**
- * Get all receivables
+ * Ambil semua piutang
  */
 export async function getReceivables(): Promise<Receivable[]> {
   try {
     const piutangResult = await db.query<Receivable>("piutang_penjualan");
     const piutangList = piutangResult.data || [];
 
-    // Filter only AKTIF and SEBAGIAN
+    // Filter hanya AKTIF dan SEBAGIAN
     const activeReceivables = piutangList.filter(
       (p: any) => p.status === "AKTIF" || p.status === "SEBAGIAN"
     );
 
-    // Get sales and customers for enrichment
+    // Ambil penjualan dan pelanggan untuk pengayaan
     const salesResult = await db.query("penjualan");
     const customersResult = await db.query("pelanggan");
 
     const sales = salesResult.data || [];
     const customers = customersResult.data || [];
 
-    // Enrich receivables
+    // Lengkapi data piutang
     const enrichedReceivables = activeReceivables.map((piutang: any) => {
       const sale = sales.find((s: any) => s.id === piutang.id_penjualan);
       const customer = customers.find((c: any) => c.id === sale?.pelanggan_id);
 
       return {
         ...piutang,
-        nomor_invoice: sale?.nomor_invoice || undefined,
+        nomor_faktur: sale?.nomor_faktur || undefined,
         pelanggan_id: sale?.pelanggan_id || undefined,
         pelanggan_nama: customer?.nama || undefined,
         pelanggan_telepon: customer?.telepon || undefined,
@@ -1702,17 +1700,17 @@ export async function getReceivables(): Promise<Receivable[]> {
 }
 
 /**
- * Pay receivable.
+ * Bayar piutang.
  *
- * Steps (each best-effort with detailed error logging):
- *   1. Validate piutang + payment amount.
- *   2. Insert pelunasan_piutang row.
- *   3. Update piutang_penjualan totals + status.
- *   4. Insert keuangan entry (LUNAS / PIUTANG).
+ * Langkah (tiap langkah best-effort dengan log error detail):
+ *   1. Validasi piutang + jumlah pembayaran.
+ *   2. Sisipkan baris pelunasan_piutang.
+ *   3. Update total + status piutang_penjualan.
+ *   4. Sisipkan entri keuangan (LUNAS / PIUTANG).
  *
- * Steps 1 + 2 are hard-required (validation + base record); steps 3 + 4
- * are flagged but not fatal so the kasir can retry / fix manually if
- * needed. For full atomic safety, migrate to a Postgres RPC function.
+ * Langkah 1 + 2 wajib (validasi + record dasar); langkah 3 + 4 ditandai
+ * tapi tidak fatal supaya kasir bisa retry / fix manual kalau perlu.
+ * Untuk keamanan atomik penuh, migrasikan ke fungsi RPC Postgres.
  */
 export async function payReceivable(data: {
   piutang_id: string;
@@ -1728,7 +1726,7 @@ export async function payReceivable(data: {
   status_baru: string;
   sisa_piutang: number;
 }> {
-  // Validation — must pass before any writes.
+  // Validasi — wajib lulus sebelum melakukan tulis apa pun.
   if (!data.jumlah_bayar || data.jumlah_bayar <= 0) {
     throw new Error("Jumlah pembayaran harus lebih dari 0");
   }
@@ -1745,7 +1743,7 @@ export async function payReceivable(data: {
     throw new Error("Jumlah pembayaran tidak boleh melebihi sisa piutang");
   }
 
-  // Resolve sale + customer for the keuangan keperluan string.
+  // Resolve penjualan + pelanggan untuk string keperluan keuangan.
   const saleResult = await db.queryOne("penjualan", {
     where: { id: piutang.id_penjualan },
   });
@@ -1760,8 +1758,8 @@ export async function payReceivable(data: {
 
   const failures: string[] = [];
 
-  // Step 1 (hard-required): create payment record. Without this row the
-  // payment never happened — bail out instead of writing partial state.
+  // Langkah 1 (wajib): buat record pembayaran. Tanpa baris ini, pembayaran
+  // dianggap tidak pernah terjadi — keluar daripada menulis state parsial.
   const paymentId = generateId();
   const payment = {
     id: paymentId,
@@ -1778,7 +1776,7 @@ export async function payReceivable(data: {
     throw paymentResult.error;
   }
 
-  // Step 2 (best-effort): update piutang totals + status.
+  // Langkah 2 (best-effort): update total + status piutang.
   const newJumlahTerbayar = piutang.jumlah_terbayar + data.jumlah_bayar;
   const newSisaPiutang = piutang.sisa_piutang - data.jumlah_bayar;
   const newStatus =
@@ -1801,10 +1799,10 @@ export async function payReceivable(data: {
     failures.push(`update piutang: ${msg}`);
   }
 
-  // Step 3 (best-effort): create matching keuangan entry.
+  // Langkah 3 (best-effort): buat entri keuangan yang sesuai.
   try {
     const kategori = newStatus === "LUNAS" ? "LUNAS" : "PIUTANG";
-    let keperluan = `Bayar Piutang ${sale?.nomor_invoice || ""}`;
+    let keperluan = `Bayar Piutang ${sale?.nomor_faktur || ""}`;
     if (customer) {
       keperluan += ` - ${customer.nama}`;
     }
@@ -1839,10 +1837,10 @@ export async function payReceivable(data: {
       `[payReceivable] payment ${paymentId} recorded with ${failures.length} non-fatal failures:`,
       failures
     );
-    // Note: we intentionally do NOT throw here. The payment row is the
-    // source of truth — losing it would be far worse than a slightly
-    // out-of-sync piutang status. Surface a soft warning via console
-    // and let the caller proceed with success.
+    // Catatan: kita sengaja TIDAK throw di sini. Baris pembayaran adalah
+    // sumber kebenaran — kehilangan baris itu jauh lebih buruk daripada
+    // status piutang sedikit out-of-sync. Tampilkan warning lewat console
+    // dan biarkan caller lanjut sukses.
   }
 
   return {
@@ -1854,13 +1852,13 @@ export async function payReceivable(data: {
 }
 
 /**
- * Revert payment (make piutang AKTIF again)
+ * Revert pembayaran (jadikan piutang AKTIF lagi)
  */
 export async function revertSalePayment(data: {
   sale_id: string;
   dibuat_oleh?: string;
 }): Promise<number> {
-  // Validation phase — must succeed before any deletes.
+  // Fase validasi — wajib sukses sebelum ada penghapusan apa pun.
   const saleResult = await db.queryOne("penjualan", {
     where: { id: data.sale_id },
   });
@@ -1887,11 +1885,11 @@ export async function revertSalePayment(data: {
     );
   }
 
-  // Best-effort cleanup. Each step is isolated so a single failure
-  // doesn't abort the others.
+  // Pembersihan best-effort. Tiap langkah terisolasi supaya satu kegagalan
+  // tidak membatalkan langkah lain.
   const failures: string[] = [];
 
-  // Step 1: delete all payment records.
+  // Langkah 1: hapus semua record pembayaran.
   for (const payment of payments) {
     try {
       const del = await db.delete(
@@ -1909,7 +1907,7 @@ export async function revertSalePayment(data: {
     }
   }
 
-  // Step 2: delete linked keuangan entries (LUNAS / PIUTANG matching invoice).
+  // Langkah 2: hapus entri keuangan terkait (LUNAS / PIUTANG yang match faktur).
   try {
     const financeResult = await db.query("keuangan");
     const financeEntries = financeResult.data || [];
@@ -1917,7 +1915,7 @@ export async function revertSalePayment(data: {
       if (
         (entry.kategori_transaksi === "LUNAS" ||
           entry.kategori_transaksi === "PIUTANG") &&
-        entry.keperluan?.includes(sale.nomor_invoice)
+        entry.keperluan?.includes(sale.nomor_faktur)
       ) {
         try {
           const del = await db.delete("keuangan", entry.id);
@@ -1933,7 +1931,7 @@ export async function revertSalePayment(data: {
     failures.push(`scan keuangan: ${msg}`);
   }
 
-  // Step 3: reset piutang to original state.
+  // Langkah 3: reset piutang ke kondisi awal.
   try {
     const upd = await db.update("piutang_penjualan", piutang.id, {
       jumlah_terbayar: 0,
@@ -1946,7 +1944,7 @@ export async function revertSalePayment(data: {
     failures.push(`reset piutang: ${msg}`);
   }
 
-  // Step 4: bump penjualan diperbarui_pada timestamp.
+  // Langkah 4: perbarui timestamp diperbarui_pada di penjualan.
   try {
     const upd = await db.update("penjualan", data.sale_id, {
       diperbarui_pada: getCurrentTimestamp(),
@@ -1973,7 +1971,7 @@ export async function revertSalePayment(data: {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS (PRIVATE)
+// FUNGSI HELPER (PRIVATE)
 // ============================================================================
 
 async function createFinanceEntry(data: {
@@ -1989,7 +1987,7 @@ async function createFinanceEntry(data: {
   reference_type?: string | null;
   reference_id?: string | null;
 }) {
-  // Get max urutan_tampilan
+  // Ambil urutan_tampilan tertinggi
   const maxOrderResult = await db.query("keuangan", {
     orderBy: { column: "urutan_tampilan", ascending: false },
     limit: 1,
@@ -2040,10 +2038,10 @@ async function buildKeperluan(
     if (customerResult.data) {
       keperluan += ` - ${customerResult.data.nama}`;
     } else {
-      keperluan += " - Walk-in";
+      keperluan += " - Pelanggan Umum";
     }
   } else {
-    keperluan += " - Walk-in";
+    keperluan += " - Pelanggan Umum";
   }
 
   if (catatan?.trim()) {
@@ -2081,10 +2079,10 @@ async function buildPiutangKeperluan(
     if (customerResult.data) {
       keperluan += ` - ${customerResult.data.nama}`;
     } else {
-      keperluan += " - Walk-in";
+      keperluan += " - Pelanggan Umum";
     }
   } else {
-    keperluan += " - Walk-in";
+    keperluan += " - Pelanggan Umum";
   }
 
   if (jumlahTerbayar && total_jumlah) {

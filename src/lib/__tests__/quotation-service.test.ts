@@ -54,7 +54,7 @@ describe("quotation-service", () => {
     createSaleMock.mockReset();
   });
 
-  it("creates a quotation with correct totals and DRAFT status", async () => {
+  it("membuat penawaran dengan total benar dan status DRAF", async () => {
     const result = await createQuotation({ ...baseInput, tanggal: "2026-05-25" });
     expect(result.nomor_penawaran).toBe("QUO-20260525-001");
 
@@ -67,7 +67,7 @@ describe("quotation-service", () => {
     expect(items[0].subtotal).toBe(5000);
   });
 
-  it("does not touch barang/keuangan/inventory during create or update", async () => {
+  it("tidak menyentuh barang/keuangan/inventory saat create atau update", async () => {
     await createQuotation({ ...baseInput, tanggal: "2026-05-25" });
     await updateQuotation(
       Array.from(mockTable("penawaran").values())[0].id,
@@ -79,7 +79,7 @@ describe("quotation-service", () => {
     expect(__mock.db.update).not.toHaveBeenCalledWith("barang", expect.anything(), expect.anything());
   });
 
-  it("blocks editing a quotation that has been converted", async () => {
+  it("memblokir edit penawaran yang sudah dikonversi", async () => {
     await createQuotation({ ...baseInput, tanggal: "2026-05-25" });
     const id = Array.from(mockTable("penawaran").values())[0].id;
     await updateQuotationStatus(id, "CONVERTED");
@@ -88,7 +88,7 @@ describe("quotation-service", () => {
     ).rejects.toThrow("sudah dikonversi");
   });
 
-  it("converts a quotation to a sale and links the new invoice", async () => {
+  it("mengkonversi penawaran ke penjualan dan menautkan faktur baru", async () => {
     createSaleMock.mockImplementation(async (input) => ({ id: "sale-99", ...input }));
 
     await createQuotation({ ...baseInput, tanggal: "2026-05-25" });
@@ -119,7 +119,7 @@ describe("quotation-service", () => {
     expect(invoice.penawaran_id).toBe(quote.id);
   });
 
-  it("rejects converting a CANCELLED or EXPIRED quotation", async () => {
+  it("menolak konversi penawaran CANCELLED atau EXPIRED", async () => {
     await createQuotation({ ...baseInput, tanggal: "2026-05-25" });
     const id = Array.from(mockTable("penawaran").values())[0].id;
     await updateQuotationStatus(id, "CANCELLED");

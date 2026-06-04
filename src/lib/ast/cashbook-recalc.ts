@@ -1,21 +1,22 @@
 /**
- * Cashbook recalculation driven by user-defined AST formulas.
+ * Hitung ulang buku kas yang digerakkan oleh formula AST yang didefinisikan pengguna.
  *
- * Replaces the previous hardcoded logic in `calculate-cashbook.ts` +
- * `cashbook-recalc-logic.ts`. Public exports are kept name-compatible so
- * existing callers (pos-service, finance-service, purchases-service) keep
- * working without invasive changes.
+ * Menggantikan logika hardcoded sebelumnya di `calculate-cashbook.ts` +
+ * `cashbook-recalc-logic.ts`. Ekspor publik dipertahankan kompatibel nama
+ * supaya pemanggil yang ada (pos-service, finance-service, purchases-service)
+ * tetap bekerja tanpa perubahan invasif.
  *
- * Flow per recalculation:
- *   1. Pull rows (sorted by `urutan_tampilan`, then `dibuat_pada`).
- *   2. Load enabled formulas + partners from the DB. Falls back to seed
- *      defaults if the DB has no rows yet (first-run safety net).
- *   3. Walk the dataset row-by-row using the AST evaluator. The `prevOutputs`
- *      argument for row N is the output snapshot of row N-1 (so cumulative
- *      formulas like saldo / omzet behave like the original Sheets formulas).
- *   4. For each row, build an `updates` map. Columns flagged with
- *      `override_<col>=1` are skipped so the user's manual overrides win.
- *   5. Write `updates` back to the row.
+ * Alur per perhitungan ulang:
+ *   1. Tarik baris (urut `urutan_tampilan`, lalu `dibuat_pada`).
+ *   2. Muat formula + partner aktif dari DB. Jatuh balik ke default seed
+ *      kalau DB belum punya baris (safety net first-run).
+ *   3. Telusuri dataset baris-per-baris memakai evaluator AST. Argumen
+ *      `prevOutputs` untuk baris N adalah snapshot output baris N-1 (supaya
+ *      formula kumulatif seperti saldo / omzet berperilaku seperti formula
+ *      asli di Sheets).
+ *   4. Untuk tiap baris, bangun map `updates`. Kolom dengan flag
+ *      `override_<col>=1` dilewati supaya override manual pengguna menang.
+ *   5. Tulis `updates` balik ke baris.
  */
 
 import "server-only";
@@ -42,7 +43,7 @@ import {
   type PartnerDefinition,
 } from "./types";
 
-/** Row shape consumed by the recalc engine. */
+/** Bentuk baris yang dikonsumsi engine recalc. */
 export interface CashbookRecalcInputRow {
   id: string;
   tanggal: string;
@@ -57,7 +58,7 @@ export interface CashbookRecalcInputRow {
   diarsipkan_pada?: string | null;
   status_transaksi?: string | null;
 
-  // Computed columns — read here for override fallback values.
+  // Kolom hasil hitungan — dibaca di sini untuk fallback nilai override.
   omzet?: number;
   biaya_operasional?: number;
   biaya_bahan?: number;
@@ -71,7 +72,7 @@ export interface CashbookRecalcInputRow {
   bagi_hasil_suri?: number;
   bagi_hasil_gemi?: number;
 
-  // Override flags — 1 / true means "keep DB value, don't recompute".
+  // Flag override — 1 / true berarti "pertahankan nilai DB, jangan hitung ulang".
   override_omzet?: number | boolean;
   override_biaya_operasional?: number | boolean;
   override_biaya_bahan?: number | boolean;
@@ -88,7 +89,7 @@ export interface CashbookRecalcInputRow {
   [key: string]: unknown;
 }
 
-/** Cascade ordering: oldest row first, ties broken by created-at. */
+/** Urutan kaskade: baris terlama duluan, tie diputus oleh created-at. */
 export function sortCashbookRowsForRecalc<T extends CashbookRecalcInputRow>(
   rows: T[]
 ): T[] {

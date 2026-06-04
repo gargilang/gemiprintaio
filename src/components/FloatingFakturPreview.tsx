@@ -56,7 +56,7 @@ type ResizeEdge =
 export default function FloatingFakturPreview({
   open,
   html,
-  title = "Preview Faktur",
+  title = "Pratinjau Faktur",
   orientation = "landscape",
   onClose,
 }: FloatingFakturPreviewProps) {
@@ -271,7 +271,7 @@ export default function FloatingFakturPreview({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={onClose}
             className="w-8 h-8 rounded-lg hover:bg-white/15 flex items-center justify-center text-lg leading-none"
-            aria-label="Tutup preview faktur"
+            aria-label="Tutup pratinjau faktur"
           >
             ×
           </button>

@@ -1,10 +1,10 @@
 /**
- * Inserts fake stress-test master data into Supabase (barang, pelanggan, vendor).
- * All rows use IDs prefixed with "stress-seed-" so they can be removed safely
- * via: npm run supabase:stress:remove
+ * Sisipkan data master stress-test palsu ke Supabase (barang, pelanggan, vendor).
+ * Semua baris memakai ID berawalan "stress-seed-" supaya bisa dihapus dengan aman
+ * lewat: npm run supabase:stress:remove
  *
- * Uses Supabase REST API (SUPABASE_SERVICE_ROLE_KEY) or Postgres (DATABASE_URL).
- * Run: npm run supabase:stress:seed
+ * Memakai Supabase REST API (SUPABASE_SERVICE_ROLE_KEY) atau Postgres (DATABASE_URL).
+ * Jalankan: npm run supabase:stress:seed
  */
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";

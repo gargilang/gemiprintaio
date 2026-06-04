@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { getNextAvailableNsfpAction, listNsfpPoolAction } from "@/app/settings/actions";
+import { getNextAvailableNsfpAction, listNsfpPoolAction } from "@/app/pengaturan/actions";
 import { formatNsfpString, isValidNpwp, formatNpwp } from "@/lib/ppn-helpers";
 
 export interface PpnFakturData {
@@ -40,7 +40,7 @@ interface Props {
   defaultPpnPersen: number;
   defaultPpnMetode: "EKSKLUSIF" | "INKLUSIF";
   defaultKodeTransaksi: string;
-  /** Pelanggan terpilih (untuk autofill NPWP). Optional. */
+  /** Pelanggan terpilih (untuk autofill NPWP). Opsional. */
   pelanggan?: {
     nama?: string;
     npwp?: string | null;
@@ -70,7 +70,7 @@ export default function PpnFakturModal({
 
   useEffect(() => {
     if (open) {
-      // Reset to initial saat modal dibuka.
+      // Reset ke kondisi awal saat modal dibuka.
       setData({
         ...initial,
         ppn_persen: initial.ppn_persen || defaultPpnPersen,
@@ -111,7 +111,7 @@ export default function PpnFakturModal({
       );
       if (!next) {
         setError(
-          "Tidak ada NSFP tersedia. Import dulu dari Coretax di Settings → PPN."
+          "Tidak ada NSFP tersedia. Impor dulu dari Coretax di Pengaturan → PPN."
         );
         return;
       }

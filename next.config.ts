@@ -40,6 +40,26 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    // Redirect URL lama ke URL Indonesia. Bookmark dan link luar yang masih
+    // memakai path English tetap bekerja (akan kena 301 permanent ke path baru).
+    return [
+      { source: "/customers", destination: "/pelanggan", permanent: true },
+      { source: "/materials", destination: "/barang", permanent: true },
+      { source: "/dashboard", destination: "/beranda", permanent: true },
+      { source: "/settings", destination: "/pengaturan", permanent: true },
+      { source: "/finance", destination: "/keuangan", permanent: true },
+      { source: "/reports", destination: "/laporan", permanent: true },
+      { source: "/inventory/:path*", destination: "/inventori/:path*", permanent: true },
+      { source: "/users", destination: "/pengguna", permanent: true },
+      { source: "/production/:path*", destination: "/produksi/:path*", permanent: true },
+      { source: "/purchases", destination: "/pembelian", permanent: true },
+      { source: "/purchase-orders", destination: "/pesanan-pembelian", permanent: true },
+      { source: "/purchase-returns", destination: "/retur-pembelian", permanent: true },
+      { source: "/sales-returns", destination: "/retur-penjualan", permanent: true },
+    ];
+  },
+
   // For Tauri, use standalone to bundle Next.js server
   output: isTauri ? "standalone" : undefined,
 

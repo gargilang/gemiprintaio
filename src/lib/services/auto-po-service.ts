@@ -72,12 +72,12 @@ function pickLatestPurchase(rows: Array<{
 }
 
 /**
- * Find all materials whose stock is at or below the par level
- * (level_stok_minimum) and gather a vendor suggestion based on the most
- * recent non-voided purchase that has a vendor attached.
+ * Cari semua barang yang stoknya pada atau di bawah level minimum
+ * (level_stok_minimum) dan kumpulkan saran vendor berdasarkan pembelian
+ * non-void terbaru yang punya vendor.
  *
- * Items already covered by pending PO quantity (DRAFT/SENT/PARTIAL_RECEIVED)
- * are filtered out so we never double-order.
+ * Item yang sudah ter-cover oleh kuantitas PO pending (DRAFT/SENT/PARTIAL_RECEIVED)
+ * disaring keluar supaya kita tidak pernah double-order.
  */
 export async function getReorderSuggestions(): Promise<ReorderSuggestion[]> {
   const barangRes = await db.query<any>("barang", {});
@@ -95,9 +95,9 @@ export async function getReorderSuggestions(): Promise<ReorderSuggestion[]> {
 
   if (lowStock.length === 0) return [];
 
-  // Pull purchase items + pembelian rows once and join in memory. The
-  // dataset for a single shop is small enough; the unified DB layer does
-  // not expose a server-side join.
+  // Tarik baris item_pembelian + pembelian sekali lalu join di memori. Dataset
+  // untuk satu toko cukup kecil; layer DB unified tidak menyediakan join sisi
+  // server.
   const [pembelianRes, itemPembelianRes, vendorRes, poItemsRes, poRes] =
     await Promise.all([
       db.query<any>("pembelian", {}),
@@ -205,9 +205,9 @@ export async function getReorderSuggestions(): Promise<ReorderSuggestion[]> {
 }
 
 /**
- * Group suggestions by suggested vendor. Items without a suggested
- * vendor are returned as a single group with vendor_id = null so the
- * UI can render an "unassigned" bucket.
+ * Kelompokkan saran berdasarkan vendor yang disarankan. Item tanpa saran
+ * vendor dikembalikan sebagai satu grup dengan vendor_id = null supaya
+ * UI bisa merender bucket "tanpa vendor".
  */
 export function groupSuggestionsByVendor(
   suggestions: ReorderSuggestion[]
@@ -228,7 +228,7 @@ export function groupSuggestionsByVendor(
     group.items.push(s);
     group.total_estimasi += s.suggested_qty * s.last_unit_price;
   }
-  // Vendor groups first (sorted by name), unassigned last
+  // Grup vendor duluan (urut nama), tanpa vendor di akhir
   return Array.from(groups.values()).sort((a, b) => {
     if (!a.vendor_id && !b.vendor_id) return 0;
     if (!a.vendor_id) return 1;
@@ -239,10 +239,10 @@ export function groupSuggestionsByVendor(
 
 export interface GenerateDraftPurchaseOrdersInput {
   /**
-   * Optional filter — only generate draft POs for these vendor ids. When
-   * omitted, generate for every vendor that has at least one suggestion.
-   * Items without a suggested vendor are never auto-generated; they are
-   * returned in `unassigned` for the UI to surface.
+   * Filter opsional — hanya buat draf PO untuk vendor id ini. Saat dikosongkan,
+   * buat untuk setiap vendor yang punya minimal satu saran.
+   * Item tanpa saran vendor tidak pernah di-generate otomatis; mereka
+   * dikembalikan di `unassigned` supaya bisa ditampilkan UI.
    */
   vendor_ids?: string[];
   dibuat_oleh?: string | null;
@@ -256,14 +256,14 @@ export interface GenerateDraftPurchaseOrdersResult {
     vendor_name: string;
     item_count: number;
   }>;
-  /** Items skipped because there is no vendor suggestion. */
+  /** Item yang dilewati karena tidak ada saran vendor. */
   unassigned: ReorderSuggestion[];
 }
 
 /**
- * For each vendor with low-stock items, create a single DRAFT purchase
- * order that contains all of that vendor's suggestions. Items without a
- * vendor suggestion are returned in `unassigned` and never written.
+ * Untuk tiap vendor yang punya item stok rendah, buat satu pesanan pembelian
+ * berstatus DRAFT yang berisi semua saran vendor itu. Item tanpa saran vendor
+ * dikembalikan di `unassigned` dan tidak pernah ditulis ke DB.
  */
 export async function generateDraftPurchaseOrders(
   input: GenerateDraftPurchaseOrdersInput = {}

@@ -1,18 +1,17 @@
 /**
  * validate-v2-parity.mjs
  *
- * Compare legacy hardcoded columns on `keuangan` against the new
- * `transaction_computed` rows for the same formula. Prints a per-row
- * diff and a final tally so the operator can decide whether it's safe
- * to drop the legacy columns (Phase 8 of the Expression Assistant
- * refactor).
+ * Bandingkan kolom hardcoded legacy di `keuangan` terhadap baris
+ * `transaction_computed` baru untuk formula yang sama. Cetak diff per-baris
+ * dan tally akhir supaya operator bisa memutuskan apakah aman untuk
+ * menjatuhkan kolom legacy (Fase 8 dari refactor Expression Assistant).
  *
- * Usage:
- *   node scripts/validate-v2-parity.mjs                 # local SQLite
+ * Pemakaian:
+ *   node scripts/validate-v2-parity.mjs                 # SQLite lokal
  *   node --env-file=.env.local scripts/validate-v2-parity.mjs --tolerance 0.5
  *
- * Flags:
- *   --tolerance N   Allowed absolute difference (default 0)
+ * Flag:
+ *   --tolerance N   Selisih absolut yang diizinkan (default 0)
  *   --formula KEY   Only compare a single formula_key (default: all known)
  *   --limit N       Stop printing diffs after N rows (default 25)
  *

@@ -118,7 +118,7 @@ export default function SuratJalanPage() {
 
   const handleAdvanceStatus = (sj: SuratJalan, next: SuratJalanStatus) => {
     const labels: Record<SuratJalanStatus, string> = {
-      DRAFT: "DRAFT",
+      DRAFT: "DRAF",
       TERKIRIM: "TERKIRIM",
       DITERIMA: "DITERIMA",
       BATAL: "BATAL",
@@ -145,7 +145,7 @@ export default function SuratJalanPage() {
   const handleDelete = (sj: SuratJalan) => {
     setConfirmDialog({
       title: "Hapus Surat Jalan",
-      message: `Hapus permanen surat jalan ${sj.nomor_sj}?\n\nHanya SJ berstatus DRAFT yang bisa dihapus.`,
+      message: `Hapus permanen surat jalan ${sj.nomor_sj}?\n\nHanya SJ berstatus DRAF yang bisa dihapus.`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
@@ -168,7 +168,7 @@ export default function SuratJalanPage() {
       const payload = {
         nomor_sj: sj.nomor_sj,
         tanggal: sj.tanggal,
-        nomor_invoice: sj.nomor_invoice ?? null,
+        nomor_faktur: sj.nomor_faktur ?? null,
         pelanggan_nama: sj.pelanggan_nama ?? null,
         pelanggan_alamat: sj.pelanggan_alamat ?? null,
         pelanggan_telepon: sj.pelanggan_telepon ?? null,

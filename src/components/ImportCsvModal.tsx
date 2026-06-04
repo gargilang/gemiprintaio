@@ -109,7 +109,7 @@ export default function ImportCsvModal({
               </svg>
             </div>
             <h3 className="text-xl font-bold text-white truncate">
-              Import dari CSV
+              Impor dari CSV
             </h3>
           </div>
           <button

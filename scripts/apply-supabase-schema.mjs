@@ -1,9 +1,9 @@
 /**
- * Applies supabase/schema.sql and supabase/seed-default-values.sql
- * in order, using the Postgres connection string (same as supabase:wipe).
+ * Terapkan supabase/schema.sql dan supabase/seed-default-values.sql
+ * secara berurutan, memakai connection string Postgres (sama dengan supabase:wipe).
  *
- * Requires: DATABASE_URL or DIRECT_URL in .env.local
- * Run: npm run supabase:apply
+ * Butuh: DATABASE_URL atau DIRECT_URL di .env.local
+ * Jalankan: npm run supabase:apply
  */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";

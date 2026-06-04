@@ -1,6 +1,6 @@
 /**
  * Finance Service
- * Cash book operations with running balance calculations
+ * Operasi buku kas dengan kalkulasi saldo berjalan
  */
 
 import "server-only";
@@ -54,7 +54,7 @@ export interface CashBookEntry {
 }
 
 /**
- * Get all active cash book entries (not archived)
+ * Ambil semua entri buku kas aktif (yang belum diarsipkan)
  */
 export async function getCashBookEntries(): Promise<CashBookEntry[]> {
   try {
@@ -74,7 +74,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
 }
 
 /**
- * Get single cash book entry
+ * Ambil satu entri buku kas
  */
 export async function getCashBookEntry(
   id: string
@@ -93,7 +93,7 @@ export async function getCashBookEntry(
 }
 
 /**
- * Calculate running totals based on previous entry
+ * Hitung total berjalan berdasarkan entri sebelumnya
  */
 async function calculateRunningTotals(
   kategori_transaksi: string,
@@ -101,7 +101,7 @@ async function calculateRunningTotals(
   kredit: number,
   keperluan: string
 ) {
-  // Get last entry
+  // Ambil entri terakhir
   const lastEntryResult = await db.query<CashBookEntry>("keuangan", {
     orderBy: { column: "urutan_tampilan", ascending: false },
   });
@@ -111,7 +111,7 @@ async function calculateRunningTotals(
   );
   const isFirstEntry = !lastEntry;
 
-  // Previous values
+  // Nilai sebelumnya
   const prev = {
     saldo: isFirstEntry ? 0 : lastEntry.saldo,
     omzet: isFirstEntry ? 0 : lastEntry.omzet,
@@ -177,14 +177,14 @@ async function calculateRunningTotals(
   }
 
   // SALDO
-  // HPP is a non-cash journal entry — exclude it from cash balance.
-  // The actual cash outflow happened at purchase time (SUPPLY entry).
+  // HPP adalah entri jurnal non-kas — keluarkan dari saldo kas.
+  // Aliran kas keluar yang sebenarnya terjadi saat pembelian (entri SUPPLY).
   //
-  // MAKLON (subcontract printing payouts) and SUPPLY (regular purchases) are
-  // real cash outflows: they only move `saldo` (debit − kredit). They do NOT
-  // bump biaya_operasional or biaya_bahan because the cost was already booked
-  // as HPP when the sale that triggered them was created. Bumping again here
-  // would double-count the cost in laba_bersih.
+  // MAKLON (pembayaran cetak subkontrak) dan SUPPLY (pembelian biasa) adalah
+  // arus kas keluar nyata: hanya menggeser `saldo` (debit − kredit). Mereka TIDAK
+  // menambah biaya_operasional atau biaya_bahan karena biayanya sudah dibukukan
+  // sebagai HPP saat penjualan pemicu dibuat. Menambahkan lagi di sini akan
+  // double-count cost di laba_bersih.
   const saldo =
     kategori_transaksi === "HPP" ||
     kategori_transaksi === "RETUR_HPP" ||
@@ -291,9 +291,9 @@ async function calculateRunningTotals(
 }
 
 /**
- * Create new cash book entry (aligned with legacy POST /api/finance/cash-book).
- * Inserts running totals, then runs recalculateCashbook when native SQLite is available
- * so overrides / batch rules match the AST recalc engine.
+ * Buat entri buku kas baru (selaras dengan legacy POST /api/finance/cash-book).
+ * Sisipkan total berjalan, lalu jalankan recalculateCashbook saat SQLite native
+ * tersedia supaya override / aturan batch cocok dengan engine recalc AST.
  */
 export async function createCashBookEntry(data: {
   tanggal: string;
@@ -356,7 +356,7 @@ export async function createCashBookEntry(data: {
 }
 
 /**
- * Update cash book entry
+ * Perbarui entri buku kas
  */
 export async function updateCashBookEntry(
   id: string,
@@ -372,7 +372,7 @@ export async function updateCashBookEntry(
 }
 
 /**
- * Delete cash book entry
+ * Hapus entri buku kas
  */
 export async function deleteCashBookEntry(id: string): Promise<void> {
   try {
@@ -385,16 +385,16 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
 }
 
 /**
- * Recalculate every cashbook row using AST formulas + partners.
- * Uses native SQLite when present AND Supabase when present, so the v2
- * `transaction_computed` mirror stays consistent with the legacy `keuangan`
- * columns regardless of which DB the UI reads from.
+ * Hitung ulang seluruh baris buku kas memakai formula AST + partner.
+ * Memakai SQLite native saat tersedia DAN Supabase saat tersedia, supaya
+ * mirror `transaction_computed` v2 tetap konsisten dengan kolom `keuangan`
+ * legacy terlepas dari DB mana yang dibaca UI.
  *
- * Returns true if at least one recalc path succeeded.
+ * Mengembalikan true kalau setidaknya satu jalur recalc sukses.
  */
 export async function recalculateCashbookIfAvailable(): Promise<boolean> {
   let didAny = false;
-  // 1. Local SQLite (offline-first cache + Tauri / native dev mode).
+  // 1. SQLite lokal (cache offline-first + mode Tauri / dev native).
   try {
     const sqlite = await db.getNativeSQLite();
     if (sqlite) {
@@ -405,9 +405,9 @@ export async function recalculateCashbookIfAvailable(): Promise<boolean> {
   } catch (e) {
     console.warn("[recalculateCashbookIfAvailable] SQLite path failed:", e);
   }
-  // 2. Supabase (cloud-of-record). Always run when Supabase is configured,
-  // even if SQLite already ran, because the UI reads transaction_computed
-  // from Supabase via getLatestPerFormulaKey.
+  // 2. Supabase (cloud-of-record). Selalu jalankan saat Supabase sudah dikonfigurasi,
+  // walau SQLite juga sudah jalan, karena UI membaca transaction_computed
+  // dari Supabase via getLatestPerFormulaKey.
   try {
     const ok = await recalculateCashbookViaSupabase();
     didAny = didAny || ok;
@@ -457,7 +457,7 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
   ]);
   const batch = computeCashbookRecalculationUpdates(sorted, formulas, partners);
 
-  // Load v2 overrides so we honour them when writing transaction_computed.
+  // Muat override v2 supaya kita memakainya saat menulis transaction_computed.
   const overrideMap = new Map<string, Map<string, number>>();
   try {
     const { data: ovs } = await sb
@@ -476,10 +476,10 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
       inner.set(r.formula_key, Number(r.override_value));
     }
   } catch {
-    // table might not exist yet on installs that haven't run the migration
+    // tabel mungkin belum ada di instalasi yang belum menjalankan migrasi
   }
 
-  // Collect all v2 rows so we can upsert in one batch.
+  // Kumpulkan semua baris v2 supaya bisa di-upsert dalam satu batch.
   const computedRows: Array<{
     transaction_id: string;
     formula_key: string;
@@ -508,7 +508,7 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
     }
   }
 
-  // Best-effort dual-write to transaction_computed; tolerate missing table.
+  // Tulis dual-write best-effort ke transaction_computed; tolerate tabel hilang.
   if (computedRows.length > 0) {
     try {
       const { error: tcErr } = await sb
@@ -532,7 +532,7 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
 }
 
 /**
- * Delete a manual cash-book row (blocks rows tied to pembelian via [REF:purchase-).
+ * Hapus baris buku kas manual (blokir baris yang terkait pembelian via [REF:purchase-).
  */
 export async function deleteManualCashBookEntry(
   id: string
@@ -549,7 +549,7 @@ export async function deleteManualCashBookEntry(
 }
 
 /**
- * Update a manual cash-book row (same rules as legacy PUT /api/finance/cash-book/[id]).
+ * Perbarui baris buku kas manual (aturan sama dengan legacy PUT /api/finance/cash-book/[id]).
  */
 export async function updateManualCashBookEntry(
   id: string,
@@ -595,7 +595,7 @@ export async function updateManualCashBookEntry(
   return "updated";
 }
 
-/** Columns that support manual override (paired with `override_<column>` on `keuangan`). */
+/** Kolom yang mendukung override manual (berpasangan dengan `override_<column>` di `keuangan`). */
 export const CASHBOOK_MANUAL_OVERRIDE_FIELDS = [
   "saldo",
   "omzet",
@@ -621,7 +621,7 @@ function isCashbookManualOverrideField(
 }
 
 /**
- * PATCH manual overrides on calculated columns (persists via db-unified → Supabase / SQLite).
+ * PATCH override manual pada kolom yang dihitung (disimpan via db-unified → Supabase / SQLite).
  */
 export async function patchCashBookManualOverrides(
   id: string,
@@ -648,7 +648,7 @@ export async function patchCashBookManualOverrides(
 }
 
 /**
- * Clear one manual override flag (recalculates row from rules where applicable).
+ * Bersihkan satu flag override manual (hitung ulang baris dari aturan kalau berlaku).
  */
 export async function clearCashBookManualOverride(
   id: string,
@@ -669,7 +669,7 @@ export async function clearCashBookManualOverride(
 }
 
 /**
- * Delete all active cash book entries (preserves archived)
+ * Hapus semua entri buku kas aktif (yang sudah diarsipkan tetap utuh)
  */
 export async function deleteAllCashbook(): Promise<{ deleted: number }> {
   try {
@@ -723,7 +723,7 @@ function toNumber(raw: any): number {
   if (typeof raw === "number") return raw;
   let v = String(raw).trim();
 
-  // Remove currency prefix (Rp, IDR, etc.)
+  // Hapus prefix mata uang (Rp, IDR, dll.)
   v = v.replace(/^(Rp|IDR|rp)\s*/i, "");
   v = v.replace(/\s+/g, "");
 
@@ -731,10 +731,10 @@ function toNumber(raw: any): number {
   const dotCount = (v.match(/\./g) || []).length;
 
   if (commaCount > 1) {
-    // Multiple commas = US format (5,085,464)
+    // Banyak koma = format AS (5,085,464)
     v = v.replace(/,/g, "");
   } else if (dotCount > 1) {
-    // Multiple dots = Indonesian format (5.085.464 or 5.085.464,50)
+    // Banyak titik = format Indonesia (5.085.464 atau 5.085.464,50)
     v = v.replace(/\./g, "");
     if (commaCount === 1) {
       v = v.replace(/,/g, ".");
@@ -773,10 +773,10 @@ function parseDate(raw: any): string | null {
   const s = String(raw).trim();
   if (!s) return null;
 
-  // Try ISO first (YYYY-MM-DD)
+  // Coba ISO dulu (YYYY-MM-DD)
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // Try parsing slash or dash separated dates
+  // Coba parse tanggal yang dipisah slash atau strip
   const parts = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
   if (parts) {
     let [_, p1, p2, year] = parts;
@@ -793,7 +793,7 @@ function parseDate(raw: any): string | null {
       month = p1;
       day = p2;
     } else {
-      // Default to MM/DD/YYYY (Google Sheets format)
+      // Default ke MM/DD/YYYY (format Google Sheets)
       month = p1;
       day = p2;
     }
@@ -813,10 +813,10 @@ function parseDate(raw: any): string | null {
 }
 
 /**
- * Import cashbook from CSV
- * @param csvText CSV content as string
- * @param append Whether to append or replace existing data
- * @returns Import result with counts
+ * Impor buku kas dari CSV
+ * @param csvText Konten CSV sebagai string
+ * @param append Apakah menambahkan ke data yang ada atau menggantinya
+ * @returns Hasil impor dengan jumlah
  */
 export async function importCashbookFromCSV(
   csvText: string,
@@ -829,8 +829,8 @@ export async function importCashbookFromCSV(
   errors?: string[];
 }> {
   try {
-    // Dynamically import CSV parser (only on client-side if needed)
-    // For now, we'll use a simple CSV parser
+    // Impor parser CSV secara dinamis (hanya kalau diperlukan di sisi klien)
+    // Untuk sekarang, kita pakai parser CSV sederhana
     const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
 
     if (lines.length === 0) {
@@ -838,7 +838,7 @@ export async function importCashbookFromCSV(
         success: false,
         imported: 0,
         skipped: 0,
-        message: "CSV file is empty",
+        message: "File CSV kosong",
       };
     }
 
@@ -846,7 +846,7 @@ export async function importCashbookFromCSV(
     const headerLine = lines[0];
     const headers = headerLine.split(",").map((h) => h.trim().toUpperCase());
 
-    // Check for required columns
+    // Cek kolom yang wajib ada
     const requiredColumns = ["TANGGAL", "KATEGORI", "DEBIT", "KREDIT"];
     const missingColumns = requiredColumns.filter(
       (col) => !headers.includes(col)
@@ -857,35 +857,35 @@ export async function importCashbookFromCSV(
         success: false,
         imported: 0,
         skipped: 0,
-        message: `Missing required columns: ${missingColumns.join(", ")}`,
+        message: `Kolom wajib hilang: ${missingColumns.join(", ")}`,
       };
     }
 
-    // Get column indices
+    // Ambil indeks kolom
     const tanggalIdx = headers.indexOf("TANGGAL");
     const kategoriIdx = headers.indexOf("KATEGORI");
     const debitIdx = headers.indexOf("DEBIT");
     const kreditIdx = headers.indexOf("KREDIT");
     const keperluanIdx = headers.indexOf("KEPERLUAN");
 
-    // Clear existing data if not appending
+    // Hapus data yang ada kalau tidak append
     if (!append) {
       await deleteAllCashbook();
     }
 
-    // Get max urutan_tampilan to continue numbering
+    // Ambil urutan_tampilan tertinggi untuk lanjut penomoran
     let nextDisplayOrder = await nextUrutanTampilanKeuangan();
 
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
 
-    // Process data rows
+    // Proses baris data
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
-      // Simple CSV parsing (handles quoted values)
+      // Parsing CSV sederhana (menangani nilai dalam tanda kutip)
       const values: string[] = [];
       let current = "";
       let inQuotes = false;
@@ -903,7 +903,7 @@ export async function importCashbookFromCSV(
       }
       values.push(current.trim());
 
-      // Parse values
+      // Parse nilai
       const tanggal = parseDate(values[tanggalIdx]);
       const kategori = normalizeCategory(values[kategoriIdx]);
       const debit = toNumber(values[debitIdx]);
@@ -911,19 +911,19 @@ export async function importCashbookFromCSV(
       const keperluan =
         keperluanIdx !== -1 ? values[keperluanIdx]?.trim() || "" : "";
 
-      // Validate
+      // Validasi
       if (!tanggal) {
         skipped++;
-        errors.push(`Row ${i + 1}: Invalid date`);
+        errors.push(`Baris ${i + 1}: Tanggal tidak valid`);
         continue;
       }
       if (!kategori) {
         skipped++;
-        errors.push(`Row ${i + 1}: Invalid category`);
+        errors.push(`Baris ${i + 1}: Kategori tidak valid`);
         continue;
       }
 
-      // Insert record
+      // Sisipkan record
       try {
         const id = `cb-${Date.now()}-${Math.random()
           .toString(36)
@@ -956,8 +956,8 @@ export async function importCashbookFromCSV(
       } catch (error) {
         skipped++;
         errors.push(
-          `Row ${i + 1}: ${
-            error instanceof Error ? error.message : "Insert failed"
+          `Baris ${i + 1}: ${
+            error instanceof Error ? error.message : "Gagal menyisipkan"
           }`
         );
       }
@@ -969,18 +969,18 @@ export async function importCashbookFromCSV(
       success: true,
       imported,
       skipped,
-      message: `Successfully imported ${imported} records${
-        skipped > 0 ? ` (${skipped} skipped)` : ""
+      message: `Berhasil mengimpor ${imported} record${
+        skipped > 0 ? ` (${skipped} dilewati)` : ""
       }`,
       errors: errors.length > 0 ? errors : undefined,
     };
   } catch (error) {
-    console.error("CSV import error:", error);
+    console.error("Kesalahan impor CSV:", error);
     return {
       success: false,
       imported: 0,
       skipped: 0,
-      message: error instanceof Error ? error.message : "Failed to import CSV",
+      message: error instanceof Error ? error.message : "Gagal mengimpor CSV",
     };
   }
 }

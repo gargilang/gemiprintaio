@@ -1,23 +1,23 @@
 /**
  * formula-service (v2)
  *
- * Generic AST formula generator for actor-driven calculations. Replaces
- * the hardcoded slot-based logic in profit-share-config.ts /
- * cashbook-config-sync.ts with one rule: every business_actor whose role
- * has a calc-typed group automatically gets a matching cashbook_formula
- * with a semantic `formula_key`, `actor_id`, and `formula_group`.
+ * Generator formula AST generik untuk perhitungan yang digerakkan actor.
+ * Menggantikan logika berbasis-slot hardcoded di profit-share-config.ts /
+ * cashbook-config-sync.ts dengan satu aturan: setiap business_actor yang
+ * peran-nya punya grup bertipe calc otomatis mendapat cashbook_formula
+ * yang cocok dengan `formula_key`, `actor_id`, dan `formula_group` semantik.
  *
- * Three patterns are supported today; new patterns are added by extending
- * the dispatch in `syncFormulasForActor`:
+ * Tiga pola didukung sekarang; pola baru ditambahkan dengan extending
+ * dispatch di `syncFormulasForActor`:
  *
- *   profit_share  → percentage of laba_bersih (optional minus kasbon)
- *   cash_advance  → running ledger from kategori + keperluan match
- *   bonus         → percentage of any other formula (e.g. omzet)
+ *   profit_share  → persentase dari laba_bersih (opsional dikurangi kasbon)
+ *   cash_advance  → ledger berjalan dari kategori + keperluan match
+ *   bonus         → persentase dari formula lain (mis. omzet)
  *
- * The legacy column-letter system stays operational alongside this: the
- * auto-generated formulas pick fresh letters from a high-number range
- * (P, Q, R, …) so they coexist with the seeded G–K formulas without
- * collisions.
+ * Sistem column-letter legacy tetap operasional di samping ini: formula
+ * yang di-generate otomatis mengambil huruf baru dari rentang nomor tinggi
+ * (P, Q, R, …) supaya hidup berdampingan dengan formula G–K yang di-seed
+ * tanpa tabrakan.
  */
 
 import "server-only";
@@ -84,10 +84,10 @@ const isFirstRowNode = (): ASTNode => opNode("=", rowNode(), lit(2));
 
 /**
  * percentage_of_formula:
- *   value = sourceFormula × (percent / 100)
+ *   nilai = sourceFormula × (percent / 100)
  *
- * Used for sales bonuses ("Bonus 5% Omzet") and the v2 profit_share
- * pattern when only a percentage is given (no kasbon adjustment).
+ * Dipakai untuk bonus penjualan ("Bonus 5% Omzet") dan pola profit_share
+ * v2 saat hanya persentase yang diberikan (tanpa penyesuaian kasbon).
  */
 function astPercentageOfFormula(
   sourceFormulaKey: string,
@@ -99,9 +99,9 @@ function astPercentageOfFormula(
 
 /**
  * profit_share_minus_kasbon:
- *   value = laba_bersih × (percent / 100) − kasbon_<actor>
+ *   nilai = laba_bersih × (percent / 100) − kasbon_<actor>
  *
- * If `kasbonFormulaKey` is null we degrade to plain percentage_of_formula.
+ * Kalau `kasbonFormulaKey` null kita degradasi ke percentage_of_formula biasa.
  */
 function astProfitShareMinusKasbon(
   percent: number,
@@ -115,19 +115,19 @@ function astProfitShareMinusKasbon(
 
 /**
  * cash_advance_running_balance:
- *   If row's kategori is in `categories` AND (no keyword OR keperluan matches),
- *     row contribution = (D ? prev - D : prev + E)
- *   Otherwise carry forward prev.
+ *   Kalau kategori baris ada di `categories` DAN (tidak ada keyword ATAU keperluan match),
+ *     kontribusi baris = (D ? prev - D : prev + E)
+ *   Kalau tidak, lanjutkan prev.
  *
- * Categories list MUST be non-empty. Keyword is optional substring match
- * against `keperluan` (case-insensitive, via SEARCH/ISERROR).
+ * List kategori WAJIB tidak kosong. Keyword opsional, mencocokkan substring
+ * dengan `keperluan` (case-insensitive, lewat SEARCH/ISERROR).
  */
 function astCashAdvanceLedger(
   formulaKey: string,
   categories: string[],
   keperluanKeyword: string | null
 ): ASTNode {
-  // Build (C = cat1) OR (C = cat2) OR ...
+  // Bangun (C = cat1) ATAU (C = cat2) ATAU ...
   const categoryCond = categories.reduce<ASTNode>((acc, code, idx) => {
     const eq: ASTNode = opNode("=", colRef("C"), lit(code));
     return idx === 0 ? eq : orNode(acc, eq);
@@ -157,10 +157,10 @@ function astCashAdvanceLedger(
 // ── Letter allocation for legacy column_key ─────────────────────────────────
 
 /**
- * Pick a fresh column letter for new actor-generated formulas. The legacy
- * letter system is still used by the editor UI and the existing formula
- * graph. New actor formulas live in the P..Z range; if that ever fills
- * up we fall back to AA, AB, ... (no real upper bound).
+ * Pilih huruf kolom baru untuk formula yang di-generate dari actor. Sistem
+ * huruf legacy masih dipakai oleh editor UI dan graf formula yang ada.
+ * Formula actor baru hidup di rentang P..Z; kalau itu pernah penuh kita
+ * jatuh balik ke AA, AB, ... (tidak ada batas atas riil).
  */
 function nextColumnLetter(used: Set<string>): string {
   const candidates = [
@@ -169,7 +169,7 @@ function nextColumnLetter(used: Set<string>): string {
   for (const c of candidates) {
     if (!used.has(c)) return c;
   }
-  // Spillover into AA, AB, …
+  // Lanjut ke AA, AB, …
   for (let i = 0; i < 26 * 26; i++) {
     const code = `A${String.fromCharCode(65 + i)}`;
     if (!used.has(code)) return code;
@@ -180,27 +180,27 @@ function nextColumnLetter(used: Set<string>): string {
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export interface SyncFormulasResult {
-  created: string[];   // formula_key values that were created
-  updated: string[];   // formula_key values that were updated in place
-  removed: string[];   // formula_key values that were detached
+  created: string[];   // nilai formula_key yang dibuat
+  updated: string[];   // nilai formula_key yang diperbarui di tempat
+  removed: string[];   // nilai formula_key yang dilepas
 }
 
 /**
- * Given an actor, inspect their calc fields and ensure cashbook_formula has
- * exactly the right set of formulas attached to them.
+ * Diberi sebuah actor, periksa field calc-nya dan pastikan cashbook_formula
+ * memiliki tepat set formula yang menempel padanya.
  *
- * Role is purely a job-title label — it does NOT restrict which formula types
- * an actor can have. Formula generation is driven entirely by which fields are
- * non-null/non-empty on the actor row:
+ * Peran murni label jabatan — TIDAK membatasi tipe formula yang bisa dimiliki
+ * actor. Generasi formula sepenuhnya digerakkan oleh field mana yang
+ * non-null/non-empty di baris actor:
  *
  *   profit_share_percent IS NOT NULL  → upsert "bagi_hasil_<slug>"
  *   cash_advance_categories non-empty → upsert "kasbon_<slug>"
  *   bonus_percent IS NOT NULL         → upsert "bonus_<slug>"
  *
- * A single actor may have all three at once (e.g. a managing director who
- * receives profit share, has a cash advance, AND a sales bonus).
+ * Satu actor boleh punya ketiganya sekaligus (mis. managing director yang
+ * menerima profit share, punya cash advance, DAN bonus penjualan).
  *
- * When actor is inactive, all linked formulas are disabled (not deleted).
+ * Saat actor nonaktif, semua formula tertaut di-disable (tidak dihapus).
  */
 export async function syncFormulasForActor(
   actorId: string
@@ -213,8 +213,8 @@ export async function syncFormulasForActor(
   const allFormulas = await listFormulas();
   const existing = allFormulas.filter((f) => f.actorId === actorId);
 
-  // When actor is inactive, disable all linked formulas rather than deleting,
-  // so historical recalc data remains valid.
+  // Saat actor nonaktif, disable semua formula tertaut alih-alih menghapus,
+  // supaya data recalc historis tetap valid.
   if (actor.is_active === 0) {
     for (const f of existing) {
       if (f.enabled) {
@@ -236,7 +236,7 @@ export async function syncFormulasForActor(
     ast: ASTNode;
   };
 
-  // Build the complete desired set from whichever fields are filled in.
+  // Bangun set lengkap yang diinginkan dari field mana pun yang terisi.
   const desired: FormulaTemplate[] = [];
 
   if (actor.profit_share_percent !== null) {
@@ -280,7 +280,7 @@ export async function syncFormulasForActor(
 
   const desiredKeys = new Set(desired.map((d) => d.formulaKey));
 
-  // Remove (disable) formulas that are no longer in the desired set.
+  // Hapus (disable) formula yang sudah tidak ada di set yang diinginkan.
   for (const f of existing) {
     if (!desiredKeys.has(f.formulaKey ?? "")) {
       await upsertFormula({ ...f, enabled: false });
@@ -288,7 +288,7 @@ export async function syncFormulasForActor(
     }
   }
 
-  // Upsert every desired formula, reusing existing letter slots when possible.
+  // Upsert tiap formula yang diinginkan, gunakan ulang slot huruf yang ada kalau bisa.
   const usedLetters = new Set(allFormulas.map((f) => f.column.toUpperCase()));
   for (const template of desired) {
     const reusable = allFormulas.find(
@@ -320,14 +320,14 @@ export async function syncFormulasForActor(
   return result;
 }
 
-/** Re-run sync for every active actor (used after bulk percent rebalance). */
+/** Jalankan ulang sync untuk setiap actor aktif (dipakai setelah rebalance persen massal). */
 export async function syncAllActiveActorFormulas(
   actorIds: string[]
 ): Promise<void> {
   await Promise.all(actorIds.map((id) => syncFormulasForActor(id)));
 }
 
-/** Base display_order so groups sort consistently in the formula list. */
+/** Display order dasar supaya grup terurut konsisten di list formula. */
 function baseDisplayOrderForGroup(group: FormulaGroup): number {
   switch (group) {
     case "summary":
@@ -343,7 +343,7 @@ function baseDisplayOrderForGroup(group: FormulaGroup): number {
   }
 }
 
-/** Convenience: load a single formula by its semantic key. */
+/** Convenience: muat satu formula berdasarkan key semantiknya. */
 export async function getFormulaByKey(
   formulaKey: string
 ): Promise<FormulaDefinition | null> {
@@ -351,7 +351,7 @@ export async function getFormulaByKey(
   return all.find((f) => (f.formulaKey ?? f.dbColumn) === formulaKey) ?? null;
 }
 
-/** List formulas in one of the v2 groups (Ringkasan / Bagi Hasil / Kasbon / Bonus / Kustom). */
+/** List formula di salah satu grup v2 (Ringkasan / Bagi Hasil / Kasbon / Bonus / Kustom). */
 export async function listFormulasByGroup(
   group: FormulaGroup
 ): Promise<FormulaDefinition[]> {
@@ -362,8 +362,8 @@ export async function listFormulasByGroup(
 }
 
 /**
- * Snapshot of formulas grouped by their v2 formula_group. Convenience for
- * the new UI bars.
+ * Snapshot formula yang dikelompokkan berdasarkan formula_group v2-nya.
+ * Convenience untuk bar UI baru.
  */
 export interface ActiveFormulasByGroup {
   summary: FormulaDefinition[];
@@ -395,37 +395,37 @@ export async function getActiveFormulasByGroup(): Promise<ActiveFormulasByGroup>
   return out;
 }
 
-/** One column in the dynamic per-actor summary table. */
+/** Satu kolom di tabel ringkasan per-actor yang dinamis. */
 export interface ActorSummaryColumn {
   formulaKey: string;
   label: string;
   group: FormulaGroup;
 }
 
-/** One row for the Keuangan v2 table — all metrics for one person on one line. */
+/** Satu baris untuk tabel Keuangan v2 — semua metrik untuk satu orang dalam satu baris. */
 export interface ActorFinanceSummaryRow {
   actorId: string | null;
   displayName: string;
   roleLabel: string;
-  /** Map of formula_key → numeric value (or null when not applicable). */
+  /** Map formula_key → nilai numerik (atau null kalau tidak berlaku). */
   metrics: Record<string, number | null>;
   displayOrder: number;
-  /** True when this row is a global formula (no linked business_actor). */
+  /** True kalau baris ini adalah formula global (tanpa business_actor tertaut). */
   isGlobal: boolean;
 }
 
 export interface ActorFinanceSummary {
-  /** Columns to render, in the order they should appear. */
+  /** Kolom yang akan dirender, dalam urutan yang seharusnya tampil. */
   columns: ActorSummaryColumn[];
-  /** Per-actor rows plus a final block of global custom formulas if any. */
+  /** Baris per-actor ditambah blok terakhir formula custom global kalau ada. */
   rows: ActorFinanceSummaryRow[];
 }
 
 /**
- * Build the dynamic per-actor summary feed. The column set is derived from
- * `is_visible_in_summary = true` formulas plus a stable canonical ordering
- * (Bagi Hasil → Kasbon → Bonus → Kustom). Rows with `actor_id` go in the
- * actor block; visible custom rows without an actor become "(global)" rows.
+ * Bangun feed ringkasan per-actor dinamis. Set kolom diturunkan dari formula
+ * dengan `is_visible_in_summary = true` ditambah urutan kanonik yang stabil
+ * (Bagi Hasil → Kasbon → Bonus → Kustom). Baris dengan `actor_id` masuk blok
+ * actor; baris custom yang terlihat tanpa actor menjadi baris "(global)".
  *
  * Pass pre-fetched `actors`, `roles`, and `formulas` to avoid redundant DB
  * round-trips when the caller already has this data (e.g. summary-v2 route).
@@ -449,9 +449,9 @@ export async function getActorFinanceSummary(
     (f) => f.enabled && f.isVisibleInSummary
   );
 
-  // Build column set deterministically. Group order matches the UI:
-  // profit_share → cash_advance → bonus → custom (summary excluded; those
-  // already live in the cards above the table).
+  // Bangun set kolom secara deterministik. Urutan grup mengikuti UI:
+  // profit_share → cash_advance → bonus → custom (summary dikecualikan; itu
+  // sudah hidup di card di atas tabel).
   const groupRank: Record<FormulaGroup, number> = {
     summary: 99,
     profit_share: 0,
@@ -480,8 +480,8 @@ export async function getActorFinanceSummary(
     });
   }
 
-  // For per-row aggregation, we still need to know which formula keys
-  // belong to which actor (so each actor only shows their own metrics).
+  // Untuk agregasi per-baris, kita masih perlu tahu key formula mana yang
+  // milik actor mana (supaya tiap actor hanya menampilkan metriknya sendiri).
   const formulasByActor = new Map<string, FormulaDefinition[]>();
   const globalCustomFormulas: FormulaDefinition[] = [];
   for (const f of visibleFormulas) {
@@ -499,8 +499,8 @@ export async function getActorFinanceSummary(
     return v === undefined || v === null ? 0 : Number(v);
   };
 
-  // Map per-actor rows. A cell is null when the actor has no formula for
-  // that key (so the UI can render "—" instead of 0).
+  // Bangun baris per-actor. Sel akan null kalau actor tidak punya formula
+  // untuk key itu (supaya UI bisa render "—" alih-alih 0).
   const actorRows: ActorFinanceSummaryRow[] = actors
     .map((actor) => {
       const linked = formulasByActor.get(actor.id) ?? [];
@@ -525,8 +525,8 @@ export async function getActorFinanceSummary(
     })
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
-  // Append global custom formulas as standalone rows so user-defined
-  // metrics that don't belong to a person still surface in the panel.
+  // Tambahkan formula custom global sebagai baris mandiri supaya metrik
+  // user-defined yang tidak menempel ke orang tetap muncul di panel.
   const globalRows: ActorFinanceSummaryRow[] = globalCustomFormulas.map(
     (f) => {
       const metrics: Record<string, number | null> = {};
@@ -551,11 +551,11 @@ export async function getActorFinanceSummary(
 }
 
 /**
- * Legacy adapter retained until UI callers migrate to `getActorFinanceSummary`.
+ * Adapter legacy yang dipertahankan sampai pemanggil UI bermigrasi ke `getActorFinanceSummary`.
  *
- * @deprecated Prefer `getActorFinanceSummary` — it returns adaptive columns
- *             driven by `is_visible_in_summary` instead of the hardcoded
- *             three-slot layout.
+ * @deprecated Lebih baik pakai `getActorFinanceSummary` — dia mengembalikan
+ *             kolom adaptif yang digerakkan oleh `is_visible_in_summary`
+ *             alih-alih layout tiga-slot hardcoded.
  */
 export async function getActorFinanceSummaryRows(
   valuesByKey: Record<string, number>
@@ -589,7 +589,7 @@ export async function getActorFinanceSummaryRows(
     });
 }
 
-/** Count enabled actor-type formulas that are not linked to any business_actor. */
+/** Hitung formula bertipe actor yang aktif tapi tidak ditautkan ke business_actor mana pun. */
 export async function countLegacyOrphanActorFormulas(): Promise<number> {
   const all = await listFormulas();
   return all.filter(
@@ -603,12 +603,12 @@ export async function countLegacyOrphanActorFormulas(): Promise<number> {
 }
 
 /**
- * Turn off per-person formulas from the old hardcoded schema (no actor_id).
- * Kelola Orang is the only supported path for bagi hasil / kasbon / bonus.
- * Idempotent — safe to call on each summary load.
+ * Matikan formula per-orang dari skema hardcoded lama (tanpa actor_id).
+ * Kelola Orang adalah satu-satunya jalur yang didukung untuk bagi hasil / kasbon / bonus.
+ * Idempoten — aman dipanggil di setiap load summary.
  *
- * Pass a pre-fetched `formulas` list to avoid an extra DB round-trip when
- * the caller already has the full formula list.
+ * Kirim list `formulas` yang sudah di-prefetch untuk menghindari round-trip DB
+ * tambahan saat pemanggil sudah punya list formula lengkap.
  */
 export async function disableLegacyOrphanActorFormulas(
   formulas?: FormulaDefinition[]

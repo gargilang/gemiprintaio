@@ -754,6 +754,23 @@ function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void }): vo
   addColumnIfMissing("penjualan", "penawaran_id", "TEXT");
   addColumnIfMissing("pembelian", "purchase_order_id", "TEXT");
   addColumnIfMissing("item_pembelian", "purchase_order_item_id", "TEXT");
+
+  // Fase 5: rename kolom Inggris ke Bahasa Indonesia di instalasi SQLite lama.
+  // SQLite mendukung RENAME COLUMN sejak 3.25 (Tauri pakai versi >= 3.40).
+  const renameColumnIfNeeded = (table: string, oldCol: string, newCol: string) => {
+    try {
+      const cols = (
+        (db as any).prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+      ).map((c) => c.name);
+      if (cols.includes(oldCol) && !cols.includes(newCol)) {
+        db.exec(`ALTER TABLE ${table} RENAME COLUMN ${oldCol} TO ${newCol}`);
+      }
+    } catch {
+      // Tabel hilang; tidak perlu apa-apa.
+    }
+  };
+  renameColumnIfNeeded("penjualan", "nomor_invoice", "nomor_faktur");
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_penjualan_penawaran ON penjualan(penawaran_id);
     CREATE INDEX IF NOT EXISTS idx_pembelian_purchase_order ON pembelian(purchase_order_id);
@@ -4425,7 +4442,7 @@ class UnifiedDatabase {
               }
 
               // For tables with additional UNIQUE constraints beyond the PK
-              // (penjualan.nomor_invoice, order_produksi.nomor_spk, etc.),
+              // (penjualan.nomor_faktur, order_produksi.nomor_spk, etc.),
               // the row already exists locally — skip silently rather than
               // crashing the entire sync pass.
               if (isUniqueError) {

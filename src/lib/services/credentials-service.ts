@@ -1,5 +1,5 @@
 /**
- * Stored credentials (kredensial) — server-mediated via db-unified (Supabase + SQLite fallback).
+ * Kredensial tersimpan — dimediasi server lewat db-unified (Supabase + fallback SQLite).
  */
 
 import "server-only";
@@ -31,7 +31,7 @@ async function getViewerRole(
 }
 
 /**
- * List credentials visible to the viewer (public + own private rows).
+ * List kredensial yang terlihat oleh penampil (publik + baris privat milik sendiri).
  */
 export async function listCredentials(
   viewerId: string | undefined
