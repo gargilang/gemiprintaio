@@ -15,6 +15,7 @@ import {
   postInventoryMovement,
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
+import { usePgCompositeRpc } from "../feature-flags";
 
 /**
  * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
@@ -114,7 +115,7 @@ export async function createPurchase(data: {
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (false && sb) {
+    if (usePgCompositeRpc() && sb) {
       const preparedItems = data.items.map((item) => {
         const itemId = generateId("pi");
         const subtotal = item.jumlah * item.harga_satuan;
@@ -912,7 +913,7 @@ export async function voidPurchase(
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (false && sb) {
+    if (usePgCompositeRpc() && sb) {
       const { error } = await sb.rpc("void_purchase_with_inventory", {
         purchase_id: id,
         reason,
