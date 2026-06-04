@@ -42,8 +42,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
       final results = await Future.wait([
         api.get('/api/pos/init-data', forceRefresh: forceRefresh),
-        api.get('/api/production', forceRefresh: forceRefresh),
-        api.get('/api/finance/cash-book', forceRefresh: forceRefresh),
+        api.get('/api/produksi', forceRefresh: forceRefresh),
+        api.get('/api/keuangan/cash-book', forceRefresh: forceRefresh),
       ]);
 
       if (mounted) {

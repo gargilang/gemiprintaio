@@ -159,9 +159,9 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
       };
 
       if (widget.existing == null) {
-        await api.post('/api/materials', body: body);
+        await api.post('/api/barang', body: body);
       } else {
-        await api.put('/api/materials/${widget.existing!.id}', body: body);
+        await api.put('/api/barang/${widget.existing!.id}', body: body);
       }
 
       if (mounted) Navigator.pop(context, true);

@@ -5,31 +5,31 @@ class PurchasesService {
   PurchasesService(this._api);
 
   Future<List<dynamic>> getAll() async {
-    final data = await _api.get('/api/purchases');
+    final data = await _api.get('/api/pembelian');
     return data['purchases'] as List? ?? [];
   }
 
   Future<Map<String, dynamic>> getInitData() async {
-    return await _api.get('/api/purchases/init-data') as Map<String, dynamic>;
+    return await _api.get('/api/pembelian/init-data') as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> create(Map<String, dynamic> body) async {
-    return await _api.post('/api/purchases', body: body)
+    return await _api.post('/api/pembelian', body: body)
         as Map<String, dynamic>;
   }
 
   Future<void> delete(String id) async {
-    await _api.delete('/api/purchases/$id');
+    await _api.delete('/api/pembelian/$id');
   }
 
   Future<List<dynamic>> getDebts() async {
-    final data = await _api.get('/api/purchases/debts');
+    final data = await _api.get('/api/pembelian/debts');
     return data['debts'] as List? ?? [];
   }
 
   Future<void> payDebt(Map<String, dynamic> body) async {
     await _api.post(
-      '/api/purchases/pay-debt',
+      '/api/pembelian/pay-debt',
       body: {
         'purchase_id':
             body['purchase_id'] ?? body['pembelian_id'] ?? body['id'],

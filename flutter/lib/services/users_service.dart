@@ -5,19 +5,19 @@ class UsersService {
   UsersService(this._api);
 
   Future<List<dynamic>> getAll({bool forceRefresh = false}) async {
-    final data = await _api.get('/api/users', forceRefresh: forceRefresh);
+    final data = await _api.get('/api/pengguna', forceRefresh: forceRefresh);
     return data['users'] as List? ?? [];
   }
 
   Future<void> create(Map<String, dynamic> body) async {
-    await _api.post('/api/users', body: body);
+    await _api.post('/api/pengguna', body: body);
   }
 
   Future<void> update(String id, Map<String, dynamic> body) async {
-    await _api.put('/api/users/$id', body: body);
+    await _api.put('/api/pengguna/$id', body: body);
   }
 
   Future<void> delete(String id) async {
-    await _api.delete('/api/users/$id');
+    await _api.delete('/api/pengguna/$id');
   }
 }

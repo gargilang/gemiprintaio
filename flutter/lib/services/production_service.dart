@@ -5,12 +5,12 @@ class ProductionService {
   ProductionService(this._api);
 
   Future<List<dynamic>> getOrders({bool forceRefresh = false}) async {
-    final data = await _api.get('/api/production', forceRefresh: forceRefresh);
+    final data = await _api.get('/api/produksi', forceRefresh: forceRefresh);
     return data['orders'] as List? ?? [];
   }
 
   Future<void> updateOrderStatus(String id, String status) async {
-    await _api.patch('/api/production/$id', body: {'status': status});
+    await _api.patch('/api/produksi/$id', body: {'status': status});
   }
 
   Future<void> updateItemStatus(
@@ -22,13 +22,13 @@ class ProductionService {
     if (operatorId != null) {
       body['operator_id'] = operatorId;
     }
-    await _api.patch('/api/production/items/$itemId', body: body);
+    await _api.patch('/api/produksi/items/$itemId', body: body);
   }
 
   Future<Map<String, dynamic>> createOrderFromSale(
     Map<String, dynamic> body,
   ) async {
-    return await _api.post('/api/production', body: body)
+    return await _api.post('/api/produksi', body: body)
         as Map<String, dynamic>;
   }
 }

@@ -6,22 +6,22 @@ class MaterialsService {
   MaterialsService(this._api);
 
   Future<List<MaterialItem>> getAll({bool forceRefresh = false}) async {
-    final data = await _api.get('/api/materials', forceRefresh: forceRefresh);
+    final data = await _api.get('/api/barang', forceRefresh: forceRefresh);
     final list = data['barang'] as List? ?? [];
     return list.map((j) => MaterialItem.fromJson(j as Map<String, dynamic>)).toList();
   }
 
   Future<MaterialItem> create(Map<String, dynamic> body) async {
-    final data = await _api.post('/api/materials', body: body);
+    final data = await _api.post('/api/barang', body: body);
     return MaterialItem.fromJson(data['material'] as Map<String, dynamic>);
   }
 
   Future<MaterialItem> update(String id, Map<String, dynamic> body) async {
-    final data = await _api.put('/api/materials/$id', body: body);
+    final data = await _api.put('/api/barang/$id', body: body);
     return MaterialItem.fromJson(data['material'] as Map<String, dynamic>);
   }
 
   Future<void> delete(String id) async {
-    await _api.delete('/api/materials/$id');
+    await _api.delete('/api/barang/$id');
   }
 }

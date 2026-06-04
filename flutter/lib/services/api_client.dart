@@ -99,19 +99,19 @@ class ApiClient {
     final base = AppConfig.apiUrl('');
     if (path.contains('/pos/')) {
       _cache.invalidatePrefix('$base/api/pos/');
-    } else if (path.contains('/production')) {
-      _cache.invalidatePrefix('$base/api/production');
-    } else if (path.contains('/finance/')) {
-      _cache.invalidatePrefix('$base/api/finance/');
-    } else if (path.contains('/materials') || path.contains('/master/')) {
-      _cache.invalidatePrefix('$base/api/materials');
+    } else if (path.contains('/produksi')) {
+      _cache.invalidatePrefix('$base/api/produksi');
+    } else if (path.contains('/keuangan/')) {
+      _cache.invalidatePrefix('$base/api/keuangan/');
+    } else if (path.contains('/barang') || path.contains('/master/')) {
+      _cache.invalidatePrefix('$base/api/barang');
       _cache.invalidatePrefix('$base/api/master/');
       _cache.invalidatePrefix('$base/api/pos/');
-    } else if (path.contains('/customers')) {
-      _cache.invalidatePrefix('$base/api/customers');
+    } else if (path.contains('/pelanggan')) {
+      _cache.invalidatePrefix('$base/api/pelanggan');
       _cache.invalidatePrefix('$base/api/pos/');
-    } else if (path.contains('/users')) {
-      _cache.invalidatePrefix('$base/api/users');
+    } else if (path.contains('/pengguna')) {
+      _cache.invalidatePrefix('$base/api/pengguna');
     }
   }
 
