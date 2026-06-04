@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   getPurchaseById,
   updatePurchase,
@@ -43,6 +44,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const params = await context.params;
     const body = await req.json();
 
@@ -74,6 +76,9 @@ export async function PUT(
         : null,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating purchase:", error);
     const msg = error?.message || "Failed to update purchase";
     if (msg.includes("tidak ditemukan")) {
@@ -88,6 +93,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const params = await context.params;
 
     await voidPurchase(params.id, "Pembelian dibatalkan via API");
@@ -96,6 +102,9 @@ export async function DELETE(
       message: "Pembelian berhasil dibatalkan",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error voiding purchase:", error);
     return NextResponse.json(
       { error: error.message || "Failed to void purchase" },

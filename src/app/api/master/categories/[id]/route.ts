@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsEq } from "@/lib/duplicate-check";
 import {
   countMaterialsByCategoryId,
@@ -39,6 +40,7 @@ export async function PUT(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const { nama, butuh_spesifikasi_status, urutan_tampilan } = body;
 
@@ -84,6 +86,9 @@ export async function PUT(
       category: updatedCategory,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating category:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update category" },
@@ -98,6 +103,7 @@ export async function DELETE(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const existing = await getCategoryById(params.id);
 
     if (!existing) {
@@ -122,6 +128,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Kategori berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error deleting category:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete category" },

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { payReceivable } from "@/lib/services/pos-service";
 
 export const runtime = "nodejs";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    await requireSession();
     const body = await request.json();
     const {
       piutang_id,
@@ -45,6 +47,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     const msg = error?.message || "Failed to process receivable payment";
     if (
       msg.includes("tidak ditemukan") ||

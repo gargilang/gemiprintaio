@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsCompositeEq } from "@/lib/duplicate-check";
 import {
   createSubcategory,
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const { kategori_id, nama, urutan_tampilan } = body;
 
@@ -86,6 +88,9 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating subcategory:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create subcategory" },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   deleteMaterial,
   getMaterialById,
@@ -36,6 +37,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const params = await context.params;
     const body = await req.json();
     const {
@@ -110,6 +112,9 @@ export async function PUT(
       material,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating material:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update material" },
@@ -123,6 +128,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const params = await context.params;
     const existing = await getMaterialById(params.id);
 
@@ -139,6 +145,9 @@ export async function DELETE(
       message: "Barang berhasil dihapus",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error deleting material:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete material" },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   createFinanceCategory,
   createFinanceMetricMapping,
@@ -22,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const action = String(body?.action || "");
 
@@ -148,6 +150,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Action tidak dikenali" }, { status: 400 });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/finance/config/manage error:", error);
     const message =
       error instanceof Error ? error.message : "Gagal memproses perubahan konfigurasi";

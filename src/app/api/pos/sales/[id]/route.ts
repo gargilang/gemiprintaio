@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { deleteSale } from "@/lib/services/pos-service";
 import { logAudit } from "@/lib/audit";
 import { apiError } from "@/lib/api-error";
@@ -11,6 +12,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const { id } = await params;
     await deleteSale(id);
 
@@ -30,6 +32,9 @@ export async function DELETE(
       message: "Transaksi berhasil dibatalkan dan stok dikembalikan",
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const msg =
       error instanceof Error ? error.message : "Gagal membatalkan transaksi";
     if (msg.includes("tidak ditemukan")) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { revertPayment } from "@/lib/services/purchases-service";
 
 export const runtime = "nodejs";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const purchase_id = body.purchase_id;
 
@@ -23,6 +25,9 @@ export async function POST(req: NextRequest) {
       payments_deleted,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const msg = error?.message || "Failed to revert payment";
     if (
       msg.includes("harus diisi") ||

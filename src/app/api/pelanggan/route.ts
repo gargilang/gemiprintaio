@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   pelangganHasPenjualan,
   rowExistsEq,
@@ -27,6 +28,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireSession();
     const body = await req.json();
     const {
       nama,
@@ -80,6 +82,9 @@ export async function POST(req: NextRequest) {
     const pelangganBaru = await getPelangganById(created.id);
     return NextResponse.json({ customer: pelangganBaru }, { status: 201 });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Gagal membuat pelanggan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal membuat pelanggan" },

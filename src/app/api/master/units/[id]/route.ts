@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsEq } from "@/lib/duplicate-check";
 import {
   deleteUnit,
@@ -13,6 +14,7 @@ export async function PUT(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const { nama, urutan_tampilan } = body;
 
@@ -57,6 +59,9 @@ export async function PUT(
       unit: updatedUnit,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating unit:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update unit" },
@@ -71,6 +76,7 @@ export async function DELETE(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const existing = await getUnitById(params.id);
 
     if (!existing) {
@@ -84,6 +90,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Satuan berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error deleting unit:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete unit" },

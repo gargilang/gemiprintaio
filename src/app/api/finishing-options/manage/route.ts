@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   createFinishingOption,
   deleteFinishingOption,
@@ -29,6 +29,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const { nama } = body;
 
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
       message: "Opsi finishing berhasil ditambahkan",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error("Error creating finishing option:", error);
     const msg = error.message || "Failed to create finishing option";
     const clientError =
@@ -61,6 +65,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const { id, nama } = body;
 
@@ -78,6 +83,9 @@ export async function PUT(request: Request) {
       message: "Opsi finishing berhasil diperbarui",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error("Error updating finishing option:", error);
     const msg = error.message || "Failed to update finishing option";
     const clientError =
@@ -93,6 +101,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const { id } = body;
 
@@ -110,6 +119,9 @@ export async function DELETE(request: Request) {
       message: "Opsi finishing berhasil dihapus",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error("Error deleting finishing option:", error);
     return NextResponse.json(
       {

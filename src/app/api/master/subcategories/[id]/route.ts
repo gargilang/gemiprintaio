@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsCompositeEq } from "@/lib/duplicate-check";
 import {
   countMaterialsBySubcategoryId,
@@ -15,6 +16,7 @@ export async function PUT(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const { nama, urutan_tampilan } = body;
 
@@ -61,6 +63,9 @@ export async function PUT(
       subcategory: updatedSubcategory,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating subcategory:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update subcategory" },
@@ -75,6 +80,7 @@ export async function DELETE(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const existing = await getSubcategoryById(params.id);
 
     if (!existing) {
@@ -99,6 +105,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Subkategori berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error deleting subcategory:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete subcategory" },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsEq, vendorHasPembelian } from "@/lib/duplicate-check";
 import {
   createVendor,
@@ -24,6 +25,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireSession();
     const body = await req.json();
     const {
       nama_perusahaan,
@@ -76,6 +78,9 @@ export async function POST(req: NextRequest) {
     const vendor = await getVendorById(created.id);
     return NextResponse.json({ vendor }, { status: 201 });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating vendor:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create vendor" },

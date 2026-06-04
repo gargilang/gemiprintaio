@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   createProductionOrder,
   getProductionOrders,
@@ -20,6 +21,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireSession();
     const body = await request.json();
     const {
       penjualan_id,
@@ -53,6 +55,9 @@ export async function POST(request: NextRequest) {
       nomor_spk: result.nomor_spk,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error("Error creating production order:", error);
     return NextResponse.json(
       { success: false, error: error.message },

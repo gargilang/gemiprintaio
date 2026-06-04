@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { getTodayJakarta } from "@/lib/date-utils";
 import {
   createPurchase,
@@ -24,6 +25,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const {
       nomor_pembelian,
@@ -101,6 +103,9 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating purchase:", error);
     const msg = error.message || "Failed to create purchase";
     const conflict = msg.includes("Nomor faktur sudah digunakan");

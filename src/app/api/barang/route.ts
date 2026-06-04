@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { rowExistsEq } from "@/lib/duplicate-check";
 import {
   createMaterial,
@@ -22,6 +23,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const {
       nama,
@@ -110,6 +112,9 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating material:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create material" },

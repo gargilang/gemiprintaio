@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { createSale } from "@/lib/services/pos-service";
 
 export const runtime = "nodejs";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    await requireSession();
     const body = await request.json();
 
     const result = await createSale({
@@ -30,6 +32,9 @@ export async function POST(request: Request) {
       spk_number: result.spk_number,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     const msg = error?.message || "Failed to create sale";
     if (
       msg.includes("kosong") ||

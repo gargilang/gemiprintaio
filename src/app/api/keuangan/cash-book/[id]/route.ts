@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   deleteManualCashBookEntry,
   updateManualCashBookEntry,
@@ -12,6 +13,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const { id } = await params;
 
     const outcome = await deleteManualCashBookEntry(id);
@@ -40,6 +42,9 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("DELETE /api/finance/cash-book/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal menghapus transaksi" },
@@ -53,6 +58,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const { id } = await params;
     const body = await request.json();
 
@@ -98,6 +104,9 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("PUT /api/finance/cash-book/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal mengupdate transaksi" },

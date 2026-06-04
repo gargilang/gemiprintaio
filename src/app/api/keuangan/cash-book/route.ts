@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { db, getServerSupabaseClient } from "@/lib/db-unified";
 import { createCashBookEntry } from "@/lib/services/finance-service";
 import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
@@ -70,6 +71,7 @@ function isClientValidationMessage(msg: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const {
       tanggal,
@@ -96,6 +98,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/finance/cash-book error:", error);
     const msg = error instanceof Error ? error.message : "";
     if (msg && isClientValidationMessage(msg)) {

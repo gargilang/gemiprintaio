@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { updateProductionItemStatus } from "@/lib/services/production-service";
 
 const ITEM_STATUSES = [
@@ -14,6 +15,7 @@ export async function PATCH(
   { params }: { params: Promise<{ itemId: string }> }
 ) {
   try {
+    await requireSession();
     const body = await request.json();
     const { status, operator_id } = body;
     const { itemId } = await params;
@@ -42,6 +44,9 @@ export async function PATCH(
       message: "Status item berhasil diperbarui",
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error("Error updating production item:", error);
     return NextResponse.json(
       { success: false, error: error.message },
