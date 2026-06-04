@@ -1,264 +1,116 @@
 # gemiprint — Cursor Agent Rules
 
-## Project owner context
+## Owner context
 
-- The project owner is **not a programmer**. Do not rely on them to choose technical patterns, architecture, or complex trade-offs.
-- **Trust technical decisions to the agent**; explain in simple language what changed and why (briefly).
-- The app is used **internally only (~2–5 people)**. Priorities: **fast, stable, fits business needs**, with **reasonable security** (not enterprise hardening).
-- **Long-term goal:** the codebase must remain readable by **other programmers** after the owner stops maintaining it. Use clear Bahasa Indonesia consistently for application-owned artifacts; keep the product UI in Bahasa Indonesia for end users.
+- The owner is **not a programmer**. Trust technical decisions to the agent; explain changes briefly in plain Bahasa Indonesia.
+- Internal app, ~2-5 users. Priorities: fast, stable, fits business needs, reasonable security (not enterprise hardening).
+- Communicate with the owner in **Bahasa Indonesia**.
 
-## Work goals
+## Workflow
 
-- Fix bugs, add features, and refactor so the app stays **responsive** and **easy to use**.
-- Maintain basic security: do not leak secrets, validate API input, do not commit `.env` / keys, avoid auth/session regressions.
-- For a small internal context, avoid over-engineering (excessive abstraction, new infra without clear benefit).
+- Treat each request as a **goal to finish end-to-end**, not a question to answer. Implement UI + logic + data, fix compile errors you introduce, then verify.
+- Don't pause for unnecessary check-ins ("should I continue?"). Proceed unless truly blocked.
+- `/goal <text>` mode: everything after `/goal` is the single goal. Ship the behavior first, then test/cleanup. Don't stop at a plan.
+- Pick reasonable defaults for small ambiguities; note assumptions in the final summary.
+- **Block and ask only if:** deleting production data / wiping DB, changing domain/DNS/billing, money or access rules that can't be inferred, or changes that can't be rolled back easily.
 
-## Finish the goal (default + `/goal` command)
+## Tools and access (use without asking)
 
-The owner usually asks for a **specific feature or outcome**, not a partial plan. Your job is to **carry it through to a working result** — not stop after analysis, a proposal, or the first file.
+- Cursor built-in browser (GitHub, Supabase, Vercel, GoDaddy — already logged in).
+- Terminal / CLI: Next.js, Flutter, `gh`, Supabase CLI, Vercel CLI, SQLite.
+- Read code, run commands, check deploy/logs, test in the browser.
 
-### Default (every chat)
+## Git and deploy
 
-- Treat the user’s request as a **goal to complete**, not a question to answer and leave.
-- Keep working: read code, implement, wire UI/API/DB, fix compile errors you introduce, until the described feature **works end-to-end** in code.
-- Do **not** pause for unnecessary check-ins (“should I continue?”, “want me to implement?”). Proceed unless you are **blocked** (see below).
-- Prefer **reasonable defaults** for small ambiguous details; note assumptions briefly at the end rather than blocking progress.
-- **Testing and polish** still matter, but **after** the feature exists — run `build` / `test` / smoke checks before calling the task done (see Verification).
+- Commit verified changes. Push to `main` → Vercel auto-deploys.
+- Only commit when the owner asks (or clearly implies). Clear commit messages.
+- Never commit secrets (`.env.local`, keys, certs). Never `git push --force` to `main`. Don't amend pushed commits unless asked.
+- DB migrations: after pushing schema changes, the owner runs `npm run supabase:db:push` to apply to cloud.
 
-### `/goal` mode (owner types `/goal` in chat)
+## Architecture (one app, three storage backends)
 
-When the message starts with **`/goal`** (e.g. `/goal add export CSV on finance page`):
+- **Web** (`app.gemiprint.com`, Vercel): React + Next.js API routes → Supabase Postgres via service-role key.
+- **Desktop** (Tauri + Next standalone): local SQLite via `better-sqlite3`, offline-first, optional sync to Supabase. Entry: `src-tauri/src/main.rs`; sync engine: `src-tauri/src/sync.rs`.
+- **Mobile / mobile-web** (Flutter): talks only to the Next.js API.
+- **Unified data layer:** `src/lib/db-unified.ts`. Use `db.query/queryOne/insert/update/delete/transaction`. **Never import the Supabase or SQLite client directly from feature code.**
+- **Runtime:** Node.js 22 + npm. Stay on it.
 
-1. **Scope:** Everything after `/goal` is the **single goal**. Ignore side quests unless required to complete that goal.
-2. **No interruption:** Do **not** stop mid-way to ask “shall I implement?” or offer only a plan. Implement until the goal is **functionally complete** in the codebase.
-3. **Feature first:** Ship the requested behavior (UI + logic + data as needed) **before** extended testing, refactors, or optional cleanup. Quick fixes for errors **you** caused while building are in-scope; broad test passes and deep debugging come **after** the feature works.
-4. **Still allowed without asking:** read/search code, run commands, edit files, commit if the owner’s git rules apply, translate Indonesian comments in files you touch.
-5. **Stop and ask only if truly blocked:** e.g. destructive production action, billing/DNS change, or business rule that changes money/access and cannot be inferred safely. Otherwise decide and continue.
-6. **Done means:** The `/goal` outcome is implemented and demonstrable (e.g. button works, API returns expected shape). Then run verification (build/tests), fix obvious failures, and give a **short** summary: what was built, what was assumed, what to try manually.
+### File map by concern
 
-**Example:** `/goal POS cart shows roll length in meters` → implement display + any helpers, don’t stop at “here’s how you could do it.”
+- DB access (all backends): `src/lib/db-unified.ts`
+- Stock movements + roll conversion: `src/lib/services/inventory-service.ts` (`postInventoryMovement`, `convertRollVariant`)
+- Cashbook + AVCO: `src/lib/services/finance-service.ts`
+- Auth guards: `src/lib/auth-guard-server.ts`
+- Period close: `src/lib/services/accounting-periods-service.ts`
+- PPN helpers: `src/lib/ppn-helpers.ts`; roll billing: `src/lib/roll-size-utils.ts`
+- Cache hook: `src/lib/use-cached-data.ts`; sync table list: `src/lib/sync-config.ts`
+- Menu + breadcrumb: `src/components/menuConfig.tsx`
 
-## Tools and access
+## Language standard (Indonesia-first)
 
-The agent **may and should** use without repeatedly asking permission:
+The whole app is normalized to Bahasa Indonesia. All application-owned artifacts use Indonesian: UI strings, route folders, API routes, component names, comments/JSDoc, internal docs, internal scripts, and new DB tables/columns.
 
-- **Cursor built-in browser** — GitHub, Supabase, Vercel, GoDaddy (accounts already logged in).
-- **Terminal / CLI** — Next.js, Flutter, GitHub (`gh`), Supabase CLI, Vercel CLI, SQLite when needed.
-- **Independent investigation** — read code, run commands, check deploy/logs, test in the browser when relevant.
+**English is only allowed for** framework/library/protocol terms and fixed names: `src`, `page.tsx`, `route.ts`, React props, SQL keywords, npm package names, built-in types (`string`, `Promise`, `Record`, ...), generated/vendor code, and migrations already applied to cloud.
 
-## Code and repo hygiene
+**Conventions still in force (do not regress):**
 
-When **scanning, analyzing, or implementing**:
+- New comments/JSDoc in touched application code must be Bahasa Indonesia. When you touch a nearby English app comment, translate it (keep the edit scoped). Don't translate framework/generated/vendor comments.
+- Use baku Indonesian spelling, not half-English: Impor (not Import), Ekspor (not Export), Unggah (not Upload), Unduh (not Download), Muat Ulang (not Refresh), Pratinjau (not Preview), Penggantian (not Override), Bawaan / Utama (not Default), Buat (not Generate), Draf (not Draft), Jendela (not Window), Faktur (not Invoice), Pelanggan Umum (not Walk-in), Manajer/Staf (not Manager/Staff).
+- Don't abbreviate operational menu labels: "PO" → "Pesanan Pembelian", "SJ" → "Surat Jalan". "SPK", "PPN", "NSFP", "POS", "maklon", "finishing", "Vendor" stay (baku operational terms).
+- Don't add new bilingual (i18n) toggles for internal UI. Exception that exists: AI design-brief generator in `src/app/produksi/ai-prompt/page.tsx` (consumed by outside vendors).
+- Glossary: Dashboard→Beranda, Customer→Pelanggan, Material→Barang, Purchase→Pembelian, Sale→Penjualan, Inventory→Inventori, Finance→Keuangan, Reports→Laporan, Settings→Pengaturan, User→Pengguna, Production→Produksi.
 
-- Remove or tidy **dead code**, unused files, temporary debug comments, and obvious junk data no longer in use.
-- Do not delete anything still referenced (Tauri bundle, Supabase migrations, release scripts, etc.) without verifying.
-- Cleanup changes must be **minimal and focused** — no large refactors unrelated to the current task.
+**Deployed-contract safety:** never rename a deployed DB column / API path casually. Add a new migration (additive) or a compat alias, migrate consumers, verify, then remove the old one. DB rename must stay in sync across Supabase migration, `database/sqlite-schema.sql`, `src/lib/db-unified.ts` runtime ALTER, `src/lib/sync-config.ts`, services, web, Tauri, and Flutter.
 
-## Code comments (ongoing — required)
+**Settled exceptions (kept English on purpose):**
+- File names under `src/lib/services/*-service.ts` and `src/lib/*.ts` may stay English (read by programmers; renaming churns every import for no user value).
+- Legacy DB tables already in English (`inventory_movements`, `purchase_orders`, `stock_opnames`, `barang_roll_variants`, `accounting_periods`, ...) stay — renaming tables is high-risk (many FKs) for low value. New tables/columns must be Indonesian.
+- Old API folders under `src/app/api/` (e.g. `/api/customers`) are kept as thin re-export shims pointing at the Indonesian routes (`/api/pelanggan`) until Flutter/Tauri migrate. Old web routes (`/customers`, `/dashboard`, ...) 301-redirect to Indonesian routes via `next.config.ts`.
 
-**Every time** you open or edit a source file (`src/`, `src-tauri/`, `flutter/lib/`, etc.):
+## Iron rules — data & money (apply unprompted)
 
-1. **Write new application-owned comments in Bahasa Indonesia** for `//`, `/* */`, JSDoc, and `{/* dev notes */}`.
-2. **If you touch a nearby English application-owned comment**, translate it to Bahasa Indonesia in the same change when the meaning is clear and the edit stays scoped.
-3. **Do not translate** framework/library/protocol names, generated/vendor comments, SQL keywords, package names, or migrations that have already been applied.
-4. **Do not anglicize** user-facing UI strings, API error messages for end users, database identifiers, or API identifiers that are already Bahasa Indonesia.
+The owner won't remember to ask; enforce by default.
 
-The repo still has legacy English comments and mixed names. Treat touched areas as an opportunity to move toward the Indonesia-first standard, but avoid broad unrelated rewrites.
+1. **Data fetching → `useCachedData` (SWR), never `useAsyncData`.** Instant paint from cache + background revalidate. Stable cache key per dataset (e.g. `"pelanggan"`, or `` `movement-ledger:${JSON.stringify(filters)}` ``). Bust cross-page caches with `useInvalidate("key")`. Reference: `src/app/barang/page.tsx`, `src/app/vendors/page.tsx`.
 
-## Verification before done
+2. **Schema change → THREE places in sync:** (a) new `supabase/migrations/<timestamp>_<name>.sql` (additive, `IF NOT EXISTS`, defaults); (b) `database/sqlite-schema.sql` fresh-install template; (c) `src/lib/db-unified.ts` runtime `ALTER TABLE ADD COLUMN` so existing SQLite installs migrate on start. Migrations already on cloud are immutable — write a new one.
 
-After the **goal or feature** is implemented (especially after `/goal`):
+3. **Inventory mutation → `inventory-service.postInventoryMovement`, never raw `db.update("barang", { jumlah_stok })`.** The ledger `inventory_movements` is the source of truth for stock + AVCO. Roll cuts use `convertRollVariant`. Rebuild via `rebuildInventoryBalance(barangId)`.
 
-- **Run yourself** `npm run build`, `npm test`, and/or a quick smoke check — not as a substitute for building the feature first.
-- Fix obvious failures you introduced before closing the task.
-- Report briefly: what was built, what was tested, and the result.
+4. **Money/cashbook mutation → `keuangan` with a `[REF:<id>]` token in `keperluan`.** Void/revert search this token. Hutang/piutang flow through `payDebt` / `revertDebtPayment`; keep `keuangan`, `hutang.sisa_hutang`, `pembelian.jumlah_dibayar` in lock-step. CASH posts to `keuangan` immediately; NET30/COD creates `hutang` and posts only when paid.
 
-## Git, commits, and deploy
+5. **Mutating server action → wrap in an auth guard** (`src/lib/auth-guard-server.ts`: `requireSession`, `requireAdminOrManager`, `requireProductionInventoryRole`, `requireAdminManagerOrSelf`). Pass `session.uid` as `dibuat_oleh`. Read actions can be ungated.
 
-The owner **trusts** the agent to:
+6. **Roll/dimensional barang (`butuh_dimensi_status = 1`):** `jumlah` (m²) = `jumlah_roll × panjang × lebar` (never just `panjang × lebar`). Decrement uses roll-width-aligned length via `barang_roll_variants` + `linear_delta_m`. Conversions atomic + AVCO-neutral. Input order **Lebar × Panjang**. Roll qty integer ≥ 1.
 
-- **Commit** verified changes.
-- **Push to `main`** — Vercel **auto-deploys** on every `main` update.
+7. **Period-closed guard on dated mutations.** Anything accepting `tanggal` must check `accounting-periods-service.isDateInClosedPeriod`. Throw a friendly error pointing to the open period; never silently bypass.
 
-Guidelines:
+8. **Sync columns on every new synced table:** `sync_status, last_synced_at, sync_version, updated_at_server, updated_by_device, change_version, is_deleted, deleted_at, client_mutation_id`. Register it in `src/lib/sync-config.ts`.
 
-- Clear commit messages (Indonesian or English, consistent with repo history).
-- **Do not** commit secret files (`.env.local`, keys, certificates).
-- **Do not** `git push --force` to `main`.
-- **Do not** amend commits already pushed unless explicitly requested.
-- After push, briefly state what went into deploy (main feature/fix).
+9. **Idempotent ledger IDs from source line:** `mov-${itemId}`, `void-${originalMovementId}`, `${conversionId}-out` / `${conversionId}-in-${i}`. Deterministic and retry-safe.
 
-## Project stack (summary)
+10. **Verification before "done" (mandatory):** `npm run type-check` (0 errors) → `npm run build` → `npx jest <relevant test>` for touched services (`src/lib/__tests__/`). UI-only changes may skip jest, still need type-check + build. New lint warnings you introduce must be fixed.
 
-- **Web:** Next.js 16 on Vercel, Supabase (Postgres), ~58 API routes.
-- **Desktop:** Tauri + Next standalone + local SQLite (`better-sqlite3`).
-- **Mobile:** Flutter → Next.js API at `app.gemiprint.com`.
-- **Runtime:** stay on **Node.js 22 + npm**.
+11. **`onSuccess` for a newly created item passes `null` as the updated item**, so the parent does a full `reload()` instead of `updateInState` (which would never append the new row).
 
-## Language
+12. **Seed/default SQL:** verify column names against actual migrations (e.g. `pengaturan_toko` bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama`). Default settings rows use `ON CONFLICT DO UPDATE SET`, not `DO NOTHING`, so `supabase:local:reset` restores defaults.
 
-- **Communication with the owner:** **Bahasa Indonesia**, clear and not overly technical.
-- **Decision standard:** **Indonesia-first for every application-owned artifact.** UI, folder/domain routes, application API names, components, comments, internal docs, internal scripts, database domain tables/columns, and schema migrations should use Bahasa Indonesia.
-- **Allowed English exceptions:** framework/library/protocol terms and fixed filenames such as `src`, `page.tsx`, `route.ts`, React props, SQL keywords, npm package names, built-in types, generated/vendor code, and migration files that have already been applied.
-- **User-facing UI** (labels, buttons, placeholders, toasts, dialogs, validation messages shown in the app, and API error messages intended for end users): **Bahasa Indonesia** — all users are Indonesian; do **not** anglicize the interface unless explicitly requested.
-- **Code comments and JSDoc:** Bahasa Indonesia for application-owned code; English may remain only for framework/library/protocol/generated context or legacy comments outside the touched scope.
-- **Commits:** clear messages in Bahasa Indonesia unless repository history around the change strongly requires otherwise.
-- **Database/API identifiers:** new application-owned identifiers should use Bahasa Indonesia. Existing deployed identifiers are migrated gradually with compatibility aliases and new migrations; never rename deployed database/API contracts casually.
-- **Docs:** internal docs in `docs/` should be Bahasa Indonesia. If a legacy doc is still English, new sections and future edits should move it toward Bahasa Indonesia.
-- **Reference guide:** use [docs/panduan-bahasa.md](./docs/panduan-bahasa.md) and [docs/progres-seragam-bahasa.md](./docs/progres-seragam-bahasa.md) before starting language-normalization work.
+13. **Finance categories:** show `display_name` as primary label; `category_code` secondary (small, monospace, amber, quoted). In `ExpressionAssistant`, suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"`.
 
-## When to confirm with the owner
+## Iron rules — new page/UI shape
 
-Ask first only if:
+- Page root is `<div className="space-y-6">`, **never** a second `<main>` (the shell already provides `<main>` with padding).
+- Every page opens with a gradient title card: `<div className="bg-gradient-to-br from-X to-Y rounded-2xl shadow-lg p-6 text-white">` with icon, uppercase title, subtitle. Reference: `src/app/keuangan/page.tsx`, `src/app/surat-jalan/page.tsx`.
+- **Dark mode mandatory on every element.** Every color class needs a `dark:` pair (`bg-white dark:bg-slate-900`, `text-slate-800 dark:text-slate-100`, `border-slate-200 dark:border-slate-700`). Watch for invalid tokens like `dark:bg-slate-8000`.
+- Stat-card icons use `text-white` on a `bg-white/20 rounded-lg` patch — never the same color as the card gradient (invisible icon).
+- Badges/numbers with white text need a solid shade (`bg-emerald-500`), not `-50` (near-white, unreadable).
+- **Modals:** ESC to close, backdrop click to close (`if (e.target === e.currentTarget)`), header X button, primary action rightmost with brand color, cancel to its left, disabled state during async ("Menyimpan..."). Theme color by domain: emerald = material/inventory, purple = purchase, indigo = neutral, amber = warnings/manual, rose = destructive. Reference shells: `src/components/ModalFormShell.tsx`, `src/components/DialogKonfirmasi.tsx`.
 
-- Deleting production data / wiping the database.
-- Changing domain, DNS (GoDaddy), or billing.
-- Ambiguous business rules (pricing, access for new users, etc.).
-- Large changes that cannot be rolled back easily.
+## When ambiguous
 
-## Iron rules — apply unprompted
+Pick the option that: matches existing patterns (search first), minimizes new infra, errs toward user safety on destructive ops, and respects existing column/table semantics. Document non-obvious choices in the final summary.
 
-These are non-negotiable patterns the owner expects on every feature. The owner is non-technical and **will not remember to ask** for them. Read [docs/agent-playbook.md](./docs/agent-playbook.md) for full context, but enforce these by default:
+## Setup references (owner-maintained, do not delete)
 
-### 0. Language consistency is an iron rule
-
-All new application-owned work follows the Indonesia-first standard in the Language section. UI must always be Bahasa Indonesia. Do not introduce mixed names such as `PurchaseKategoriModal`; use one consistent Bahasa Indonesia domain name, e.g. `ModalKategoriPembelian`, unless the English term is a framework/library/protocol exception.
-
-### 1. New page that fetches data → use `useCachedData`, not `useAsyncData`
-
-`useAsyncData` refetches on every mount. `useCachedData` (SWR-backed) gives instant paint from cache + background revalidation. Reference: [src/app/materials/page.tsx](./src/app/materials/page.tsx), [src/app/vendors/page.tsx](./src/app/vendors/page.tsx). Pick a stable cache key (e.g. `"penawaran-init"`, or `` `movement-ledger:${JSON.stringify(filters)}` `` when the data is filter-dependent). When migrating, derive locals so existing `data.X` / `reload()` callers don't have to change.
-
-### 2. Schema change → migration AND `database/sqlite-schema.sql` AND `src/lib/db-unified.ts` runtime check
-
-Three places must stay in sync because the app runs on both Supabase (web) and SQLite (Tauri):
-
-- `supabase/migrations/<timestamp>_<name>.sql` — additive, `IF NOT EXISTS`, default values for backward compat.
-- `database/sqlite-schema.sql` — fresh-install template.
-- `src/lib/db-unified.ts` — `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` so existing local SQLite installs migrate on app start.
-
-Migration files that already exist on the cloud cannot be edited. If a change is needed, write a new migration with a new timestamp.
-
-### 3. Inventory mutation → goes through `inventory-service.postInventoryMovement`, never raw `db.update("barang", …)`
-
-The ledger is the source of truth for stock and AVCO. Bypassing it desyncs `barang.jumlah_stok`, `average_cost_per_base_unit`, and roll variants. Same applies to roll conversions: use `convertRollVariant`. See [src/lib/services/inventory-service.ts](./src/lib/services/inventory-service.ts).
-
-### 4. Money/cashbook mutation → through `keuangan` table with `[REF:<id>]` in keperluan
-
-Every cashbook entry must be traceable back to its source transaction. Pattern is a `[REF:<id>]` token in the `keperluan` text. Void/revert flows search by this token. See `createPurchase` in [src/lib/services/purchases-service.ts](./src/lib/services/purchases-service.ts).
-
-### 5. Server action that mutates → wrap in `requireAdminOrManager()`
-
-Read actions can be open. Write actions go through [src/lib/auth-guard-server.ts](./src/lib/auth-guard-server.ts) guards. Use `s.uid` from the returned session as `dibuat_oleh` so the audit trail captures who acted.
-
-### 6. Roll/dimensional barang has special rules
-
-For barang with `butuh_dimensi_status = 1`:
-- `jumlah` (m²) = `jumlah_roll × panjang × lebar`. Never compute as `panjang × lebar` only.
-- Stock decrement uses **roll-width-aligned** length, not order dimensions, via `barang_roll_variants` and `linear_delta_m`.
-- Conversions (cutting one width into multiple) are atomic via `convertRollVariant` and are AVCO-neutral.
-- See [docs/agent-playbook.md](./docs/agent-playbook.md) section "Roll inventory model" before touching this area.
-
-### 7. Modals must be consistent
-
-Every modal: ESC to close, click-outside to close, header X button, focus on the primary action. Theme colors signal the domain:
-- **Emerald** — material/inventory operations (e.g. roll conversion from materials page).
-- **Purple** — purchase-transaction operations (e.g. roll split during receipt).
-- **Amber** — warnings, unassigned/manual buckets.
-- **Rose** — destructive (waste, delete).
-
-### 8. Period-closed guard on dated mutations
-
-`postInventoryMovement` and finance mutations that accept `tanggal` must respect closed accounting periods (`accounting-periods-service.isDateInClosedPeriod`). Don't silently bypass — throw a friendly error directing the user to the current open period.
-
-### 9. Sync columns on every new table
-
-Tables that participate in the offline/sync engine need: `sync_status`, `last_synced_at`, `sync_version`, `updated_at_server`, `updated_by_device`, `change_version`, `is_deleted`, `deleted_at`, `client_mutation_id`. Pattern visible on every table in [supabase/schema.sql](./supabase/schema.sql). Also register the table in [src/lib/sync-config.ts](./src/lib/sync-config.ts).
-
-### 10. Idempotent IDs for inventory ledger
-
-When a transaction creates a movement, derive the movement id from the source line id (e.g. `mov-${itemId}`, `void-${original.id}`, `${conversionId}-out`). This makes void/revert lookups deterministic and prevents duplicate posts on retry. See `postInventoryMovement` callers.
-
-### 11. Verification loop is mandatory, even if owner doesn't mention it
-
-Before declaring done: `npm run type-check`, `npm run build`, and run any tests in `src/lib/__tests__/` whose subject your change touches. The owner **expects this** and will be unhappy if a regression makes it to `main`. Pre-existing warnings (e.g. lint exhaustive-deps) are not blockers; new ones from your change are.
-
-### 12. Ask only when truly blocked, otherwise pick the pragmatic default
-
-The owner explicitly trusts technical judgment. Pick reasonable defaults, document assumptions in the final summary. Block only on: destructive prod actions, money/access rules that cannot be inferred, or genuinely 50/50 architectural choices with significant trade-offs.
-
-### 13. New page wrapper must be `<div className="space-y-6">`, never a second `<main>`
-
-The layout shell already provides `<main>` with padding. Returning `<main className="space-y-5 p-6">` from a page component double-wraps the content and makes it appear shrunken and misaligned. Always return `<div className="space-y-6">` as the root element.
-
-### 14. Every new page needs a gradient title card
-
-Pattern: `<div className="bg-gradient-to-br from-X to-Y rounded-2xl shadow-lg p-6 text-white">` with icon, uppercase title, and subtitle. Color follows the page theme. Reference: `src/app/finance/page.tsx`, `src/app/surat-jalan/page.tsx`.
-
-### 15. Dark mode is mandatory on every element
-
-Every color class needs a `dark:` counterpart. Common pairs: `bg-white dark:bg-slate-900`, `text-slate-800 dark:text-slate-100`, `border-slate-200 dark:border-slate-700`. Never ship a new page or component without dark mode. Check for typos like `dark:bg-slate-8000` (invalid — extra zero).
-
-### 16. Icons in stat cards use `text-white`, background uses `bg-white/20`
-
-Never set icon color to match the card gradient (e.g. `text-yellow-500` on a yellow card). The icon becomes invisible. Always: icon wrapper = `bg-white/20 rounded-lg`, icon = `text-white`.
-
-### 17. Badges with white text need solid background, not `-50` shade
-
-`bg-emerald-50 text-white` is unreadable — the `-50` shade is near-white. Use `bg-emerald-500` (or equivalent solid shade) for any badge/number that contains white text.
-
-### 18. `onSuccess` for new items must pass `null`, not the raw result
-
-When a create modal calls `onSuccess(message, updatedItem)`, pass `null` for new items so the parent calls `reload()`. Passing the raw API result causes the parent to call `updateInState` instead of appending, so the new item never appears in the list.
-
-### 19. Seed SQL column names must match actual migrations
-
-Before writing seed SQL, verify column names in `supabase/migrations/`. For `pengaturan_toko`: bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama`. Default settings rows must use `ON CONFLICT DO UPDATE SET` (not `DO NOTHING`) so `supabase:local:reset` always restores correct defaults.
-
-### 20. Menu labels must not be abbreviated
-
-If other menu items use full names, do not abbreviate. "PO" must become "Pesanan Pembelian", not "Purchase Order". Check `src/components/menuConfig.tsx` for both the `label` field and the breadcrumb map.
-
-### 21. Finance categories: `display_name` is primary, `category_code` is secondary
-
-In any UI listing categories: show `display_name` as the main label (normal font, slate color). Show `category_code` as secondary (small, monospace, amber, with quotes). Never show raw codes as the primary user-facing text. In formula autocomplete (`ExpressionAssistant`), suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"` (stable for formulas).
-
-### 22. Pakai ejaan baku Indonesia, bukan campur English-mentah
-
-UI dan toast harus pakai ejaan baku Indonesia, bukan kata Inggris yang sekadar diserap setengah. Ini iron rule turunan dari standar bahasa.
-
-| Salah (English mentah) | Benar (Indonesia) |
-|---|---|
-| Import | Impor |
-| Export | Ekspor |
-| Upload | Unggah |
-| Download | Unduh |
-| Refresh | Muat Ulang |
-| Preview | Pratinjau |
-| Override / di-override | Penggantian / Diganti manual |
-| Default | Bawaan (atau "Utama" untuk default unit/option) |
-| Reset Default | Kembali ke Bawaan |
-| Range (rentang nomor/tanggal) | Rentang |
-| Window (UI) | Jendela |
-| Generate | Buat |
-| Generating... | Membuat... |
-| Draft | Draf |
-| Walk-in / Walk-in Customer | Pelanggan Umum (boleh "Umum" di tabel sempit) |
-| Manager / Staff | Manajer / Staf |
-| All-in-One Management System | Sistem Manajemen Terpadu |
-| Professional Printing Services | Layanan Percetakan Profesional |
-| Toggle X ON | Aktifkan X otomatis |
-
-Lihat [docs/panduan-bahasa.md](./docs/panduan-bahasa.md) untuk daftar lengkap dan keputusan tertunda (mis. `Invoice` -> `Faktur`).
-
-### 23. Jangan rename identifier internal saat menerjemahkan label UI di Fase 1
-
-Saat batch Fase 1 (UI terlihat pengguna), batasi perubahan hanya pada string literal UI, toast, modal, empty/loading/error state, print/PDF, label menu, dan kolom laporan. Jangan rename:
-
-- Nama file (`page.tsx`, `route.ts`, dll).
-- Nama route Next.js (`/customers`, `/materials`, dll) — itu Fase 4.
-- Nama API route (`/api/...`) — Fase 4.
-- Identifier kode (`walkInFaktur`, `customerId`, `customerSearch`, dll) — Fase 3.
-- Nama tabel/kolom database (`nomor_invoice`, `pelanggan_id`, dll) — Fase 5.
-- Migrasi yang sudah pernah diterapkan ke cloud.
-
-Cara aman: cari string literal UI dengan `rg`, edit nilai string saja, biarkan identifier surrounding tetap. Komentar di area yang sama boleh ikut diterjemahkan ke Bahasa Indonesia (sesuai aturan komentar Indonesia-first).
+- `docs/SETUP.md` — fresh-machine developer setup.
+- `docs/supabase-local-development.md` — local Supabase workflow.

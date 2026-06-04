@@ -1,6 +1,8 @@
 # gemiprint
 
-A full-featured business management application for printing companies — covering POS (Point of Sale), material inventory, customer & vendor management, production & finishing, purchasing, accounts payable/receivable, cashbook (income/expenses), and reporting with PDF export.
+A full-featured business management application for printing companies — covering POS (Point of Sale), roll & sheet inventory with moving-average costing, customer & vendor management, production work orders (SPK) & finishing, purchasing with auto-PO/reorder, accounts payable/receivable, a formula-driven cashbook (income/expenses & profit sharing), Indonesian VAT (PPN) handling, quotations, delivery notes, and reporting with PDF export.
+
+The product UI is fully in Bahasa Indonesia (all users are Indonesian); the codebase and docs follow an Indonesia-first naming standard.
 
 Available on four platforms:
 
@@ -48,6 +50,19 @@ Available on four platforms:
 ## About This Project
 
 This repository was built entirely using AI coding agents — [GitHub Copilot](https://github.com/features/copilot) in the early stages and [Cursor](https://www.cursor.com/) in the later stages. I am not a programmer. I conceived, directed, and managed the entire product, using modern AI-assisted development tools to turn my vision into a fully working, production-grade application. This project serves as a demonstration of what is possible when domain expertise meets the right tools — no traditional coding background required.
+
+## Features
+
+- **POS / Kasir** — sell stocked goods, services (JASA), and subcontract jobs (MAKLON, which auto-generates a linked vendor PO). Roll items are billed by roll-width-aligned dimensions; thermal receipt and A4 faktur (invoice) printing.
+- **Inventory ledger** — `inventory_movements` is the single source of truth for stock and moving-average cost (AVCO). Supports purchase receipt, sale issue, void/return, adjustment, waste, and roll conversion (cutting one roll width into several), all idempotent and AVCO-aware.
+- **Roll/dimensional materials** — items sold by area (m²) but stocked physically as rolls of fixed width × variable length, tracked per width in `barang_roll_variants`.
+- **Purchasing** — purchases with PPN, debt (NET30/COD) vs cash, purchase orders with auto-reorder suggestions, and purchase returns.
+- **Production** — work orders (SPK) with item/finishing status tracking and material consumption posting; an AI design-brief prompt generator.
+- **Finance** — a formula-driven cashbook with a custom AST expression engine, configurable per-person profit sharing / cash advance / bonus, accounting period close, and CSV import.
+- **Indonesian VAT (PPN)** — output/input VAT, NSFP (tax serial number) pool, and a monthly report to cross-check against Coretax DJP.
+- **Documents** — quotations (penawaran), delivery notes (surat jalan), and PDF/print exports.
+- **Offline-first desktop** — local SQLite with a background sync engine to Supabase.
+- **Roles & audit** — admin / manager / production / warehouse / kasir guards on mutations, with a full audit log.
 
 ## Download
 
@@ -142,7 +157,7 @@ cd flutter && flutter run -d edge --web-port=8080 --web-renderer html
 cd flutter && flutter run -d edge --web-port=8080 --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
-**Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka `**http://localhost:8080/login`** atau `**http://localhost:8080/**` (akan redirect). URL `/#/login` bisa memunculkan layar putih.
+**Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka `**http://localhost:8080/login`** atau `**http://localhost:8080/`** (akan redirect). URL `/#/login` bisa memunculkan layar putih.
 
 Login ke API production dari `localhost` membutuhkan header **CORS** di server Next.js — sudah ditambahkan di `src/middleware.ts`; deploy ke Vercel supaya `app.gemiprint.com` mengizinkan origin `http://localhost:8080`.
 
@@ -238,50 +253,61 @@ Desktop users will receive an automatic update notification.
 
 ```
 gemiprintaio/
-├── src/                    # Next.js frontend + API routes
-│   ├── app/                # App router (pages & API)
-│   │   ├── api/            # REST API endpoints
-│   │   ├── auth/           # Login page
-│   │   ├── dashboard/      # Main dashboard
-│   │   ├── pos/            # Point of Sale
-│   │   ├── materials/      # Material & product management
-│   │   ├── customers/      # Customer management
-│   │   ├── vendors/        # Vendor management
-│   │   ├── purchases/      # Purchasing
-│   │   ├── production/     # Production & finishing
-│   │   ├── finance/        # Cashbook (income/expenses)
-│   │   ├── reports/        # Reports & PDF export
-│   │   ├── settings/       # App settings
-│   │   └── users/          # User management
-│   ├── components/         # React components
-│   ├── hooks/              # Custom React hooks
-│   └── lib/                # Utilities, services, database layer
-├── src-tauri/              # Tauri desktop app (Rust)
-│   ├── src/main.rs         # Entry point, server lifecycle, sync
-│   ├── src/sync.rs         # Offline-first sync engine
-│   └── tauri.conf.json     # Tauri configuration
-├── flutter/                # Flutter mobile & mobile-web app
+├── src/                        # Next.js frontend + API routes
+│   ├── app/                    # App Router (pages & API) — folders in Bahasa Indonesia
+│   │   ├── api/                # REST API endpoints (Indonesian routes + legacy English shims)
+│   │   ├── auth/               # Login
+│   │   ├── beranda/            # Dashboard
+│   │   ├── pos/                # Point of Sale / Kasir
+│   │   ├── barang/             # Material & product (inventory items)
+│   │   ├── inventori/          # Stock adjustments, opname, movement ledger
+│   │   ├── pelanggan/          # Customer management
+│   │   ├── vendors/            # Vendor management
+│   │   ├── pembelian/          # Purchasing
+│   │   ├── pesanan-pembelian/  # Purchase orders (auto-PO / reorder)
+│   │   ├── retur-pembelian/    # Purchase returns
+│   │   ├── retur-penjualan/    # Sales returns
+│   │   ├── produksi/           # Production (SPK) & AI design-brief prompt
+│   │   ├── surat-jalan/        # Delivery notes
+│   │   ├── penawaran/          # Quotations
+│   │   ├── keuangan/           # Cashbook + formula-driven finance summary
+│   │   ├── laporan/            # Reports & PDF export
+│   │   ├── laporan-ppn/        # VAT (PPN) report for Coretax cross-check
+│   │   ├── kelola-pengurus/    # Profit-share / partner setup
+│   │   ├── pengaturan/         # App settings (shop, pricing, PPN, numbering, printers)
+│   │   ├── pengguna/           # User management
+│   │   └── aktivitas/          # Audit log
+│   ├── components/             # React components (names in Bahasa Indonesia)
+│   ├── hooks/                  # Custom React hooks
+│   └── lib/                    # Utilities, services, unified DB layer, AST formula engine
+├── src-tauri/                  # Tauri desktop app (Rust)
+│   ├── src/main.rs             # Entry point, embedded Next.js server lifecycle, sync
+│   ├── src/sync.rs             # Offline-first sync engine
+│   └── tauri.conf.json         # Tauri configuration
+├── flutter/                    # Flutter mobile & mobile-web app
 │   ├── lib/
-│   │   ├── core/           # Config, theme, router, constants
-│   │   ├── features/       # Feature pages (auth, pos, etc.)
-│   │   ├── models/         # Dart data models
-│   │   ├── providers/      # Riverpod state management
-│   │   ├── services/       # API client & feature services
-│   │   └── widgets/        # Shared UI components
-│   └── pubspec.yaml        # Flutter dependencies
-├── database/               # SQLite template database
-├── supabase/               # Supabase migrations
-├── scripts/                # Build & release scripts
-├── updates/                # Auto-updater manifest
-└── tauri-bundle/           # Bundled resources for desktop installer
+│   │   ├── core/               # Config, theme, router, constants
+│   │   ├── features/           # Feature pages (auth, pos, etc.)
+│   │   ├── models/             # Dart data models
+│   │   ├── providers/          # Riverpod state management
+│   │   ├── services/           # API client & feature services
+│   │   └── widgets/            # Shared UI components
+│   └── pubspec.yaml            # Flutter dependencies
+├── database/                   # SQLite template database + schema
+├── supabase/                   # Supabase migrations + schema
+├── scripts/                    # Build, release, seed & migration scripts
+├── docs/                       # Setup & local-dev guides
+├── updates/                    # Auto-updater manifest
+└── tauri-bundle/               # Bundled resources for desktop installer
 ```
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16, React 19, Tailwind CSS 4
-- **Desktop:** Tauri 2, Rust
+- **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS 4, SWR (via `useCachedData`)
+- **Desktop:** Tauri 2, Rust (embedded Next.js standalone + local SQLite + sync engine)
 - **Mobile:** Flutter, Riverpod, GoRouter, Material 3
-- **Database:** SQLite (desktop, via better-sqlite3), Supabase Postgres (web + cloud sync)
+- **Database:** SQLite (desktop, via better-sqlite3) and Supabase Postgres (web + cloud sync), behind one unified data layer (`src/lib/db-unified.ts`)
+- **Finance engine:** custom AST expression engine for the configurable cashbook (`src/lib/ast/`)
 - **Auth:** JWT sessions with bcrypt password hashing
 - **PDF:** jsPDF + jspdf-autotable for report printing
 - **AI Tools Used:** GitHub Copilot, Cursor
