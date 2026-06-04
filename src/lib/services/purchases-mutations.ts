@@ -874,7 +874,7 @@ export async function updatePurchase(
     const keperluanText = `Pembelian ${poLabelUpdate} [REF:${id}]`;
 
     const keuAllForRef = await db.query<any>("keuangan", {});
-    const matchingKeu = (keuAllForRef.data || []).filter((e: any) =>
+    const matchingKeu = (keuAllForRef.data || []).filter((e: Record<string,unknown>) =>
       String(e.keperluan || "").includes(`[REF:${id}]`)
     );
 
@@ -1067,7 +1067,7 @@ export async function voidPurchase(
     // Void linked cashbook entries by reference (works on Supabase + SQLite)
     const linkedCashbook = await db.query("keuangan", {});
     if (linkedCashbook.data) {
-      const toVoid = linkedCashbook.data.filter((entry: any) =>
+      const toVoid = linkedCashbook.data.filter((entry: Record<string,unknown>) =>
         String(entry.keperluan || "").includes(`[REF:${id}]`)
       );
       for (const entry of toVoid) {
@@ -1163,7 +1163,7 @@ export async function revertPayment(
     const keuAll = await db.query<any>("keuangan", {});
     const nomorFaktur = String(purchase.nomor_faktur || "");
     const toDelKeu = (keuAll.data || []).filter(
-      (k: any) =>
+      (k: Record<string,unknown>) =>
         k.kategori_transaksi === "SUPPLY" &&
         String(k.keperluan || "").includes(nomorFaktur)
     );
@@ -1416,7 +1416,7 @@ async function createLegacyInventoryOnlyPurchaseReturn(input: {
 
   for (const reqLine of input.items) {
     if (!reqLine.qty || reqLine.qty <= 0) continue;
-    const item = items.find((it: any) => it.id === reqLine.item_pembelian_id);
+    const item = items.find((it: Record<string,unknown>) => it.id === reqLine.item_pembelian_id);
     if (!item) {
       throw new Error(`Item pembelian ${reqLine.item_pembelian_id} tidak ditemukan`);
     }

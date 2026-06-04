@@ -68,12 +68,12 @@ async function fallbackAverageCostPerBaseUnit(
   });
   const rows = unitPricesResult.data || [];
   const preferred = hargaSatuanId
-    ? rows.find((r: any) => r.id === hargaSatuanId)
+    ? rows.find((r: Record<string,unknown>) => r.id === hargaSatuanId)
     : null;
   const unit =
     preferred ||
-    rows.find((r: any) => Number(r.default_status) === 1) ||
-    rows.find((r: any) => Number(r.faktor_konversi) === 1) ||
+    rows.find((r: Record<string,unknown>) => Number(r.default_status) === 1) ||
+    rows.find((r: Record<string,unknown>) => Number(r.faktor_konversi) === 1) ||
     rows[0];
   const factor = positiveNumber(unit?.faktor_konversi) || 1;
   return positiveNumber(unit?.harga_beli) / factor;
@@ -919,7 +919,7 @@ export async function voidSale(
     );
     if (activeOrders.length > 0) {
       const spkList = activeOrders
-        .map((o: any) => {
+        .map((o: Record<string,unknown>) => {
           const status = o.status;
           return `${o.nomor_spk} (${status})`;
         })
