@@ -49,6 +49,14 @@ interface PartnerRow {
   display_order: number;
 }
 
+// Kolom eksplisit read path (D-I7): hindari kirim metadata sync (sync_status,
+// last_synced_at, sync_version, updated_at_server, updated_by_device,
+// change_version, is_deleted, deleted_at, client_mutation_id) yang tidak
+// dipakai UI. Aman karena baris di-map lewat rowToFormula/rowToPartner.
+const FORMULA_COLUMNS =
+  "id, name, column_key, db_column, ast, enabled, is_system, display_order, description, formula_key, actor_id, formula_group, is_visible_in_summary";
+const PARTNER_COLUMNS = "id, name, category, display_order";
+
 function parseAst(raw: FormulaRow["ast"]): ASTNode {
   if (typeof raw === "string") return JSON.parse(raw) as ASTNode;
   return raw as ASTNode;
@@ -126,7 +134,7 @@ export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
   if (sb) {
     const { data, error } = await sb
       .from("cashbook_formula")
-      .select("*")
+      .select(FORMULA_COLUMNS)
       .order("display_order", { ascending: true });
     if (error) {
       console.warn("listFormulas Supabase:", error.message);
@@ -168,7 +176,7 @@ export async function getFormula(
   if (sb) {
     const { data, error } = await sb
       .from("cashbook_formula")
-      .select("*")
+      .select(FORMULA_COLUMNS)
       .eq("id", id)
       .maybeSingle();
     if (!error && data) return rowToFormula(data as FormulaRow);
@@ -293,7 +301,7 @@ export async function listPartners(): Promise<PartnerDefinition[]> {
   if (sb) {
     const { data, error } = await sb
       .from("cashbook_partner")
-      .select("*")
+      .select(PARTNER_COLUMNS)
       .order("display_order", { ascending: true });
     if (!error && data && data.length > 0) {
       return (data as PartnerRow[]).map(rowToPartner);
@@ -302,7 +310,7 @@ export async function listPartners(): Promise<PartnerDefinition[]> {
       await seedDefaultsIfEmpty();
       const { data: seeded } = await sb
         .from("cashbook_partner")
-        .select("*")
+        .select(PARTNER_COLUMNS)
         .order("display_order", { ascending: true });
       if (seeded && seeded.length > 0) {
         return (seeded as PartnerRow[]).map(rowToPartner);
