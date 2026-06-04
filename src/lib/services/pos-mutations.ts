@@ -12,6 +12,7 @@ import {
   generateId,
   getCurrentTimestamp,
   getServerSupabaseClient,
+  isCompositeTransactionAtomic,
 } from "../db-unified";
 import {
   createMaklonPurchase,
@@ -21,6 +22,7 @@ import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
   getInventoryMovements,
   postInventoryMovement,
+  rebuildInventoryBalance,
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
@@ -214,11 +216,114 @@ async function generateSPKNumber(): Promise<string> {
 
 // ── Mutations ─────────────────────────────────────────
 
+/**
+ * Compensating cleanup untuk createSale di jalur NON-ATOMIK (Supabase-only).
+ *
+ * Saat `db.transaction()` tidak benar-benar atomik (Vercel/next dev), kegagalan
+ * di tengah createSale meninggalkan data parsial. Fungsi ini membatalkan jejak
+ * yang mungkin sudah tertulis, dengan urutan aman:
+ *   1. Reversal inventori via rebuildInventoryBalance (BUKAN delete mentah —
+ *      delete tidak mengembalikan stok/AVCO yang sudah berubah).
+ *   2. Hapus entri keuangan ber-token [REF:saleId].
+ *   3. Lepas kunci NSFP (TERPAKAI → TERSEDIA) bila sempat terkunci.
+ *   4. Hapus header penjualan; FK ON DELETE CASCADE membersihkan
+ *      item_penjualan, biaya_tambahan_penjualan, order_produksi → item_produksi
+ *      → item_finishing, dan piutang_penjualan.
+ *
+ * Semua langkah best-effort: kegagalan satu langkah tidak menghentikan langkah
+ * lain, dan semua error dicatat agar bisa ditelusuri.
+ */
+async function compensateFailedSale(params: {
+  saleId: string;
+  affectedBarangIds: Set<string>;
+  nsfp?: {
+    tahun?: string | null;
+    kode_transaksi?: string | null;
+    nomor_seri?: string | null;
+  } | null;
+}): Promise<void> {
+  const { saleId, affectedBarangIds, nsfp } = params;
+
+  // 1. Hapus movement inventori milik penjualan ini, lalu rebuild saldo barang
+  //    dari ledger tersisa supaya stok + AVCO kembali konsisten.
+  try {
+    const movements = await getInventoryMovements({
+      source_type: "SALE",
+      source_id: saleId,
+    });
+    for (const mov of movements) {
+      try {
+        await db.delete("inventory_movements", mov.id);
+      } catch (e) {
+        console.error("[compensateFailedSale] gagal hapus movement", mov.id, e);
+      }
+    }
+    for (const barangId of affectedBarangIds) {
+      try {
+        await rebuildInventoryBalance(barangId);
+      } catch (e) {
+        console.error("[compensateFailedSale] gagal rebuild saldo", barangId, e);
+      }
+    }
+  } catch (e) {
+    console.error("[compensateFailedSale] gagal proses inventori:", e);
+  }
+
+  // 2. Hapus entri keuangan ber-token [REF:saleId].
+  try {
+    const financeRes = await db.query<any>("keuangan", {
+      where: { reference_id: saleId },
+    });
+    const rows = financeRes.data || [];
+    for (const row of rows) {
+      try {
+        await db.delete("keuangan", row.id);
+      } catch (e) {
+        console.error("[compensateFailedSale] gagal hapus keuangan", row.id, e);
+      }
+    }
+  } catch (e) {
+    console.error("[compensateFailedSale] gagal proses keuangan:", e);
+  }
+
+  // 3. Lepas kunci NSFP bila sempat terkunci ke penjualan ini.
+  if (nsfp?.tahun && nsfp.kode_transaksi && nsfp.nomor_seri) {
+    try {
+      const nsfpRow = await db.queryOne<any>("nsfp_pool", {
+        where: {
+          tahun: nsfp.tahun,
+          kode_transaksi: nsfp.kode_transaksi,
+          nomor_seri: nsfp.nomor_seri,
+        },
+      });
+      if (nsfpRow.data && nsfpRow.data.penjualan_id === saleId) {
+        await db.update("nsfp_pool", nsfpRow.data.id, {
+          status: "TERSEDIA",
+          penjualan_id: null,
+          diperbarui_pada: getCurrentTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.error("[compensateFailedSale] gagal lepas NSFP:", e);
+    }
+  }
+
+  // 4. Hapus header penjualan; cascade FK membersihkan baris anak.
+  try {
+    await db.delete("penjualan", saleId);
+  } catch (e) {
+    console.error("[compensateFailedSale] gagal hapus header penjualan:", e);
+  }
+}
+
 export async function createSale(data: CreateSaleData): Promise<{
   id: string;
   nomor_faktur: string;
   spk_number: string;
 }> {
+  // Hoisted untuk compensating cleanup di jalur non-atomik (Supabase-only).
+  let saleIdForCleanup: string | null = null;
+  const affectedBarangIds = new Set<string>();
   try {
     // Validasi
     if (!data.items || data.items.length === 0) {
@@ -291,6 +396,7 @@ export async function createSale(data: CreateSaleData): Promise<{
     }
 
     const saleId = generateId();
+    saleIdForCleanup = saleId;
     const tanggalSale = data.tanggal || getTodayJakarta();
     const invoiceNumber = await generateInvoiceNumber(tanggalSale);
 
@@ -521,6 +627,7 @@ export async function createSale(data: CreateSaleData): Promise<{
           // — karena tidak ada barang dasar di katalog kita.
         } else if (material && material.lacak_inventori_status && !rollInventoryDeferred) {
           const stockReduction = item.jumlah * item.faktor_konversi;
+          affectedBarangIds.add(item.barang_id);
           await postInventoryMovement({
             id: `mov-${itemId}`,
             barang_id: item.barang_id,
@@ -850,6 +957,31 @@ export async function createSale(data: CreateSaleData): Promise<{
     return saleResultPayload;
   } catch (error: any) {
     console.error("Error creating sale:", error);
+    // Di jalur NON-ATOMIK (Supabase-only), db.transaction() tidak rollback.
+    // Jalankan compensating cleanup supaya tidak meninggalkan penjualan parsial
+    // (header tanpa item, NSFP hangus, dll). Di jalur atomik (Tauri/SQLite),
+    // transaksi sudah otomatis rollback jadi cleanup tidak diperlukan.
+    if (saleIdForCleanup) {
+      try {
+        const atomic = await isCompositeTransactionAtomic();
+        if (!atomic) {
+          await compensateFailedSale({
+            saleId: saleIdForCleanup,
+            affectedBarangIds,
+            nsfp: {
+              tahun: data.nsfp_tahun,
+              kode_transaksi: data.nsfp_kode_transaksi,
+              nomor_seri: data.nsfp_nomor_seri,
+            },
+          });
+        }
+      } catch (cleanupErr) {
+        console.error(
+          "[createSale] compensating cleanup gagal (data mungkin perlu diperiksa manual):",
+          cleanupErr
+        );
+      }
+    }
     throw error;
   }
 }

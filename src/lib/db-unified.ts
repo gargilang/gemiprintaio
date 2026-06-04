@@ -308,6 +308,25 @@ export function getServerSupabaseClient(): SupabaseClient | null {
   return serverSupabaseClient;
 }
 
+/**
+ * Apakah `db.transaction()` benar-benar atomik di runtime saat ini?
+ * - Tauri: ya (transaksi SQLite nyata).
+ * - Server dengan mirror SQLite aktif: ya.
+ * - Server Supabase-only (Vercel / next dev default): TIDAK — operasi
+ *   dijalankan berurutan tanpa rollback lintas-statement.
+ *
+ * Caller composite mutation (createSale dll) memakai ini untuk memutuskan
+ * apakah perlu compensating cleanup manual saat ada kegagalan di tengah.
+ */
+export async function isCompositeTransactionAtomic(): Promise<boolean> {
+  if (isTauriApp()) return true;
+  if (isServerSide()) {
+    const sqlite = await getServerSQLite();
+    return !!sqlite;
+  }
+  return false;
+}
+
 // Check if online and Supabase is available (Browser)
 let onlineStatus: boolean | null = null;
 let lastOnlineCheck = 0;
