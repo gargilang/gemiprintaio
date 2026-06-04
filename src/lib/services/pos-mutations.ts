@@ -26,6 +26,7 @@ import {
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
+import { friendlyPgError } from "../pg-error";
 
 // ============================================================================
 // TIPE
@@ -1024,7 +1025,7 @@ export async function voidSale(
       actor_id: actorId || null,
     });
     if (error) {
-      throw new Error(error.message);
+      throw new Error(friendlyPgError(error, "penjualan"));
     }
     try {
       await deleteMaklonPurchasesForSale(id);

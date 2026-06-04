@@ -17,6 +17,7 @@ import {
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
 import { usePgCompositeRpc } from "../feature-flags";
+import { friendlyPgError } from "../pg-error";
 
 /**
  * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
@@ -296,7 +297,7 @@ export async function createPurchase(data: {
         },
       });
       if (error) {
-        throw new Error((error as any).message);
+        throw new Error(friendlyPgError(error, "pembelian"));
       }
       if (isCashPayment(metodePembayaran)) {
         await recalculateCashbookIfAvailable();
@@ -1007,7 +1008,7 @@ export async function voidPurchase(
         const message = (error as any).message || "";
         const friendly = message.includes("Stok tidak cukup")
           ? `Stok dari pembelian ini sudah dipakai. Gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${message}`
-          : message;
+          : friendlyPgError(error, "pembelian");
         throw new Error(friendly);
       }
       await recalculateCashbookIfAvailable();
