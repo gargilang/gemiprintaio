@@ -103,7 +103,7 @@ export default function StatusSinkronisasi({ className = "" }: SyncStatusProps) 
     setIsSyncing(true);
     try {
       const result = await runSyncCycle();
-      console.log("Sync result:", result);
+      console.debug("Sync result:", result);
       setLastSync(getLastSyncSuccessAt());
       const status = getClientSyncStatus(getLastSyncSuccessAt());
       setPendingOps(status.pendingChanges);

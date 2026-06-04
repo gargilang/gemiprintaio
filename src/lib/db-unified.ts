@@ -233,7 +233,7 @@ async function getServerSQLite(): Promise<any> {
       serverSqliteDb.pragma("journal_mode = WAL");
       serverSqliteDb.pragma("foreign_keys = ON");
       ensureServerSQLiteSyncV2Schema(serverSqliteDb);
-      console.log("✅ Server-side SQLite connected:", dbPath);
+      console.info("✅ Server-side SQLite connected:", dbPath);
     } catch (error) {
       console.error("❌ Failed to initialize server SQLite:", error);
       return null;
@@ -306,7 +306,7 @@ function migrateActorRolesLegacyCheckConstraint(db: {
     CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
   `);
   db.pragma("foreign_keys = ON");
-  console.log(
+  console.info(
     "✅ Migrated actor_roles: role_group is now owner/management/sales/staff/other"
   );
 }
@@ -422,7 +422,7 @@ function migrateInventoryMovementsCheckConstraint(db: {
     CREATE INDEX IF NOT EXISTS idx_inventory_movements_sync_status ON inventory_movements(sync_status);
   `);
   db.pragma("foreign_keys = ON");
-  console.log("✅ Migrated inventory_movements: SALE_RETURN now allowed.");
+  console.info("✅ Migrated inventory_movements: SALE_RETURN now allowed.");
 }
 
 /**
@@ -890,7 +890,7 @@ function migrateCashbookFormulaDbColumnNullable(db: {
     );
   }
   db.pragma("foreign_keys = ON");
-  console.log("✅ Migrated cashbook_formula: db_column is now nullable");
+  console.info("✅ Migrated cashbook_formula: db_column is now nullable");
 }
 
 function ensureServerSQLiteSyncV2Schema(db: any) {
@@ -2755,7 +2755,7 @@ export function getServerSupabaseClient(): SupabaseClient | null {
     }
 
     serverSupabaseClient = createClient(url, serviceKey);
-    console.log("✅ Server-side Supabase connected");
+    console.info("✅ Server-side Supabase connected");
   }
 
   return serverSupabaseClient;
@@ -2839,17 +2839,17 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
     lastServerOnlineCheck = now;
 
     if (serverOnlineStatus) {
-      console.log("🌐 Supabase online - using cloud database");
+      console.info("🌐 Supabase online - using cloud database");
     } else {
       if (error) {
         console.warn("📴 Supabase profil check failed:", error.message, error);
       }
-      console.log("📴 Supabase offline - using local SQLite");
+      console.info("📴 Supabase offline - using local SQLite");
     }
 
     return serverOnlineStatus;
   } catch (err) {
-    console.log("📴 Supabase connection failed - using local SQLite");
+      console.info("📴 Supabase connection failed - using local SQLite");
     serverOnlineStatus = false;
     lastServerOnlineCheck = now;
     return false;
@@ -2904,7 +2904,7 @@ function addToOfflineQueue(op: Omit<QueuedOperation, "id" | "timestamp">) {
     };
     queue.push(newOp);
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
-    console.log(`📝 Queued offline operation:`, newOp);
+    console.debug(`📝 Queued offline operation:`, newOp);
   } catch (e) {
     console.error("Failed to queue operation:", e);
   }
@@ -3984,7 +3984,7 @@ class UnifiedDatabase {
         recordId || null,
         now
       );
-      console.log(`📝 Queued ${operation} on ${table} for later sync`);
+      console.debug(`📝 Queued ${operation} on ${table} for later sync`);
     } catch (error: any) {
       console.error("Failed to queue sync operation:", error);
     }
@@ -4001,7 +4001,7 @@ class UnifiedDatabase {
 
     const supabaseAvailable = await isServerSupabaseAvailable();
     if (!supabaseAvailable) {
-      console.log("🔴 Supabase not available, skipping sync queue processing");
+      console.debug("🔴 Supabase not available, skipping sync queue processing");
       return;
     }
 
@@ -4019,7 +4019,7 @@ class UnifiedDatabase {
       `);
       const pendingOps = stmt.all() as any[];
 
-      console.log(
+      console.debug(
         `🔄 Processing ${pendingOps.length} pending sync operations...`
       );
 
@@ -4050,7 +4050,7 @@ class UnifiedDatabase {
               UPDATE sync_queue SET status = 'completed' WHERE id = ?
             `);
             updateStmt.run(op.id);
-            console.log(`✅ Synced ${op.operation} on ${op.table_name}`);
+            console.debug(`✅ Synced ${op.operation} on ${op.table_name}`);
           } else {
             console.error(
               `❌ Failed to sync ${op.operation} on ${op.table_name}:`,
@@ -4070,7 +4070,7 @@ class UnifiedDatabase {
       `);
       const cleaned = cleanupStmt.run();
       if (cleaned.changes > 0) {
-        console.log(`🧹 Cleaned up ${cleaned.changes} old sync queue entries`);
+        console.debug(`🧹 Cleaned up ${cleaned.changes} old sync queue entries`);
       }
     } catch (error: any) {
       console.error("Error processing sync queue:", error);
@@ -4825,9 +4825,9 @@ export const db = new UnifiedDatabase();
 // Auto-process offline queue when coming back online (Web only)
 if (isBrowser() && !isTauriApp()) {
   window.addEventListener("online", async () => {
-    console.log("📡 Back online - processing offline queue...");
+    console.debug("📡 Back online - processing offline queue...");
     const result = await db.processOfflineQueue();
-    console.log(
+    console.debug(
       `Processed ${result.processed} operations, ${result.failed} failed`
     );
   });

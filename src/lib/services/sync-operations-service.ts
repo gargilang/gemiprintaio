@@ -201,7 +201,7 @@ export async function triggerSyncCycle(): Promise<SyncResult> {
  */
 export async function processSyncQueue(): Promise<SyncResult> {
   try {
-    console.log("🔄 Processing sync queue via service...");
+    console.debug("🔄 Processing sync queue via service...");
     await db.processSyncQueue();
 
     return {
@@ -251,9 +251,9 @@ export function startAutoSync(intervalMinutes: number = 20): {
 
     // Start new interval
     autoSyncInterval = setInterval(async () => {
-      console.log("🔄 Auto-sync triggered");
+      console.debug("🔄 Auto-sync triggered");
       const result = await triggerManualSync();
-      console.log("✅ Auto-sync result:", result);
+      console.debug("✅ Auto-sync result:", result);
     }, intervalMinutes * 60 * 1000);
 
     // Update settings

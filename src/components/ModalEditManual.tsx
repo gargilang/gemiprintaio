@@ -81,12 +81,6 @@ export default function ModalEditManual({
         return;
       }
 
-      console.log("Mengirim permintaan penggantian manual:", {
-        id: cashBook.id,
-        url: `/api/cashbook/override/${cashBook.id}`,
-        data: updateData,
-      });
-
       const res = await fetch(`/api/cashbook/override/${cashBook.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +88,6 @@ export default function ModalEditManual({
       });
 
       const data = await res.json();
-      console.log("Respons penggantian manual:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Gagal mengupdate data");

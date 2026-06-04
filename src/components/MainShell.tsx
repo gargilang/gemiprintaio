@@ -198,7 +198,6 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "L") {
-        console.log("🔓 [DEV] Clearing session and redirecting to login...");
         void logoutSession().then(() => router.push("/auth/login"));
       }
     };

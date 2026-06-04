@@ -57,7 +57,7 @@ export function useAutoSync() {
 
       // Prevent multiple simultaneous syncs
       if (syncingRef.current || window.__gemiSyncInFlight) {
-        console.log("🔄 Sync already in progress, skipping...");
+        console.debug("🔄 Sync already in progress, skipping...");
         return;
       }
 
@@ -65,11 +65,11 @@ export function useAutoSync() {
       const now = Date.now();
       const globalLastSyncAt = window.__gemiLastSyncAt || 0;
       if (now - lastSyncRef.current < 5000 || now - globalLastSyncAt < 5000) {
-        console.log("⏱️ Rate limited, skipping sync");
+        console.debug("⏱️ Rate limited, skipping sync");
         return;
       }
 
-      console.log(`🔄 Triggering sync cycle (${reason})...`);
+      console.debug(`🔄 Triggering sync cycle (${reason})...`);
       syncingRef.current = true;
       window.__gemiSyncInFlight = true;
       lastSyncRef.current = now;
@@ -77,7 +77,7 @@ export function useAutoSync() {
 
       try {
         const result = await runSyncCycleClient();
-        if (result.success) console.log("✅ Sync cycle completed:", result);
+        if (result.success) console.debug("✅ Sync cycle completed:", result);
         else console.error("❌ Sync cycle failed:", result.message);
       } catch (error) {
         console.error("❌ Sync cycle error:", error);
@@ -88,7 +88,7 @@ export function useAutoSync() {
     };
 
     const handleOffline = () => {
-      console.log("📴 Connection lost, operations will be queued");
+      console.debug("📴 Connection lost, operations will be queued");
     };
     const handleFocus = () => {
       if (navigator.onLine) {
@@ -139,7 +139,7 @@ export function useAutoSync() {
 
     // Trigger initial sync if online
     if (navigator.onLine) {
-      console.log("🌐 App started while online, checking for pending syncs...");
+      console.debug("🌐 App started while online, checking for pending syncs...");
       runSyncTrigger("startup");
     }
 

@@ -372,9 +372,6 @@ export default function UsersPage() {
 
   const handleDelete = async (userToDelete: User) => {
     const userId = userToDelete.id;
-    console.log("Delete clicked for userId:", userId);
-    console.log("Current user ID:", currentUser?.id);
-
     if (userId === currentUser?.id) {
       showMsg("error", "Tidak bisa menghapus user yang sedang login!");
       return;
