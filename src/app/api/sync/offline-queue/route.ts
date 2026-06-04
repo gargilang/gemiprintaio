@@ -8,7 +8,13 @@ import { limitOrPass, offlineQueueLimiter } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ALLOWED = new Set(SYNC_TABLES);
+const OFFLINE_BLOCKED = new Set([
+  "profil",
+  "kredensial",
+  "keuangan",
+  "audit_log",
+]);
+const ALLOWED = new Set(SYNC_TABLES.filter((t) => !OFFLINE_BLOCKED.has(t)));
 
 type QueueOp = {
   table?: string;
@@ -66,6 +72,14 @@ export async function POST(request: NextRequest) {
     const payload = op.data ?? {};
 
     if (!table || !operation || !ALLOWED.has(table)) {
+      if (table && OFFLINE_BLOCKED.has(table)) {
+        console.warn(
+          "[offline-queue] blocked sensitive table:",
+          table,
+          "uid:",
+          session.uid
+        );
+      }
       failed++;
       continue;
     }
