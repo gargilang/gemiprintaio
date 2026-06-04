@@ -46,6 +46,9 @@ export const SYNC_V2_TABLES = [
   "vendor",
   "profil",
   "kredensial",
+  // actor_roles harus sebelum business_actors (FK role_code).
+  "actor_roles",
+  "business_actors",
   "penjualan",
   "item_penjualan",
   "penawaran",
@@ -75,6 +78,9 @@ export const SYNC_V2_TABLES = [
   "nsfp_pool",
   "lokasi",
   "accounting_periods",
+  // surat_jalan harus sebelum item_surat_jalan (FK surat_jalan_id).
+  "surat_jalan",
+  "item_surat_jalan",
 ];
 
 export async function getServerSQLite(): Promise<any> {
