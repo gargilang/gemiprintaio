@@ -18,6 +18,7 @@ import {
 import { hitungPpn } from "../ppn-helpers";
 import { usePgCompositeRpc } from "../feature-flags";
 import { friendlyPgError } from "../pg-error";
+import { withDuplicateNumberRetry } from "../retry-utils";
 
 /**
  * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
@@ -26,6 +27,19 @@ import type { Purchase, PurchaseItem, InitData } from "./purchases-queries";
 import { enrichPurchaseRows, normalizePaymentMethod, isCashPayment, generateId, positiveNumber, fallbackAverageCostPerBaseUnit, syncUnitPurchasePricesFromAverage, applyPurchaseCostToMaterial, reversePurchaseCostFromMaterial, nextNomorPembelian, nextNomorPembelianMaklon, normalizePurchaseItemsForUI, getPurchaseById } from "./purchases-queries";
 
 // ── Mutations ─────────────────────────────────────────
+
+/**
+ * Buat pembelian dengan retry pada tabrakan nomor (PO `nomor_pembelian` /
+ * `nomor_faktur` UNIQUE) — D-I5. Aman karena createPurchaseAttempt sudah punya
+ * compensating cleanup (non-atomik) / rollback (atomik).
+ */
+export function createPurchase(
+  data: Parameters<typeof createPurchaseAttempt>[0]
+): Promise<{ id: string }> {
+  return withDuplicateNumberRetry(() => createPurchaseAttempt(data), {
+    label: "createPurchase",
+  });
+}
 
 /**
  * Compensating cleanup untuk createPurchase di jalur NON-ATOMIK (Supabase-only).
@@ -87,7 +101,7 @@ async function compensateFailedPurchase(params: {
   }
 }
 
-export async function createPurchase(data: {
+async function createPurchaseAttempt(data: {
   nomor_pembelian?: string;
   nomor_faktur: string;
   vendor_id: string | null;

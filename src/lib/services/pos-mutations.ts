@@ -27,6 +27,7 @@ import {
 import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
 import { friendlyPgError } from "../pg-error";
+import { withDuplicateNumberRetry } from "../retry-utils";
 
 // ============================================================================
 // TIPE
@@ -317,7 +318,29 @@ async function compensateFailedSale(params: {
   }
 }
 
+/**
+ * Buat penjualan dengan retry pada tabrakan nomor faktur (D-I5).
+ *
+ * generateInvoiceNumber membaca MAX(nomor_faktur) lalu insert tanpa lock, jadi
+ * dua kasir bersamaan bisa menghasilkan nomor sama → unique constraint reject.
+ * Karena composite mutation kini punya compensating cleanup (jalur non-atomik)
+ * dan rollback (jalur atomik), percobaan yang gagal tidak meninggalkan sisa,
+ * sehingga aman untuk regenerate nomor & ulang. Maks 3 percobaan.
+ *
+ * Catatan: solusi paling kuat adalah Postgres sequence / RPC next_invoice_number
+ * dengan SELECT … FOR UPDATE (butuh migrasi) — peningkatan masa depan.
+ */
 export async function createSale(data: CreateSaleData): Promise<{
+  id: string;
+  nomor_faktur: string;
+  spk_number: string;
+}> {
+  return withDuplicateNumberRetry(() => createSaleAttempt(data), {
+    label: "createSale",
+  });
+}
+
+async function createSaleAttempt(data: CreateSaleData): Promise<{
   id: string;
   nomor_faktur: string;
   spk_number: string;
