@@ -84,44 +84,45 @@ export async function getMaterials(): Promise<Material[]> {
     const categories = categoriesResult.data || [];
     const subcategories = subcategoriesResult.data || [];
 
-    // Enrich materials with category names and unit prices
-    const materialsWithUnits = await Promise.all(
-      materials.map(async (material: Material) => {
-        // Find category name
-        const category = categories.find(
-          (c: any) => c.id === material.kategori_id
-        );
-        const subcategory = subcategories.find(
-          (sc: any) => sc.id === material.subkategori_id
-        );
+    // Batch-load semua unit prices dan roll variants sekaligus (hindari N+1 query)
+    const allUnitPricesResult = await db.query<UnitPrice>("harga_barang_satuan", {
+      orderBy: { column: "urutan_tampilan", ascending: true },
+    });
+    const allRollVariantsResult = await db.query<any>("barang_roll_variants", {
+      orderBy: { column: "lebar_m", ascending: true },
+    });
 
-        // Fetch unit prices
-        const unitPricesResult = await db.query<UnitPrice>(
-          "harga_barang_satuan",
-          {
-            where: { barang_id: material.id },
-            orderBy: { column: "urutan_tampilan", ascending: true },
-          }
-        );
-        const rollVariantsResult = await db.query<any>(
-          "barang_roll_variants",
-          {
-            where: { barang_id: material.id },
-            orderBy: { column: "lebar_m", ascending: true },
-          }
-        );
+    const allUnitPrices = allUnitPricesResult.data || [];
+    const allRollVariants = allRollVariantsResult.data || [];
 
-        return {
-          ...material,
-          category_name: category?.nama || undefined,
-          subcategory_name: subcategory?.nama || undefined,
-          unit_prices: unitPricesResult.data || [],
-          roll_variants: (rollVariantsResult.data || []).filter(
-            (row: any) => Number(row.aktif_status) !== 0
-          ),
-        };
-      })
-    );
+    // Group di memory berdasarkan barang_id
+    const unitPricesByBarangId = new Map<string, UnitPrice[]>();
+    for (const up of allUnitPrices) {
+      const list = unitPricesByBarangId.get(up.barang_id!) || [];
+      list.push(up);
+      unitPricesByBarangId.set(up.barang_id!, list);
+    }
+
+    const rollVariantsByBarangId = new Map<string, any[]>();
+    for (const rv of allRollVariants) {
+      if (Number(rv.aktif_status) === 0) continue;
+      const list = rollVariantsByBarangId.get(rv.barang_id) || [];
+      list.push(rv);
+      rollVariantsByBarangId.set(rv.barang_id, list);
+    }
+
+    // Enrich materials dengan category names dan unit prices
+    const materialsWithUnits = materials.map((material: Material) => {
+      const category = categories.find((c: any) => c.id === material.kategori_id);
+      const subcategory = subcategories.find((sc: any) => sc.id === material.subkategori_id);
+      return {
+        ...material,
+        category_name: category?.nama || undefined,
+        subcategory_name: subcategory?.nama || undefined,
+        unit_prices: unitPricesByBarangId.get(material.id) || [],
+        roll_variants: rollVariantsByBarangId.get(material.id) || [],
+      };
+    });
 
     return materialsWithUnits;
   } catch (error) {
