@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/cashbook-formula-service";
 import type { InputRow } from "@/lib/ast/types";
 import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
+import { limitOrPass, evaluateLimiter } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,15 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     await requireAdminOrManager();
+
+    const limited = await limitOrPass(evaluateLimiter, request, "evaluate");
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "Terlalu banyak permintaan" },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const rows = (body?.rows ?? []) as InputRow[];
 

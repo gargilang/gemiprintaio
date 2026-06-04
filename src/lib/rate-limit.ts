@@ -34,6 +34,7 @@ const loginLimiter = makeLimiter("rl:login", 5, "1 m");
 const registerLimiter = makeLimiter("rl:register", 5, "1 m");
 const syncApiLimiter = makeLimiter("rl:sync-api", 60, "1 m");
 const offlineQueueLimiter = makeLimiter("rl:offline-queue", 40, "1 m");
+const evaluateLimiter = makeLimiter("rl:evaluate", 30, "1 m");
 
 export async function limitOrPass(
   limiter: Ratelimit | null,
@@ -50,4 +51,4 @@ export function getClientIp(request: NextRequest): string {
   return clientIp(request);
 }
 
-export { loginLimiter, registerLimiter, syncApiLimiter, offlineQueueLimiter };
+export { loginLimiter, registerLimiter, syncApiLimiter, offlineQueueLimiter, evaluateLimiter };
