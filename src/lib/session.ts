@@ -10,6 +10,9 @@ function getEncodedSecret(): Uint8Array {
   if (!raw) {
     throw new Error("SESSION_SECRET is not set");
   }
+  if (raw.length < 32) {
+    throw new Error("SESSION_SECRET harus minimal 32 karakter");
+  }
   return new TextEncoder().encode(raw);
 }
 
@@ -54,7 +57,7 @@ export async function createSessionWithUser(
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("24h")
     .sign(getEncodedSecret());
 
   if (!options?.skipCookie) {
@@ -63,7 +66,7 @@ export async function createSessionWithUser(
       httpOnly: true,
       secure: cookieSecure(),
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24,
       path: "/",
     });
   }
