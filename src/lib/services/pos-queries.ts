@@ -585,72 +585,101 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       });
     }
 
-    // ── Jalur SQLite (Tauri) — berurutan, sama seperti sebelumnya ─────────────
+    // ── Jalur SQLite (Tauri) — batch in-memory (D-I3) ─────────────────────────
+    // Adapter SQLite belum punya whereIn, jadi ambil tabel terkait sekali saja
+    // lalu join di memori. Menghilangkan N+1 (dulu: query item + barang per
+    // sale, pelunasan per piutang, biaya per sale).
     const salesResult = await db.query<Sale>("penjualan", {
       orderBy: { column: "dibuat_pada", ascending: false },
       limit,
     });
 
     const sales = salesResult.data || [];
+    if (sales.length === 0) return [];
 
-    const customersResult = await db.query("pelanggan");
-    const usersResult = await db.query("profil");
-    const piutangResult = await db.query("piutang_penjualan");
+    const saleIdSet = new Set(sales.map((s: any) => s.id));
+
+    const [
+      customersResult,
+      usersResult,
+      piutangResult,
+      allItemsResult,
+      allBarangResult,
+      allPelunasanResult,
+      allBiayaResult,
+    ] = await Promise.all([
+      db.query("pelanggan"),
+      db.query("profil"),
+      db.query("piutang_penjualan"),
+      db.query<SaleItem>("item_penjualan"),
+      db.query("barang"),
+      db.query("pelunasan_piutang"),
+      db.query<any>("biaya_tambahan_penjualan"),
+    ]);
 
     const customers = customersResult.data || [];
     const users = usersResult.data || [];
-    const piutangList = piutangResult.data || [];
-
-    const salesWithItems = await Promise.all(
-      sales.map(async (sale) => {
-        const itemsResult = await db.query<SaleItem>("item_penjualan", {
-          where: { penjualan_id: sale.id },
-        });
-        const items = itemsResult.data || [];
-        const itemsWithNames = await Promise.all(
-          items.map(async (item) => {
-            const materialResult = await db.queryOne("barang", {
-              where: { id: item.barang_id },
-            });
-            return { ...item, barang_nama: materialResult.data?.nama || "" };
-          })
-        );
-        const customer = customers.find((c: any) => c.id === sale.pelanggan_id);
-        const kasir = users.find((u: any) => u.id === sale.kasir_id);
-        const piutang = piutangList.find((p: any) => p.id_penjualan === sale.id);
-        let has_pelunasan = false;
-        if (piutang) {
-          const pelunasanResult = await db.query("pelunasan_piutang", {
-            where: { id_piutang: piutang.id },
-            limit: 1,
-          });
-          has_pelunasan = (pelunasanResult.data?.length || 0) > 0;
-        }
-        // Ambil biaya tambahan untuk penjualan ini (jalur SQLite berurutan)
-        const biayaRes = await db.query<any>("biaya_tambahan_penjualan", {
-          where: { penjualan_id: sale.id },
-        });
-        const biayaList = (biayaRes.data || [])
-          .map((b: any) => ({
-            id: b.id,
-            label: b.label,
-            nominal: Number(b.nominal) || 0,
-            urutan: b.urutan ?? 0,
-          }))
-          .sort((a: any, b: any) => (a.urutan ?? 0) - (b.urutan ?? 0));
-        return {
-          ...sale,
-          pelanggan_nama: customer?.nama || undefined,
-          member_status: customer?.member_status || undefined,
-          kasir_nama: kasir?.nama_pengguna || undefined,
-          status_pembayaran: piutang?.status || "LUNAS",
-          sisa_piutang: piutang?.sisa_piutang || 0,
-          has_pelunasan,
-          items: itemsWithNames,
-          biaya_tambahan: biayaList,
-        };
-      })
+    const piutangList = (piutangResult.data || []).filter((p: any) =>
+      saleIdSet.has(p.id_penjualan)
     );
+
+    // Peta nama barang (katalog, jumlahnya terbatas).
+    const barangNameMap = new Map<string, string>();
+    for (const b of (allBarangResult.data || []) as any[]) {
+      barangNameMap.set(b.id, b.nama);
+    }
+
+    // Item per penjualan.
+    const itemsByPenjualanId = new Map<string, any[]>();
+    for (const item of (allItemsResult.data || []) as any[]) {
+      if (!saleIdSet.has(item.penjualan_id)) continue;
+      const list = itemsByPenjualanId.get(item.penjualan_id) || [];
+      list.push({ ...item, barang_nama: barangNameMap.get(item.barang_id) || "" });
+      itemsByPenjualanId.set(item.penjualan_id, list);
+    }
+
+    // Set piutang yang punya pelunasan.
+    const piutangWithPelunasan = new Set<string>();
+    for (const pl of (allPelunasanResult.data || []) as any[]) {
+      piutangWithPelunasan.add(pl.id_piutang);
+    }
+
+    // Biaya tambahan per penjualan (terurut).
+    const biayaBySaleId = new Map<string, any[]>();
+    for (const b of (allBiayaResult.data || []) as any[]) {
+      if (!saleIdSet.has(b.penjualan_id)) continue;
+      const list = biayaBySaleId.get(b.penjualan_id) || [];
+      list.push({
+        id: b.id,
+        label: b.label,
+        nominal: Number(b.nominal) || 0,
+        urutan: b.urutan ?? 0,
+      });
+      biayaBySaleId.set(b.penjualan_id, list);
+    }
+    for (const [, list] of biayaBySaleId) {
+      list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+    }
+
+    const salesWithItems = sales.map((sale) => {
+      const customer = customers.find((c: any) => c.id === sale.pelanggan_id);
+      const kasir = users.find((u: any) => u.id === sale.kasir_id);
+      const piutang = piutangList.find((p: any) => p.id_penjualan === sale.id);
+      const has_pelunasan = piutang
+        ? piutangWithPelunasan.has(piutang.id)
+        : false;
+      return {
+        ...sale,
+        pelanggan_nama: customer?.nama || undefined,
+        member_status: customer?.member_status || undefined,
+        kasir_nama: kasir?.nama_pengguna || undefined,
+        status_pembayaran: piutang?.status || "LUNAS",
+        sisa_piutang: piutang?.sisa_piutang || 0,
+        has_pelunasan,
+        items: itemsByPenjualanId.get(sale.id) || [],
+        biaya_tambahan: biayaBySaleId.get(sale.id) || [],
+      };
+    });
 
     return salesWithItems;
   } catch (error) {
