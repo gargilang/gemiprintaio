@@ -19,7 +19,11 @@ export async function verifyPassword(
 ): Promise<boolean> {
   if (isLegacySha256Hash(hash)) {
     const sha = crypto.createHash("sha256").update(plain).digest("hex");
-    return sha.toLowerCase() === hash.toLowerCase();
+    // Bandingkan timing-safe untuk hindari timing attack. Kedua hash SHA-256
+    // selalu 64 hex char, jadi panjang buffer pasti sama.
+    const a = Buffer.from(sha.toLowerCase(), "utf8");
+    const b = Buffer.from(hash.toLowerCase(), "utf8");
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
   return bcrypt.compare(plain, hash);
 }
