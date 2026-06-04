@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { payReceivable } from "@/lib/services/pos-service";
+import { payReceivableSchema } from "@/lib/schemas/inventori";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,31 +10,24 @@ export async function POST(request: Request) {
   try {
     await requireSession();
     const body = await request.json();
-    const {
-      piutang_id,
-      jumlah_bayar,
-      tanggal_bayar,
-      metode_pembayaran,
-      referensi,
-      catatan,
-      dibuat_oleh,
-    } = body;
 
-    if (!piutang_id) {
+    const parsed = payReceivableSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "Piutang ID tidak boleh kosong" },
-        { status: 400 }
+        { success: false, error: "Data pembayaran tidak valid", issues: parsed.error.issues },
+        { status: 422 }
       );
     }
+    const data = parsed.data;
 
     const result = await payReceivable({
-      piutang_id,
-      jumlah_bayar,
-      tanggal_bayar,
-      metode_pembayaran,
-      referensi,
-      catatan,
-      dibuat_oleh,
+      piutang_id: data.piutang_id,
+      jumlah_bayar: data.jumlah_bayar,
+      tanggal_bayar: data.tanggal_bayar,
+      metode_pembayaran: data.metode_pembayaran,
+      referensi: data.referensi ?? undefined,
+      catatan: data.catatan ?? undefined,
+      dibuat_oleh: data.dibuat_oleh ?? undefined,
     });
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { createSale } from "@/lib/services/pos-service";
+import { createSaleSchema } from "@/lib/schemas/pos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,17 +11,26 @@ export async function POST(request: Request) {
     await requireSession();
     const body = await request.json();
 
+    const parsed = createSaleSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: "Data penjualan tidak valid", issues: parsed.error.issues },
+        { status: 422 }
+      );
+    }
+    const data = parsed.data;
+
     const result = await createSale({
-      pelanggan_id: body.pelanggan_id,
-      items: body.items,
-      total_jumlah: body.total_jumlah,
-      jumlah_dibayar: body.jumlah_dibayar,
-      jumlah_kembalian: body.jumlah_kembalian,
-      metode_pembayaran: body.metode_pembayaran,
-      catatan: body.catatan,
-      kasir_id: body.kasir_id,
-      tanggal: body.tanggal,
-      prioritas: body.prioritas,
+      pelanggan_id: data.pelanggan_id,
+      items: data.items,
+      total_jumlah: data.total_jumlah,
+      jumlah_dibayar: data.jumlah_dibayar,
+      jumlah_kembalian: data.jumlah_kembalian,
+      metode_pembayaran: data.metode_pembayaran,
+      catatan: data.catatan,
+      kasir_id: data.kasir_id,
+      tanggal: data.tanggal,
+      prioritas: data.prioritas,
     });
 
     return NextResponse.json({
