@@ -54,25 +54,9 @@ export function getBrowserSupabaseForTauri(): SupabaseClient | null {
   return supabase;
 }
 
-// Server-side Supabase client (using service role key for sync operations)
-// Only for API routes (not Tauri)
-export function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error(
-      "Supabase admin credentials not configured. Set SUPABASE_SERVICE_ROLE_KEY in .env.local"
-    );
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
+// Server-side Supabase client (service role) sekarang ada di
+// `@/lib/supabase-admin` yang ditandai `server-only`, supaya kredensial
+// service-role tidak pernah ikut ke bundle browser (lihat S-I5).
 
 // Check if Supabase is available (online mode)
 export async function isSupabaseAvailable(): Promise<boolean> {

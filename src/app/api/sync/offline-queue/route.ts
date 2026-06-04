@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { SYNC_TABLES } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 import { apiError } from "@/lib/api-error";
