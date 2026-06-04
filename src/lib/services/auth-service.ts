@@ -46,7 +46,7 @@ export async function login(
     if (result.error || !result.data) {
       return {
         success: false,
-        error: "Username tidak ditemukan",
+        error: "Kredensial salah",
       };
     }
 
@@ -65,7 +65,7 @@ export async function login(
     if (!ok) {
       return {
         success: false,
-        error: "Password salah",
+        error: "Kredensial salah",
       };
     }
 
