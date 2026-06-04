@@ -5,6 +5,7 @@ import {
   upsertPartner,
 } from "@/lib/services/cashbook-formula-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const action = String(body?.action || "upsert");
 
@@ -60,6 +62,9 @@ export async function POST(request: NextRequest) {
     await recalculateCashbookIfAvailable();
     return NextResponse.json({ ok: true, partner: saved });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/cashbook-partner error:", error);
     return NextResponse.json(
       { error: (error as Error).message || "Gagal menyimpan mitra" },

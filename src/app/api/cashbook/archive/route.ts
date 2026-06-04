@@ -5,9 +5,11 @@ import {
   getArchivedPeriods,
 } from "@/lib/services/reports-service";
 import { apiError } from "@/lib/api-error";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const { startDate, endDate, label } = body;
 
@@ -26,6 +28,9 @@ export async function POST(request: NextRequest) {
       message: `Successfully archived transactions as "${label}"`,
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     return apiError("Failed to archive transactions", 500, error);
   }
 }

@@ -9,6 +9,7 @@ import {
   listActorRoles,
   type RoleGroup,
 } from "@/lib/services/business-actor-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ const VALID_GROUPS: ReadonlySet<RoleGroup> = new Set([
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const code = String(body?.role_code ?? "").trim();
     const label = String(body?.role_label ?? "").trim();
@@ -72,6 +74,9 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/actor-roles error:", error);
     return NextResponse.json(
       { error: (error as Error).message || "Gagal menambah peran" },

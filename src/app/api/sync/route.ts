@@ -9,9 +9,11 @@ import {
 } from "@/lib/services/sync-operations-service";
 import { apiError } from "@/lib/api-error";
 import { limitOrPass, syncApiLimiter } from "@/lib/rate-limit";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireSession();
     const limited = await limitOrPass(syncApiLimiter, request, "sync-post");
     if (!limited.ok) {
       return apiError("Too many requests", 429);
@@ -52,6 +54,9 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     console.error("Sync API error:", error);
     return apiError("Sync gagal", 500, error);
   }

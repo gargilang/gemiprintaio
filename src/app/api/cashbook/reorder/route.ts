@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db-unified";
 import { apiError } from "@/lib/api-error";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const { reorderedIds } = body;
 
@@ -30,6 +32,9 @@ export async function POST(request: NextRequest) {
       message: "Successfully reordered (no recalculation)",
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     return apiError("Failed to reorder rows", 500, error);
   }
 }

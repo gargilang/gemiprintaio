@@ -5,6 +5,7 @@ import {
   stopAutoSync,
   getSyncStatus,
 } from "@/lib/services/sync-operations-service";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 
 /**
  * Auto-Sync Control API
@@ -14,6 +15,7 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireSession();
     const { action, intervalMinutes } = await request.json();
 
     switch (action) {
@@ -40,6 +42,9 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     return apiError("Auto-sync control failed", 500, error);
   }
 }

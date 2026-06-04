@@ -3,6 +3,7 @@ import {
   createCredential,
   listCredentials,
 } from "@/lib/services/credentials-service";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,10 +24,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const viewerId = request.headers.get("x-session-uid") || undefined;
-    if (!viewerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await requireSession();
+    const viewerId = session.uid;
     const {
       nama_layanan,
       nama_pengguna_akun,
@@ -53,6 +52,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/passwords error:", error);
     return NextResponse.json(
       { error: "Gagal menyimpan kredensial" },

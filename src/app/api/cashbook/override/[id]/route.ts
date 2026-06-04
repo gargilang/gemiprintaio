@@ -5,12 +5,14 @@ import {
   clearCashBookManualOverride,
 } from "@/lib/services/finance-service";
 import { apiError } from "@/lib/api-error";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const { id } = await params;
     const body = await request.json();
 
@@ -34,6 +36,9 @@ export async function PATCH(
       message: "Successfully updated cash book entry with manual override",
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     return apiError("Failed to update cash book entry", 500, error);
   }
 }
@@ -43,6 +48,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdminOrManager();
     const { id } = await params;
     const url = new URL(request.url);
     const field = url.searchParams.get("field");
@@ -71,6 +77,9 @@ export async function DELETE(
       message: `Successfully removed override for ${field}`,
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return apiError(error.message, error.status);
+    }
     return apiError("Failed to remove override", 500, error);
   }
 }

@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/business-actor-service";
 import { syncFormulasForActor } from "@/lib/services/formula-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,7 @@ function parseActorInput(body: Record<string, unknown>): BusinessActorInput {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await request.json();
     const action = String(body?.action ?? "create");
 
@@ -188,6 +190,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/business-actors error:", error);
     return NextResponse.json(
       { error: (error as Error).message || "Gagal memproses orang" },
