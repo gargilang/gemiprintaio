@@ -86,7 +86,7 @@ export default function DynamicActorSummary({
 }: Props) {
   const [collapsed, setCollapsed] = useState(true);
 
-  const url = `/api/finance/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
+  const url = `/api/keuangan/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
   // Use a stable SWR key based only on the URL + explicit refresh tick.
   // Avoid embedding lastCashBookLoadAt here — that changes on every cashbook
   // reload and would bust the cache unnecessarily, causing a visible spinner

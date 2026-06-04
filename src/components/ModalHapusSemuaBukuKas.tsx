@@ -1,0 +1,145 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useClickOutside } from "@/hooks/useClickOutside";
+
+interface DeleteAllCashbookModalProps {
+  show: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+}
+
+export default function ModalHapusSemuaBukuKas({
+  show,
+  onClose,
+  onConfirm,
+  deleting,
+}: DeleteAllCashbookModalProps) {
+  // Klik di luar untuk tutup modal (hanya saat tidak sedang menghapus)
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, show && !deleting);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!show || deleting) return;
+
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [show, deleting, onClose]);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+      <div
+        ref={modalRef}
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200"
+      >
+        <div className="p-6 border-b border-gray-200 dark:border-slate-800 rounded-t-2xl bg-gradient-to-r from-red-500 to-red-600 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900/20 flex items-center justify-center shrink-0">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white truncate flex items-center gap-2">
+              <svg
+                className="w-6 h-6 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              <span className="truncate">Hapus Semua Data</span>
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+            aria-label="Tutup"
+          >
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
+          <p className="text-base text-gray-600 dark:text-slate-300">
+            Aksi ini akan menghapus semua transaksi dari buku keuangan aktif
+            secara permanen.
+          </p>
+          <div className="bg-yellow-50 dark:bg-slate-800 border-2 border-yellow-300 rounded-xl p-4 text-sm text-yellow-800 dark:text-yellow-200">
+            <strong>Peringatan:</strong> Aksi ini tidak dapat dibatalkan.
+            Pastikan Anda sudah melakukan backup jika diperlukan.
+          </div>
+          <div className="bg-blue-50 dark:bg-slate-800 border-2 border-blue-300 dark:border-slate-700 rounded-xl p-4 text-sm">
+            <p className="font-bold text-blue-800 dark:text-blue-200 mb-2">
+              Data berikut TIDAK akan terpengaruh:
+            </p>
+            <ul className="list-disc list-inside pl-2 text-blue-700 dark:text-blue-300">
+              <li>Arsip Tutup Buku</li>
+              <li>Data Pelanggan, Material, Vendor</li>
+              <li>Data Faktur</li>
+              <li>Data Pengguna</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:shadow-lg hover:from-red-600 hover:to-red-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {deleting ? "Menghapus..." : "Ya, Hapus Semua"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

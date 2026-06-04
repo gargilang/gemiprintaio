@@ -11,7 +11,7 @@ import { useSWRConfig } from "swr";
  * Pemakaian:
  *
  *   const { data: pelanggan, isLoading, mutate, refresh } =
- *     useCachedData("pelanggan", () => getCustomersAction());
+ *     useCachedData("pelanggan", () => getPelangganAction());
  *
  * Catatan:
  * - `key` harus berupa string yang stabil dan unik secara global (mis. "pelanggan",
@@ -41,7 +41,7 @@ export function useCachedData<T>(
  * dari handler mutasi, mis.:
  *
  *   const invalidate = useInvalidate();
- *   await createCustomerAction(form);
+ *   await createPelangganAction(form);
  *   invalidate("pelanggan");
  */
 export function useInvalidate() {

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import { PrinterIcon } from "@/components/icons/PageIcons";
 import type {
   ProductionOrder,
@@ -605,7 +605,7 @@ export default function ProductionPage() {
   return (
     <>
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {/* Statistics Cards */}

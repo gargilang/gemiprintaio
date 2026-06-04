@@ -2,20 +2,20 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import { CashBook, KategoriTransaksi } from "@/types/database";
 import { getTodayJakarta, formatDateJakarta } from "@/lib/date-utils";
-import ImportCsvModal from "@/components/ImportCsvModal";
-import DeleteAllCashbookModal from "@/components/DeleteAllCashbookModal";
-import EditManualModal from "@/components/EditManualModal";
-import CloseBooksModal from "@/components/CloseBooksModal";
-import SelectMonthModal from "@/components/SelectMonthModal";
+import ModalImporCsv from "@/components/ModalImporCsv";
+import ModalHapusSemuaBukuKas from "@/components/ModalHapusSemuaBukuKas";
+import ModalEditManual from "@/components/ModalEditManual";
+import ModalTutupBuku from "@/components/ModalTutupBuku";
+import ModalPilihBulan from "@/components/ModalPilihBulan";
 import ModalFormShell from "@/components/ModalFormShell";
 import PengaturanKeuanganModal, { type PengaturanTab } from "@/components/finance/PengaturanKeuanganModal";
 import DynamicActorSummary from "@/components/finance/DynamicActorSummary";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import { BoxIcon, CheckIcon } from "@/components/icons/ContentIcons";
 import {
@@ -207,7 +207,7 @@ type FinanceConfigPayload = {
 };
 
 async function fetchFinanceConfig(): Promise<FinanceConfigPayload> {
-  const res = await fetch("/api/finance/config", { cache: "no-store" });
+  const res = await fetch("/api/keuangan/config", { cache: "no-store" });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || "Gagal memuat konfigurasi");
   return { categories: data.categories || [] };
@@ -333,7 +333,7 @@ export default function FinancePage() {
   useEffect(() => {
     if (!viewingArchive) return;
     let cancelled = false;
-    const url = `/api/finance/summary-v2?month=${encodeURIComponent(viewingArchive)}`;
+    const url = `/api/keuangan/summary-v2?month=${encodeURIComponent(viewingArchive)}`;
     fetch(url)
       .then((r) => r.json())
       .then((body: { systemMetrics?: { modal_kas: number; piutang_kas: number; kas: number } }) => {
@@ -591,7 +591,7 @@ export default function FinancePage() {
     try {
       const url = archiveLabel
         ? `/api/cashbook/archive/${encodeURIComponent(archiveLabel)}`
-        : "/api/finance/cash-book";
+        : "/api/keuangan/cash-book";
 
       const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
@@ -796,7 +796,7 @@ export default function FinancePage() {
       if (editingCashBook) {
         // Update existing transaction
         const res = await fetch(
-          `/api/finance/cash-book/${editingCashBook.id}`,
+          `/api/keuangan/cash-book/${editingCashBook.id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -1979,7 +1979,7 @@ export default function FinancePage() {
       {/* Confirm Dialog */}
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -1991,21 +1991,21 @@ export default function FinancePage() {
         />
       )}
       {/* Import CSV Modal */}
-      <ImportCsvModal
+      <ModalImporCsv
         show={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
         onImportCsv={importCashbookFromCSVAction}
       />
       {/* Delete All Modal */}
-      <DeleteAllCashbookModal
+      <ModalHapusSemuaBukuKas
         show={showDeleteAllModal}
         onClose={() => setShowDeleteAllModal(false)}
         onConfirm={handleDeleteAll}
         deleting={deleting}
       />
       {/* Edit Manual Modal */}
-      <EditManualModal
+      <ModalEditManual
         show={showEditManualModal}
         onClose={() => {
           setShowEditManualModal(false);
@@ -2015,14 +2015,14 @@ export default function FinancePage() {
         cashBook={editManualCashBook}
       />
       {/* Close Books Modal */}
-      <CloseBooksModal
+      <ModalTutupBuku
         show={showCloseBooksModal}
         onClose={() => setShowCloseBooksModal(false)}
         onSuccess={handleCloseBooksSuccess}
         onArchiveCashbook={archiveCashbookAction}
       />
       {/* Select Month Modal */}
-      <SelectMonthModal
+      <ModalPilihBulan
         show={showSelectMonthModal}
         onClose={() => setShowSelectMonthModal(false)}
         onSelectArchive={handleSelectArchive}
@@ -2042,7 +2042,7 @@ export default function FinancePage() {
       />
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

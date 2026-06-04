@@ -5,11 +5,11 @@ import { useCachedData } from "@/lib/use-cached-data";
 import { useSearchParams } from "next/navigation";
 import { BoxIcon } from "@/components/icons/ContentIcons";
 import { HashIcon, PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import ModalFormShell from "@/components/ModalFormShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import PpnTab from "./PpnTab";
 import PeriodCloseTab from "./PeriodCloseTab";
 import NomorUrutTab from "./NomorUrutTab";
@@ -250,7 +250,7 @@ function CompanyTab() {
   return (
     <div className="space-y-6">
       {notice && (
-        <NotificationToast
+        <ToastNotifikasi
           type={notice.type}
           message={notice.message}
         />
@@ -1027,11 +1027,11 @@ function CategoriesView({
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -2133,11 +2133,11 @@ function SubcategoriesView({
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -2424,11 +2424,11 @@ function UnitsSection({ autoOpenModal = false }: { autoOpenModal?: boolean }) {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -2573,7 +2573,7 @@ function PricingTab() {
   return (
     <div className="space-y-6">
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       <div className="flex items-center gap-3 mb-6">
@@ -3834,7 +3834,7 @@ function SystemTab() {
   return (
     <div className="space-y-6">
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       <div className="flex items-center gap-3 mb-6">

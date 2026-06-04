@@ -52,7 +52,7 @@ export default function PrintFinancialReport() {
         }
 
         const response = await fetch(
-          `/api/reports/financial?label=${encodeURIComponent(
+          `/api/laporan/financial?label=${encodeURIComponent(
             label
           )}&at=${encodeURIComponent(at)}`
         );

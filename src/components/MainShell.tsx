@@ -21,9 +21,9 @@ import {
   type MenuItem,
 } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
-import SyncStatus from "./SyncStatus";
-import FloatingCalculator from "./FloatingCalculator";
-import FloatingFakturPreview from "./FloatingFakturPreview";
+import StatusSinkronisasi from "./StatusSinkronisasi";
+import KalkulatorMengambang from "./KalkulatorMengambang";
+import PratinjauFakturMengambang from "./PratinjauFakturMengambang";
 import {
   fetchSessionUser,
   getCachedSessionUser,
@@ -562,7 +562,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
               </button>
 
               {/* Komponen status sinkronisasi */}
-              <SyncStatus className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700" />
+              <StatusSinkronisasi className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700" />
             </div>
           </div>
         </header>
@@ -572,12 +572,12 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <FloatingCalculator
+      <KalkulatorMengambang
         open={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
       />
 
-      <FloatingFakturPreview
+      <PratinjauFakturMengambang
         open={fakturPreview !== null}
         html={fakturPreview?.html ?? ""}
         title={fakturPreview?.title ?? "Pratinjau Faktur"}

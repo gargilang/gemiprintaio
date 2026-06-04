@@ -6,10 +6,10 @@ import SuratJalanTable from "@/components/SuratJalanTable";
 import SuratJalanModal, {
   type SuratJalanFormValue,
 } from "@/components/SuratJalanModal";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import NotificationToast, {
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import ToastNotifikasi, {
   type NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import {
   listSuratJalanAction,
   createSuratJalanAction,
@@ -283,7 +283,7 @@ export default function SuratJalanPage() {
       />
 
       {confirmDialog && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={true}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -293,7 +293,7 @@ export default function SuratJalanPage() {
         />
       )}
 
-      {notice && <NotificationToast type={notice.type} message={notice.message} />}
+      {notice && <ToastNotifikasi type={notice.type} message={notice.message} />}
     </>
   );
 }

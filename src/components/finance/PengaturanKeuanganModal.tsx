@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalFormShell from "@/components/ModalFormShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ExpressionAssistant from "@/components/finance/ExpressionAssistant";
 import KolomTab from "@/components/finance/KolomTab";
 import { astToDsl, DEFAULT_INPUT_COLUMNS } from "@/lib/ast";
@@ -238,7 +238,7 @@ function QuickAddCategoryButton({
     setErr(null);
     try {
       const code = slugifyCode(n);
-      await apiJSON("/api/finance/config/manage", {
+      await apiJSON("/api/keuangan/config/manage", {
         method: "POST",
         body: JSON.stringify({ action: "create_category", category_code: code, display_name: n }),
       });
@@ -362,7 +362,7 @@ export default function PengaturanKeuanganModal({
   useEffect(() => {
     if (open && !orangLoaded) {
       void reloadOrang();
-      apiJSON<{ categories: FinanceCatOption[] }>("/api/finance/categories")
+      apiJSON<{ categories: FinanceCatOption[] }>("/api/keuangan/categories")
         .then((r) => setFinCats(r.categories ?? []))
         .catch(() => {});
     }
@@ -494,7 +494,7 @@ export default function PengaturanKeuanganModal({
   const reloadKat = useCallback(async () => {
     setKatLoading(true);
     try {
-      const r = await apiJSON<{ categories: KategoriApi[] }>("/api/finance/config");
+      const r = await apiJSON<{ categories: KategoriApi[] }>("/api/keuangan/config");
       setCategories(r.categories ?? []);
       setKatLoaded(true);
     } catch (e) { showMsg("error", (e as Error).message); }
@@ -514,7 +514,7 @@ export default function PengaturanKeuanganModal({
   async function katMutate(payload: Record<string, unknown>) {
     setKatSaving(true);
     try {
-      await apiJSON("/api/finance/config/manage", { method: "POST", body: JSON.stringify(payload) });
+      await apiJSON("/api/keuangan/config/manage", { method: "POST", body: JSON.stringify(payload) });
       await reloadKat();
       onCategoriesChanged?.();
       showMsg("success", "Kategori diperbarui.");
@@ -785,7 +785,7 @@ export default function PengaturanKeuanganModal({
   return (
     <>
       {pendingConfirm && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show
           title={pendingConfirm.title}
           message={pendingConfirm.message}
@@ -887,7 +887,7 @@ export default function PengaturanKeuanganModal({
                     <QuickAddCategoryButton
                       onAdded={async (code) => {
                         // Reload category list and auto-check the new category.
-                        const r = await apiJSON<{ categories: FinanceCatOption[] }>("/api/finance/categories");
+                        const r = await apiJSON<{ categories: FinanceCatOption[] }>("/api/keuangan/categories");
                         setFinCats(r.categories ?? []);
                         const up = code.toUpperCase();
                         setOrangForm((f) => ({

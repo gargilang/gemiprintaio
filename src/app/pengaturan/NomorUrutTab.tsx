@@ -16,7 +16,7 @@ import {
   getNomorUrutSettingsAction,
   updateNomorUrutSettingsAction,
 } from "@/app/pengaturan/actions";
-import NotificationToast from "@/components/NotificationToast";
+import ToastNotifikasi from "@/components/ToastNotifikasi";
 
 type NomorFormat = "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
 type NomorReset = "daily" | "monthly" | "yearly" | "never";
@@ -295,7 +295,7 @@ export default function NomorUrutTab() {
   return (
     <div className="space-y-6">
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {/* Header */}

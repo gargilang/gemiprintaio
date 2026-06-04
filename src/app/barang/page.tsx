@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
-import AddMaterialModal from "@/components/AddMaterialModal";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import ModalTambahBarang from "@/components/ModalTambahBarang";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { BoxIcon } from "@/components/icons/ContentIcons";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import {
   getMaterialsAction,
   getMaterialByIdAction as getMaterialById,
@@ -1111,7 +1111,7 @@ export default function MaterialsPage() {
       </div>
 
       {/* Add Material Modal */}
-      <AddMaterialModal
+      <ModalTambahBarang
         isOpen={showModal}
         onClose={handleCloseModal}
         onSuccess={handleSuccess}
@@ -1582,7 +1582,7 @@ export default function MaterialsPage() {
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -1596,7 +1596,7 @@ export default function MaterialsPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </div>
   );

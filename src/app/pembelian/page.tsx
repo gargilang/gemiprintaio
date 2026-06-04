@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import PurchaseForm from "@/components/PurchaseForm";
-import PurchaseTable from "@/components/PurchaseTable";
-import QuickAddVendorModal from "@/components/QuickAddVendorModal";
-import QuickAddMaterialModal from "@/components/QuickAddMaterialModal";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import NotificationToast, {
+import FormulirPembelian from "@/components/FormulirPembelian";
+import TabelPembelian from "@/components/TabelPembelian";
+import ModalTambahCepatVendor from "@/components/ModalTambahCepatVendor";
+import ModalTambahCepatBarang from "@/components/ModalTambahCepatBarang";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
-import PayDebtModal from "@/components/PayDebtModal";
-import PurchaseReturnModal from "@/components/PurchaseReturnModal";
+} from "@/components/ToastNotifikasi";
+import ModalBayarHutang from "@/components/ModalBayarHutang";
+import ModalReturPembelian from "@/components/ModalReturPembelian";
 import {
   createVendorAction,
   createMaterialAction,
@@ -394,7 +394,7 @@ export default function PurchasesPage() {
             </p>
           </div>
 
-          <PurchaseForm
+          <FormulirPembelian
             key={editingPurchase ? editingPurchase.id : "new-purchase"}
             editData={editingPurchase}
             onSuccess={handleFormSuccess}
@@ -441,7 +441,7 @@ export default function PurchasesPage() {
             </button>
           </div>
 
-          <PurchaseTable
+          <TabelPembelian
             purchases={purchases}
             loading={loading && purchases.length === 0}
             onEdit={handleEdit}
@@ -453,7 +453,7 @@ export default function PurchasesPage() {
       </div>
 
       {/* Quick Add Modals */}
-      <QuickAddVendorModal
+      <ModalTambahCepatVendor
         show={showVendorModal}
         onClose={() => setShowVendorModal(false)}
         onSuccess={handleVendorAdded}
@@ -461,7 +461,7 @@ export default function PurchasesPage() {
         onCreateVendor={createVendorAction}
       />
 
-      <QuickAddMaterialModal
+      <ModalTambahCepatBarang
         show={showMaterialModal}
         onClose={() => setShowMaterialModal(false)}
         onSuccess={handleMaterialAdded}
@@ -473,7 +473,7 @@ export default function PurchasesPage() {
       />
 
       {/* Pay Debt Modal */}
-      <PayDebtModal
+      <ModalBayarHutang
         isOpen={showPayDebtModal}
         onClose={() => setShowPayDebtModal(false)}        onSuccess={() => {
           showMsg("success", "Pembayaran tagihan berhasil dicatat!");
@@ -485,7 +485,7 @@ export default function PurchasesPage() {
       />
 
       {/* Retur Vendor Modal */}
-      <PurchaseReturnModal
+      <ModalReturPembelian
         open={!!returPurchase}
         purchase={
           returPurchase
@@ -520,7 +520,7 @@ export default function PurchasesPage() {
 
       {/* Confirm Dialog */}
       {confirmDialog && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -534,7 +534,7 @@ export default function PurchasesPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

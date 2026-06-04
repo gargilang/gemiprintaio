@@ -87,7 +87,7 @@ export async function revertSalePaymentAction(data: {
 /**
  * Buat pelanggan baru
  */
-export async function createCustomerAction(data: {
+export async function createPelangganAction(data: {
   tipe_pelanggan: string;
   nama: string;
   nama_perusahaan?: string;
@@ -99,7 +99,7 @@ export async function createCustomerAction(data: {
   try {
     return await createPelanggan(data as any);
   } catch (error) {
-    console.error("Gagal createCustomerAction:", error);
+    console.error("Gagal createPelangganAction:", error);
     throw error;
   }
 }

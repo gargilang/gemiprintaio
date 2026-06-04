@@ -493,6 +493,72 @@ Hal yang sengaja tidak disentuh:
    - Update Flutter consumer ke endpoint API baru.
    - Hapus alias setelah semua consumer migrasi.
 
+## Fase 6 - Cleanup
+
+Status: **selesai pada 2026-06-04 oleh agen kedua**.
+
+Yang sudah dilakukan di Fase 6 (Opsi 2 — D + E + C):
+
+- **Hapus alias deprecated dari Fase 3** (`customers-service.ts`):
+  - Type `Customer` (alias `Pelanggan`) dihapus.
+  - Function `getCustomers`, `getCustomerById`, `createCustomer`, `updateCustomer`, `deleteCustomer` dihapus.
+  - Konsumer migrasi: `src/app/pelanggan/page.tsx`, `src/app/pelanggan/actions.ts`, `src/app/pos/actions.ts`, `src/lib/use-cached-data.ts`.
+  - Action `getCustomersAction` -> `getPelangganAction`, `createCustomerAction` -> `createPelangganAction`, dll.
+- **Rename komponen modal** di `src/components/`:
+  - `AddFinishingModal` -> `ModalTambahFinishing`
+  - `AddMaterialModal` -> `ModalTambahBarang`
+  - `CloseBooksModal` -> `ModalTutupBuku`
+  - `ConfirmDialog` -> `DialogKonfirmasi`
+  - `DeleteAllCashbookModal` -> `ModalHapusSemuaBukuKas`
+  - `EditManualModal` -> `ModalEditManual`
+  - `EditPriceModal` -> `ModalEditHarga`
+  - `ImportCsvModal` -> `ModalImporCsv`
+  - `PayDebtModal` -> `ModalBayarHutang`
+  - `PayReceivableModal` -> `ModalBayarPiutang`
+  - `PurchaseReturnModal` -> `ModalReturPembelian`
+  - `QuickAddCustomerModal` -> `ModalTambahCepatPelanggan`
+  - `QuickAddMaterialModal` -> `ModalTambahCepatBarang`
+  - `QuickAddVendorModal` -> `ModalTambahCepatVendor`
+  - `SelectMonthModal` -> `ModalPilihBulan`
+- **Rename komponen tabel/form/utility** di `src/components/`:
+  - `AuthWrapper` -> `PembungkusAuth`
+  - `FloatingCalculator` -> `KalkulatorMengambang`
+  - `FloatingFakturPreview` -> `PratinjauFakturMengambang`
+  - `NotificationToast` -> `ToastNotifikasi`
+  - `POSCart` -> `KeranjangPOS`
+  - `PurchaseForm` -> `FormulirPembelian`
+  - `PurchaseTable` -> `TabelPembelian`
+  - `SalesHistoryTable` -> `TabelRiwayatPenjualan`
+  - `SearchableSelect` -> `PilihanCari`
+  - `SyncStatus` -> `StatusSinkronisasi`
+- **Rename folder `src/app/api/`** dengan strategi alias keep-old:
+  - Folder primer Indonesia: `pelanggan`, `barang`, `pengguna`, `pembelian`, `produksi`, `laporan`, `inventori`, `keuangan`.
+  - Folder lama (Inggris) tetap ada sebagai re-export shim supaya Flutter mobile dan Tauri yang masih panggil `/api/customers`, `/api/finance/cash-book`, dll tetap berfungsi.
+- **Update web consumer** untuk panggil endpoint API baru (`/api/keuangan/...`, `/api/laporan/...`).
+- **Tidak rename komponen** yang sudah Indonesia atau yang merefer library framework: `BagiHasilManageModal`, `LaporanPpnPanel`, `MaklonLineModal`, `MainShell`, `PpnFakturModal`, `SuratJalanModal`, `SuratJalanTable`, `IndonesianNativeValidity`, `menuConfig`, `ModalFormShell`, `ThemeProvider`, `ThemeScript`.
+- **Tidak rename file `src/lib/services/*-service.ts` dan `src/lib/*.ts`** (Opsi A/B). Konvensi: nama file Inggris boleh untuk service/utility internal yang dibaca programmer, UI dan content harus Bahasa Indonesia. Lihat `panduan-bahasa.md` bagian "Keputusan akhir Fase 6".
+
+Verifikasi setelah Fase 6 (2026-06-04):
+
+- `npm run type-check` -> **lulus, 0 error**.
+- `npm run build` -> **lulus, semua route tergenerasi**.
+- `npx jest` -> **lulus, 199 test, 17 suite**.
+
+## Catatan akhir
+
+Semua 6 fase normalisasi bahasa Indonesia-first sudah selesai untuk
+artefak user-facing dan komponen UI. Yang sengaja ditahan permanen
+sebagai eksepsi (lihat panduan-bahasa.md):
+
+- Nama file di `src/lib/services/` dan `src/lib/` boleh tetap Inggris
+  (suffix `-service.ts`, `db-unified.ts`, dll) karena dibaca programmer
+  dan rename luas akan menyentuh semua import path tanpa value tambah.
+- Tabel database Inggris yang masih ada (`inventory_movements`,
+  `purchase_orders`, dll) — rename tabel risikonya jauh lebih tinggi
+  karena banyak FK; ditahan kecuali pemilik benar-benar mau.
+- Folder `src/app/api/` versi Inggris dipertahankan sebagai re-export
+  shim sampai Flutter mobile migrasi ke endpoint baru.
+
 ## Catatan untuk agen berikutnya
 
 - Baca `.cursorrules`, `docs/agent-playbook.md`, dan `docs/panduan-bahasa.md` sebelum mulai.

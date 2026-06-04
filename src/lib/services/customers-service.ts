@@ -1,12 +1,6 @@
 /**
  * Layanan Pelanggan
  * API universal untuk Pelanggan di Tauri dan Web.
- *
- * Catatan migrasi:
- * - Nama identifier primer sekarang Bahasa Indonesia (`Pelanggan`, `getPelanggan`, dll).
- * - Alias huruf Inggris (`Customer`, `getCustomers`, dll) tetap di-export sebagai
- *   alias `@deprecated` supaya pemanggil yang ada tidak putus selama transisi.
- *   Hapus alias setelah semua consumer migrasi (Fase 3 lanjutan).
  */
 
 import "server-only";
@@ -26,9 +20,6 @@ export interface Pelanggan {
   dibuat_pada?: string;
   diperbarui_pada?: string;
 }
-
-/** @deprecated Pakai `Pelanggan`. */
-export type Customer = Pelanggan;
 
 /**
  * Ambil semua pelanggan
@@ -140,14 +131,3 @@ export async function deletePelanggan(id: string): Promise<boolean> {
     throw error;
   }
 }
-
-/** @deprecated Pakai `getPelanggan`. */
-export const getCustomers = getPelanggan;
-/** @deprecated Pakai `getPelangganById`. */
-export const getCustomerById = getPelangganById;
-/** @deprecated Pakai `createPelanggan`. */
-export const createCustomer = createPelanggan;
-/** @deprecated Pakai `updatePelanggan`. */
-export const updateCustomer = updatePelanggan;
-/** @deprecated Pakai `deletePelanggan`. */
-export const deleteCustomer = deletePelanggan;

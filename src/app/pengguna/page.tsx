@@ -3,10 +3,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import NotificationToast, {
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import {
   UsersIcon,
   CheckIcon,
@@ -1369,7 +1369,7 @@ export default function UsersPage() {
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -1383,7 +1383,7 @@ export default function UsersPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

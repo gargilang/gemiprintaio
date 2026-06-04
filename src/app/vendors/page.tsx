@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
-import ConfirmDialog from "@/components/ConfirmDialog";
+} from "@/components/ToastNotifikasi";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { UsersIcon } from "@/components/icons/ContentIcons";
 import type { Vendor as VendorType } from "@/lib/services/vendors-service";
 import {
@@ -923,12 +923,12 @@ export default function VendorsPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -942,7 +942,7 @@ export default function VendorsPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

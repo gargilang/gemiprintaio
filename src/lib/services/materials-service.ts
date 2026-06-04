@@ -535,7 +535,8 @@ export async function getUnits() {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Alias Bahasa Indonesia (untuk consumer baru). Internal tetap pakai
-// `Material` sampai semua consumer migrasi.
+// `Material` karena rename luas membutuhkan migrasi banyak file consumer
+// dan risikonya tidak sebanding dengan keuntungan konsistensinya.
 // ──────────────────────────────────────────────────────────────────────────
 
 /** Alias Bahasa Indonesia untuk `Material`. */

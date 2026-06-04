@@ -17,26 +17,26 @@ import {
   getRollPrintLength,
   roundUpToThousand,
 } from "@/lib/money-rounding";
-import POSCart, { type PrintType } from "@/components/POSCart";
-import PayReceivableModal from "@/components/PayReceivableModal";
-import QuickAddCustomerModal from "@/components/QuickAddCustomerModal";
+import KeranjangPOS, { type PrintType } from "@/components/KeranjangPOS";
+import ModalBayarPiutang from "@/components/ModalBayarPiutang";
+import ModalTambahCepatPelanggan from "@/components/ModalTambahCepatPelanggan";
 import MaklonLineModal, {
   type MaklonLineFormValue,
 } from "@/components/MaklonLineModal";
 import PpnFakturModal, {
   type PpnFakturData,
 } from "@/components/PpnFakturModal";
-import SalesHistoryTable from "@/components/SalesHistoryTable";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import NotificationToast, {
+import TabelRiwayatPenjualan from "@/components/TabelRiwayatPenjualan";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
+} from "@/components/ToastNotifikasi";
 import {
   getPOSInitDataAction,
   createSaleAction,
   voidSaleAction,
   revertSalePaymentAction,
-  createCustomerAction,
+  createPelangganAction,
   getReceivablesAction,
   payReceivableAction,
   getFinishingOptionsAction,
@@ -1822,7 +1822,7 @@ export default function POSPage() {
                 <>+ Tambah Faktur Pajak (PPN)</>
               )}
             </button>
-            <POSCart
+            <KeranjangPOS
               cart={cart}
               roundCartPrices={roundCartPrices}
               onRoundCartPricesChange={setRoundCartPrices}
@@ -1883,7 +1883,7 @@ export default function POSPage() {
               Terima Piutang
             </button>
           </div>
-          <SalesHistoryTable
+          <TabelRiwayatPenjualan
             sales={sales}
             loading={historyLoading}
             onDelete={handleDeleteSale}
@@ -1893,7 +1893,7 @@ export default function POSPage() {
       </div>
 
       {/* Modals */}
-      <QuickAddCustomerModal
+      <ModalTambahCepatPelanggan
         show={showCustomerModal}
         onClose={() => setShowCustomerModal(false)}
         onSuccess={() => {
@@ -1901,10 +1901,10 @@ export default function POSPage() {
           loadAllData();
         }}
         showNotification={showMsg}
-        onCreateCustomer={createCustomerAction}
+        onCreateCustomer={createPelangganAction}
       />
 
-      <PayReceivableModal
+      <ModalBayarPiutang
         isOpen={showReceivableModal}
         onClose={() => setShowReceivableModal(false)}
         onSuccess={() => {
@@ -1988,7 +1988,7 @@ export default function POSPage() {
       />
 
       {confirmDialog && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -2076,7 +2076,7 @@ export default function POSPage() {
       )}
 
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

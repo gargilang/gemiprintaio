@@ -74,7 +74,7 @@ export default function FinancialReportPrint() {
     }
 
     fetch(
-      `/api/reports/financial?label=${encodeURIComponent(
+      `/api/laporan/financial?label=${encodeURIComponent(
         label
       )}&at=${encodeURIComponent(at)}`
     )

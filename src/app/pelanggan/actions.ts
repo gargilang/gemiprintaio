@@ -12,38 +12,38 @@ import {
   type Pelanggan,
 } from "@/lib/services/customers-service";
 
-export async function getCustomersAction() {
+export async function getPelangganAction() {
   try {
     return await getPelanggan();
   } catch (error) {
-    console.error("Gagal getCustomersAction:", error);
+    console.error("Gagal getPelangganAction:", error);
     throw error;
   }
 }
 
-export async function createCustomerAction(data: Omit<Pelanggan, "id" | "dibuat_pada" | "diperbarui_pada">) {
+export async function createPelangganAction(data: Omit<Pelanggan, "id" | "dibuat_pada" | "diperbarui_pada">) {
   try {
     return await createPelanggan(data);
   } catch (error) {
-    console.error("Gagal createCustomerAction:", error);
+    console.error("Gagal createPelangganAction:", error);
     throw error;
   }
 }
 
-export async function updateCustomerAction(id: string, data: Partial<Pelanggan>) {
+export async function updatePelangganAction(id: string, data: Partial<Pelanggan>) {
   try {
     return await updatePelanggan(id, data);
   } catch (error) {
-    console.error("Gagal updateCustomerAction:", error);
+    console.error("Gagal updatePelangganAction:", error);
     throw error;
   }
 }
 
-export async function deleteCustomerAction(id: string) {
+export async function deletePelangganAction(id: string) {
   try {
     return await deletePelanggan(id);
   } catch (error) {
-    console.error("Gagal deleteCustomerAction:", error);
+    console.error("Gagal deletePelangganAction:", error);
     throw error;
   }
 }

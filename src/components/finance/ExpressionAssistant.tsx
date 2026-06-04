@@ -610,7 +610,7 @@ export default function ExpressionAssistant({
   useEffect(() => {
     if (schemaOverride) { setSchema(schemaOverride); return; }
     let cancelled = false;
-    fetch("/api/finance/formula-schema")
+    fetch("/api/keuangan/formula-schema")
       .then((r) => r.json())
       .then((body: FormulaSchemaResponse | { error: string }) => {
         if (cancelled) return;

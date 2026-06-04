@@ -25,7 +25,7 @@ import {
 // TYPE DEFINITIONS
 // ============================================================================
 
-export interface SyncStatus {
+export interface StatusSinkronisasi {
   localDb: "active" | "error";
   cloudBackup: "connected" | "disconnected" | "syncing";
   pendingChanges: number;
@@ -64,12 +64,12 @@ let autoSyncSettings: AutoSyncSettings = {
  * Get current sync status
  * Returns pending changes count, last sync time, and connection status
  */
-export async function getSyncStatus(): Promise<SyncStatus> {
+export async function getSyncStatus(): Promise<StatusSinkronisasi> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const isConfigured = !!(supabaseUrl && supabaseKey);
-    let cloudBackup: SyncStatus["cloudBackup"] = "disconnected";
+    let cloudBackup: StatusSinkronisasi["cloudBackup"] = "disconnected";
 
     if (isConfigured && supabaseUrl && supabaseKey) {
       try {

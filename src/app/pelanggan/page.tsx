@@ -3,17 +3,17 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
-import NotificationToast, {
+import ToastNotifikasi, {
   NotificationToastProps,
-} from "@/components/NotificationToast";
-import ConfirmDialog from "@/components/ConfirmDialog";
+} from "@/components/ToastNotifikasi";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { UsersIcon, CheckIcon } from "@/components/icons/ContentIcons";
-import type { Pelanggan as CustomerType } from "@/lib/services/customers-service";
+import type { Pelanggan } from "@/lib/services/customers-service";
 import {
-  getCustomersAction,
-  createCustomerAction,
-  updateCustomerAction,
-  deleteCustomerAction,
+  getPelangganAction,
+  createPelangganAction,
+  updatePelangganAction,
+  deletePelangganAction,
 } from "./actions";
 import {
   fetchSessionUser,
@@ -22,18 +22,18 @@ import {
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
-// Memoized Customer Row Component — avoids unnecessary re-renders
-const CustomerRow = memo(
+// Komponen baris pelanggan yang di-memoisasi — hindari render ulang yang tidak perlu
+const PelangganRow = memo(
   ({
     customer,
     index,
     onEdit,
     onDelete,
   }: {
-    customer: Customer;
+    customer: Pelanggan;
     index: number;
-    onEdit: (customer: Customer) => void;
-    onDelete: (customer: Customer) => void;
+    onEdit: (customer: Pelanggan) => void;
+    onDelete: (customer: Pelanggan) => void;
   }) => {
     return (
       <tr
@@ -115,12 +115,9 @@ const CustomerRow = memo(
   }
 );
 
-CustomerRow.displayName = "CustomerRow";
+PelangganRow.displayName = "PelangganRow";
 
-// Use Customer type from service
-type Customer = CustomerType;
-
-export default function CustomersPage() {
+export default function PelangganPage() {
   const router = useRouter();
   const initialUser =
     typeof window !== "undefined" ? getCachedSessionUser() : null;
@@ -131,20 +128,20 @@ export default function CustomersPage() {
     data: pelangganData,
     isLoading: pelangganLoading,
     mutate: mutatePelanggan,
-  } = useCachedData<Customer[]>("pelanggan", async () => {
-    const result = await getCustomersAction();
-    return (result as Customer[]) || [];
+  } = useCachedData<Pelanggan[]>("pelanggan", async () => {
+    const result = await getPelangganAction();
+    return (result as Pelanggan[]) || [];
   });
   const customers = pelangganData ?? [];
   const setDaftarPelanggan = useCallback<
-    (next: Customer[] | ((prev: Customer[]) => Customer[])) => void
+    (next: Pelanggan[] | ((prev: Pelanggan[]) => Pelanggan[])) => void
   >(
     (next) => {
       void mutatePelanggan(
         (prev) => {
-          const base = (prev as Customer[] | undefined) ?? [];
+          const base = (prev as Pelanggan[] | undefined) ?? [];
           return typeof next === "function"
-            ? (next as (p: Customer[]) => Customer[])(base)
+            ? (next as (p: Pelanggan[]) => Pelanggan[])(base)
             : next;
         },
         { revalidate: false }
@@ -154,7 +151,7 @@ export default function CustomersPage() {
   );
   const loading = currentUser === null && pelangganLoading;
   const [showModal, setShowModal] = useState(false);
-  const [editingPelanggan, setEditingPelanggan] = useState<Customer | null>(null);
+  const [editingPelanggan, setEditingPelanggan] = useState<Pelanggan | null>(null);
   const [formData, setFormData] = useState({
     nama: "",
     email: "",
@@ -186,8 +183,8 @@ export default function CustomersPage() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper function to update a single customer in state without reloading
-  function updatePelangganInState(updated: Customer) {
-    setDaftarPelanggan((prev: Customer[]) =>
+  function updatePelangganInState(updated: Pelanggan) {
+    setDaftarPelanggan((prev: Pelanggan[]) =>
       prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
     );
   }
@@ -321,7 +318,7 @@ export default function CustomersPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (customer: Customer) => {
+  const handleEdit = (customer: Pelanggan) => {
     setEditingPelanggan(customer);
     setFormData({
       nama: customer.nama || "",
@@ -348,14 +345,14 @@ export default function CustomersPage() {
 
       if (editingPelanggan) {
         // Update existing customer
-        await updateCustomerAction(editingPelanggan.id, formData);
+        await updatePelangganAction(editingPelanggan.id, formData);
         const successMessage = "Pelanggan berhasil diupdate";
         setShowModal(false);
         await loadPelanggan();
         showMsg("success", successMessage);
       } else {
         // Create new customer
-        await createCustomerAction(formData);
+        await createPelangganAction(formData);
         const successMessage = "Pelanggan berhasil ditambahkan";
         setShowModal(false);
         await loadPelanggan();
@@ -368,7 +365,7 @@ export default function CustomersPage() {
     }
   };
 
-  const handleDelete = (customer: Customer) => {
+  const handleDelete = (customer: Pelanggan) => {
     setConfirmDialog({
       show: true,
       title: "Hapus Pelanggan",
@@ -383,8 +380,8 @@ export default function CustomersPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteCustomerAction(customer.id);
-          setDaftarPelanggan((prev: Customer[]) =>
+          await deletePelangganAction(customer.id);
+          setDaftarPelanggan((prev: Pelanggan[]) =>
             prev.filter((c) => c.id !== customer.id)
           );
           showMsg("success", "Pelanggan berhasil dihapus");
@@ -429,7 +426,7 @@ export default function CustomersPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Customers */}
+          {/* Total Pelanggan */}
           <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -540,7 +537,7 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* Customers Table */}
+        {/* Tabel Pelanggan */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
           <div
             ref={tableContainerRef}
@@ -591,7 +588,7 @@ export default function CustomersPage() {
                   </tr>
                 ) : (
                   visiblePelanggan.map((customer, idx) => (
-                    <CustomerRow
+                    <PelangganRow
                       key={customer.id}
                       customer={customer}
                       index={visibleRange.start + idx}
@@ -785,12 +782,12 @@ export default function CustomersPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
 
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
-        <ConfirmDialog
+        <DialogKonfirmasi
           show={confirmDialog.show}
           title={confirmDialog.title}
           message={confirmDialog.message}
@@ -804,7 +801,7 @@ export default function CustomersPage() {
 
       {/* Notification Toast */}
       {notice && (
-        <NotificationToast type={notice.type} message={notice.message} />
+        <ToastNotifikasi type={notice.type} message={notice.message} />
       )}
     </>
   );

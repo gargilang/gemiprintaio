@@ -5,7 +5,7 @@ import { useEffect, RefObject } from "react";
  * outside-click handling. The TOP of the stack is the most recently
  * opened modal — only it should respond to outside clicks. Modals
  * below it stay open even when the user interacts with the topmost
- * modal (e.g. clicking Batal inside a ConfirmDialog stacked on top
+ * modal (e.g. clicking Batal inside a DialogKonfirmasi stacked on top
  * of a settings modal must not also close the settings modal).
  *
  * The stack is intentionally ordered by registration time, not by
@@ -49,7 +49,7 @@ export function useClickOutside<T extends HTMLElement = HTMLElement>(
 
       // Stack discipline: only the topmost modal closes on outside clicks.
       // Modals below it stay open even when the user clicks in/around the
-      // topmost modal (e.g. closing a ConfirmDialog must not also close the
+      // topmost modal (e.g. closing a DialogKonfirmasi must not also close the
       // settings modal underneath).
       const top = modalStack[modalStack.length - 1];
       if (top !== el) return;
