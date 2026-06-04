@@ -522,7 +522,11 @@ export async function createSale(data: CreateSaleData): Promise<{
         if (upd.error) throw upd.error;
       }
 
-      // Sisipkan baris penjualan dan perbarui stok
+      // Sisipkan baris penjualan dan perbarui stok.
+      // Simpan ID tiap item_penjualan per indeks supaya loop produksi memakai
+      // ID yang tepat (D-I1) — JANGAN re-query by timestamp offset karena
+      // timestamp bisa kembar dan menyebabkan finishing terpasang ke item salah.
+      const insertedItemIds: string[] = [];
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = generateId();
@@ -620,6 +624,7 @@ export async function createSale(data: CreateSaleData): Promise<{
 
         const itemResult = await db.insert("item_penjualan", saleItem);
         if (itemResult.error) throw itemResult.error;
+        insertedItemIds[i] = itemId;
 
         if (isMaklon) {
           maklonItemIds.set(i, itemId);
@@ -786,13 +791,17 @@ export async function createSale(data: CreateSaleData): Promise<{
         const item = data.items[i];
         const isMaklon = item.tipe_item === "MAKLON";
 
-        // Ambil item_penjualan yang sudah dibuat
-        const itemPenjualanResult = await db.query("item_penjualan", {
-          where: { penjualan_id: saleId },
-          orderBy: { column: "dibuat_pada", ascending: true },
-          offset: i,
-          limit: 1,
-        });
+        // Ambil item_penjualan via ID yang sudah ditangkap saat insert (D-I1).
+        // Pakai ID eksplisit, BUKAN offset+orderBy dibuat_pada — timestamp bisa
+        // kembar untuk insert beruntun sehingga item ke-i bisa salah ambil dan
+        // finishing/SPK terpasang ke item yang keliru.
+        const itemPenjualanId = insertedItemIds[i];
+        const itemPenjualanResult = itemPenjualanId
+          ? await db.query("item_penjualan", {
+              where: { id: itemPenjualanId },
+              limit: 1,
+            })
+          : { data: [] as any[] };
 
         if (itemPenjualanResult.data && itemPenjualanResult.data.length > 0) {
           const itemPenjualan = itemPenjualanResult.data[0];
