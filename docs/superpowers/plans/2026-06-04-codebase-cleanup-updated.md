@@ -67,3 +67,80 @@
 **12 dari 19 task selesai. 7 task di-skip karena komponen UI monolitik tightly-coupled — butuh pendekatan React Context di sesi tersendiri.**
 
 *Terakhir diperbarui: 2026-06-04*
+
+---
+
+## Panduan untuk Agen Berikutnya
+
+### A. Cara Menulis File .md Panjang Tanpa Error
+
+**Masalah yang ditemui:** `Write` tool dan `CreatePlan` tool gagal dengan JSON parsing error saat konten panjang mengandung backtick, backslash, atau tanda kutip. Shell heredoc juga gagal jika string mengandung karakter khusus.
+
+**Solusi yang terbukti berhasil: Node.js dengan `appendFileSync` per section**
+
+```
+node -e "var fs=require('fs'); fs.writeFileSync('file.md', 'header\n');"
+node -e "var fs=require('fs'); fs.appendFileSync('file.md', 'section1\n');"
+node -e "var fs=require('fs'); fs.appendFileSync('file.md', 'section2\n');"
+```
+
+**Aturan wajib:**
+
+- Jangan gunakan `Write` tool untuk file lebih dari 200 baris
+- Jangan gunakan `Write` tool jika konten mengandung backtick atau tanda kutip ganda
+- Gunakan `StrReplace` untuk modifikasi file yang sudah ada (paling aman)
+- Untuk file baru yang panjang: tulis per section kecil dengan `appendFileSync`
+- Pakai `node -e "..."` untuk konten pendek tanpa karakter khusus
+- Pakai `node << 'NODESCRIPT' ... NODESCRIPT` untuk konten lebih panjang, tapi HINDARI backtick di dalam heredoc
+- Jika heredoc gagal karena karakter khusus, pecah ke beberapa `node -e` calls yang lebih kecil
+
+---
+
+### B. Task yang Di-skip: Detail dan Persyaratan
+
+Semua task berikut di-skip karena komponen UI **monolitik tightly-coupled** — state variables saling bergantung sehingga ekstraksi naif menghasilkan prop-drilling yang tidak maintainable.
+
+**File yang perlu dipecah di sesi berikutnya:**
+
+| File | Baris | Kompleksitas |
+| ---- | ----- | ------------ |
+| `src/app/pos/page.tsx` | 2083 | Tinggi — state keranjang + barang + customer + 5 modal |
+| `src/app/keuangan/page.tsx` | 2049 | Tinggi — state buku kas + filter + archive + modal |
+| `src/components/FormulirPembelian.tsx` | 1522 | Tinggi — form + items + PPN + split roll |
+| `src/components/ModalTambahBarang.tsx` | 1186 | Sedang — form barang + roll variants + harga satuan |
+| `src/app/barang/page.tsx` | 1603 | Sedang — tabel + 3 modal inline |
+| `src/app/pengguna/page.tsx` | 1387 | Sedang — tabel + form modal |
+| `src/app/produksi/spk/page.tsx` | 1239 | Sedang — SPK list + detail panel |
+| `src/components/finance/PengaturanKeuanganModal.tsx` | 1266 | Sedang — tab modal multi-form |
+| `src/components/finance/ExpressionAssistant.tsx` | 1176 | Tinggi — AST editor + preview + suggestion |
+
+**Pendekatan yang benar (jangan ulangi cara yang gagal):**
+
+1. **Buat React Context per domain terlebih dahulu** sebelum memecah komponen.
+   Contoh: `POSContext` untuk state POS, `KeuanganContext` untuk state keuangan.
+   Ini menghilangkan kebutuhan prop-drilling.
+
+2. **Pecah modal dulu, bukan section** — modal adalah unit paling terisolasi.
+   Contoh untuk `barang/page.tsx`:
+   - Ekstrak `ModalCatatRusak` dengan props `{ material, onClose, onSuccess }`
+   - Ekstrak `ModalKonversiRoll` dengan props `{ material, onClose, onSuccess }`
+   - Sisakan tabel dan state utama di page.tsx
+
+3. **Urutan yang disarankan (dari termudah ke tersulit):**
+   - `barang/page.tsx` — modal-modalnya paling bisa diisolasi
+   - `pengguna/page.tsx` — paling sederhana
+   - `PengaturanKeuanganModal.tsx` — sudah ada tab structure
+   - `keuangan/page.tsx` — setelah KeuanganContext dibuat
+   - `pos/page.tsx` — terakhir, paling kompleks
+
+4. **Verifikasi wajib setelah setiap ekstraksi:**
+   - `npm run type-check` harus 0 errors
+   - `npm run build` harus sukses
+   - Test manual di browser: klik semua tombol di komponen yang diubah
+
+**Peringatan keras:** Jangan pernah ekstrak JSX ke file baru tanpa pemetaan state terlebih dahulu. Baca seluruh komponen, identifikasi semua state yang dibutuhkan sub-komponen, baru putuskan interface props atau Context yang tepat.
+
+---
+
+*Appendix ditambahkan: 2026-06-04*
+
