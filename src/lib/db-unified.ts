@@ -875,8 +875,17 @@ class UnifiedDatabase {
       const stmt = db.prepare(sql);
       const info = stmt.run(...values);
       if (info.changes === 0) {
-        // Row was ignored due to a UNIQUE/PK conflict. Find and return the
-        // existing row's ID so downstream foreign-key references stay valid.
+        // Row di-IGNORE karena konflik UNIQUE/PK. Ini bisa berarti:
+        //   (a) retry idempoten yang sah (Supabase sudah tulis, mirror ulang), atau
+        //   (b) BUG: ID bentrok (race generateId / data impor buruk) sehingga
+        //       data BARU diam-diam tidak tertulis (D-I4).
+        // Kita tidak bisa throw karena kasus (a) sah, tapi JANGAN diam — log
+        // warning supaya konflik (b) terlihat/greppable, bukan hilang senyap.
+        console.warn(
+          `[insertServerSQLite] INSERT OR IGNORE: 0 baris berubah untuk ${table} id=${data.id}. ` +
+            `Data baru TIDAK ditulis (kemungkinan retry idempoten ATAU konflik PK). Periksa bila tak terduga.`
+        );
+        // Kembalikan ID baris yang ada supaya referensi FK downstream tetap valid.
         try {
           const existing = db
             .prepare(`SELECT id FROM ${table} WHERE id = ?`)
