@@ -1,15 +1,9 @@
 import "server-only";
 
 import { getSession, type SessionPayload } from "./session";
+import { AuthGuardError } from "./auth-guard-error";
 
-export class AuthGuardError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "AuthGuardError";
-    this.status = status;
-  }
-}
+export { AuthGuardError };
 
 export async function requireSession(): Promise<SessionPayload> {
   const s = await getSession();
