@@ -19,6 +19,7 @@ import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 // SQLite helpers (extracted)
 export { getServerSQLite, SYNC_V2_TABLES } from "./db-sqlite";
 import { getServerSQLite, serverSqliteColumnsCache, SYNC_V2_TABLES } from "./db-sqlite";
+import { hashPayload } from "./payload-hash-util";
 
 // ============================================================================
 // NORMALIZATION UTILITIES
@@ -1196,7 +1197,7 @@ class UnifiedDatabase {
       table_name: table,
       record_id: recordId,
       device_id: data.updated_by_device || getDeviceId(),
-      payload_hash: JSON.stringify(data).length.toString(),
+      payload_hash: hashPayload(data),
     });
     return true;
   }
