@@ -106,6 +106,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
     }
 
     const orders = ordersResult.data || [];
+    if (orders.length === 0) return [];
 
     // Ambil data penjualan untuk pengayaan
     const penjualanResult = await db.query("penjualan");
@@ -119,9 +120,66 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
     const profilResult = await db.query("profil");
     const profilList = profilResult.data || [];
 
+    // Batch (D-I3): ambil item, finishing, item_penjualan, dan konsumsi sekali
+    // saja lalu join di memori — menghilangkan N+1 (dulu: query per order, per
+    // item, per finishing/saleItem/consumption).
+    const orderIdSet = new Set(orders.map((o: any) => o.id));
+    const [
+      allItemsResult,
+      allFinishingResult,
+      allSaleItemsResult,
+      allConsumptionsResult,
+    ] = await Promise.all([
+      db.query<ProductionItem>("item_produksi"),
+      db.query<FinishingItem>("item_finishing"),
+      db.query<any>("item_penjualan"),
+      db.query<any>("production_material_consumptions"),
+    ]);
+
+    // Item per order (terurut dibuat_pada).
+    const itemsByOrderId = new Map<string, ProductionItem[]>();
+    for (const item of (allItemsResult.data || []) as any[]) {
+      if (!orderIdSet.has(item.order_produksi_id)) continue;
+      const list = itemsByOrderId.get(item.order_produksi_id) || [];
+      list.push(item);
+      itemsByOrderId.set(item.order_produksi_id, list);
+    }
+    for (const [, list] of itemsByOrderId) {
+      list.sort((a: any, b: any) =>
+        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+      );
+    }
+
+    // Finishing per item_produksi (terurut dibuat_pada).
+    const finishingByItemId = new Map<string, FinishingItem[]>();
+    for (const fin of (allFinishingResult.data || []) as any[]) {
+      const list = finishingByItemId.get(fin.item_produksi_id) || [];
+      list.push(fin);
+      finishingByItemId.set(fin.item_produksi_id, list);
+    }
+    for (const [, list] of finishingByItemId) {
+      list.sort((a: any, b: any) =>
+        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+      );
+    }
+
+    // item_penjualan by id.
+    const saleItemById = new Map<string, any>();
+    for (const si of (allSaleItemsResult.data || []) as any[]) {
+      saleItemById.set(si.id, si);
+    }
+
+    // Konsumsi POSTED per item_produksi.
+    const postedConsumptionByItemId = new Map<string, any>();
+    for (const row of (allConsumptionsResult.data || []) as any[]) {
+      if (row.status !== "POSTED") continue;
+      if (!postedConsumptionByItemId.has(row.item_produksi_id)) {
+        postedConsumptionByItemId.set(row.item_produksi_id, row);
+      }
+    }
+
     // Lengkapi order dengan data faktur dan pelanggan, dan ambil item
-    const ordersWithItems = await Promise.all(
-      orders.map(async (order) => {
+    const ordersWithItems = orders.map((order) => {
         // Cari penjualan
         const penjualan = penjualanList.find(
           (p: any) => p.id === order.penjualan_id
@@ -132,26 +190,11 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
           (pel: any) => pel.id === penjualan?.pelanggan_id
         );
 
-        // Ambil item
-        const itemsResult = await db.query<ProductionItem>("item_produksi", {
-          where: { order_produksi_id: order.id },
-          orderBy: { column: "dibuat_pada", ascending: true },
-        });
+        const items = itemsByOrderId.get(order.id) || [];
 
-        const items = itemsResult.data || [];
-
-        // Ambil finishing untuk setiap item
-        const itemsWithFinishing = await Promise.all(
-          items.map(async (item) => {
-            const finishingResult = await db.query<FinishingItem>(
-              "item_finishing",
-              {
-                where: { item_produksi_id: item.id },
-                orderBy: { column: "dibuat_pada", ascending: true },
-              }
-            );
-
-            const finishing = finishingResult.data || [];
+        // Lengkapi tiap item dengan finishing + saleItem + konsumsi (dari peta).
+        const itemsWithFinishing = items.map((item) => {
+            const finishing = finishingByItemId.get(item.id) || [];
 
             // Lengkapi finishing dengan nama operator
             const finishingWithOperator = finishing.map((fin) => {
@@ -168,17 +211,9 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
             const operator = profilList.find(
               (prof: any) => prof.id === item.operator_id
             );
-            const saleItemResult = await db.queryOne<any>("item_penjualan", {
-              where: { id: item.item_penjualan_id },
-            });
-            const saleItem = saleItemResult.data;
-            const consumptionResult = await db.query<any>(
-              "production_material_consumptions",
-              { where: { item_produksi_id: item.id } }
-            );
+            const saleItem = saleItemById.get(item.item_penjualan_id) || null;
             const consumption =
-              (consumptionResult.data || []).find((row: any) => row.status === "POSTED") ||
-              null;
+              postedConsumptionByItemId.get(item.id) || null;
 
             return {
               ...item,
@@ -196,8 +231,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
               finishing: finishingWithOperator,
               consumption,
             };
-          })
-        );
+          });
 
         return {
           ...order,
@@ -205,8 +239,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
           pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
           items: itemsWithFinishing,
         };
-      })
-    );
+      });
 
     // Urutkan berdasarkan prioritas (KILAT duluan) lalu tanggal
     return ordersWithItems.sort((a, b) => {

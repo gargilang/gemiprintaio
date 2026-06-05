@@ -19,68 +19,35 @@ import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 // SQLite helpers (extracted)
 export { getServerSQLite, SYNC_V2_TABLES } from "./db-sqlite";
 import { getServerSQLite, serverSqliteColumnsCache, SYNC_V2_TABLES } from "./db-sqlite";
+import { hashPayload } from "./payload-hash-util";
 
 // ============================================================================
 // NORMALIZATION UTILITIES
 // ============================================================================
 
-/**
- * Normalize record for consistency between SQLite and Supabase
- * - Boolean conversion (SQLite 0/1 ↔ Supabase true/false)
- * - Timestamp fields already consistent (dibuat_pada, diperbarui_pada)
- */
-export function normalizeRecord(
-  record: Record<string, any>,
-  direction: "toSupabase" | "fromSupabase" | "toSQLite" | "fromSQLite"
-): Record<string, any> {
-  const normalized: Record<string, any> = { ...record };
-
-  // Boolean normalization only (timestamps already consistent)
-  if (direction === "toSupabase" || direction === "fromSQLite") {
-    // SQLite → Supabase: 0/1 → false/true
-    Object.keys(normalized).forEach((key) => {
-      if (
-        typeof normalized[key] === "number" &&
-        (normalized[key] === 0 || normalized[key] === 1)
-      ) {
-        // Only convert fields that are likely booleans
-        if (
-          key.includes("aktif") ||
-          key.includes("is_") ||
-          key.includes("has_") ||
-          key.includes("status") ||
-          key.includes("privat")
-        ) {
-          normalized[key] = normalized[key] === 1;
-        }
-      }
-    });
-  } else if (direction === "toSQLite" || direction === "fromSupabase") {
-    // Supabase → SQLite: true/false → 1/0; JSONB/objects → TEXT
-    Object.keys(normalized).forEach((key) => {
-      const value = normalized[key];
-      if (typeof value === "boolean") {
-        normalized[key] = value ? 1 : 0;
-      } else if (value === undefined) {
-        normalized[key] = null;
-      } else if (value !== null && typeof value === "object") {
-        if (value instanceof Date) {
-          normalized[key] = value.toISOString();
-        } else if (!Buffer.isBuffer(value)) {
-          normalized[key] = JSON.stringify(value);
-        }
-      }
-    });
-  }
-
-  return normalized;
-}
+// normalizeRecord dipindah ke modul murni `normalize-record.ts` (D-I2) supaya
+// deteksi boolean memakai whitelist yang aman + bisa di-unit-test.
+import { normalizeRecord } from "./normalize-record";
+export { normalizeRecord };
 
 /**
  * Generate consistent UUID
  */
 export function generateId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * Validasi identifier SQL (nama tabel/kolom) sebelum interpolasi ke string SQL.
+ * db-unified menginterpolasi `table` dan nama kolom (where/orderBy) langsung ke
+ * SQL — aman selama caller pakai literal, tapi whitelist runtime ini mencegah
+ * regresi membuka SQL injection. Hanya huruf kecil, angka, dan underscore;
+ * harus diawali huruf/underscore.
+ */
+function assertSafeIdentifier(name: string): void {
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`Identifier SQL tidak valid: ${name}`);
+  }
 }
 
 /**
@@ -305,6 +272,25 @@ export function getServerSupabaseClient(): SupabaseClient | null {
   }
 
   return serverSupabaseClient;
+}
+
+/**
+ * Apakah `db.transaction()` benar-benar atomik di runtime saat ini?
+ * - Tauri: ya (transaksi SQLite nyata).
+ * - Server dengan mirror SQLite aktif: ya.
+ * - Server Supabase-only (Vercel / next dev default): TIDAK — operasi
+ *   dijalankan berurutan tanpa rollback lintas-statement.
+ *
+ * Caller composite mutation (createSale dll) memakai ini untuk memutuskan
+ * apakah perlu compensating cleanup manual saat ada kegagalan di tengah.
+ */
+export async function isCompositeTransactionAtomic(): Promise<boolean> {
+  if (isTauriApp()) return true;
+  if (isServerSide()) {
+    const sqlite = await getServerSQLite();
+    return !!sqlite;
+  }
+  return false;
 }
 
 // Check if online and Supabase is available (Browser)
@@ -826,12 +812,14 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
+    assertSafeIdentifier(table);
     let sql = `SELECT ${options.select || "*"} FROM ${table}`;
     const params: any[] = [];
 
     // Build WHERE clause
     if (options.where && Object.keys(options.where).length > 0) {
       const conditions = Object.entries(options.where).map(([key, value]) => {
+        assertSafeIdentifier(key);
         if (value === null) {
           return `${key} IS NULL`;
         }
@@ -843,6 +831,7 @@ class UnifiedDatabase {
 
     // Add ORDER BY
     if (options.orderBy) {
+      assertSafeIdentifier(options.orderBy.column);
       sql += ` ORDER BY ${options.orderBy.column} ${
         options.orderBy.ascending !== false ? "ASC" : "DESC"
       }`;
@@ -876,6 +865,7 @@ class UnifiedDatabase {
     }
 
     const tableColumns = await getServerSQLiteTableColumns(table);
+    assertSafeIdentifier(table);
     const filteredEntries = Object.entries(data).filter(([key]) => {
       // If introspection fails, keep previous behavior.
       if (tableColumns.size === 0) return true;
@@ -902,8 +892,17 @@ class UnifiedDatabase {
       const stmt = db.prepare(sql);
       const info = stmt.run(...values);
       if (info.changes === 0) {
-        // Row was ignored due to a UNIQUE/PK conflict. Find and return the
-        // existing row's ID so downstream foreign-key references stay valid.
+        // Row di-IGNORE karena konflik UNIQUE/PK. Ini bisa berarti:
+        //   (a) retry idempoten yang sah (Supabase sudah tulis, mirror ulang), atau
+        //   (b) BUG: ID bentrok (race generateId / data impor buruk) sehingga
+        //       data BARU diam-diam tidak tertulis (D-I4).
+        // Kita tidak bisa throw karena kasus (a) sah, tapi JANGAN diam — log
+        // warning supaya konflik (b) terlihat/greppable, bukan hilang senyap.
+        console.warn(
+          `[insertServerSQLite] INSERT OR IGNORE: 0 baris berubah untuk ${table} id=${data.id}. ` +
+            `Data baru TIDAK ditulis (kemungkinan retry idempoten ATAU konflik PK). Periksa bila tak terduga.`
+        );
+        // Kembalikan ID baris yang ada supaya referensi FK downstream tetap valid.
         try {
           const existing = db
             .prepare(`SELECT id FROM ${table} WHERE id = ?`)
@@ -938,6 +937,7 @@ class UnifiedDatabase {
     }
 
     const tableColumns = await getServerSQLiteTableColumns(table);
+    assertSafeIdentifier(table);
     const filteredEntries = Object.entries(data).filter(([key]) => {
       if (tableColumns.size === 0) return true;
       return tableColumns.has(key);
@@ -970,6 +970,7 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
+    assertSafeIdentifier(table);
     const sql = `DELETE FROM ${table} WHERE id = ?`;
 
     try {
@@ -1196,7 +1197,7 @@ class UnifiedDatabase {
       table_name: table,
       record_id: recordId,
       device_id: data.updated_by_device || getDeviceId(),
-      payload_hash: JSON.stringify(data).length.toString(),
+      payload_hash: hashPayload(data),
     });
     return true;
   }
@@ -1207,12 +1208,14 @@ class UnifiedDatabase {
     table: string,
     options: QueryOptions
   ): Promise<QueryResult<T>> {
+    assertSafeIdentifier(table);
     let sql = `SELECT ${options.select || "*"} FROM ${table}`;
     const params: any[] = [];
 
     // Build WHERE clause
     if (options.where && Object.keys(options.where).length > 0) {
       const conditions = Object.entries(options.where).map(([key, value]) => {
+        assertSafeIdentifier(key);
         if (value === null) {
           return `${key} IS NULL`;
         }
@@ -1224,6 +1227,7 @@ class UnifiedDatabase {
 
     // Add ORDER BY
     if (options.orderBy) {
+      assertSafeIdentifier(options.orderBy.column);
       sql += ` ORDER BY ${options.orderBy.column} ${
         options.orderBy.ascending !== false ? "ASC" : "DESC"
       }`;
@@ -1245,7 +1249,9 @@ class UnifiedDatabase {
     table: string,
     data: Record<string, any>
   ): Promise<MutationResult> {
+    assertSafeIdentifier(table);
     const columns = Object.keys(data);
+    columns.forEach((c) => assertSafeIdentifier(c));
     const values = Object.values(data);
     const placeholders = columns.map(() => "?").join(", ");
 
@@ -1262,7 +1268,11 @@ class UnifiedDatabase {
     id: string,
     data: Record<string, any>
   ): Promise<MutationResult> {
-    const sets = Object.keys(data).map((key) => `${key} = ?`);
+    assertSafeIdentifier(table);
+    const sets = Object.keys(data).map((key) => {
+      assertSafeIdentifier(key);
+      return `${key} = ?`;
+    });
     const values = [...Object.values(data), id];
 
     const sql = `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`;
@@ -1275,6 +1285,7 @@ class UnifiedDatabase {
     table: string,
     id: string
   ): Promise<MutationResult> {
+    assertSafeIdentifier(table);
     const sql = `DELETE FROM ${table} WHERE id = ?`;
 
     await invoke("db_execute", { sql, params: [id] });
@@ -2207,7 +2218,7 @@ export async function createMaterialWithUnitPrices(materialData: {
     // Generate ID
     const materialId = `mat-${Date.now()}-${Math.random()
       .toString(36)
-      .substr(2, 9)}`;
+      .slice(2, 11)}`;
 
     // Execute in transaction (Tauri only, Web executes sequentially)
     return await db.transaction(async () => {
@@ -2248,7 +2259,7 @@ export async function createMaterialWithUnitPrices(materialData: {
         const up = materialData.unit_prices[i];
         const unitPriceId = `up-${Date.now()}-${i}-${Math.random()
           .toString(36)
-          .substr(2, 9)}`;
+          .slice(2, 11)}`;
 
         const unitPrice = {
           id: unitPriceId,
@@ -2368,13 +2379,3 @@ export async function withSQLiteDatabase<T>(
 // Export singleton instance
 export const db = new UnifiedDatabase();
 
-// Auto-process offline queue when coming back online (Web only)
-if (isBrowser() && !isTauriApp()) {
-  window.addEventListener("online", async () => {
-    console.debug("📡 Back online - processing offline queue...");
-    const result = await db.processOfflineQueue();
-    console.debug(
-      `Processed ${result.processed} operations, ${result.failed} failed`
-    );
-  });
-}

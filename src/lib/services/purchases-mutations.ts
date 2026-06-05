@@ -5,7 +5,7 @@
 
 import "server-only";
 
-import { db, getServerSupabaseClient } from "../db-unified";
+import { db, getServerSupabaseClient, isCompositeTransactionAtomic } from "../db-unified";
 import { fetchLastNomorPembelian } from "../server-data-supabase";
 import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
@@ -13,8 +13,12 @@ import {
   findOrCreateRollVariant,
   getInventoryMovements,
   postInventoryMovement,
+  rebuildInventoryBalance,
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
+import { usePgCompositeRpc } from "../feature-flags";
+import { friendlyPgError } from "../pg-error";
+import { withDuplicateNumberRetry } from "../retry-utils";
 
 /**
  * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
@@ -24,7 +28,80 @@ import { enrichPurchaseRows, normalizePaymentMethod, isCashPayment, generateId, 
 
 // ── Mutations ─────────────────────────────────────────
 
-export async function createPurchase(data: {
+/**
+ * Buat pembelian dengan retry pada tabrakan nomor (PO `nomor_pembelian` /
+ * `nomor_faktur` UNIQUE) — D-I5. Aman karena createPurchaseAttempt sudah punya
+ * compensating cleanup (non-atomik) / rollback (atomik).
+ */
+export function createPurchase(
+  data: Parameters<typeof createPurchaseAttempt>[0]
+): Promise<{ id: string }> {
+  return withDuplicateNumberRetry(() => createPurchaseAttempt(data), {
+    label: "createPurchase",
+  });
+}
+
+/**
+ * Compensating cleanup untuk createPurchase di jalur NON-ATOMIK (Supabase-only).
+ * Lihat penjelasan di pos-mutations.compensateFailedSale — pola sama:
+ *   1. Hapus inventory_movements milik pembelian ini + rebuild saldo barang.
+ *   2. Hapus entri keuangan ber-reference pembelian ini.
+ *   3. Hapus header pembelian; FK CASCADE membersihkan item_pembelian dan
+ *      hutang_pembelian.
+ * Best-effort; semua error dicatat tanpa menghentikan langkah lain.
+ */
+async function compensateFailedPurchase(params: {
+  purchaseId: string;
+  affectedBarangIds: Set<string>;
+}): Promise<void> {
+  const { purchaseId, affectedBarangIds } = params;
+
+  try {
+    const movements = await getInventoryMovements({
+      source_type: "PURCHASE",
+      source_id: purchaseId,
+    });
+    for (const mov of movements) {
+      try {
+        await db.delete("inventory_movements", mov.id);
+      } catch (e) {
+        console.error("[compensateFailedPurchase] gagal hapus movement", mov.id, e);
+      }
+    }
+    for (const barangId of affectedBarangIds) {
+      try {
+        await rebuildInventoryBalance(barangId);
+      } catch (e) {
+        console.error("[compensateFailedPurchase] gagal rebuild saldo", barangId, e);
+      }
+    }
+  } catch (e) {
+    console.error("[compensateFailedPurchase] gagal proses inventori:", e);
+  }
+
+  try {
+    const financeRes = await db.query<any>("keuangan", {
+      where: { reference_id: purchaseId },
+    });
+    for (const row of financeRes.data || []) {
+      try {
+        await db.delete("keuangan", row.id);
+      } catch (e) {
+        console.error("[compensateFailedPurchase] gagal hapus keuangan", row.id, e);
+      }
+    }
+  } catch (e) {
+    console.error("[compensateFailedPurchase] gagal proses keuangan:", e);
+  }
+
+  try {
+    await db.delete("pembelian", purchaseId);
+  } catch (e) {
+    console.error("[compensateFailedPurchase] gagal hapus header pembelian:", e);
+  }
+}
+
+async function createPurchaseAttempt(data: {
   nomor_pembelian?: string;
   nomor_faktur: string;
   vendor_id: string | null;
@@ -65,6 +142,9 @@ export async function createPurchase(data: {
     }> | null;
   }>;
 }): Promise<{ id: string }> {
+  // Hoisted untuk compensating cleanup di jalur non-atomik (Supabase-only).
+  let purchaseIdForCleanup: string | null = null;
+  const affectedBarangIds = new Set<string>();
   try {
     // Validate
     if (!data.nomor_faktur?.trim()) {
@@ -88,6 +168,7 @@ export async function createPurchase(data: {
 
     // Generate ID
     const purchaseId = generateId("purchase");
+    purchaseIdForCleanup = purchaseId;
 
     // Hitung total (jumlah subtotal). Kalau metode INKLUSIF, total ini
     // sudah termasuk PPN. Jalur RPC/TS yang akan ekstrak DPP dari total ini.
@@ -114,7 +195,7 @@ export async function createPurchase(data: {
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (false && sb) {
+    if (usePgCompositeRpc() && sb) {
       const preparedItems = data.items.map((item) => {
         const itemId = generateId("pi");
         const subtotal = item.jumlah * item.harga_satuan;
@@ -230,7 +311,7 @@ export async function createPurchase(data: {
         },
       });
       if (error) {
-        throw new Error((error as any).message);
+        throw new Error(friendlyPgError(error, "pembelian"));
       }
       if (isCashPayment(metodePembayaran)) {
         await recalculateCashbookIfAvailable();
@@ -347,6 +428,7 @@ export async function createPurchase(data: {
           catatan: `Penerimaan pembelian ${nomorFakturNorm}`,
           dibuat_oleh: data.dibuat_oleh || null,
         });
+        affectedBarangIds.add(item.barang_id);
 
         // Optional: pecah roll yang baru diterima sesuai instruksi vendor /
         // potongan fisik yang dilakukan di lapangan. Setiap batch
@@ -471,6 +553,24 @@ export async function createPurchase(data: {
     return { id: purchaseId };
   } catch (error: any) {
     console.error("Error creating purchase:", error);
+    // Compensating cleanup di jalur non-atomik (Supabase-only). Di jalur atomik
+    // (Tauri/SQLite) transaksi sudah rollback otomatis.
+    if (purchaseIdForCleanup) {
+      try {
+        const atomic = await isCompositeTransactionAtomic();
+        if (!atomic) {
+          await compensateFailedPurchase({
+            purchaseId: purchaseIdForCleanup,
+            affectedBarangIds,
+          });
+        }
+      } catch (cleanupErr) {
+        console.error(
+          "[createPurchase] compensating cleanup gagal (data mungkin perlu diperiksa manual):",
+          cleanupErr
+        );
+      }
+    }
     throw error;
   }
 }
@@ -912,7 +1012,7 @@ export async function voidPurchase(
       process.env.TAURI === "true" || process.env.TAURI === "1"
         ? null
         : getServerSupabaseClient();
-    if (false && sb) {
+    if (usePgCompositeRpc() && sb) {
       const { error } = await sb.rpc("void_purchase_with_inventory", {
         purchase_id: id,
         reason,
@@ -922,7 +1022,7 @@ export async function voidPurchase(
         const message = (error as any).message || "";
         const friendly = message.includes("Stok tidak cukup")
           ? `Stok dari pembelian ini sudah dipakai. Gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu. Detail: ${message}`
-          : message;
+          : friendlyPgError(error, "pembelian");
         throw new Error(friendly);
       }
       await recalculateCashbookIfAvailable();

@@ -24,6 +24,7 @@ import {
   deleteKeuanganWhereNotArchived,
   getMaxUrutanTampilanKeuangan,
 } from "../server-data-supabase";
+import { createCoalescedRunner } from "../coalesce";
 
 export interface CashBookEntry {
   id: string;
@@ -391,8 +392,21 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
  * legacy terlepas dari DB mana yang dibaca UI.
  *
  * Mengembalikan true kalau setidaknya satu jalur recalc sukses.
+ *
+ * COALESCING (D-I8): recalc penuh itu O(n) terhadap jumlah baris keuangan dan
+ * kerap dipicu beruntun/berbarengan (multi-user, beberapa mutasi). Wrapper ini
+ * memastikan TIDAK ADA dua recalc jalan bersamaan, dan N permintaan berbarengan
+ * dikolaps. Garansi kesegaran: tiap pemanggil dilayani oleh run yang DIMULAI
+ * setelah pemanggilannya (jadi tulisan pemanggil pasti ikut terhitung).
+ * Lihat createCoalescedRunner + test di src/lib/__tests__/coalesce.test.ts.
  */
-export async function recalculateCashbookIfAvailable(): Promise<boolean> {
+const runRecalcCoalesced = createCoalescedRunner(recalculateCashbookCore);
+
+export function recalculateCashbookIfAvailable(): Promise<boolean> {
+  return runRecalcCoalesced();
+}
+
+async function recalculateCashbookCore(): Promise<boolean> {
   let didAny = false;
   // 1. SQLite lokal (cache offline-first + mode Tauri / dev native).
   try {
