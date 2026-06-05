@@ -38,6 +38,19 @@ export function generateId(): string {
 }
 
 /**
+ * Validasi identifier SQL (nama tabel/kolom) sebelum interpolasi ke string SQL.
+ * db-unified menginterpolasi `table` dan nama kolom (where/orderBy) langsung ke
+ * SQL — aman selama caller pakai literal, tapi whitelist runtime ini mencegah
+ * regresi membuka SQL injection. Hanya huruf kecil, angka, dan underscore;
+ * harus diawali huruf/underscore.
+ */
+function assertSafeIdentifier(name: string): void {
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`Identifier SQL tidak valid: ${name}`);
+  }
+}
+
+/**
  * Get current ISO timestamp
  */
 export function getCurrentTimestamp(): string {
@@ -799,12 +812,14 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
+    assertSafeIdentifier(table);
     let sql = `SELECT ${options.select || "*"} FROM ${table}`;
     const params: any[] = [];
 
     // Build WHERE clause
     if (options.where && Object.keys(options.where).length > 0) {
       const conditions = Object.entries(options.where).map(([key, value]) => {
+        assertSafeIdentifier(key);
         if (value === null) {
           return `${key} IS NULL`;
         }
@@ -816,6 +831,7 @@ class UnifiedDatabase {
 
     // Add ORDER BY
     if (options.orderBy) {
+      assertSafeIdentifier(options.orderBy.column);
       sql += ` ORDER BY ${options.orderBy.column} ${
         options.orderBy.ascending !== false ? "ASC" : "DESC"
       }`;
@@ -849,6 +865,7 @@ class UnifiedDatabase {
     }
 
     const tableColumns = await getServerSQLiteTableColumns(table);
+    assertSafeIdentifier(table);
     const filteredEntries = Object.entries(data).filter(([key]) => {
       // If introspection fails, keep previous behavior.
       if (tableColumns.size === 0) return true;
@@ -920,6 +937,7 @@ class UnifiedDatabase {
     }
 
     const tableColumns = await getServerSQLiteTableColumns(table);
+    assertSafeIdentifier(table);
     const filteredEntries = Object.entries(data).filter(([key]) => {
       if (tableColumns.size === 0) return true;
       return tableColumns.has(key);
@@ -952,6 +970,7 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server SQLite not available") };
     }
 
+    assertSafeIdentifier(table);
     const sql = `DELETE FROM ${table} WHERE id = ?`;
 
     try {
@@ -1189,12 +1208,14 @@ class UnifiedDatabase {
     table: string,
     options: QueryOptions
   ): Promise<QueryResult<T>> {
+    assertSafeIdentifier(table);
     let sql = `SELECT ${options.select || "*"} FROM ${table}`;
     const params: any[] = [];
 
     // Build WHERE clause
     if (options.where && Object.keys(options.where).length > 0) {
       const conditions = Object.entries(options.where).map(([key, value]) => {
+        assertSafeIdentifier(key);
         if (value === null) {
           return `${key} IS NULL`;
         }
@@ -1206,6 +1227,7 @@ class UnifiedDatabase {
 
     // Add ORDER BY
     if (options.orderBy) {
+      assertSafeIdentifier(options.orderBy.column);
       sql += ` ORDER BY ${options.orderBy.column} ${
         options.orderBy.ascending !== false ? "ASC" : "DESC"
       }`;
@@ -1227,7 +1249,9 @@ class UnifiedDatabase {
     table: string,
     data: Record<string, any>
   ): Promise<MutationResult> {
+    assertSafeIdentifier(table);
     const columns = Object.keys(data);
+    columns.forEach((c) => assertSafeIdentifier(c));
     const values = Object.values(data);
     const placeholders = columns.map(() => "?").join(", ");
 
@@ -1244,7 +1268,11 @@ class UnifiedDatabase {
     id: string,
     data: Record<string, any>
   ): Promise<MutationResult> {
-    const sets = Object.keys(data).map((key) => `${key} = ?`);
+    assertSafeIdentifier(table);
+    const sets = Object.keys(data).map((key) => {
+      assertSafeIdentifier(key);
+      return `${key} = ?`;
+    });
     const values = [...Object.values(data), id];
 
     const sql = `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`;
@@ -1257,6 +1285,7 @@ class UnifiedDatabase {
     table: string,
     id: string
   ): Promise<MutationResult> {
+    assertSafeIdentifier(table);
     const sql = `DELETE FROM ${table} WHERE id = ?`;
 
     await invoke("db_execute", { sql, params: [id] });
@@ -2189,7 +2218,7 @@ export async function createMaterialWithUnitPrices(materialData: {
     // Generate ID
     const materialId = `mat-${Date.now()}-${Math.random()
       .toString(36)
-      .substr(2, 9)}`;
+      .slice(2, 11)}`;
 
     // Execute in transaction (Tauri only, Web executes sequentially)
     return await db.transaction(async () => {
@@ -2230,7 +2259,7 @@ export async function createMaterialWithUnitPrices(materialData: {
         const up = materialData.unit_prices[i];
         const unitPriceId = `up-${Date.now()}-${i}-${Math.random()
           .toString(36)
-          .substr(2, 9)}`;
+          .slice(2, 11)}`;
 
         const unitPrice = {
           id: unitPriceId,
@@ -2350,13 +2379,3 @@ export async function withSQLiteDatabase<T>(
 // Export singleton instance
 export const db = new UnifiedDatabase();
 
-// Auto-process offline queue when coming back online (Web only)
-if (isBrowser() && !isTauriApp()) {
-  window.addEventListener("online", async () => {
-    console.debug("📡 Back online - processing offline queue...");
-    const result = await db.processOfflineQueue();
-    console.debug(
-      `Processed ${result.processed} operations, ${result.failed} failed`
-    );
-  });
-}
