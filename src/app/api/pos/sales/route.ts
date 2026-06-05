@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { createSale } from "@/lib/services/pos-service";
+import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ success: false, error: msg }, { status: 400 });
     }
-    console.error("Error creating sale:", error);
+    log.error("create_sale_failed", { error: String(error?.message || error) });
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
