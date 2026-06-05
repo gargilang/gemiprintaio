@@ -1,27 +1,23 @@
 const { createDefaultPreset } = require("ts-jest");
-
 const tsJestTransformCfg = createDefaultPreset().transform;
 
-/** @type {import("jest").Config} **/
-module.exports = {
-  testEnvironment: "node",
-  transform: {
-    ...tsJestTransformCfg,
-  },
+const common = {
+  transform: { ...tsJestTransformCfg },
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^server-only$": "<rootDir>/src/__mocks__/server-only.js",
   },
-  testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
+};
+
+/** @type {import("jest").Config} **/
+module.exports = {
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/__tests__/**",
   ],
-  // Ratchet konservatif (O-I3): dipasang sedikit DI BAWAH coverage saat ini
-  // supaya `test:coverage` gagal kalau coverage TURUN, tanpa langsung merah.
-  // Mayoritas src/ (UI + route) belum ditest di branch ini; Fase 4 menambah
-  // test API + jsdom lalu angka ini dinaikkan.
+  // Ratchet konservatif (O-I3). Mayoritas src/ (UI + route) belum ditest;
+  // dinaikkan bertahap saat coverage tumbuh.
   coverageThreshold: {
     global: {
       statements: 7,
@@ -30,4 +26,25 @@ module.exports = {
       lines: 7,
     },
   },
+  projects: [
+    {
+      ...common,
+      displayName: "node",
+      testEnvironment: "node",
+      testMatch: [
+        "<rootDir>/src/lib/**/__tests__/**/*.test.ts",
+        "<rootDir>/src/app/**/__tests__/**/*.test.ts",
+      ],
+    },
+    {
+      ...common,
+      displayName: "jsdom",
+      testEnvironment: "jsdom",
+      setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+      testMatch: [
+        "<rootDir>/src/components/**/__tests__/**/*.test.tsx",
+        "<rootDir>/src/app/**/__tests__/**/*.test.tsx",
+      ],
+    },
+  ],
 };
