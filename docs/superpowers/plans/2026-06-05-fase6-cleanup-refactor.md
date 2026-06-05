@@ -26,7 +26,7 @@
 - ⬜ **B6** — pecah `ExpressionAssistant.tsx` + SPK page.
 - ⬜ **Tier C penuh** (C1 keuangan, C2 POS, C3 sisa hooks, C4 virtualisasi, C5 audit cross-platform) — RISIKO TINGGI, money-path, nyalakan Supabase lokal.
 
-**Pola wajib (terbukti di B1/B3 & Fase 5):** baca file → petakan state → ekstrak ke file fokus dengan props eksplisit → hapus import/state yang jadi orphan di induk (type-check TIDAK menangkap unused import, cek manual via Grep) → `npm run type-check && npm run build` → commit per langkah. Catatan: tool Write sering gagal untuk file besar berisi backtick/JSX — pakai stub kecil lalu StrReplace bertahap, atau Node `fs` splice (lihat riwayat commit B1).
+**Pola wajib (terbukti di B1/B3 & Fase 5):** baca file → petakan state → ekstrak ke file fokus dengan props eksplisit → hapus import/state yang jadi orphan di induk (type-check TIDAK menangkap unused import, cek manual via Grep) → `npm run type-check && npm run build` → commit per langkah. Catatan: tool Write sering gagal untuk file besar berisi backtick/JSX — pakai stub kecil lalu StrReplace bertahap, atau Node `fs` splice (lihat riwayat commit B1). Detail lengkap workaround ada di `.cursorrules` → bagian "Editing large / special-character files".
 
 **Setelah Tier B selesai:** merge `fase6-tierb` → `main` (fast-forward), verifikasi penuh, push (auto-deploy Vercel), health-check `/api/auth/me`=401 & `/auth/login`=200. Lihat pola merge/deploy di commit-commit Tier A.
 
