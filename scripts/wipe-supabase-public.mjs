@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { confirmOrExit } from "./_lib/guard.mjs";
 
 const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
 if (!connectionString) {
@@ -15,6 +16,12 @@ if (!connectionString) {
   );
   process.exit(1);
 }
+
+await confirmOrExit({
+  target: connectionString,
+  action: "DROP SCHEMA public CASCADE (WIPE)",
+  allowProd: true,
+});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sql = readFileSync(join(__dirname, "wipe-public-schema.sql"), "utf8");
