@@ -50,6 +50,7 @@
     "audit:bahasa": "node scripts/audit-bahasa.mjs",
     "type-check": "tsc --noEmit",
     "check:versions": "node scripts/check-versions.mjs",
+    "smoke:standalone": "node scripts/smoke-standalone.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
