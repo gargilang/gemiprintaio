@@ -10,7 +10,6 @@
 
 - Treat each request as a **goal to finish end-to-end**, not a question to answer. Implement UI + logic + data, fix compile errors you introduce, then verify.
 - Don't pause for unnecessary check-ins ("should I continue?"). Proceed unless truly blocked.
-- `/goal <text>` mode: everything after `/goal` is the single goal. Ship the behavior first, then test/cleanup. Don't stop at a plan.
 - Pick reasonable defaults for small ambiguities; note assumptions in the final summary.
 - **Block and ask only if:** deleting production data / wiping DB, changing domain/DNS/billing, money or access rules that can't be inferred, or changes that can't be rolled back easily.
 
@@ -29,7 +28,7 @@
 
 ## Architecture (one app, three storage backends)
 
-- **Web** (`app.gemiprint.com`, Vercel): React + Next.js API routes → Supabase Postgres via service-role key.
+- **Web** (`app.gemiprint.com`, Vercel): React + Next.js API routes → Supabase Postgres via service-role key. The service-role client lives in `src/lib/supabase-admin.ts` (marked `server-only`); the anon client + `SYNC_TABLES` in `src/lib/supabase.ts`. Never import `getSupabaseAdmin` from client code.
 - **Desktop** (Tauri + Next standalone): local SQLite via `better-sqlite3`, offline-first, optional sync to Supabase. Entry: `src-tauri/src/main.rs`; sync engine: `src-tauri/src/sync.rs`.
 - **Mobile / mobile-web** (Flutter): talks only to the Next.js API.
 - **Unified data layer:** `src/lib/db-unified.ts`. Use `db.query/queryOne/insert/update/delete/transaction`. **Never import the Supabase or SQLite client directly from feature code.**
@@ -40,7 +39,11 @@
 - DB access (all backends): `src/lib/db-unified.ts`
 - Stock movements + roll conversion: `src/lib/services/inventory-service.ts` (`postInventoryMovement`, `convertRollVariant`)
 - Cashbook + AVCO: `src/lib/services/finance-service.ts`
-- Auth guards: `src/lib/auth-guard-server.ts`
+- Auth guards: `src/lib/auth-guard-server.ts` (error type in `src/lib/auth-guard-error.ts`)
+- Zod input schemas: `src/lib/schemas/` · friendly PG errors: `src/lib/pg-error.ts`
+- Feature flags: `src/lib/feature-flags.ts` · retry/coalesce helpers: `src/lib/retry-utils.ts`, `src/lib/coalesce.ts`
+- Record normalization (boolean allowlist): `src/lib/normalize-record.ts` · payload hash: `src/lib/payload-hash-util.ts`
+- Structured logging: `src/lib/log.ts` · modal focus trap: `src/components/useFocusTrap.ts`
 - Period close: `src/lib/services/accounting-periods-service.ts`
 - PPN helpers: `src/lib/ppn-helpers.ts`; roll billing: `src/lib/roll-size-utils.ts`
 - Cache hook: `src/lib/use-cached-data.ts`; sync table list: `src/lib/sync-config.ts`
@@ -89,13 +92,27 @@ The owner won't remember to ask; enforce by default.
 
 9. **Idempotent ledger IDs from source line:** `mov-${itemId}`, `void-${originalMovementId}`, `${conversionId}-out` / `${conversionId}-in-${i}`. Deterministic and retry-safe.
 
-10. **Verification before "done" (mandatory):** `npm run type-check` (0 errors) → `npm run build` → `npx jest <relevant test>` for touched services (`src/lib/__tests__/`). UI-only changes may skip jest, still need type-check + build. New lint warnings you introduce must be fixed.
+10. **Verification before "done" (mandatory):** `npm run type-check` (0 errors) → `npm run build` → `npx jest <relevant test>` for touched services (`src/lib/__tests__/`). Jest runs two projects: `node` (services + API route tests under `src/app/**/__tests__/*.test.ts`) and `jsdom` (component tests `*.test.tsx`). UI-only changes may skip jest, still need type-check + build. New lint warnings you introduce must be fixed. CI (`.github/workflows/ci.yml`) re-runs lint + type-check + test + build + `check:versions` on every PR; a husky pre-commit hook runs `lint-staged` (eslint --fix) on staged files.
 
 11. **`onSuccess` for a newly created item passes `null` as the updated item**, so the parent does a full `reload()` instead of `updateInState` (which would never append the new row).
 
 12. **Seed/default SQL:** verify column names against actual migrations (e.g. `pengaturan_toko` bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama`). Default settings rows use `ON CONFLICT DO UPDATE SET`, not `DO NOTHING`, so `supabase:local:reset` restores defaults.
 
 13. **Finance categories:** show `display_name` as primary label; `category_code` secondary (small, monospace, amber, quoted). In `ExpressionAssistant`, suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"`.
+
+14. **Every mutation API route/server action MUST be role-guarded.** Use `requireSession` / `requireAdminOrManager` / `requireProductionInventoryRole` / `requireAdminManagerOrSelf` from `src/lib/auth-guard-server.ts`, and handle `AuthGuardError` in the catch (return its `.status`). Reads can be ungated. Never trust a client-sent `x-session-uid`; derive identity from the guard's `session.uid` (middleware sets the header from the verified JWT). Don't regress this — Fase 1 closed privilege-escalation holes here.
+
+15. **Validate hot-path mutation input with Zod** (`src/lib/schemas/`: `pos.ts`, `pembelian.ts`, `inventori.ts`). Use `z.coerce.number().finite()` for money/qty (rejects NaN, accepts numeric strings from Flutter), `.passthrough()` so no payload field is silently dropped, and `safeParse` → 422 on failure. Match enums to real values (payment methods: `CASH/TRANSFER/QRIS/DEBIT/DOWN_PAYMENT/NET30`).
+
+16. **Surface DB errors via `friendlyPgError(e, table)`** (`src/lib/pg-error.ts`) instead of throwing raw PostgREST messages to the UI (avoids leaking constraint names + unfriendly English). `payload_hash` for the mutation registry uses real SHA-256 via `hashPayload` (`src/lib/payload-hash-util.ts`), never `JSON.stringify(x).length`.
+
+17. **Composite mutations (createSale/createPurchase) atomicity:** the Postgres RPC path (`create_sale_with_inventory`, `create_purchase_with_inventory`) is **opt-in** via `usePgCompositeRpc()` (`src/lib/feature-flags.ts`, env `USE_PG_COMPOSITE_RPC=1`, default OFF). The default non-RPC path MUST keep compensating cleanup in the catch (`compensateFailedSale` / `compensateFailedPurchase`) — reverse inventory via `rebuildInventoryBalance`, delete `[REF:id]` keuangan rows, release NSFP, delete the header (FK cascade). Invoice/PO number collisions retry via `withDuplicateNumberRetry` (`src/lib/retry-utils.ts`). The sale RPC needs migration `20260605000000` (column `nomor_faktur`) applied before enabling.
+
+18. **`normalizeRecord` boolean conversion uses an explicit allowlist** (`src/lib/normalize-record.ts`), never a loose `key.includes("status")` heuristic — enum fields like `status_pembayaran`, `void_status_kode`, `roll_inventory_status`, `sync_status` are NOT booleans and must not be coerced to true/false.
+
+19. **Avoid N+1 in read paths.** For list endpoints, fetch related tables once and join in memory (Supabase: `.in("fk", ids)`; SQLite fallback: load bounded tables once). Reference: `getSales`, `getProductionOrders`. Heavy recalcs (`recalculateCashbookIfAvailable`) are coalesced via `createCoalescedRunner` (`src/lib/coalesce.ts`) — call freely; concurrent calls collapse.
+
+20. **Startup secrets fail-fast:** `SESSION_SECRET` must be ≥32 chars and `PASSWORD_ENC_SECRET` must be set in production (`src/lib/session.ts`, `src/lib/crypto.ts` throw otherwise — intentional). JWT TTL is 24h. Credential vault uses per-record salt (AES-256-GCM) with a legacy-format decrypt fallback. Raw SQL identifier interpolation (`db-unified.ts`, Tauri `main.rs`) must pass an `^[a-z_][a-z0-9_]*$` allowlist.
 
 ## Iron rules — new page/UI shape
 
@@ -105,6 +122,11 @@ The owner won't remember to ask; enforce by default.
 - Stat-card icons use `text-white` on a `bg-white/20 rounded-lg` patch — never the same color as the card gradient (invisible icon).
 - Badges/numbers with white text need a solid shade (`bg-emerald-500`), not `-50` (near-white, unreadable).
 - **Modals:** ESC to close, backdrop click to close (`if (e.target === e.currentTarget)`), header X button, primary action rightmost with brand color, cancel to its left, disabled state during async ("Menyimpan..."). Theme color by domain: emerald = material/inventory, purple = purchase, indigo = neutral, amber = warnings/manual, rose = destructive. Reference shells: `src/components/ModalFormShell.tsx`, `src/components/DialogKonfirmasi.tsx`.
+- **`ModalFormShell` is the preferred modal scaffold** — it already provides Escape (respects `allowDismiss`), backdrop dismiss, and focus trap + focus restore. For a modal that can't use the shell, call `useFocusTrap(ref, isOpen)` (`src/components/useFocusTrap.ts`) directly; it traps Tab only (Escape stays with the host).
+- **Error/loading boundaries:** every route area should have `error.tsx` (client component, Bahasa Indonesia message + "Coba Lagi" reset) and, where data-fetch is heavy, `loading.tsx`. Root `src/app/error.tsx`, `loading.tsx`, `not-found.tsx` exist; add area-specific `error.tsx` for new critical sections.
+- **Combobox/dropdown a11y:** input gets `role="combobox"` + `aria-expanded`/`aria-controls`/`aria-activedescendant`; the option list gets `role="listbox"` with a stable id; options get `role="option"` + `aria-selected` and NO per-option `tabIndex` (keyboard nav lives on the input). Reference: `src/components/PilihanCari.tsx`.
+- **Stabilize SWR-derived arrays:** `const items = useMemo(() => data ?? [], [data])` — a bare `data ?? []` creates a new reference every render and breaks downstream `useMemo`/`useEffect` deps (react-hooks/exhaustive-deps).
+- **Large client pages:** extract modals/sections into focused files with explicit props (`{ entity, onClose, onSuccess, showNotification }`); the modal owns its own form state + submit, and `onSuccess` triggers the parent's `reload()`. Map shared state BEFORE extracting — never extract JSX blindly (naive extraction causes prop-drilling). Reference: `src/app/barang/ModalCatatRusak.tsx`, `src/app/pengguna/FormPenggunaModal.tsx`.
 
 ## When ambiguous
 
