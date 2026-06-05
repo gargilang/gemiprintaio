@@ -17,7 +17,7 @@ export default function HutangPage() {
     "hutang-list",
     getDebtsAction
   );
-  const debts = debtsData ?? [];
+  const debts = useMemo(() => debtsData ?? [], [debtsData]);
   const loading = isLoading && !debtsData;
   const reload = async () => {
     await mutate();

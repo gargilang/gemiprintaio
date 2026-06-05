@@ -132,7 +132,7 @@ export default function PelangganPage() {
     const result = await getPelangganAction();
     return (result as Pelanggan[]) || [];
   });
-  const customers = pelangganData ?? [];
+  const customers = useMemo(() => pelangganData ?? [], [pelangganData]);
   const setDaftarPelanggan = useCallback<
     (next: Pelanggan[] | ((prev: Pelanggan[]) => Pelanggan[])) => void
   >(

@@ -16,7 +16,7 @@ export default function StockOpnamePage() {
     "stock-opname-list",
     getStockOpnamesAction
   );
-  const sessions = sessionsData ?? [];
+  const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
   const loading = isLoading && !sessionsData;
   const reload = async () => {
     await mutate();

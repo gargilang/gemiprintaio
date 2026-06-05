@@ -144,7 +144,7 @@ export default function VendorsPage() {
     const result = await getVendorsAction();
     return (result as Vendor[]) || [];
   });
-  const vendors = vendorsData ?? [];
+  const vendors = useMemo(() => vendorsData ?? [], [vendorsData]);
   const setVendors = useCallback<
     (next: Vendor[] | ((prev: Vendor[]) => Vendor[])) => void
   >(
