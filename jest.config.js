@@ -18,4 +18,16 @@ module.exports = {
     "!src/**/*.d.ts",
     "!src/**/__tests__/**",
   ],
+  // Ratchet konservatif (O-I3): dipasang sedikit DI BAWAH coverage saat ini
+  // supaya `test:coverage` gagal kalau coverage TURUN, tanpa langsung merah.
+  // Mayoritas src/ (UI + route) belum ditest di branch ini; Fase 4 menambah
+  // test API + jsdom lalu angka ini dinaikkan.
+  coverageThreshold: {
+    global: {
+      statements: 7,
+      branches: 5,
+      functions: 5,
+      lines: 7,
+    },
+  },
 };

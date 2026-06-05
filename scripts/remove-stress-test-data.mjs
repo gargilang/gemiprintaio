@@ -6,6 +6,7 @@
  */
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
+import { confirmOrExit } from "./_lib/guard.mjs";
 
 const PREFIX = "stress-seed";
 
@@ -89,6 +90,14 @@ async function removeViaPg() {
 try {
   const hasRest =
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  await confirmOrExit({
+    target: hasRest
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL
+      : process.env.DATABASE_URL || process.env.DIRECT_URL,
+    action: "HAPUS data stress-test (baris berawalan stress-seed-)",
+    allowProd: true,
+  });
 
   const result = hasRest ? await removeViaRest() : await removeViaPg();
 

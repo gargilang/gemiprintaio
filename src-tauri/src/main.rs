@@ -630,7 +630,16 @@ async fn db_insert(
     let conn = db_guard.as_ref().ok_or("Database not initialized")?;
     
     let obj = data.as_object().ok_or("Data must be an object")?;
-    
+
+    if !is_safe_identifier(&table) {
+        return Err(format!("Nama tabel tidak valid: {}", table));
+    }
+    for col in obj.keys() {
+        if !is_safe_identifier(col) {
+            return Err(format!("Nama kolom tidak valid: {}", col));
+        }
+    }
+
     // Ambil atau buat ID
     let id = if let Some(id_value) = obj.get("id") {
         if let Some(id_str) = id_value.as_str() {
@@ -675,7 +684,16 @@ async fn db_update(
     let conn = db_guard.as_ref().ok_or("Database not initialized")?;
     
     let obj = data.as_object().ok_or("Data must be an object")?;
-    
+
+    if !is_safe_identifier(&table) {
+        return Err(format!("Nama tabel tidak valid: {}", table));
+    }
+    for col in obj.keys() {
+        if !is_safe_identifier(col) {
+            return Err(format!("Nama kolom tidak valid: {}", col));
+        }
+    }
+
     let set_clauses: Vec<String> = obj.keys().map(|k| format!("{} = ?", k)).collect();
     
     let sql = format!(
@@ -706,6 +724,10 @@ async fn db_delete(
     let db_guard = state.db.lock().map_err(|e| e.to_string())?;
     let conn = db_guard.as_ref().ok_or("Database not initialized")?;
     
+    if !is_safe_identifier(&table) {
+        return Err(format!("Nama tabel tidak valid: {}", table));
+    }
+
     let sql = format!("DELETE FROM {} WHERE id = ?", table);
     
     conn.execute(&sql, params![id])
@@ -734,6 +756,22 @@ async fn db_execute(
         .map_err(|e| e.to_string())?;
     
     Ok(affected)
+}
+
+// Helper: Validasi identifier SQL (nama tabel/kolom) sebelum interpolasi.
+// db_insert/db_update/db_delete menyusun nama tabel & kolom langsung ke string
+// SQL. Karena frontend + webview satu proses, XSS / supply-chain di frontend
+// bisa memanggil command ini dengan nama jahat. Allowlist regex (huruf kecil,
+// angka, underscore; diawali huruf/underscore) menutup vektor injeksi nama.
+fn is_safe_identifier(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_ascii_lowercase() || c == '_')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
 // Helper: Convert JSON value to rusqlite Value

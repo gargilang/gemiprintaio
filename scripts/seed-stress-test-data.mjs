@@ -8,6 +8,7 @@
  */
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
+import { confirmOrExit } from "./_lib/guard.mjs";
 
 const PREFIX = "stress-seed";
 const NAME_TAG = "[TEST]";
@@ -349,10 +350,18 @@ async function seedViaPg() {
 }
 
 try {
-  let result;
   const hasRest =
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  await confirmOrExit({
+    target: hasRest
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL
+      : process.env.DATABASE_URL || process.env.DIRECT_URL,
+    action: "SEED data stress-test (tulis banyak baris [TEST])",
+    allowProd: false,
+  });
+
+  let result;
   if (hasRest) {
     result = await seedViaRest();
   } else {

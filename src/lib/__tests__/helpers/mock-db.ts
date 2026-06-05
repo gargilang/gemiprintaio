@@ -37,6 +37,15 @@ function matchesWhere(row: any, where?: Record<string, unknown>): boolean {
   if (!where) return true;
   for (const [key, value] of Object.entries(where)) {
     if (value === undefined) continue;
+    // mock-db hanya mendukung filter equality. Operator IN/LIKE/range (array
+    // atau objek operator seperti { gte, in, like }) belum didukung — lempar
+    // error eksplisit daripada diam mengembalikan hasil salah (O-I3).
+    if (value !== null && typeof value === "object") {
+      throw new Error(
+        `mock-db: operator where belum didukung untuk kolom "${key}" (hanya equality). ` +
+          `Nilai: ${JSON.stringify(value)}`
+      );
+    }
     if (row[key] !== value) return false;
   }
   return true;

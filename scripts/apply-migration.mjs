@@ -12,6 +12,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { confirmOrExit } from "./_lib/guard.mjs";
 
 const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
 if (!connectionString) {
@@ -20,6 +21,12 @@ if (!connectionString) {
   );
   process.exit(1);
 }
+
+await confirmOrExit({
+  target: connectionString,
+  action: "APPLY satu file migrasi",
+  allowProd: true,
+});
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
