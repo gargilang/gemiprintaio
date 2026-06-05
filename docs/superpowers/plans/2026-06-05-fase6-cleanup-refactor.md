@@ -16,10 +16,12 @@
 - ✅ **B1 step 1** — types + 4 komponen Sortable diekstrak ke `src/app/pengaturan/setup/sortables.tsx`. Commit `e4fa6f7`.
 - ✅ **B1 step 2** — `CategoriesView` diekstrak ke `src/app/pengaturan/setup/CategoriesView.tsx` + orphan import dibersihkan. Commit `6677c04`. Type-check + build PASS.
 
+**SUDAH SELESAI di branch `fase6-tierb` (lanjutan, BELUM merge):**
+- ✅ **B1 step 3** — `SubcategoriesView` diekstrak ke `setup/SubcategoriesView.tsx` (props `{ category, onBack }`).
+- ✅ **B1 step 4** — `UnitsSection` diekstrak ke `setup/UnitsSection.tsx` (props `{ autoOpenModal }`).
+- ✅ **B1 step 5** — induk `PengaturanSetupTab.tsx` kini 297 baris (router `SetupTab` + `MaterialsTab` saja); semua orphan import dibersihkan; type-check 0 error + build sukses + 242 test hijau. Commit B1 final.
+
 **BELUM dikerjakan (lanjutkan dari sini):**
-- ⬜ **B1 step 3** — ekstrak `SubcategoriesView` (~baris 1131-1909 di `PengaturanSetupTab.tsx`, paling besar) ke `setup/SubcategoriesView.tsx`. Props `{ category, onBack }`. Bawa state subkategori + quick-spec + modalnya. Hapus orphan import di induk (`getSubcategories*`, `getQuickSpecs*`, `reorderSubcategories`, `reorderQuickSpecs`, `SortableSubcategory`, `SortableQuickSpec`) setelah pindah.
-- ⬜ **B1 step 4** — ekstrak `UnitsSection` ke `setup/UnitsSection.tsx`, props `{ autoOpenModal }`. Hapus orphan import unit (`getUnits*`, `reorderUnits`, `SortableUnit`).
-- ⬜ **B1 step 5** — verifikasi (type-check + build + tes manual) + commit + checklist.
 - ⬜ **B2** — pecah `PengaturanKeuanganModal.tsx` per-tab.
 - ⬜ **B4** — pecah `FormulirPembelian.tsx`.
 - ⬜ **B5** — pecah `ModalTambahBarang.tsx`.
@@ -215,15 +217,15 @@ Pindahkan interface `Category`/`Subcategory`/`Unit`/`QuickSpec` dan 4 komponen `
 
 Pindahkan `CategoriesView` + state/handler kategori-nya (loadCategories, modal kategori) ke file sendiri. Props: `{ onCategoryClick, autoOpenModal }` (sesuai pemakaian di `MaterialsTab`). Import balik. Verifikasi build + tes manual CRUD kategori.
 
-- [ ] **Step 3: Ekstrak `SubcategoriesView` → `setup/SubcategoriesView.tsx`**
+- [x] **Step 3: Ekstrak `SubcategoriesView` → `setup/SubcategoriesView.tsx`**
 
 Pindahkan `SubcategoriesView` (paling besar, ~1131-1909) + state subkategori & quick-spec + modal-modalnya. Props: `{ category, onBack }`. Import balik. Verifikasi build + tes CRUD subkategori & spesifikasi cepat.
 
-- [ ] **Step 4: Ekstrak `UnitsSection` → `setup/UnitsSection.tsx`**
+- [x] **Step 4: Ekstrak `UnitsSection` → `setup/UnitsSection.tsx`**
 
 Pindahkan `UnitsSection` (~1910+) + state satuan + modal satuan. Props: `{ autoOpenModal }`. Import balik. File induk kini tinggal `SetupTab` + `MaterialsTab` (router + breadcrumb).
 
-- [ ] **Step 5: Verifikasi + commit**
+- [x] **Step 5: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build`. Tes manual menyeluruh: kategori → subkategori → spesifikasi, dan satuan (tambah/edit/hapus/urut drag-drop).
 
