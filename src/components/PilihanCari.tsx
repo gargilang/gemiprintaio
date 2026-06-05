@@ -129,6 +129,15 @@ export default function PilihanCari({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls="pilihancari-list"
+          aria-autocomplete="list"
+          aria-activedescendant={
+            isOpen && highlightedIndex >= 0
+              ? `pilihancari-opt-${highlightedIndex}`
+              : undefined
+          }
           className={`w-full px-3 py-2 pr-10 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             disabled
               ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-900"
@@ -164,7 +173,11 @@ export default function PilihanCari({
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg shadow-xl max-h-64 overflow-hidden">
           {/* Options List */}
-          <div className="overflow-y-auto max-h-64">
+          <div
+            className="overflow-y-auto max-h-64"
+            role="listbox"
+            id="pilihancari-list"
+          >
             {filteredOptions.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400 text-center">
                 {emptyText}
@@ -173,16 +186,14 @@ export default function PilihanCari({
               filteredOptions.map((option, index) => (
                 <div
                   key={option.value}
+                  id={`pilihancari-opt-${index}`}
                   ref={(el) => {
                     optionsRef.current[index] = el;
                   }}
                   role="option"
-                  tabIndex={0}
+                  aria-selected={option.value === value}
                   onClick={() => handleSelect(option.value)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSelect(option.value);
-                  }}
                   className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
                     option.value === value
                       ? "bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-semibold dark:bg-indigo-500/20 dark:text-indigo-200"
