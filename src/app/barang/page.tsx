@@ -319,7 +319,7 @@ export default function MaterialsPage() {
     const list = await getMaterialsAction();
     return (list as any[]) || [];
   });
-  const materials = materialsData ?? [];
+  const materials = useMemo(() => materialsData ?? [], [materialsData]);
   const setMaterials = useCallback<
     (next: any[] | ((prev: any[]) => any[])) => void
   >(
