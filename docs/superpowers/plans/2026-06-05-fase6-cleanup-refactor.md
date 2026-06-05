@@ -2,6 +2,37 @@
 
 > **Untuk agentic workers:** REQUIRED SUB-SKILL: gunakan superpowers:executing-plans (atau subagent-driven-development) untuk eksekusi task demi task. Semua step pakai checkbox (`- [ ]`). Kerjakan TIER demi TIER — jangan loncat ke tier berisiko sebelum tier aman selesai & ter-deploy.
 
+---
+
+## STATUS EKSEKUSI (handover 2026-06-06) — BACA INI DULU
+
+**Branch saat ini:** `fase6-tierb` (BELUM merge ke main; Tier A sudah di main + ter-deploy).
+
+**SUDAH SELESAI & ter-deploy ke production (di `main`):**
+- ✅ Tier A penuh (A1 hapus dead block deleteSale, A2 hapus getCartLineCharge+getLineCharge, A3 hapus getActorFinanceSummaryRows, A4 stable key arsip). 4 commit, sudah live.
+
+**SUDAH SELESAI di branch `fase6-tierb` (BELUM merge/deploy — perlu lanjut lalu merge):**
+- ✅ **B3** — `PengaturanHargaTab.tsx` dipecah ke `harga/` (PricingTab, RollSizesTab, FinishingOptionsTab). Commit `438528c`.
+- ✅ **B1 step 1** — types + 4 komponen Sortable diekstrak ke `src/app/pengaturan/setup/sortables.tsx`. Commit `e4fa6f7`.
+- ✅ **B1 step 2** — `CategoriesView` diekstrak ke `src/app/pengaturan/setup/CategoriesView.tsx` + orphan import dibersihkan. Commit `6677c04`. Type-check + build PASS.
+
+**BELUM dikerjakan (lanjutkan dari sini):**
+- ⬜ **B1 step 3** — ekstrak `SubcategoriesView` (~baris 1131-1909 di `PengaturanSetupTab.tsx`, paling besar) ke `setup/SubcategoriesView.tsx`. Props `{ category, onBack }`. Bawa state subkategori + quick-spec + modalnya. Hapus orphan import di induk (`getSubcategories*`, `getQuickSpecs*`, `reorderSubcategories`, `reorderQuickSpecs`, `SortableSubcategory`, `SortableQuickSpec`) setelah pindah.
+- ⬜ **B1 step 4** — ekstrak `UnitsSection` ke `setup/UnitsSection.tsx`, props `{ autoOpenModal }`. Hapus orphan import unit (`getUnits*`, `reorderUnits`, `SortableUnit`).
+- ⬜ **B1 step 5** — verifikasi (type-check + build + tes manual) + commit + checklist.
+- ⬜ **B2** — pecah `PengaturanKeuanganModal.tsx` per-tab.
+- ⬜ **B4** — pecah `FormulirPembelian.tsx`.
+- ⬜ **B5** — pecah `ModalTambahBarang.tsx`.
+- ⬜ **B6** — pecah `ExpressionAssistant.tsx` + SPK page.
+- ⬜ **Tier C penuh** (C1 keuangan, C2 POS, C3 sisa hooks, C4 virtualisasi, C5 audit cross-platform) — RISIKO TINGGI, money-path, nyalakan Supabase lokal.
+
+**Pola wajib (terbukti di B1/B3 & Fase 5):** baca file → petakan state → ekstrak ke file fokus dengan props eksplisit → hapus import/state yang jadi orphan di induk (type-check TIDAK menangkap unused import, cek manual via Grep) → `npm run type-check && npm run build` → commit per langkah. Catatan: tool Write sering gagal untuk file besar berisi backtick/JSX — pakai stub kecil lalu StrReplace bertahap, atau Node `fs` splice (lihat riwayat commit B1).
+
+**Setelah Tier B selesai:** merge `fase6-tierb` → `main` (fast-forward), verifikasi penuh, push (auto-deploy Vercel), health-check `/api/auth/me`=401 & `/auth/login`=200. Lihat pola merge/deploy di commit-commit Tier A.
+
+---
+
+
 **Goal:** Membersihkan dead/duplicate code dan memecah komponen monolit yang tersisa menjadi unit kecil yang readable & maintainable, tanpa mengubah perilaku aplikasi.
 
 **Architecture:** Tiga tier risiko. Tier A (aman): hapus dead code + fix kosmetik. Tier B (medium): pecah monolit non-money-path. Tier C (tinggi): pecah money-path (POS, keuangan) dengan Context + verifikasi ekstra, lalu audit cross-platform. Tiap monolit dipecah dengan pola terbukti dari Fase 5: petakan state DULU, ekstrak modal/section ke file fokus dengan props eksplisit (`{ entity, onClose, onSuccess, showNotification }`), `onSuccess` memicu `reload()` induk.
@@ -54,7 +85,7 @@ Tidak mengubah perilaku. Verifikasi tiap task: `npm run type-check && npm run bu
 
 **Konteks:** `deleteSale` baris 1206 `return voidSale(id, "Penjualan dibatalkan");` — semua kode setelahnya (baris ~1208-1373) tidak akan pernah jalan. `deleteSale` sekarang sekadar delegasi ke `voidSale`.
 
-- [ ] **Step 1: Ganti seluruh body `deleteSale` jadi delegasi bersih**
+- [x] **Step 1: Ganti seluruh body `deleteSale` jadi delegasi bersih**
 
 Cari `export async function deleteSale(id: string): Promise<boolean> {` dan ganti SELURUH fungsi (sampai `}` penutupnya sebelum komentar `/** Ambil semua piutang */`) menjadi:
 
@@ -70,16 +101,16 @@ export async function deleteSale(id: string): Promise<boolean> {
 }
 ```
 
-- [ ] **Step 2: Pastikan tidak ada simbol yang jadi unused**
+- [x] **Step 2: Pastikan tidak ada simbol yang jadi unused**
 
 Run (Grep): cek `deleteMaklonPurchasesForSale` masih dipakai di file (dipakai voidSale, jadi aman). Cek tidak ada import yang hanya dipakai blok terhapus.
 
-- [ ] **Step 3: Verifikasi**
+- [x] **Step 3: Verifikasi**
 
 Run: `npm run type-check && npm run build`
 Expected: 0 error, build sukses.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/services/pos-mutations.ts
@@ -95,15 +126,15 @@ git commit -m "refactor(pos): remove unreachable dead block in deleteSale (Fase 
 
 **Konteks:** `getCartLineCharge` (sekitar baris 29, ditandai `@deprecated`) tidak punya satu pun pemanggil di `src/`.
 
-- [ ] **Step 1: Konfirmasi 0 pemanggil**
+- [x] **Step 1: Konfirmasi 0 pemanggil**
 
 Run (Grep): `getCartLineCharge` di `src/` — harus hanya muncul di definisi + komentar `@deprecated`. Jika ADA pemanggil lain, BATALKAN task ini dan lapor.
 
-- [ ] **Step 2: Hapus fungsi + JSDoc `@deprecated`-nya**
+- [x] **Step 2: Hapus fungsi + JSDoc `@deprecated`-nya**
 
 Hapus blok `export function getCartLineCharge(...) { ... }` beserta komentar `@deprecated` di atasnya. Pertahankan fungsi lain di file (mis. `getCartLineChargeByIndex` / penggantinya).
 
-- [ ] **Step 3: Verifikasi + commit**
+- [x] **Step 3: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build && npx jest src/lib/__tests__/money-rounding.test.ts`
 
@@ -121,15 +152,15 @@ git commit -m "refactor(finance): remove unused getCartLineCharge (Fase 6)"
 
 **Konteks:** `getActorFinanceSummaryRows` (sekitar baris 560, `@deprecated`) tidak punya pemanggil di `src/`. Penggantinya `getActorFinanceSummary` sudah dipakai.
 
-- [ ] **Step 1: Konfirmasi 0 pemanggil**
+- [x] **Step 1: Konfirmasi 0 pemanggil**
 
 Run (Grep): `getActorFinanceSummaryRows` di `src/` — hanya definisi + komentar. Jika ada pemanggil, BATALKAN & lapor.
 
-- [ ] **Step 2: Hapus fungsi + JSDoc-nya**
+- [x] **Step 2: Hapus fungsi + JSDoc-nya**
 
 Hapus blok `export async function getActorFinanceSummaryRows(...) { ... }` + komentar `@deprecated` di atasnya.
 
-- [ ] **Step 3: Verifikasi + commit**
+- [x] **Step 3: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build && npx jest src/lib/__tests__`
 
@@ -149,11 +180,11 @@ git commit -m "refactor(finance): remove unused getActorFinanceSummaryRows (Fase
 
 > SKIP (money-path, ditangani di Tier B/C): `pos/page.tsx`, `keuangan/page.tsx`, `KeranjangPOS.tsx`, `FormulirPembelian.tsx`, `ExpressionAssistant.tsx`, `ModalTambahBarang.tsx`, `TabelRiwayatPenjualan.tsx`, `ModalKonversiRoll.tsx`, `MaklonLineModal.tsx`.
 
-- [ ] **Step 1: Ganti hanya yang punya id stabil**
+- [x] **Step 1: Ganti hanya yang punya id stabil**
 
 Untuk tiap lokasi, jika item map punya field id unik (`.id`, `.kode`, `.label` unik), ganti `key={index}` → `key={item.id}`. Jika list murni statis/append-only TANPA id stabil (mis. baris cetak yang tidak pernah reorder), BIARKAN (index key sah di sana) dan catat alasannya.
 
-- [ ] **Step 2: Verifikasi + commit**
+- [x] **Step 2: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build`
 
@@ -176,11 +207,11 @@ Pola sama untuk semua: (1) baca seluruh file, petakan state per modal/section se
 
 **Konteks (audit):** isi = `SetupTab` (router, ~111) + `MaterialsTab` (~202) + `SortableCategory` (309) + `CategoriesView` (461) + `SortableSubcategory` (805) + `SortableUnit` (917) + `SortableQuickSpec` (1027) + `SubcategoriesView` (1131) + `UnitsSection` (1910). Type bersama: `Category`, `Subcategory`, `Unit`, `QuickSpec`.
 
-- [ ] **Step 1: Ekstrak types + sortables ke `setup/sortables.tsx`**
+- [x] **Step 1: Ekstrak types + sortables ke `setup/sortables.tsx`**
 
 Pindahkan interface `Category`/`Subcategory`/`Unit`/`QuickSpec` dan 4 komponen `Sortable*` ke file baru `src/app/pengaturan/setup/sortables.tsx`, export masing-masing. Import balik ke file induk. Verifikasi build.
 
-- [ ] **Step 2: Ekstrak `CategoriesView` → `setup/CategoriesView.tsx`**
+- [x] **Step 2: Ekstrak `CategoriesView` → `setup/CategoriesView.tsx`**
 
 Pindahkan `CategoriesView` + state/handler kategori-nya (loadCategories, modal kategori) ke file sendiri. Props: `{ onCategoryClick, autoOpenModal }` (sesuai pemakaian di `MaterialsTab`). Import balik. Verifikasi build + tes manual CRUD kategori.
 
@@ -215,7 +246,7 @@ git commit -m "refactor(ui): split PengaturanSetupTab into setup/ view component
 
 Baca seluruh file. Tandai: `notice`, `pendingConfirm`, `finCats` (bersama → tetap di induk, oper via props). State `actors`/`roles`/`orang*` → TabPengurus. `categories`/`kat*` → TabKategori. `formulas`/`rumus*`/`testRows` → TabKolomRumus.
 
-- [ ] **Step 2: Ekstrak TabPengurus**
+- [x] **Step 2: Ekstrak TabPengurus**
 
 Pindahkan UI + state Pengurus ke `pengaturan-keuangan/TabPengurus.tsx`. Props: state bersama + callback yang dibutuhkan (`showNotice`, `requestConfirm`, `finCats`, `onChanged`). Verifikasi build.
 
@@ -240,15 +271,15 @@ git commit -m "refactor(ui): split PengaturanKeuanganModal into per-tab componen
 
 **Konteks:** file ini meng-export `PricingTab` (~136), `RollSizesTab` (~523), `FinishingOptionsTab` (~882) — tiga tab independen di satu file. Ini split paling bersih (komponen sudah terpisah, tinggal pindah file).
 
-- [ ] **Step 1: Pindahkan tiap fungsi ke file sendiri**
+- [x] **Step 1: Pindahkan tiap fungsi ke file sendiri**
 
 Pindahkan `PricingTab` → `harga/PricingTab.tsx`, `RollSizesTab` → `harga/RollSizesTab.tsx`, `FinishingOptionsTab` → `harga/FinishingOptionsTab.tsx`, masing-masing dengan import yang dibutuhkan. Pertahankan named export agar `PengaturanSetupTab` (yang import `{ PricingTab, RollSizesTab, FinishingOptionsTab }`) tetap jalan — buat `PengaturanHargaTab.tsx` jadi re-export barrel, ATAU update importer ke path baru.
 
-- [ ] **Step 2: Perbaiki warning set-state-in-effect di RollSizesTab (baris ~540)**
+- [x] **Step 2: Perbaiki warning set-state-in-effect di RollSizesTab (baris ~540)**
 
 Saat memindahkan `RollSizesTab`, ganti pola `useEffect(() => setRollSizes(defaults), ...)` dengan derived state / lazy initializer bila bergantung props, atau biarkan jika perlu fetch (set-state setelah await itu sah). Verifikasi lint warning berkurang.
 
-- [ ] **Step 3: Verifikasi + commit**
+- [x] **Step 3: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build`. Tes tab Harga, Ukuran Roll, Opsi Finishing.
 
@@ -271,7 +302,7 @@ git commit -m "refactor(ui): split PengaturanHargaTab into harga/ tab components
 
 Baca seluruh file. Tandai state induk (daftar item, total, vendor, metode bayar, PPN header) vs state per-baris item. Item row & PPN panel terima props + callback `onChange`/`onRemove`.
 
-- [ ] **Step 2: Ekstrak `BarisItemPembelian`**
+- [x] **Step 2: Ekstrak `BarisItemPembelian`**
 
 Satu baris item (barang, qty, harga, dimensi roll) → komponen props `{ item, index, onChange, onRemove, ...lookups }`. Verifikasi build. Perbaiki warning `handleRemoveItem` exhaustive-deps (baris ~186) dengan `useCallback` di induk saat ini.
 
@@ -300,7 +331,7 @@ git commit -m "refactor(ui): split FormulirPembelian into item/ppn/roll componen
 
 Pindahkan blok varian roll dan blok harga-per-satuan ke sub-komponen props eksplisit. Verifikasi iron rule #6 utuh. Perbaiki warning exhaustive-deps `loadMasterData` (baris ~90) & `useCallback` deps (baris ~454) dengan membungkus callback prop di induk.
 
-- [ ] **Step 2: Verifikasi + commit**
+- [x] **Step 2: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build`. Tes tambah/edit barang termasuk roll + multi-satuan.
 
@@ -432,7 +463,7 @@ git commit -m "refactor(ui): POSContext + split pos page into panels/modals (U-I
 
 Setelah C1/C2, banyak warning hilang sendiri. Untuk sisa `missing dependency: 'loadX'`: bungkus fungsi di `useCallback` lalu masukkan ke deps (HATI-HATI infinite loop — tes tiap satu). Untuk `set-state-in-effect`: derived state / lazy init / pindah ke event handler.
 
-- [ ] **Step 2: Verifikasi + commit**
+- [x] **Step 2: Verifikasi + commit**
 
 Run: `npm run lint && npm run type-check && npm run build && npx jest`
 
@@ -451,7 +482,7 @@ git commit -m "fix(ui): resolve remaining hooks warnings in money-path files (U-
 
 Run: `npm install @tanstack/react-virtual`. Pakai `useVirtualizer` (render baris terlihat saja), pertahankan filter/sort. Mulai `TabelRiwayatPenjualan`. Verifikasi scroll + filter pada dataset besar.
 
-- [ ] **Step 2: Verifikasi + commit**
+- [x] **Step 2: Verifikasi + commit**
 
 ```bash
 git add package.json package-lock.json src/components
