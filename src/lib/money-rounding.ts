@@ -26,23 +26,6 @@ export function allocateCartLineCharges(
   return charges;
 }
 
-export function getCartLineCharge(
-  items: Array<{ subtotalRaw: number }>,
-  lineIndex: number,
-  roundPrices: boolean
-): number {
-  const charges = allocateCartLineCharges(items, roundPrices);
-  return charges[lineIndex] ?? 0;
-}
-
-/** @deprecated Use getCartLineCharge with line index */
-export function getLineCharge(
-  subtotalRaw: number,
-  roundPrices: boolean
-): number {
-  return roundPrices ? roundUpToThousand(subtotalRaw) : subtotalRaw;
-}
-
 export function getCartChargeTotal(
   items: Array<{ subtotalRaw: number }>,
   roundPrices: boolean
