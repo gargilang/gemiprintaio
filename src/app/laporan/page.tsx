@@ -460,9 +460,9 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {archives.map((archive, index) => (
+                  {archives.map((archive) => (
                     <button
-                      key={index}
+                      key={archive.archived_at}
                       onClick={() => setSelectedArchive(archive)}
                       className={`
                         w-full text-left p-4 rounded-xl border-2 transition-all

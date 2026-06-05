@@ -166,9 +166,9 @@ export default function ModalPilihBulan({
             </div>
           ) : (
             <div className="space-y-3">
-              {archives.map((archive, index) => (
+              {archives.map((archive) => (
                 <button
-                  key={index}
+                  key={archive.archived_at}
                   onClick={() => {
                     onSelectArchive({
                       label: archive.archived_label,
