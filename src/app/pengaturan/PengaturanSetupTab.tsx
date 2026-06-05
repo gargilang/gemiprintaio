@@ -198,7 +198,6 @@ function MaterialsTab() {
         ) : (
           <SubcategoriesView
             category={selectedCategory!}
-            onBack={handleBackToCategories}
           />
         )}
       </div>

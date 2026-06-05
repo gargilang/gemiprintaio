@@ -26,10 +26,8 @@ import {
 
 export function SubcategoriesView({
   category,
-  onBack,
 }: {
   category: Category;
-  onBack: () => void;
 }) {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [specs, setSpecs] = useState<QuickSpec[]>([]);
