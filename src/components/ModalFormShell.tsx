@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useFocusTrap } from "./useFocusTrap";
 
 export interface ModalFormShellProps {
   open: boolean;
@@ -33,6 +34,10 @@ export default function ModalFormShell({
 }: ModalFormShellProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const canDismiss = open && allowDismiss;
+
+  // Jebak fokus keyboard di dalam modal selama terbuka (U-I3). Escape/backdrop
+  // tetap ditangani di bawah supaya semantik allowDismiss tidak terduplikasi.
+  useFocusTrap(modalRef, open);
 
   useClickOutside(
     modalRef,
