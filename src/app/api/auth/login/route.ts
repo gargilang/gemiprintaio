@@ -11,6 +11,7 @@ function loginStatus(errorMessage: string): number {
   if (errorMessage.includes("diperlukan")) return 400;
   if (errorMessage.includes("tidak aktif")) return 403;
   if (
+    errorMessage.includes("Kredensial salah") ||
     errorMessage.includes("tidak ditemukan") ||
     errorMessage.includes("Password salah") ||
     errorMessage.includes("Username tidak")
