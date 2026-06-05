@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import FormPenggunaModal from "./FormPenggunaModal";
 import ToastNotifikasi, {
   NotificationToastProps,
 } from "@/components/ToastNotifikasi";
@@ -15,10 +16,8 @@ import {
 } from "@/components/icons/ContentIcons";
 import {
   getUsersAction,
-  createUserAction,
   updateUserAction,
   deleteUserAction,
-  changePasswordAction,
 } from "./actions";
 import {
   fetchSessionUser,
@@ -83,14 +82,6 @@ export default function UsersPage() {
   const loading = currentUser === null && usersLoading;
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({
-    nama_pengguna: "",
-    email: "",
-    nama_lengkap: "",
-    password: "",
-    role: "user" as AppRole,
-    aktif_status: 1,
-  });
 
   // Password Manager state
   interface Credential {
@@ -119,7 +110,6 @@ export default function UsersPage() {
   const [showingPasswordId, setShowingPasswordId] = useState<string | null>(
     null
   );
-  const [showUserPassword, setShowUserPassword] = useState(false);
   const [showCredPassword, setShowCredPassword] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -216,42 +206,13 @@ export default function UsersPage() {
   };
 
   const handleOpenModal = (user?: User) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({
-        nama_pengguna: user.nama_pengguna,
-        email: user.email || "",
-        nama_lengkap: user.nama_lengkap || "",
-        password: "",
-        role: user.role,
-        aktif_status: user.aktif_status,
-      });
-    } else {
-      setEditingUser(null);
-      setFormData({
-        nama_pengguna: "",
-        email: "",
-        nama_lengkap: "",
-        password: "",
-        role: "user",
-        aktif_status: 1,
-      });
-    }
+    setEditingUser(user ?? null);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingUser(null);
-    setShowUserPassword(false);
-    setFormData({
-      nama_pengguna: "",
-      email: "",
-      nama_lengkap: "",
-      password: "",
-      role: "user",
-      aktif_status: 1,
-    });
   };
 
   const handleCloseCredModal = () => {
@@ -317,53 +278,6 @@ export default function UsersPage() {
       showMsg(
         "error",
         `Terjadi kesalahan: ${
-          err instanceof Error ? err.message : "Unknown"
-        }`
-      );
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      if (editingUser) {
-        // Update existing user via service
-        const updateData: any = {
-          email: formData.email || null,
-          nama_lengkap: formData.nama_lengkap,
-          role: formData.role,
-          aktif_status: formData.aktif_status,
-        };
-
-        await updateUserAction(editingUser.id, updateData);
-
-        // Change password separately if provided
-        if (formData.password) {
-          await changePasswordAction(editingUser.id, "", formData.password);
-        }
-
-        showMsg("success", "User berhasil diupdate!");
-      } else {
-        // Create new user via service
-        await createUserAction({
-          nama_pengguna: formData.nama_pengguna,
-          email: formData.email || undefined,
-          nama_lengkap: formData.nama_lengkap,
-          password: formData.password,
-          role: formData.role,
-          aktif_status: formData.aktif_status,
-        });
-        showMsg("success", "User berhasil ditambahkan!");
-      }
-
-      await loadUsers();
-      handleCloseModal();
-    } catch (err) {
-      console.error("Error creating/updating user:", err);
-      showMsg(
-        "error",
-        `Terjadi kesalahan saat menyimpan user: ${
           err instanceof Error ? err.message : "Unknown"
         }`
       );
@@ -965,217 +879,14 @@ export default function UsersPage() {
         )}
       </div>
 
-      <ModalFormShell
-        open={showModal}
-        onClose={handleCloseModal}
-        maxWidthClass="max-w-md"
-        header={
-          <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-white/20 dark:bg-slate-900/20 rounded-lg shrink-0">
-                <UsersIcon size={28} className="text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-white truncate">
-                {editingUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors shrink-0"
-              aria-label="Tutup"
-            >
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        }
-        footer={
-          <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-800 shrink-0">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              form="users-manage-form"
-              className="px-6 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#00afef] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
-            >
-              Simpan
-            </button>
-          </div>
-        }
-      >
-            <form
-              id="users-manage-form"
-              onSubmit={handleSubmit}
-              className="p-6 space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={formData.nama_pengguna}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nama_pengguna: e.target.value })
-                  }
-                  required
-                  disabled={!!editingUser}
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  value={formData.nama_lengkap}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nama_lengkap: e.target.value })
-                  }
-                  required
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Password {editingUser && "(kosongkan jika tidak diubah)"}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showUserPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    required={!editingUser}
-                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowUserPassword(!showUserPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 hover:text-[#00afef] transition-colors"
-                  >
-                    {showUserPassword ? (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Role
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value as AppRole })
-                  }
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] focus:border-[#00afef] transition dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="user">Pengguna</option>
-                  <option value="operator">Operator</option>
-                  <option value="kasir">Kasir</option>
-                  <option value="staff">Staf</option>
-                  <option value="manager">Manajer</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="aktif_status"
-                  checked={formData.aktif_status === 1}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      aktif_status: e.target.checked ? 1 : 0,
-                    })
-                  }
-                  className="w-4 h-4 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
-                />
-                <label
-                  htmlFor="aktif_status"
-                  className="text-sm font-medium text-[#0a1b3d] dark:text-slate-100"
-                >
-                  User Aktif
-                </label>
-              </div>
-
-            </form>
-      </ModalFormShell>
+      {showModal && (
+        <FormPenggunaModal
+          pengguna={editingUser}
+          onClose={handleCloseModal}
+          onSuccess={loadUsers}
+          showNotification={showMsg}
+        />
+      )}
 
       <ModalFormShell
         open={showCredModal}
