@@ -550,45 +550,6 @@ export async function getActorFinanceSummary(
   return { columns, rows: [...actorRows, ...globalRows] };
 }
 
-/**
- * Adapter legacy yang dipertahankan sampai pemanggil UI bermigrasi ke `getActorFinanceSummary`.
- *
- * @deprecated Lebih baik pakai `getActorFinanceSummary` — dia mengembalikan
- *             kolom adaptif yang digerakkan oleh `is_visible_in_summary`
- *             alih-alih layout tiga-slot hardcoded.
- */
-export async function getActorFinanceSummaryRows(
-  valuesByKey: Record<string, number>
-): Promise<
-  Array<{
-    actorId: string;
-    displayName: string;
-    roleLabel: string;
-    profitShare: number | null;
-    cashAdvance: number | null;
-    bonus: number | null;
-    displayOrder: number;
-  }>
-> {
-  const summary = await getActorFinanceSummary(valuesByKey);
-  return summary.rows
-    .filter((r) => !r.isGlobal && r.actorId !== null)
-    .map((r) => {
-      const ps = summary.columns.find((c) => c.group === "profit_share");
-      const ca = summary.columns.find((c) => c.group === "cash_advance");
-      const bn = summary.columns.find((c) => c.group === "bonus");
-      return {
-        actorId: r.actorId as string,
-        displayName: r.displayName,
-        roleLabel: r.roleLabel,
-        profitShare: ps ? r.metrics[ps.formulaKey] ?? null : null,
-        cashAdvance: ca ? r.metrics[ca.formulaKey] ?? null : null,
-        bonus: bn ? r.metrics[bn.formulaKey] ?? null : null,
-        displayOrder: r.displayOrder,
-      };
-    });
-}
-
 /** Hitung formula bertipe actor yang aktif tapi tidak ditautkan ke business_actor mana pun. */
 export async function countLegacyOrphanActorFormulas(): Promise<number> {
   const all = await listFormulas();
