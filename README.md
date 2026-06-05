@@ -112,17 +112,11 @@ PASSWORD_ENC_SECRET=random-string-for-credential-vault
 
 ### Updater Signing Key (developer only)
 
-The desktop auto-updater requires a private signing key to sign new releases. This key is **not** stored in the repository — it must be manually placed on every developer machine.
+The desktop auto-updater requires a private signing key to sign new releases. This key is **not** stored in the repository and is **not** linked here for security — it must be placed manually on every release-maintainer machine.
 
-**On a new computer, before you can run `npm run release:desktop`:**
+See **[docs/SETUP.md → Step 7b](docs/SETUP.md)** for placement instructions. The key itself is kept in a private, access-restricted location; ask the project owner directly.
 
-1. Download `gemiprint.key` from the private Google Drive folder:
-  [https://drive.google.com/drive/folders/11N6siiUWBKXrQDNRHZgWpn8A-HA9gH74?usp=drive_link](https://drive.google.com/drive/folders/11N6siiUWBKXrQDNRHZgWpn8A-HA9gH74?usp=drive_link)
-2. Place it at: `%APPDATA%\.tauri\gemiprint.key`
-  (Full path example: `C:\Users\<you>\AppData\Roaming\.tauri\gemiprint.key`)
-3. Verify the file exists, then you are ready to build and release.
-
-> **Note:** This Google Drive folder is access-restricted to the project owner only.
+> Required only for `npm run release:desktop`. Normal development (web, desktop, mobile) does not need it.
 
 ## Development
 

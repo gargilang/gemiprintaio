@@ -193,6 +193,22 @@ gh auth login
 
 ---
 
+## Step 7b: Desktop Updater Signing Key (release maintainers only)
+
+The desktop auto-updater requires a private signing key to sign new releases. This key is **not** stored in the repository and must be placed manually on each machine that runs `npm run release:desktop`.
+
+You do **not** need this for normal development (web, desktop dev, mobile) — only for cutting a signed desktop release.
+
+1. Obtain `gemiprint.key` from the project owner (kept in a private, access-restricted location — ask the owner directly; it is intentionally not linked here).
+2. Place it at:
+   - **Windows:** `%APPDATA%\.tauri\gemiprint.key` (e.g. `C:\Users\<you>\AppData\Roaming\.tauri\gemiprint.key`)
+   - **macOS/Linux:** `~/.tauri/gemiprint.key`
+3. Verify the file exists, then you can build and release.
+
+> **Security:** This key signs the updates that every desktop install trusts. Never commit it, never paste it into chat/issues/README, and never store it in a publicly linkable location.
+
+---
+
 ## Step 8: Clone and Install Project Dependencies
 
 ```bash
