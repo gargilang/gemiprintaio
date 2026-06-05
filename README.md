@@ -105,7 +105,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 DATABASE_URL=postgresql://...
 SESSION_SECRET=random-string-32-chars-min
+PASSWORD_ENC_SECRET=random-string-for-credential-vault
 ```
+
+> `SESSION_SECRET` must be at least 32 characters and `PASSWORD_ENC_SECRET` must be set in production — the app throws on startup otherwise (intentional fail-fast). `PASSWORD_ENC_SECRET` encrypts the stored-credentials vault; changing it makes previously stored credentials unreadable.
 
 ### Updater Signing Key (developer only)
 
@@ -160,6 +163,18 @@ cd flutter && flutter run -d edge --web-port=8080 --dart-define=API_BASE_URL=htt
 **Flutter web notes:** Routing is **path-based** (bukan `#/login`). Buka `**http://localhost:8080/login`** atau `**http://localhost:8080/`** (akan redirect). URL `/#/login` bisa memunculkan layar putih.
 
 Login ke API production dari `localhost` membutuhkan header **CORS** di server Next.js — sudah ditambahkan di `src/middleware.ts`; deploy ke Vercel supaya `app.gemiprint.com` mengizinkan origin `http://localhost:8080`.
+
+### Verification (matches CI)
+
+```bash
+npm run lint          # ESLint
+npm run type-check    # tsc --noEmit
+npm test              # Jest (node + jsdom projects)
+npm run build         # Next.js production build
+npm run check:versions # package.json / tauri.conf.json / Cargo.toml in sync
+```
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request. A husky pre-commit hook runs `lint-staged` (ESLint --fix) on staged files.
 
 ## Build
 
@@ -308,7 +323,24 @@ gemiprintaio/
 - **Mobile:** Flutter, Riverpod, GoRouter, Material 3
 - **Database:** SQLite (desktop, via better-sqlite3) and Supabase Postgres (web + cloud sync), behind one unified data layer (`src/lib/db-unified.ts`)
 - **Finance engine:** custom AST expression engine for the configurable cashbook (`src/lib/ast/`)
-- **Auth:** JWT sessions with bcrypt password hashing
+- **Validation:** Zod schemas on hot-path mutation routes (`src/lib/schemas/`)
+- **Auth:** JWT sessions (24h TTL) with bcrypt password hashing, per-record AES-256-GCM vault for stored credentials
 - **PDF:** jsPDF + jspdf-autotable for report printing
+- **Testing:** Jest (two projects — `node` for services/API, `jsdom` for components) with Testing Library
+- **CI/CD:** GitHub Actions (lint + type-check + test + build + version-sync) on every PR; husky + lint-staged pre-commit
+- **Observability:** structured JSON logging wrapper (`src/lib/log.ts`)
 - **AI Tools Used:** GitHub Copilot, Cursor
+
+## Engineering Quality & Safeguards
+
+This codebase went through a structured hardening effort (security → data integrity → CI/CD → testing → UI refactor). Highlights:
+
+- **Security:** role guards (`requireSession` / `requireAdminOrManager`) on all mutation routes, Zod input validation on hot paths, generic login errors (no user enumeration), HSTS + tightened CSP, rate limiting, per-record-salt credential encryption with fail-fast on missing production secrets, and identifier allowlisting on raw SQL paths (web + Tauri).
+- **Data integrity:** composite sale/purchase mutations are atomic via Postgres RPC (opt-in `USE_PG_COMPOSITE_RPC`) with compensating cleanup on the non-atomic path; real SHA-256 mutation hashing; deterministic, idempotent inventory ledger IDs; invoice-number collision retry.
+- **Performance:** N+1 queries removed from POS & production read paths (batched), cashbook recalculation coalesced per request, explicit column selects, lazy-mounted settings tabs.
+- **Testing & CI:** 240+ tests across services, API routes, and components; CI blocks merges that fail lint, type-check, tests, or build.
+- **Accessibility:** ARIA combobox/listbox pattern, modal focus trap + focus restore, Escape/backdrop dismissal.
+
+> **Deploy note:** Production requires `SESSION_SECRET` (≥32 chars) and `PASSWORD_ENC_SECRET` to be set — the app fails fast on startup without them by design. To enable atomic composite-mutation RPCs, set `USE_PG_COMPOSITE_RPC=1` **after** running `npm run supabase:db:push`.
+
 
