@@ -9,6 +9,7 @@ import {
   getPurchaseById,
   getPurchases,
 } from "@/lib/services/purchases-service";
+import { createPurchaseSchema } from "@/lib/schemas/pembelian";
 
 export async function GET(_req: NextRequest) {
   try {
@@ -27,6 +28,14 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdminOrManager();
     const body = await req.json();
+
+    const parsed = createPurchaseSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Data pembelian tidak valid", issues: parsed.error.issues },
+        { status: 422 }
+      );
+    }
     const {
       nomor_pembelian,
       nomor_faktur,
@@ -36,7 +45,7 @@ export async function POST(req: NextRequest) {
       catatan,
       items,
       dibuat_oleh,
-    } = body;
+    } = parsed.data;
 
     if (!nomor_faktur || !nomor_faktur.trim()) {
       return NextResponse.json(
@@ -78,9 +87,9 @@ export async function POST(req: NextRequest) {
       nomor_faktur,
       vendor_id: vendor_id || null,
       tanggal: tanggal || getTodayJakarta(),
-      metode_pembayaran,
-      catatan,
-      dibuat_oleh,
+      metode_pembayaran: metode_pembayaran || "CASH",
+      catatan: catatan ?? undefined,
+      dibuat_oleh: dibuat_oleh ?? undefined,
       items: items.map((item: any) => ({
         barang_id: item.barang_id,
         harga_satuan_id: item.harga_satuan_id ?? null,

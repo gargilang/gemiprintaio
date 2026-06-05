@@ -7,6 +7,7 @@ import {
   getQuickSpecRowById,
   listQuickSpecsWithCategory,
 } from "@/lib/services/master-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const {
       kategori_id,
@@ -100,6 +102,9 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error creating quick spec:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create quick spec" },

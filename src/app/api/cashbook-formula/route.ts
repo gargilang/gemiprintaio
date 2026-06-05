@@ -8,6 +8,8 @@ import {
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import { validateAST } from "@/lib/ast/validate";
 import { listPartners } from "@/lib/services/cashbook-formula-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,12 +29,18 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await requireAdminOrManager();
     const body = await request.json();
     const action = String(body?.action || "upsert");
 
     if (action === "reset") {
       await resetFormulasToDefaults();
       await recalculateCashbookIfAvailable();
+      await logAudit({
+        userId: session.uid,
+        action: "cashbook_formula_reset",
+        resourceType: "cashbook_formula",
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -46,6 +54,12 @@ export async function POST(request: NextRequest) {
       }
       await deleteFormula(id);
       await recalculateCashbookIfAvailable();
+      await logAudit({
+        userId: session.uid,
+        action: "cashbook_formula_delete",
+        resourceType: "cashbook_formula",
+        resourceId: id,
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -88,8 +102,17 @@ export async function POST(request: NextRequest) {
     });
 
     await recalculateCashbookIfAvailable();
+    await logAudit({
+      userId: session.uid,
+      action: "cashbook_formula_upsert",
+      resourceType: "cashbook_formula",
+      resourceId: String(saved?.id || formula.id || ""),
+    });
     return NextResponse.json({ ok: true, formula: saved });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("POST /api/cashbook-formula error:", error);
     return NextResponse.json(
       { error: (error as Error).message || "Gagal menyimpan rumus" },

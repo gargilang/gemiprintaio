@@ -4,6 +4,7 @@ import {
   getDecryptedPassword,
   updateCredential,
 } from "@/lib/services/credentials-service";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +46,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const viewerId = request.headers.get("x-session-uid") || undefined;
+    const session = await requireSession();
+    const viewerId = session.uid;
     const { id } = await params;
     const body = await request.json();
 
@@ -78,6 +80,9 @@ export async function PUT(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("PUT /api/passwords/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal update kredensial" },
@@ -91,7 +96,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const viewerId = request.headers.get("x-session-uid") || undefined;
+    const session = await requireSession();
+    const viewerId = session.uid;
     const { id } = await params;
 
     try {
@@ -111,6 +117,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("DELETE /api/passwords/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal menghapus kredensial" },

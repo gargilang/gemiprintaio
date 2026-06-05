@@ -195,7 +195,10 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   // Bantuan development: bersihkan sesi dengan Ctrl+Shift+L.
+  // Hanya aktif di development; di production shortcut ini dimatikan
+  // agar tidak terpicu tidak sengaja atau lewat XSS (re-auth phishing).
   useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "L") {
         void logoutSession().then(() => router.push("/auth/login"));

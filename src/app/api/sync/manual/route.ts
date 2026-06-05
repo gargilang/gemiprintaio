@@ -4,9 +4,11 @@ import {
   getSyncStatus,
   triggerManualSync,
 } from "@/lib/services/sync-operations-service";
+import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function POST(_request: NextRequest) {
   try {
+    await requireSession();
     console.debug("🔄 Manual sync triggered");
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,6 +41,12 @@ export async function POST(_request: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status }
+      );
+    }
     console.error("Manual sync error:", error);
     return NextResponse.json(
       { success: false, error: "Manual sync gagal" },

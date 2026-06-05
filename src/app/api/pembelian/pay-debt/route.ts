@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { payDebt } from "@/lib/services/purchases-service";
+import { payDebtSchema } from "@/lib/schemas/pembelian";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,14 +10,24 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdminOrManager();
     const body = await req.json();
+
+    const parsed = payDebtSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Data pembayaran tidak valid", issues: parsed.error.issues },
+        { status: 422 }
+      );
+    }
+    const data = parsed.data;
+
     const result = await payDebt({
-      purchase_id: body.purchase_id,
-      jumlah_bayar: body.jumlah_bayar,
-      tanggal_bayar: body.tanggal_bayar,
-      metode_pembayaran: body.metode_pembayaran,
-      referensi: body.referensi,
-      catatan: body.catatan,
-      dibuat_oleh: body.dibuat_oleh,
+      purchase_id: data.purchase_id,
+      jumlah_bayar: data.jumlah_bayar,
+      tanggal_bayar: data.tanggal_bayar,
+      metode_pembayaran: data.metode_pembayaran,
+      referensi: data.referensi ?? undefined,
+      catatan: data.catatan ?? undefined,
+      dibuat_oleh: data.dibuat_oleh ?? undefined,
     });
 
     return NextResponse.json({

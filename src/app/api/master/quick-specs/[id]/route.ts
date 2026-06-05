@@ -7,6 +7,7 @@ import {
   getQuickSpecRowById,
   updateQuickSpec,
 } from "@/lib/services/master-service";
+import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 
 export async function PUT(
   req: NextRequest,
@@ -14,6 +15,7 @@ export async function PUT(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const body = await req.json();
     const { tipe_spesifikasi, nilai_spesifikasi, urutan_tampilan } = body;
 
@@ -69,6 +71,9 @@ export async function PUT(
       quickSpec: updatedQuickSpec,
     });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error updating quick spec:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update quick spec" },
@@ -83,6 +88,7 @@ export async function DELETE(
 ) {
   const params = await context.params;
   try {
+    await requireAdminOrManager();
     const existing = await getQuickSpecById(params.id);
 
     if (!existing) {
@@ -96,6 +102,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Spesifikasi cepat berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error deleting quick spec:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete quick spec" },
