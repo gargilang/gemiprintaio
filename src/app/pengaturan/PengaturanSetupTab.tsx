@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { useState, useEffect } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { useSearchParams } from "next/navigation";
