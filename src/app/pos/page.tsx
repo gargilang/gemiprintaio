@@ -46,110 +46,18 @@ import {
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
-
-interface User {
-  id: string;
-  nama_pengguna: string;
-  role: string;
-}
-
-interface Customer {
-  id: string;
-  nama: string;
-  member_status: number;
-  telepon?: string;
-  alamat?: string;
-  email?: string;
-  kontak_person?: string;
-}
-
-interface Material {
-  id: string;
-  nama: string;
-  butuh_dimensi_status: number;
-  frekuensi_terjual: number;
-  kategori_nama?: string;
-  unit_prices: UnitPrice[];
-}
-
-interface UnitPrice {
-  id: string;
-  nama_satuan: string;
-  faktor_konversi: number;
-  harga_jual: number;
-  harga_member: number;
-  default_status: number;
-}
-
-interface FinishingItem {
-  jenis_finishing: string;
-  keterangan?: string;
-}
-
-interface CartItem {
-  barang_id: string;
-  barang_nama: string;
-  harga_satuan_id: string;
-  nama_satuan: string;
-  faktor_konversi: number;
-  harga_satuan: number;
-  jumlah: number;
-  panjang?: number;
-  lebar?: number;
-  butuh_dimensi?: boolean;
-  useRounding?: boolean;
-  selectedRollSize?: number;
-  billedPanjang?: number;
-  billedLebar?: number;
-  subtotalRaw: number;
-  /**
-   * Original harga_satuan from catalog (or maklon initial input).
-   * When user overrides the price, harga_satuan changes but this stays.
-   * Used to: show "(override)" badge, support Reset, compute discount/markup.
-   */
-  originalHargaSatuan?: number;
-  finishing?: FinishingItem[];
-  // Maklon (subcontract) line. When set, this cart entry represents work
-  // outsourced to a partner shop instead of a regular catalog item.
-  tipe_item?: "BARANG" | "MAKLON";
-  vendor_subkontrak_id?: string;
-  vendor_subkontrak_nama?: string;
-  biaya_subkontrak?: number;
-  metode_bayar_vendor?: "CASH" | "NET30";
-  deskripsi_pekerjaan?: string;
-}
-
-interface SubkontraktorOption {
-  id: string;
-  nama_perusahaan: string;
-  kontak_person?: string | null;
-}
-
-type POSInitData = {
-  customers: Customer[];
-  materials: Material[];
-  sales: any[];
-  subkontraktor: SubkontraktorOption[];
-};
-
-const EMPTY_POS_INIT: POSInitData = {
-  customers: [],
-  materials: [],
-  sales: [],
-  subkontraktor: [],
-};
-
-/** Category display order (aligned with default kategori_barang). */
-const KATEGORI_ORDER = [
-  "Media Cetak",
-  "Kertas",
-  "Kertas Foto",
-  "Merchandise",
-  "Substrat UV",
-  "Tinta & Consumables",
-  "Finishing",
-  "Lain-lain",
-];
+import {
+  type User,
+  type Customer,
+  type Material,
+  type UnitPrice,
+  type FinishingItem,
+  type CartItem,
+  type SubkontraktorOption,
+  type POSInitData,
+  EMPTY_POS_INIT,
+  KATEGORI_ORDER,
+} from "./pos-types";
 
 export default function POSPage() {
   const router = useRouter();
