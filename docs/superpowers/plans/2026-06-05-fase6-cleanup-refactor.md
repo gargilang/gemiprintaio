@@ -28,8 +28,16 @@
 - ✅ **Verifikasi penuh Tier B**: `npm run lint` 0 error (34 warning PRE-EXISTING di file money-path, dijadwalkan Tier C C3 — bukan introduksi baru), `type-check` 0 error, `build` sukses, `jest` 242/242 hijau.
 
 **BELUM dikerjakan (lanjutkan dari sini):**
-- ⬜ **Merge `fase6-tierb` → `main`** (fast-forward), push (auto-deploy Vercel), health-check.
-- ⬜ **Tier C penuh** (C1 keuangan, C2 POS, C3 sisa hooks, C4 virtualisasi, C5 audit cross-platform) — RISIKO TINGGI, money-path, nyalakan Supabase lokal.
+- ⬜ **Smoke test lokal** (owner klik, agen pandu) lalu **merge `fase6-tierc` → `main`**.
+
+**SUDAH SELESAI di branch `fase6-tierc` (Tier C, BELUM merge):**
+- ✅ **C1** — `keuangan/page.tsx` 2049→1569 baris. Ekstrak `CashBookRow.tsx`, `keuangan-utils.ts` (stripReferenceId + resolveKategoriColor), `ModalTransaksiKeuangan.tsx`. Commit `fc8aab3`, `8b3afa9`.
+- ✅ **C2** — `pos/page.tsx` 2083→1931 baris. Ekstrak `pos-types.ts` (tipe + konstanta) + `ModalFakturUmum.tsx`. Commit `b3bb1bd`, `7bcd860`. CATATAN: 5 modal POS lain sudah jadi komponen sejak fase lama; cart state machine SENGAJA tidak dibungkus Context (risiko tinggi, nilai rendah untuk money-path).
+- ✅ **C3** — perbaikan lint AMAN saja (`materials` useMemo di POS, buang directive usang di beranda). Commit `a65579f`. 31 warning sisa pre-existing di money-path SENGAJA dibiarkan (fix berisiko ubah perilaku; butuh tes transaksi manual).
+- ✅ **C4** — KEPUTUSAN: TIDAK pasang `@tanstack/react-virtual`. Malah sederhanakan virtualisasi manual di `keuangan/page.tsx` (data sudah dibatasi arsip bulanan; virtualisasi parsial = tidak konsisten + rusak Ctrl+F/print). Commit `4f6242c`.
+- ✅ **C5** — audit cross-platform = verifikasi STATIK (cargo check + flutter analyze keduanya bersih). Fase 6 tak sentuh API/Rust/Dart → risiko ~nol. Doc: `docs/superpowers/specs/2026-06-06-cross-platform-audit.md`. Commit `9d4dbe9`. Audit kualitas Rust/Dart diusulkan jadi **Fase 7** terpisah.
+
+**Tier B** (sudah merge ke `main` + live, lihat bawah) — selesai penuh B1-B6.
 
 **Pola wajib (terbukti di B1/B3 & Fase 5):** baca file → petakan state → ekstrak ke file fokus dengan props eksplisit → hapus import/state yang jadi orphan di induk (type-check TIDAK menangkap unused import, cek manual via Grep) → `npm run type-check && npm run build` → commit per langkah. Catatan: tool Write sering gagal untuk file besar berisi backtick/JSX — pakai stub kecil lalu StrReplace bertahap, atau Node `fs` splice (lihat riwayat commit B1). Detail lengkap workaround ada di `.cursorrules` → bagian "Editing large / special-character files".
 
