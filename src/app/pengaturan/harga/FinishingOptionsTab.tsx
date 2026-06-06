@@ -118,7 +118,7 @@ export function FinishingOptionsTab() {
       await reorderFinishingOptions(updates);
       setOptions(newOptions);
       showMsg("success", "Urutan berhasil diperbarui");
-    } catch (error) {
+    } catch {
       showMsg("error", "Gagal memperbarui urutan");
     }
   };

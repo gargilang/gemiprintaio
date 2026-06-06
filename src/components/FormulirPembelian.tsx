@@ -17,7 +17,7 @@ import {
   type PurchaseItem,
   isDimensionalMaterial,
 } from "./pembelian/types";
-import { type SplitBatch, parseSplitTargets, sumBatchRolls } from "./pembelian/split-utils";
+import { type SplitBatch, parseSplitTargets } from "./pembelian/split-utils";
 
 interface PurchaseFormData {
   tanggal: string;

@@ -13,7 +13,6 @@ import {
   postProductionMaterialConsumption,
   voidProductionMaterialConsumption,
   deleteProductionOrder,
-  type ProductionOrder,
 } from "@/lib/services/production-service";
 import { requireProductionInventoryRole } from "@/lib/auth-guard-server";
 
