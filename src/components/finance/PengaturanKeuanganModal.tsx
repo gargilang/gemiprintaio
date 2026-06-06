@@ -10,6 +10,8 @@ import ModalFormShell from "@/components/ModalFormShell";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ExpressionAssistant from "@/components/finance/ExpressionAssistant";
 import KolomTab from "@/components/finance/KolomTab";
+import TabKategori from "@/components/finance/pengaturan-keuangan/TabKategori";
+import { type ConfirmRequest } from "@/components/finance/pengaturan-keuangan/shared";
 import { DEFAULT_FORMULAS } from "@/lib/ast/defaults";
 import type { ASTNode, FormulaGroup } from "@/lib/ast/types";
 
@@ -116,12 +118,6 @@ function describeActor(a: BusinessActorApi): string[] {
   if (a.bonus_percent !== null)
     p.push(`Bonus ${a.bonus_percent}% dari ${a.bonus_source_formula_key ?? "omzet"}`);
   return p;
-}
-
-// ── Kategori types ──────────────────────────────────────────────────────────
-
-interface KategoriApi {
-  id?: string; category_code: string; display_name: string;
 }
 
 // ── Rumus types ─────────────────────────────────────────────────────────────
@@ -285,14 +281,15 @@ export default function PengaturanKeuanganModal({
 }: PengaturanKeuanganModalProps) {
   const [tab, setTab] = useState<PengaturanTab>(defaultTab);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [pendingConfirm, setPendingConfirm] = useState<{
-    title: string; message: string; confirmText?: string;
-    type?: "warning" | "danger" | "info"; onConfirm: () => void;
-  } | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmRequest | null>(null);
 
   const showMsg = useCallback((type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 3500);
+  }, []);
+
+  const requestConfirm = useCallback((req: ConfirmRequest) => {
+    setPendingConfirm(req);
   }, []);
 
   useEffect(() => {
@@ -302,7 +299,6 @@ export default function PengaturanKeuanganModal({
     } else {
       // Reset loaded flags when modal closes so next open re-fetches fresh data.
       setRumusLoaded(false);
-      setKatLoaded(false);
       setOrangLoaded(false);
     }
   }, [open, defaultTab]);
@@ -458,53 +454,9 @@ export default function PengaturanKeuanganModal({
     });
   }
 
-  // ── Kategori state ─────────────────────────────────────────────────────────
-  const [categories, setCategories] = useState<KategoriApi[]>([]);
-  const [katLoaded, setKatLoaded] = useState(false);
-  const [katLoading, setKatLoading] = useState(false);
-  const [katSaving, setKatSaving] = useState(false);
-  const [katSearch, setKatSearch] = useState("");
-  const [newCatName, setNewCatName] = useState("");
+  // ── Kategori: jumlah dilaporkan oleh TabKategori untuk hitungan footer ──────
+  const [kategoriCount, setKategoriCount] = useState(0);
 
-  const reloadKat = useCallback(async () => {
-    setKatLoading(true);
-    try {
-      const r = await apiJSON<{ categories: KategoriApi[] }>("/api/keuangan/config");
-      setCategories(r.categories ?? []);
-      setKatLoaded(true);
-    } catch (e) { showMsg("error", (e as Error).message); }
-    finally { setKatLoading(false); }
-  }, [showMsg]);
-
-  useEffect(() => {
-    if (open && !katLoaded) void reloadKat();
-  }, [open, katLoaded, reloadKat]);
-
-  const filteredCats = useMemo(() => {
-    const q = katSearch.trim().toLowerCase();
-    if (!q) return categories;
-    return categories.filter((c) => c.display_name.toLowerCase().includes(q) || c.category_code.toLowerCase().includes(q));
-  }, [categories, katSearch]);
-
-  async function katMutate(payload: Record<string, unknown>) {
-    setKatSaving(true);
-    try {
-      await apiJSON("/api/keuangan/config/manage", { method: "POST", body: JSON.stringify(payload) });
-      await reloadKat();
-      onCategoriesChanged?.();
-      showMsg("success", "Kategori diperbarui.");
-    } catch (e) { showMsg("error", (e as Error).message); }
-    finally { setKatSaving(false); }
-  }
-
-  async function addCategory() {
-    const name = newCatName.trim();
-    if (!name) { showMsg("error", "Mohon isi nama kategori."); return; }
-    const code = slugifyCode(name);
-    if (categories.some((c) => c.category_code.toUpperCase() === code)) { showMsg("error", "Kode kategori sudah ada. Coba nama yang sedikit berbeda."); return; }
-    await katMutate({ action: "create_category", category_code: code, display_name: name });
-    setNewCatName("");
-  }
 
   // ── Rumus state ────────────────────────────────────────────────────────────
   const [formulas, setFormulas] = useState<FormulaApi[]>([]);
@@ -855,7 +807,7 @@ export default function PengaturanKeuanganModal({
             <div className="text-xs text-slate-400">
               {tab === "kolom" && `${formulas.length} kolom`}
               {tab === "pengurus" && `${actors.filter((a) => a.is_active === 1).length} pengurus aktif`}
-              {tab === "kategori" && `${categories.length} kategori`}
+              {tab === "kategori" && `${kategoriCount} kategori`}
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Tutup</button>
@@ -1006,72 +958,13 @@ export default function PengaturanKeuanganModal({
 
         {/* ── Tab: Kategori ───────────────────────────────────────────────── */}
         <div className={tab === "kategori" ? undefined : "hidden"}>
-          <div className="p-4 space-y-4">
-            {/* Add form */}
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-slate-700 mb-2">Tambah kategori baru</p>
-              <p className="text-xs text-slate-500 mb-3">
-                Kategori muncul saat mencatat transaksi. Cara kategori mempengaruhi omzet, laba, dan
-                kasbon diatur di tab <strong>Rumus</strong>, bukan di sini.
-              </p>
-              <div className="flex gap-2 max-w-lg">
-                <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void addCategory(); }} placeholder='Contoh: Asuransi (tanpa menggunakan ")' className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-                <button type="button" disabled={katSaving || !newCatName.trim()} onClick={addCategory} className="px-4 py-2 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50">Tambah</button>
-              </div>
-            </div>
-
-            {/* Search */}
-            <input type="search" value={katSearch} onChange={(e) => setKatSearch(e.target.value)} placeholder="Cari kategori…" className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-56 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-
-            {/* List */}
-            {katLoading && <div className="py-8 text-center text-slate-500 text-sm">Memuat…</div>}
-            {!katLoading && (
-              <div className="space-y-2 max-h-[420px] overflow-y-auto">
-                {filteredCats.length === 0 && (
-                  <p className="py-8 text-center text-slate-500 text-sm">{categories.length === 0 ? "Belum ada kategori." : "Tidak ada yang cocok."}</p>
-                )}
-                {filteredCats.map((cat) => {
-                  return (
-                  <div
-                    key={cat.id || cat.category_code}
-                    className="flex items-center justify-between gap-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3"
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {cat.display_name}
-                      </span>
-                      <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono truncate mt-0.5">
-                        &quot;{cat.category_code}&quot;
-                      </span>
-                    </div>
-                    {cat.id && (
-                      <button
-                        type="button"
-                        disabled={katSaving}
-                        onClick={() =>
-                          setPendingConfirm({
-                            title: `Hapus kategori "${cat.display_name}"?`,
-                            message: "Transaksi yang sudah ada tetap tersimpan dengan kode lama.",
-                            confirmText: "Hapus",
-                            type: "danger",
-                            onConfirm: () => void katMutate({ action: "delete_category", id: cat.id }),
-                          })
-                        }
-                        className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40 shrink-0"
-                        title="Hapus kategori"
-                        aria-label="Hapus kategori"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <TabKategori
+            open={open}
+            showMsg={showMsg}
+            requestConfirm={requestConfirm}
+            onCategoriesChanged={onCategoriesChanged}
+            onCountChange={setKategoriCount}
+          />
         </div>
 
       </ModalFormShell>
