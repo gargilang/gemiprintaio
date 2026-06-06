@@ -20,6 +20,12 @@ export function friendlyPgError(e: unknown, table?: string): string {
       return `Data tidak memenuhi aturan validasi${ctx}.`;
     case "23502":
       return `Ada kolom wajib yang kosong${ctx}.`;
+    case "P0001":
+      // Custom RAISE EXCEPTION dari fungsi plpgsql (mis. void_sale_with_inventory,
+      // assert_period_open). Pesannya sengaja ditulis ramah + Bahasa Indonesia
+      // untuk operator (mis. "sudah masuk produksi: SPK-xxx"), jadi diteruskan
+      // apa adanya — bukan info constraint internal yang perlu disembunyikan.
+      return err.message?.trim() || `Terjadi kesalahan saat menyimpan data${ctx}.`;
     default:
       return `Terjadi kesalahan saat menyimpan data${ctx}.`;
   }

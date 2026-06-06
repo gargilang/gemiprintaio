@@ -25,4 +25,22 @@ describe("friendlyPgError", () => {
     expect(msg).not.toContain("xyz_key");
     expect(msg.length).toBeGreaterThan(0);
   });
+
+  test("P0001 RAISE EXCEPTION → teruskan pesan operator apa adanya", () => {
+    const msg = friendlyPgError(
+      {
+        code: "P0001",
+        message:
+          "Tidak bisa dibatalkan. Penjualan ini sudah masuk produksi: SPK-001 (PROSES). Batalkan atau selesaikan SPK tersebut dulu.",
+      },
+      "penjualan"
+    );
+    expect(msg).toContain("sudah masuk produksi");
+    expect(msg).toContain("SPK-001");
+  });
+
+  test("P0001 tanpa message → fallback ke pesan generik", () => {
+    const msg = friendlyPgError({ code: "P0001" }, "penjualan");
+    expect(msg).toContain("Terjadi kesalahan");
+  });
 });
