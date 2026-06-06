@@ -354,15 +354,19 @@ git commit -m "refactor(ui): split ModalTambahBarang into roll/price panels (U-I
 - Modify: `src/components/finance/ExpressionAssistant.tsx` → Create `finance/expression/EditorAST.tsx`, `expression/PreviewHasil.tsx`, `expression/DaftarSaran.tsx`
 - Modify: `src/app/produksi/spk/page.tsx` → Create `src/app/produksi/spk/SpkList.tsx`, `spk/SpkDetailPanel.tsx`
 
-- [ ] **Step 1: ExpressionAssistant — pisah editor/preview/saran**
+- [x] **Step 1: ExpressionAssistant — pisah editor/preview/saran**
 
 HATI-HATI: jangan ubah logika evaluator AST (punya test kuat). Hanya pisah JSX + state UI. Verifikasi iron rule #13 (label saran = display name, hint = kode).
 
-- [ ] **Step 2: SPK — pisah list & detail panel**
+> Catatan eksekusi: pisah util/presentational saja → `expression/types.ts`, `expression/highlight.ts`, `expression/TutorialPanel.tsx`. Evaluator/editor/autocomplete tetap di induk (1176→678 baris). 116 AST test hijau.
+
+- [x] **Step 2: SPK — pisah list & detail panel**
 
 State seleksi SPK tetap di induk; `SpkList` props `{ orders, selectedId, onSelect }`, `SpkDetailPanel` props `{ order, onStatusChange }`.
 
-- [ ] **Step 3: Verifikasi + commit (per file)**
+> Catatan eksekusi: dipecah jadi `spk/components/spk-print.ts` (generateSPKHTML), `spk-status.ts` (warna badge), dan `SpkDetailModal.tsx` (modal detail props-only). List tetap di induk (sudah cukup tipis: 1239→665 baris).
+
+- [x] **Step 3: Verifikasi + commit (per file)**
 
 Run: `npm run type-check && npm run build && npx jest src/lib/ast/__tests__`. Tes editor rumus + halaman SPK.
 
