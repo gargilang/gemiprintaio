@@ -11,11 +11,8 @@ import {
 } from "./icons/ContentIcons";
 import PilihanCari from "./PilihanCari";
 import { getTodayJakarta } from "@/lib/date-utils";
-
-interface SplitBatch {
-  count: number;
-  targets_text: string;
-}
+import ModalSplitRoll from "./pembelian/ModalSplitRoll";
+import { type SplitBatch, parseSplitTargets, sumBatchRolls } from "./pembelian/split-utils";
 
 interface PurchaseItem {
   id_barang: string;
@@ -94,23 +91,6 @@ function isDimensionalMaterial(material: Material | undefined): boolean {
   return flag === 1 || flag === true;
 }
 
-function parseSplitTargets(text: string | undefined | null): number[] {
-  if (!text) return [];
-  return text
-    .split(/[,+\s]+/)
-    .map((part) => Number(part.trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
-
-/** Jumlah roll di batch yang valid (non-kosong). */
-function sumBatchRolls(batches: SplitBatch[] | undefined): number {
-  if (!batches) return 0;
-  return batches.reduce(
-    (sum, b) => sum + Math.max(0, Math.round(Number(b.count) || 0)),
-    0
-  );
-}
-
 export default function FormulirPembelian({
   editData,
   onSuccess,
@@ -153,7 +133,6 @@ export default function FormulirPembelian({
 
   const [saving, setSaving] = useState(false);
   const [splitModalIndex, setSplitModalIndex] = useState<number | null>(null);
-  const [splitModalDraft, setSplitModalDraft] = useState<SplitBatch[]>([]);
 
   // Pintasan keyboard untuk menambah dan menghapus item
   useEffect(() => {
@@ -162,7 +141,6 @@ export default function FormulirPembelian({
       if (e.key === "Escape" && splitModalIndex != null) {
         e.preventDefault();
         setSplitModalIndex(null);
-        setSplitModalDraft([]);
         return;
       }
       // Hanya jalan saat Ctrl/Cmd ditekan
@@ -364,105 +342,27 @@ export default function FormulirPembelian({
     }));
   };
 
-  /**
-   * Buka modal pola-potong untuk satu item. Memuat split_batches yang sudah ada.
-   * batches as draft, or seeds a single default batch covering all rolls.
-   */
+  /** Buka modal pola-potong untuk satu item. */
   const handleOpenSplit = (index: number) => {
-    const item = formData.items[index];
-    const qty = Math.max(1, Math.round(Number(item.jumlah_roll) || 1));
-    const existing = item.split_batches ?? [];
-    setSplitModalDraft(
-      existing.length > 0
-        ? existing.map((b) => ({ ...b }))
-        : [{ count: qty, targets_text: "" }]
-    );
     setSplitModalIndex(index);
   };
 
-  const handleSplitDraftAddBatch = () => {
+  /** Simpan pola valid (dari ModalSplitRoll) ke item terkait. */
+  const handleApplySplit = (batches: SplitBatch[]) => {
     if (splitModalIndex == null) return;
-    const item = formData.items[splitModalIndex];
-    const qty = Math.max(1, Math.round(Number(item.jumlah_roll) || 1));
-    const used = sumBatchRolls(splitModalDraft);
-    const remaining = Math.max(1, qty - used);
-    setSplitModalDraft((prev) => [
-      ...prev,
-      { count: remaining, targets_text: "" },
-    ]);
-  };
-
-  const handleSplitDraftRemoveBatch = (batchIndex: number) => {
-    setSplitModalDraft((prev) => prev.filter((_, i) => i !== batchIndex));
-  };
-
-  const handleSplitDraftChange = (
-    batchIndex: number,
-    field: keyof SplitBatch,
-    value: any
-  ) => {
-    setSplitModalDraft((prev) => {
-      const next = [...prev];
-      const batch = { ...next[batchIndex] };
-      if (field === "count") {
-        batch.count = Math.max(0, Math.round(Number(value) || 0));
-      } else {
-        batch.targets_text = String(value);
-      }
-      next[batchIndex] = batch;
-      return next;
-    });
-  };
-
-  const handleSplitModalSave = () => {
-    if (splitModalIndex == null) return;
-    const item = formData.items[splitModalIndex];
-    const lebar = Number(item.lebar) || 0;
-    const qty = Math.max(1, Math.round(Number(item.jumlah_roll) || 1));
-
-    const validBatches = splitModalDraft
-      .map((b) => ({
-        count: Math.max(0, Math.round(Number(b.count) || 0)),
-        targets: parseSplitTargets(b.targets_text),
-        targets_text: b.targets_text,
-      }))
-      .filter((b) => b.count > 0 && b.targets.length > 0);
-
-    for (const b of validBatches) {
-      const sum = b.targets.reduce((acc, n) => acc + n, 0);
-      if (Math.abs(sum - lebar) > 0.000001) {
-        showNotification(
-          "error",
-          `Total lebar pola (${sum}m) harus sama dengan lebar roll (${lebar}m).`
-        );
-        return;
-      }
-    }
-    const totalCount = validBatches.reduce((sum, b) => sum + b.count, 0);
-    if (totalCount > qty) {
-      showNotification(
-        "error",
-        `Total roll dipotong (${totalCount}) melebihi qty (${qty}).`
-      );
-      return;
-    }
-
     setFormData((prev) => {
       const items = [...prev.items];
       const target = { ...items[splitModalIndex] };
-      target.split_batches = validBatches.map((b) => ({
-        count: b.count,
-        targets_text: b.targets_text,
-      }));
-      target.split_enabled = validBatches.length > 0;
+      target.split_batches = batches;
+      target.split_enabled = batches.length > 0;
       items[splitModalIndex] = target;
       return { ...prev, items };
     });
     setSplitModalIndex(null);
-    setSplitModalDraft([]);
   };
 
-  const handleSplitModalClear = () => {
+  /** Hapus semua pola dari item terkait. */
+  const handleClearSplit = () => {
     if (splitModalIndex == null) return;
     setFormData((prev) => {
       const items = [...prev.items];
@@ -473,12 +373,10 @@ export default function FormulirPembelian({
       return { ...prev, items };
     });
     setSplitModalIndex(null);
-    setSplitModalDraft([]);
   };
 
   const handleSplitModalClose = () => {
     setSplitModalIndex(null);
-    setSplitModalDraft([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1347,174 +1245,18 @@ export default function FormulirPembelian({
       (() => {
         const item = formData.items[splitModalIndex];
         if (!item) return null;
-        const lebar = Number(item.lebar) || 0;
-        const panjang = Number(item.panjang) || 0;
-        const qty = Math.max(1, Math.round(Number(item.jumlah_roll) || 1));
-        const usedRolls = sumBatchRolls(splitModalDraft);
-        const remaining = qty - usedRolls;
         return (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) handleSplitModalClose();
-            }}
-          >
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-auto">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                    Atur Potongan Roll
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
-                    {item.nama_barang || "Item"} · {qty} roll @ {lebar}m × {panjang}m
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSplitModalClose}
-                  className="p-1 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded"
-                  title="Tutup"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
-                Tiap pola = N roll dengan lebar potongan yang sama. Total lebar
-                tiap pola harus sama dengan {lebar}m. Roll yang tidak masuk
-                pola manapun akan dibiarkan utuh.
-              </p>
-              <div className="space-y-2">
-                {splitModalDraft.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-slate-400 italic text-center py-4">
-                    Belum ada pola. Klik &quot;Tambah pola&quot; di bawah.
-                  </p>
-                ) : null}
-                {splitModalDraft.map((batch, bIdx) => {
-                  const targets = parseSplitTargets(batch.targets_text);
-                  const sum = targets.reduce((acc, n) => acc + n, 0);
-                  const valid =
-                    targets.length > 0 && Math.abs(sum - lebar) < 0.000001;
-                  return (
-                    <div
-                      key={bIdx}
-                      className="grid grid-cols-12 gap-2 items-start p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded border border-purple-200 dark:border-purple-900/40"
-                    >
-                      <div className="col-span-2">
-                        <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
-                          Roll
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={batch.count || ""}
-                          onChange={(e) =>
-                            handleSplitDraftChange(bIdx, "count", e.target.value)
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-                      <div className="col-span-9">
-                        <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
-                          Lebar potongan (dipisah koma)
-                        </label>
-                        <input
-                          type="text"
-                          value={batch.targets_text ?? ""}
-                          onChange={(e) =>
-                            handleSplitDraftChange(
-                              bIdx,
-                              "targets_text",
-                              e.target.value
-                            )
-                          }
-                          placeholder="contoh: 1.5, 1"
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                        <p
-                          className={`text-[11px] mt-0.5 ${
-                            valid
-                              ? "text-emerald-600 dark:text-emerald-300"
-                              : "text-amber-600 dark:text-amber-300"
-                          }`}
-                        >
-                          {targets.length === 0
-                            ? `Σ ? / ${lebar}m`
-                            : `Σ ${sum}m / ${lebar}m`}
-                        </p>
-                      </div>
-                      <div className="col-span-1 flex items-end justify-end h-full">
-                        <button
-                          type="button"
-                          onClick={() => handleSplitDraftRemoveBatch(bIdx)}
-                          className="mt-4 p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded"
-                          title="Hapus pola"
-                        >
-                          <TrashIcon size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-gray-600 dark:text-slate-400">
-                    {usedRolls} / {qty} roll dipotong
-                    {remaining > 0
-                      ? ` · ${remaining} dibiarkan utuh`
-                      : remaining < 0
-                        ? ` · melebihi ${Math.abs(remaining)} roll!`
-                        : ""}
-                  </span>
-                  {remaining > 0 ? (
-                    <button
-                      type="button"
-                      onClick={handleSplitDraftAddBatch}
-                      className="text-purple-600 dark:text-purple-300 font-medium hover:underline"
-                    >
-                      + Tambah pola
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-2 border-t dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={handleSplitModalClear}
-                  className="px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-sm font-medium"
-                >
-                  Hapus semua pola
-                </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSplitModalClose}
-                    className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSplitModalSave}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-                  >
-                    Simpan
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ModalSplitRoll
+            namaBarang={item.nama_barang}
+            lebar={Number(item.lebar) || 0}
+            panjang={Number(item.panjang) || 0}
+            jumlahRoll={Math.max(1, Math.round(Number(item.jumlah_roll) || 1))}
+            initialBatches={item.split_batches ?? []}
+            onClose={handleSplitModalClose}
+            onApply={handleApplySplit}
+            onClear={handleClearSplit}
+            showNotification={showNotification}
+          />
         );
       })()}
     </>

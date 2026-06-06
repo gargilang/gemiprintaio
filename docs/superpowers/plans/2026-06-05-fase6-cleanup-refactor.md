@@ -252,13 +252,15 @@ Baca seluruh file. Tandai: `notice`, `pendingConfirm`, `finCats` (bersama → te
 
 Pindahkan UI + state Pengurus ke `pengaturan-keuangan/TabPengurus.tsx`. Props: state bersama + callback yang dibutuhkan (`showNotice`, `requestConfirm`, `finCats`, `onChanged`). Verifikasi build.
 
-- [ ] **Step 3: Ekstrak TabKategori & TabKolomRumus**
+- [x] **Step 3: Ekstrak TabKategori & TabKolomRumus**
 
 Sama, satu per satu, verifikasi build tiap ekstraksi. Induk jadi shell: header + tab switch + render tab aktif (kondisional, bukan semua mounted).
 
-- [ ] **Step 4: Verifikasi + commit**
+- [x] **Step 4: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build`. Tes tiap tab + dialog konfirmasi + simpan rumus.
+
+> Catatan eksekusi (handover): status nyata berbeda dari checkbox lama — `KolomTab` sudah diekstrak di commit pra-Fase 6. B2 dikerjakan 3 commit: (1) buang dead code tab Rumus/Uji-coba lama, (2) ekstrak `TabKategori`, (3) ekstrak `TabPengurus`. Helper bersama di `pengaturan-keuangan/shared.ts`. Induk 1266→452 baris. type-check + eslint + build + 242 test hijau.
 
 ```bash
 git add src/components/finance
