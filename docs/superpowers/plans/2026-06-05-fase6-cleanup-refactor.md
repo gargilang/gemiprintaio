@@ -17,15 +17,18 @@
 - ✅ **B1 step 2** — `CategoriesView` diekstrak ke `src/app/pengaturan/setup/CategoriesView.tsx` + orphan import dibersihkan. Commit `6677c04`. Type-check + build PASS.
 
 **SUDAH SELESAI di branch `fase6-tierb` (lanjutan, BELUM merge):**
-- ✅ **B1 step 3** — `SubcategoriesView` diekstrak ke `setup/SubcategoriesView.tsx` (props `{ category, onBack }`).
+- ✅ **B1 step 3** — `SubcategoriesView` diekstrak ke `setup/SubcategoriesView.tsx` (props `{ category }`; prop mati `onBack` dibuang di followup).
 - ✅ **B1 step 4** — `UnitsSection` diekstrak ke `setup/UnitsSection.tsx` (props `{ autoOpenModal }`).
-- ✅ **B1 step 5** — induk `PengaturanSetupTab.tsx` kini 297 baris (router `SetupTab` + `MaterialsTab` saja); semua orphan import dibersihkan; type-check 0 error + build sukses + 242 test hijau. Commit B1 final.
+- ✅ **B1 step 5** — induk `PengaturanSetupTab.tsx` kini 297 baris (router `SetupTab` + `MaterialsTab` saja); semua orphan import dibersihkan. Commit `5530af4` + followup `0f3689c`.
+- ✅ **B2** — `PengaturanKeuanganModal.tsx` (1266→452 baris) dipecah: buang dead code tab Rumus/Uji-coba lama (`9cab118`), ekstrak `TabKategori` (`88106cc`) + `TabPengurus` (`262b530`) ke `pengaturan-keuangan/` + helper `shared.ts`. `KolomTab` sudah diekstrak sejak sebelum Fase 6.
+- ✅ **B4** — `FormulirPembelian.tsx` dipecah ke `pembelian/` (`ModalSplitRoll` `75725ff`, `BarisItemPembelian` `1905c3d`, `PanelPpnPembelian` + types/split-utils `74bc4af`).
+- ✅ **B5** — `ModalTambahBarang.tsx` → ekstrak `PanelHargaSatuan` (& panel varian roll) ke `barang/` (`6eb642d`).
+- ✅ **B6** — `ExpressionAssistant.tsx` dipecah ke `expression/` (`c29ada5`); `produksi/spk/page.tsx` dipecah ke modul print/status/detail (`378a487`).
+- ✅ **Pembersihan orphan import lintas-Tier-B** — `sumBatchRolls`, `type ProductionOrder`, binding `catch (error)` tak terpakai (`89a732a`).
+- ✅ **Verifikasi penuh Tier B**: `npm run lint` 0 error (34 warning PRE-EXISTING di file money-path, dijadwalkan Tier C C3 — bukan introduksi baru), `type-check` 0 error, `build` sukses, `jest` 242/242 hijau.
 
 **BELUM dikerjakan (lanjutkan dari sini):**
-- ⬜ **B2** — pecah `PengaturanKeuanganModal.tsx` per-tab.
-- ⬜ **B4** — pecah `FormulirPembelian.tsx`.
-- ⬜ **B5** — pecah `ModalTambahBarang.tsx`.
-- ⬜ **B6** — pecah `ExpressionAssistant.tsx` + SPK page.
+- ⬜ **Merge `fase6-tierb` → `main`** (fast-forward), push (auto-deploy Vercel), health-check.
 - ⬜ **Tier C penuh** (C1 keuangan, C2 POS, C3 sisa hooks, C4 virtualisasi, C5 audit cross-platform) — RISIKO TINGGI, money-path, nyalakan Supabase lokal.
 
 **Pola wajib (terbukti di B1/B3 & Fase 5):** baca file → petakan state → ekstrak ke file fokus dengan props eksplisit → hapus import/state yang jadi orphan di induk (type-check TIDAK menangkap unused import, cek manual via Grep) → `npm run type-check && npm run build` → commit per langkah. Catatan: tool Write sering gagal untuk file besar berisi backtick/JSX — pakai stub kecil lalu StrReplace bertahap, atau Node `fs` splice (lihat riwayat commit B1). Detail lengkap workaround ada di `.cursorrules` → bagian "Editing large / special-character files".
