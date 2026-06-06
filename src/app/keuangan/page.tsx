@@ -220,8 +220,7 @@ export default function FinancePage() {
   >(new Set());
   const [showKategoriDropdown, setShowKategoriDropdown] = useState(false);
 
-  // Virtualization state — for performance with many rows
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  // Kontainer tabel — dipakai untuk reset posisi scroll saat filter berubah.
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const debitInputRef = useRef<HTMLInputElement>(null);
@@ -257,13 +256,6 @@ export default function FinancePage() {
       selectedKategoriFilters.has(cb.kategori_transaksi)
     );
   }, [cashBooks, selectedKategoriFilters]);
-
-  // Visible cashbooks — only render visible rows (virtualization)
-  const visibleCashBooks = useMemo(() => {
-    // Disable virtualization for lists with <= 100 items to avoid scrollbar issues
-    if (filteredCashBooks.length <= 100) return filteredCashBooks;
-    return filteredCashBooks.slice(visibleRange.start, visibleRange.end);
-  }, [filteredCashBooks, visibleRange]);
 
   // Memoized summary values — recalculate once per cashBooks change.
   // Reads the cumulative metrics from the latest visible row's hardcoded
@@ -354,39 +346,10 @@ export default function FinancePage() {
     };
   }, [router]);
 
-  // Scroll handler for lazy-loading rows (virtualization)
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!tableContainerRef.current) return;
-
-      const container = tableContainerRef.current;
-      const scrollTop = container.scrollTop;
-      const rowHeight = 60; // Approximate row height
-      const visibleRows = Math.ceil(container.clientHeight / rowHeight);
-      const buffer = 10; // Extra rows to render above/below
-
-      const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
-      const end = Math.min(
-        filteredCashBooks.length,
-        start + visibleRows + buffer * 2
-      );
-
-      setVisibleRange({ start, end });
-    };
-
-    const container = tableContainerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      handleScroll(); // Initial calculation
-      return () => container.removeEventListener("scroll", handleScroll);
-    }
-  }, [filteredCashBooks.length]);
-
-  // Reset scroll position when filter changes
+  // Reset posisi scroll tabel saat filter kategori berubah.
   useEffect(() => {
     if (tableContainerRef.current) {
       tableContainerRef.current.scrollTop = 0;
-      setVisibleRange({ start: 0, end: 50 });
     }
   }, [selectedKategoriFilters]);
 
@@ -1499,60 +1462,20 @@ export default function FinancePage() {
                 </tr>
               ) : (
                 <>
-                  {/* Spacer before visible range — only when data > 100 */}
-                  {filteredCashBooks.length > 100 && visibleRange.start > 0 && (
-                    <tr
-                      style={{
-                        height: `${visibleRange.start * 60}px`,
-                        opacity: 0,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <td className="px-3 py-3">&nbsp;</td>
-                      <td className="px-3 py-3">&nbsp;</td>
-                      <td className="px-3 py-3">&nbsp;</td>
-                      <td className="px-3 py-3">&nbsp;</td>
-                      <td className="px-3 py-3">&nbsp;</td>
-                      <td className="px-3 py-3">&nbsp;</td>
-                    </tr>
-                  )}
-                  {visibleCashBooks.map((cb, idx) => {
-                    const actualIndex = visibleRange.start + idx;
-                    return (
-                      <CashBookRow
-                        key={cb.id}
-                        cashBook={cb}
-                        index={actualIndex}
-                        viewingArchive={!!viewingArchive}
-                        formatRupiah={formatRupiah}
-                        formatDateJakarta={formatDateJakarta}
-                        getKategoriColor={getKategoriColor}
-                        onEdit={handleOpenEditModal}
-                        onEditManual={handleOpenEditManual}
-                        onDelete={handleDelete}
-                      />
-                    );
-                  })}
-                  {/* Spacer after visible range — only when data > 100 */}
-                  {filteredCashBooks.length > 100 &&
-                    visibleRange.end < filteredCashBooks.length && (
-                      <tr
-                        style={{
-                          height: `${
-                            (filteredCashBooks.length - visibleRange.end) * 60
-                          }px`,
-                          opacity: 0,
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <td className="px-3 py-3">&nbsp;</td>
-                        <td className="px-3 py-3">&nbsp;</td>
-                        <td className="px-3 py-3">&nbsp;</td>
-                        <td className="px-3 py-3">&nbsp;</td>
-                        <td className="px-3 py-3">&nbsp;</td>
-                        <td className="px-3 py-3">&nbsp;</td>
-                      </tr>
-                    )}
+                  {filteredCashBooks.map((cb, idx) => (
+                    <CashBookRow
+                      key={cb.id}
+                      cashBook={cb}
+                      index={idx}
+                      viewingArchive={!!viewingArchive}
+                      formatRupiah={formatRupiah}
+                      formatDateJakarta={formatDateJakarta}
+                      getKategoriColor={getKategoriColor}
+                      onEdit={handleOpenEditModal}
+                      onEditManual={handleOpenEditManual}
+                      onDelete={handleDelete}
+                    />
+                  ))}
                 </>
               )}
             </tbody>
