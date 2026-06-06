@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ToastNotifikasi, {
   NotificationToastProps,
@@ -17,7 +17,7 @@ import PengaturanKeuanganModal, { type PengaturanTab } from "@/components/financ
 import DynamicActorSummary from "@/components/finance/DynamicActorSummary";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { MoneyIcon } from "@/components/icons/PageIcons";
-import { BoxIcon, CheckIcon } from "@/components/icons/ContentIcons";
+import { BoxIcon } from "@/components/icons/ContentIcons";
 import {
   getDebtsAction,
   getReceivablesAction,
@@ -35,167 +35,20 @@ import {
 } from "@/lib/client-session";
 import { useSWRConfig } from "swr";
 import { useCachedData } from "@/lib/use-cached-data";
+import CashBookRow from "./CashBookRow";
+import {
+  stripReferenceId,
+  resolveKategoriColor,
+  type FinanceCategoryConfig,
+} from "./keuangan-utils";
 
-// Helper function to strip [REF:xxx] from display while keeping it in database
-const stripReferenceId = (text: string | null | undefined): string => {
-  if (!text) return "";
-  return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
-};
 
-
-// Memoized CashBook Row Component — avoids unnecessary re-renders
-const CashBookRow = memo(
-  ({
-    cashBook,
-    index,
-    viewingArchive,
-    formatRupiah,
-    formatDateJakarta,
-    getKategoriColor,
-    onEdit,
-    onEditManual,
-    onDelete,
-  }: {
-    cashBook: CashBook;
-    index: number;
-    viewingArchive: boolean;
-    formatRupiah: (amount: number) => string;
-    formatDateJakarta: (date: string) => string;
-    getKategoriColor: (kategori: KategoriTransaksi) => {
-      bg: string;
-      text: string;
-      border: string;
-    };
-    onEdit: (cb: CashBook) => void;
-    onEditManual: (cb: CashBook) => void;
-    onDelete: (cb: CashBook) => void;
-  }) => {
-    const kategoriColor = getKategoriColor(cashBook.kategori_transaksi);
-
-    return (
-      <tr
-        className={`
-          hover:bg-orange-50 transition-all cursor-default
-          ${index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"}
-        `}
-      >
-        <td className="px-3 py-3 text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">
-          {formatDateJakarta(cashBook.tanggal)}
-        </td>
-        <td className="px-3 py-3">
-          <span
-            className={`inline-block px-2 py-1 text-xs font-semibold rounded-lg border ${kategoriColor.bg} ${kategoriColor.text} ${kategoriColor.border}`}
-          >
-            {cashBook.kategori_transaksi}
-          </span>
-        </td>
-        <td className="px-3 py-3 text-sm text-right font-semibold">
-          {cashBook.debit > 0 ? (
-            <span className="text-green-600">
-              +{formatRupiah(cashBook.debit)}
-            </span>
-          ) : cashBook.kredit > 0 ? (
-            <span className="text-red-600">
-              -{formatRupiah(cashBook.kredit)}
-            </span>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </td>
-        <td className="px-3 py-3 text-sm text-gray-700 dark:text-slate-300 max-w-xs truncate">
-          {stripReferenceId(cashBook.keperluan) || "-"}
-        </td>
-        <td className="px-3 py-3 text-sm text-right font-bold text-pink-600">
-          {formatRupiah(cashBook.saldo)}
-        </td>
-        <td className="px-3 py-3 text-center">
-          <div className="flex gap-2 justify-center">
-            {!viewingArchive ? (
-              <>
-                <button
-                  onClick={() => onEdit(cashBook)}
-                  className="p-2 text-pink-600 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
-                  title="Edit Transaksi"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => onEditManual(cashBook)}
-                  className="p-2 text-orange-600 dark:text-orange-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
-                  title="Edit Manual (Timpa)"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => onDelete(cashBook)}
-                  className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors inline-flex items-center justify-center"
-                  title="Hapus"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </>
-            ) : (
-              <span className="text-gray-400 text-sm italic">Hanya baca</span>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  }
-);
-
-CashBookRow.displayName = "CashBookRow";
+// Memoized CashBook Row Component — diekstrak ke ./CashBookRow (Fase 6 C1)
 
 interface User {
   id: string;
   role: string;
   aktif_status: number;
-}
-
-interface FinanceCategoryConfig {
-  id?: string;
-  category_code: string;
-  display_name: string;
-  color_bg: string;
-  color_text: string;
-  color_border: string;
-  metric_contributions?: unknown;
 }
 
 
@@ -293,7 +146,6 @@ export default function FinancePage() {
   const [showPengaturanModal, setShowPengaturanModal] = useState(false);
   const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("pengurus");
   const [actorSummaryTick, setActorSummaryTick] = useState(0);
-  const [lastCashBookLoadAt, setLastCashBookLoadAt] = useState(0);
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -862,106 +714,10 @@ export default function FinancePage() {
     }).format(amount);
   }, []);
 
-  const getKategoriColor = useCallback((kategori: string) => {
-    const dynamicCategory = financeCategories.find(
-      (item) => item.category_code === kategori
-    );
-    if (dynamicCategory) {
-      return {
-        bg: dynamicCategory.color_bg,
-        text: dynamicCategory.color_text,
-        border: dynamicCategory.color_border,
-      };
-    }
-
-    const colors: Record<
-      string,
-      { bg: string; text: string; border: string }
-    > = {
-      KAS: {
-        bg: "bg-blue-100 dark:bg-blue-900/30",
-        text: "text-blue-800 dark:text-blue-200",
-        border: "border-blue-300",
-      },
-      BIAYA: {
-        bg: "bg-red-100 dark:bg-red-900/30",
-        text: "text-red-800",
-        border: "border-red-300",
-      },
-      OMZET: {
-        bg: "bg-green-100 dark:bg-green-900/30",
-        text: "text-green-800",
-        border: "border-green-300",
-      },
-      INVESTOR: {
-        bg: "bg-purple-100 dark:bg-purple-900/30",
-        text: "text-purple-800",
-        border: "border-purple-300",
-      },
-      SUBSIDI: {
-        bg: "bg-yellow-100 dark:bg-yellow-900/30",
-        text: "text-yellow-800",
-        border: "border-yellow-300",
-      },
-      LUNAS: {
-        bg: "bg-teal-100 dark:bg-teal-900/30",
-        text: "text-teal-800",
-        border: "border-teal-300",
-      },
-      SUPPLY: {
-        bg: "bg-orange-100 dark:bg-orange-900/30",
-        text: "text-orange-800",
-        border: "border-orange-300",
-      },
-      HPP: {
-        bg: "bg-slate-100",
-        text: "text-slate-800",
-        border: "border-slate-300",
-      },
-      LABA: {
-        bg: "bg-emerald-100 dark:bg-emerald-900/30",
-        text: "text-emerald-800",
-        border: "border-emerald-300",
-      },
-      KOMISI: {
-        bg: "bg-cyan-100 dark:bg-cyan-900/30",
-        text: "text-cyan-800",
-        border: "border-cyan-300",
-      },
-      TABUNGAN: {
-        bg: "bg-indigo-100 dark:bg-indigo-900/30",
-        text: "text-indigo-800",
-        border: "border-indigo-300",
-      },
-      HUTANG: {
-        bg: "bg-rose-100",
-        text: "text-rose-800",
-        border: "border-rose-300",
-      },
-      PIUTANG: {
-        bg: "bg-lime-100",
-        text: "text-lime-800",
-        border: "border-lime-300",
-      },
-      "PRIBADI-A": {
-        bg: "bg-sky-100",
-        text: "text-sky-800",
-        border: "border-sky-300",
-      },
-      "PRIBADI-S": {
-        bg: "bg-pink-100 dark:bg-pink-900/30",
-        text: "text-pink-800",
-        border: "border-pink-300",
-      },
-    };
-    return (
-      colors[kategori] || {
-        bg: "bg-gray-100 dark:bg-slate-800",
-        text: "text-gray-800 dark:text-slate-100",
-        border: "border-gray-300",
-      }
-    );
-  }, [financeCategories]);
+  const getKategoriColor = useCallback(
+    (kategori: string) => resolveKategoriColor(kategori, financeCategories),
+    [financeCategories]
+  );
 
   const handleDelete = (cashBook: CashBook) => {
     // Check if this transaction is from purchases (pembelian cash or pembayaran hutang)
