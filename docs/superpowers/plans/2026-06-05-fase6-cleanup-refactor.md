@@ -302,7 +302,7 @@ git commit -m "refactor(ui): split PengaturanHargaTab into harga/ tab components
 
 **Konteks:** form pembelian = daftar item + panel PPN + modal split-roll. Jalur pembelian (sentuh stok via service) — verifikasi ekstra.
 
-- [ ] **Step 1: Petakan state**
+- [x] **Step 1: Petakan state**
 
 Baca seluruh file. Tandai state induk (daftar item, total, vendor, metode bayar, PPN header) vs state per-baris item. Item row & PPN panel terima props + callback `onChange`/`onRemove`.
 
@@ -310,13 +310,15 @@ Baca seluruh file. Tandai state induk (daftar item, total, vendor, metode bayar,
 
 Satu baris item (barang, qty, harga, dimensi roll) → komponen props `{ item, index, onChange, onRemove, ...lookups }`. Verifikasi build. Perbaiki warning `handleRemoveItem` exhaustive-deps (baris ~186) dengan `useCallback` di induk saat ini.
 
-- [ ] **Step 3: Ekstrak `PanelPpnPembelian` + `ModalSplitRoll`**
+- [x] **Step 3: Ekstrak `PanelPpnPembelian` + `ModalSplitRoll`**
 
 Pindahkan panel PPN & modal split-roll. Verifikasi iron rule #6 (dimensi roll Lebar×Panjang, jumlah_roll integer ≥1) tetap utuh. Tes manual: buat pembelian dengan PPN + split roll.
 
-- [ ] **Step 4: Verifikasi + commit**
+- [x] **Step 4: Verifikasi + commit**
 
 Run: `npm run type-check && npm run build && npx jest src/lib/__tests__`
+
+> Catatan eksekusi: B4 dikerjakan 3 commit (ModalSplitRoll+split-utils, BarisItemPembelian+types, PanelPpnPembelian). Induk 1522→~840 baris. type-check + eslint bersih + build + 242 test hijau. Warning exhaustive-deps dibereskan via useCallback.
 
 ```bash
 git add src/components

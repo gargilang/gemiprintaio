@@ -11,6 +11,7 @@ import PilihanCari from "./PilihanCari";
 import { getTodayJakarta } from "@/lib/date-utils";
 import ModalSplitRoll from "./pembelian/ModalSplitRoll";
 import BarisItemPembelian from "./pembelian/BarisItemPembelian";
+import PanelPpnPembelian from "./pembelian/PanelPpnPembelian";
 import {
   type Material,
   type PurchaseItem,
@@ -774,114 +775,15 @@ export default function FormulirPembelian({
                 </td>
               </tr>
               {/* PPN masukan */}
-              <tr className="bg-emerald-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-800">
-                <td colSpan={6} className="px-4 py-3 space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.kena_ppn}
-                      onChange={(e) =>
-                        handleInputChange("kena_ppn", e.target.checked)
-                      }
-                      className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
-                    />
-                    <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                      Pembelian ini kena PPN (PPN masukan)
-                    </span>
-                  </label>
-                  {formData.kena_ppn && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
-                          Tarif PPN (%)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.ppn_persen}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "ppn_persen",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
-                          Metode harga
-                        </label>
-                        <select
-                          value={formData.ppn_metode}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "ppn_metode",
-                              e.target.value as "EKSKLUSIF" | "INKLUSIF"
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                          <option value="EKSKLUSIF">Belum termasuk PPN</option>
-                          <option value="INKLUSIF">Sudah termasuk PPN</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
-                          No. Faktur Pajak Vendor
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.nomor_faktur_pajak_vendor}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "nomor_faktur_pajak_vendor",
-                              e.target.value
-                            )
-                          }
-                          placeholder="010.000-25.00000001"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
-                          Tanggal Faktur Pajak
-                        </label>
-                        <input
-                          type="date"
-                          value={formData.tanggal_faktur_pajak}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "tanggal_faktur_pajak",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div className="md:col-span-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.dapat_dikreditkan}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "dapat_dikreditkan",
-                                e.target.checked
-                              )
-                            }
-                            className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
-                          />
-                          <span className="text-xs text-gray-700 dark:text-slate-300">
-                            PPN masukan dapat dikreditkan (centang kalau faktur
-                            pajak vendor lengkap dan vendor PKP)
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </td>
-              </tr>
+              <PanelPpnPembelian
+                kenaPpn={formData.kena_ppn}
+                ppnPersen={formData.ppn_persen}
+                ppnMetode={formData.ppn_metode}
+                dapatDikreditkan={formData.dapat_dikreditkan}
+                nomorFakturPajakVendor={formData.nomor_faktur_pajak_vendor}
+                tanggalFakturPajak={formData.tanggal_faktur_pajak}
+                onChange={handleInputChange}
+              />
               {/* Diterima Oleh Row */}
               <tr className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3">
