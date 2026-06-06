@@ -391,7 +391,6 @@ function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14
           width={48}
         />
         <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={((value: number | string) => {
             const n = Number(value);
             return [

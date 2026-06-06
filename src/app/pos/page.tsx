@@ -81,7 +81,8 @@ export default function POSPage() {
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
   const customers = safePos.customers ?? [];
-  const materials = safePos.materials ?? [];
+  // Stabilkan referensi array yang dipakai di useMemo (hindari dep berubah tiap render).
+  const materials = useMemo(() => safePos.materials ?? [], [safePos.materials]);
   const sales = safePos.sales ?? [];
   // Cache localStorage versi pre-maklon bisa hydrate posInitData tanpa field
   // subkontraktor — fallback ke array kosong sampai SWR re-fetch.
