@@ -751,11 +751,14 @@ export async function postProductionMaterialConsumption(input: {
   const ins = await db.insert("production_material_consumptions", consumption);
   if (ins.error) throw ins.error;
 
+  // Konfirmasi bahan menandai roll dipakai & stok keluar — ini AWAL
+  // pengerjaan, bukan akhir. Set status item ke PRINTING (proses), jangan
+  // langsung SELESAI. Operator menandai selesai manual lewat modal SPK.
   const upd = await db.update("item_produksi", item.id, {
-    status: "SELESAI",
+    status: "PRINTING",
     roll_inventory_status: "POSTED",
     operator_id: input.operator_id || item.operator_id || null,
-    selesai_proses: getCurrentTimestamp(),
+    mulai_proses: item.mulai_proses || getCurrentTimestamp(),
     diperbarui_pada: getCurrentTimestamp(),
   });
   if (upd.error) throw upd.error;

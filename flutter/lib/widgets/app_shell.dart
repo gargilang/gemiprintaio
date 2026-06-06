@@ -176,42 +176,15 @@ class AppShell extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 24,
+                  vertical: 20,
                   horizontal: 16,
                 ),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(
-                      'assets/logo-gemiprint-white.svg',
-                      width: 36,
-                      height: 36,
-                    ),
-                    const SizedBox(width: 12),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'gemi',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 22,
-                              fontFamily: AppFonts.brand,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          const TextSpan(
-                            text: 'print',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontFamily: AppFonts.brand,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SvgPicture.asset(
+                    'assets/logo-gemiprint-white.svg',
+                    width: 112,
+                  ),
                 ),
               ),
               const Divider(color: Colors.white12, height: 1),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ModalFormShell from "@/components/ModalFormShell";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import FormPenggunaModal from "./FormPenggunaModal";
+import MenuAksi from "@/components/MenuAksi";
 import ToastNotifikasi, {
   NotificationToastProps,
 } from "@/components/ToastNotifikasi";
@@ -724,10 +725,14 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      {c.dapat_melihat_password && (
-                        <button
-                          onClick={async () => {
+                    <MenuAksi
+                      labelMenu={`Aksi untuk ${c.nama_layanan}`}
+                      aksi={[
+                        {
+                          label: "Salin Password",
+                          judul: "Salin Password",
+                          tampil: !!c.dapat_melihat_password,
+                          onClick: async () => {
                             try {
                               let password = visiblePasswords[c.id];
                               if (!password) {
@@ -760,111 +765,111 @@ export default function UsersPage() {
                                 "Tidak bisa menampilkan password"
                               );
                             }
-                          }}
-                          className="p-2 text-emerald-700 dark:text-emerald-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
-                          title="Salin Password"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                      {/* Edit */}
-                      <button
-                        onClick={() => {
-                          setEditingCred(c);
-                          setShowCredPassword(false);
-                          setCredForm({
-                            nama_layanan: c.nama_layanan,
-                            nama_pengguna_akun: c.nama_pengguna_akun,
-                            password: "",
-                            catatan: c.catatan,
-                            privat_status: c.privat_status,
-                          });
-                          setShowCredModal(true);
-                        }}
-                        className="p-2 text-[#00afef] hover:bg-sky-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-                      {/* Delete */}
-                      <button
-                        onClick={() => {
-                          setConfirmDialog({
-                            show: true,
-                            title: "Hapus Kredensial",
-                            message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.nama_layanan}\nAkun: ${c.nama_pengguna_akun}\n\nTindakan ini tidak dapat dibatalkan!`,
-                            confirmText: "Ya, Hapus",
-                            cancelText: "Batal",
-                            type: "danger",
-                            onConfirm: async () => {
-                              setConfirmDialog(null);
-                              try {
-                                const res = await fetch(
-                                  `/api/passwords/${c.id}`,
-                                  {
-                                    method: "DELETE",
-                                    credentials: "include",
-                                  }
-                                );
-                                const data = await res.json();
-                                if (!res.ok)
-                                  throw new Error(
-                                    data?.error || "Gagal menghapus"
+                          },
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-emerald-700 dark:text-emerald-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Edit",
+                          judul: "Edit",
+                          onClick: () => {
+                            setEditingCred(c);
+                            setShowCredPassword(false);
+                            setCredForm({
+                              nama_layanan: c.nama_layanan,
+                              nama_pengguna_akun: c.nama_pengguna_akun,
+                              password: "",
+                              catatan: c.catatan,
+                              privat_status: c.privat_status,
+                            });
+                            setShowCredModal(true);
+                          },
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-[#00afef]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Hapus",
+                          judul: "Hapus",
+                          varian: "bahaya",
+                          onClick: () => {
+                            setConfirmDialog({
+                              show: true,
+                              title: "Hapus Kredensial",
+                              message: `Yakin ingin menghapus kredensial berikut?\n\nLayanan: ${c.nama_layanan}\nAkun: ${c.nama_pengguna_akun}\n\nTindakan ini tidak dapat dibatalkan!`,
+                              confirmText: "Ya, Hapus",
+                              cancelText: "Batal",
+                              type: "danger",
+                              onConfirm: async () => {
+                                setConfirmDialog(null);
+                                try {
+                                  const res = await fetch(
+                                    `/api/passwords/${c.id}`,
+                                    {
+                                      method: "DELETE",
+                                      credentials: "include",
+                                    }
                                   );
-                                showMsg("success", "Kredensial dihapus");
-                                await loadCredentials();
-                              } catch (err) {
-                                console.error(err);
-                                showMsg(
-                                  "error",
-                                  "Tidak bisa menghapus kredensial"
-                                );
-                              }
-                            },
-                          });
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
-                        title="Hapus"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                                  const data = await res.json();
+                                  if (!res.ok)
+                                    throw new Error(
+                                      data?.error || "Gagal menghapus"
+                                    );
+                                  showMsg("success", "Kredensial dihapus");
+                                  await loadCredentials();
+                                } catch (err) {
+                                  console.error(err);
+                                  showMsg(
+                                    "error",
+                                    "Tidak bisa menghapus kredensial"
+                                  );
+                                }
+                              },
+                            });
+                          },
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-red-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          ),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

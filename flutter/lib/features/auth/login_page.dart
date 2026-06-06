@@ -35,10 +35,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _errorMessage = null;
     });
 
-    final result = await ref.read(authStateProvider.notifier).login(
-      _usernameController.text.trim(),
-      _passwordController.text,
-    );
+    final result = await ref
+        .read(authStateProvider.notifier)
+        .login(_usernameController.text.trim(), _passwordController.text);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -60,38 +59,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SvgPicture.asset(
-                  'assets/logo-gemiprint-white.svg',
-                  width: 72,
-                  height: 72,
-                ),
+                SvgPicture.asset('assets/logo-gemiprint-white.svg', width: 132),
                 const SizedBox(height: 16),
-                Text.rich(
-                  TextSpan(children: [
-                    TextSpan(
-                      text: 'gemi',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 30,
-                        fontFamily: AppFonts.brand,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    const TextSpan(
-                      text: 'print',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontFamily: AppFonts.brand,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 8),
                 Text(
                   'Masuk ke akun Anda',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Card(
@@ -109,11 +84,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               decoration: BoxDecoration(
                                 color: AppColors.error.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                  color: AppColors.error.withValues(alpha: 0.3),
+                                ),
                               ),
                               child: Text(
                                 _errorMessage!,
-                                style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                style: const TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           TextFormField(
@@ -123,23 +103,35 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               prefixIcon: Icon(Icons.person_outline_rounded),
                             ),
                             textInputAction: TextInputAction.next,
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Username diperlukan' : null,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Username diperlukan'
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _passwordController,
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline_rounded),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline_rounded,
+                              ),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
                               ),
                             ),
                             obscureText: _obscurePassword,
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _handleLogin(),
-                            validator: (v) => v == null || v.isEmpty ? 'Password diperlukan' : null,
+                            validator: (v) => v == null || v.isEmpty
+                                ? 'Password diperlukan'
+                                : null,
                           ),
                           const SizedBox(height: 24),
                           SizedBox(
@@ -150,7 +142,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
                                     )
                                   : const Text('Masuk'),
                             ),
@@ -158,7 +153,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           const SizedBox(height: 16),
                           Text(
                             'Server: ${AppConfig.apiBaseUrl}',
-                            style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 11,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],

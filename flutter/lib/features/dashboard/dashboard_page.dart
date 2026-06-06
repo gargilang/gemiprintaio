@@ -179,35 +179,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'gemi',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontFamily: AppFonts.brand,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'print',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontFamily: AppFonts.brand,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' — Sistem Manajemen Percetakan',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Sistem Manajemen Percetakan',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 13,
                     ),
                   ),
                   if (user != null) ...[

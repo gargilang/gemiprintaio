@@ -6,6 +6,7 @@ import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ModalCatatRusak from "./ModalCatatRusak";
 import ModalKonversiRoll from "./ModalKonversiRoll";
 import { BoxIcon } from "@/components/icons/ContentIcons";
+import MenuAksi from "@/components/MenuAksi";
 import ToastNotifikasi, {
   NotificationToastProps,
 } from "@/components/ToastNotifikasi";
@@ -168,137 +169,79 @@ const MaterialRow = memo(
           </div>
         </td>
         <td className="px-4 py-3">
-          <div className="flex items-center justify-center gap-2">
-            {material.lacak_inventori_status && (
-              <>
-                <button
-                  onClick={() => onViewMovements(material)}
-                  className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                  title="Riwayat stok"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
+          <MenuAksi
+            labelMenu={`Aksi untuk ${material.nama}`}
+            aksi={[
+              {
+                label: "Riwayat Stok",
+                judul: "Riwayat stok",
+                tampil: !!material.lacak_inventori_status,
+                onClick: () => onViewMovements(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </button>
-                <button
-                  onClick={() => onAdjustStock(material)}
-                  className="p-2 text-amber-600 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
-                  title="Adjustment stok"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v12m6-6H6"
-                    />
+                ),
+              },
+              {
+                label: "Adjustment Stok",
+                judul: "Adjustment stok",
+                tampil: !!material.lacak_inventori_status,
+                onClick: () => onAdjustStock(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
                   </svg>
-                </button>
-                <button
-                  onClick={() => onWasteMaterial(material)}
-                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                  title="Catat barang rusak / scrap"
-                >
-                  {/* Ikon "trash + warning" — berbeda dari hapus barang biasa.
-                      Pakai ikon fire/flame untuk menggambarkan scrap/rusak. */}
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"
-                    />
+                ),
+              },
+              {
+                label: "Catat Rusak / Scrap",
+                judul: "Catat barang rusak / scrap",
+                tampil: !!material.lacak_inventori_status,
+                onClick: () => onWasteMaterial(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-rose-600 dark:text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
                   </svg>
-                </button>
-                {Number(material.butuh_dimensi_status) === 1 && (
-                  <button
-                    onClick={() => onConvertRoll(material)}
-                    className="p-2 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-white/10 rounded-lg transition-colors"
-                    title="Konversi roll (potong roll jadi lebar baru)"
-                  >
-                    {/* Ikon scissors */}
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              onClick={() => onEdit(material)}
-              className="p-2 text-blue-600 dark:text-blue-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors"
-              title="Edit"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => onDelete(material)}
-              className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors"
-              title="Hapus"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
+                ),
+              },
+              {
+                label: "Konversi Roll",
+                judul: "Konversi roll (potong roll jadi lebar baru)",
+                tampil:
+                  !!material.lacak_inventori_status &&
+                  Number(material.butuh_dimensi_status) === 1,
+                onClick: () => onConvertRoll(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                  </svg>
+                ),
+              },
+              {
+                label: "Edit",
+                judul: "Edit",
+                onClick: () => onEdit(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                ),
+              },
+              {
+                label: "Hapus",
+                judul: "Hapus",
+                varian: "bahaya",
+                onClick: () => onDelete(material),
+                ikon: (
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                ),
+              },
+            ]}
+          />
         </td>
       </tr>
     );

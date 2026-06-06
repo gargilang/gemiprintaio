@@ -287,18 +287,22 @@ export default function KeranjangPOS({
         </div>
       </div>
 
-      {cart.length > 0 && hasRoundingChoice && (
+      {cart.length > 0 && (
         <div className="shrink-0 px-4 py-2.5 border-b border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60">
           <div className="flex items-center justify-between gap-2">
-            <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={roundCartPrices}
-                onChange={(e) => onRoundCartPricesChange(e.target.checked)}
-                className="w-3.5 h-3.5 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
-              />
-              Bulatkan kelipatan Rp 1.000
-            </label>
+            {hasRoundingChoice ? (
+              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={roundCartPrices}
+                  onChange={(e) => onRoundCartPricesChange(e.target.checked)}
+                  className="w-3.5 h-3.5 text-[#00afef] border-gray-300 rounded focus:ring-[#00afef]"
+                />
+                Bulatkan kelipatan Rp 1.000
+              </label>
+            ) : (
+              <span />
+            )}
             <button
               type="button"
               onClick={handlePreviewQuotation}
@@ -395,7 +399,7 @@ export default function KeranjangPOS({
                       Math.abs(item.harga_satuan - item.originalHargaSatuan) >
                         0.01 && (
                         <span className="ml-1.5 inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded uppercase tracking-wide">
-                          Override
+                          Harga Ubah
                         </span>
                       )}
                   </div>

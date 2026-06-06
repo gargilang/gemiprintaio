@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { QuotationIcon } from "@/components/icons/PageIcons";
+import MenuAksi from "@/components/MenuAksi";
 import {
   convertQuotationToSaleAction,
   createQuotationAction,
@@ -275,10 +276,44 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
                   <td className="p-3">{quote.pelanggan_nama_snapshot || "Umum"}</td>
                   <td className="p-3">{quote.status}{quote.converted_penjualan_id ? <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">→ faktur</span> : null}</td>
                   <td className="p-3 text-right">{money(quote.total_jumlah)}</td>
-                  <td className="space-x-2 p-3">
-                    <button className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => printQuote(quote)}>Cetak</button>
-                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "ACCEPTED"} className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors" onClick={() => changeStatus(quote.id, "ACCEPTED")}>Terima</button>
-                    <button disabled={saving || quote.status === "CONVERTED" || quote.status === "CANCELLED" || quote.status === "EXPIRED"} className="rounded bg-emerald-600 px-2 py-1 text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors" onClick={() => openConvert(quote)}>Konversi</button>
+                  <td className="p-3">
+                    <MenuAksi
+                      labelMenu={`Aksi untuk ${quote.nomor_penawaran}`}
+                      aksi={[
+                        {
+                          label: "Cetak",
+                          judul: "Cetak penawaran",
+                          onClick: () => printQuote(quote),
+                          ikon: (
+                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Terima",
+                          judul: "Tandai penawaran diterima",
+                          disabled: saving || quote.status === "CONVERTED" || quote.status === "ACCEPTED",
+                          onClick: () => changeStatus(quote.id, "ACCEPTED"),
+                          ikon: (
+                            <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Konversi ke Faktur",
+                          judul: "Konversi penawaran menjadi faktur penjualan",
+                          disabled: saving || quote.status === "CONVERTED" || quote.status === "CANCELLED" || quote.status === "EXPIRED",
+                          onClick: () => openConvert(quote),
+                          ikon: (
+                            <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          ),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

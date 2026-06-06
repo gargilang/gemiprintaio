@@ -15,6 +15,7 @@ import type {
   SuratJalanStatus,
 } from "@/lib/services/surat-jalan-service";
 import { TrashIcon } from "./icons/ContentIcons";
+import MenuAksi from "./MenuAksi";
 
 interface SuratJalanTableProps {
   data: SuratJalan[];
@@ -194,65 +195,73 @@ export default function SuratJalanTable({
                       <StatusBadge status={sj.status} />
                     </td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        <button
-                          onClick={() => onPreview(sj)}
-                          className="p-2 text-indigo-600 dark:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                          title="Pratinjau surat jalan"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => onPrint(sj)}
-                          className="p-2 text-blue-600 dark:text-blue-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                          title="Cetak"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                          </svg>
-                        </button>
-                        {sj.status === "DRAFT" && (
-                          <>
-                            <button
-                              onClick={() => onEdit(sj)}
-                              className="p-2 text-amber-600 dark:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <MenuAksi
+                        labelMenu={`Aksi untuk ${sj.nomor_sj}`}
+                        aksi={[
+                          {
+                            label: "Pratinjau",
+                            judul: "Pratinjau surat jalan",
+                            onClick: () => onPreview(sj),
+                            ikon: (
+                              <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Cetak",
+                            judul: "Cetak",
+                            onClick: () => onPrint(sj),
+                            ikon: (
+                              <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Edit",
+                            judul: "Edit",
+                            tampil: sj.status === "DRAFT",
+                            onClick: () => onEdit(sj),
+                            ikon: (
+                              <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
-                            </button>
-                            <button
-                              onClick={() => onAdvanceStatus(sj, "TERKIRIM")}
-                              className="px-2 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded transition-colors"
-                              title="Tandai sudah terkirim"
-                            >
-                              Kirim →
-                            </button>
-                          </>
-                        )}
-                        {sj.status === "TERKIRIM" && (
-                          <button
-                            onClick={() => onAdvanceStatus(sj, "DITERIMA")}
-                            className="px-2 py-1.5 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold rounded transition-colors"
-                            title="Tandai sudah diterima"
-                          >
-                            Terima ✓
-                          </button>
-                        )}
-                        {sj.status === "DRAFT" && (
-                          <button
-                            onClick={() => onDelete(sj)}
-                            className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                            title="Hapus"
-                          >
-                            <TrashIcon size={16} className="text-red-500" />
-                          </button>
-                        )}
-                      </div>
+                            ),
+                          },
+                          {
+                            label: "Tandai Terkirim",
+                            judul: "Tandai sudah terkirim",
+                            tampil: sj.status === "DRAFT",
+                            onClick: () => onAdvanceStatus(sj, "TERKIRIM"),
+                            ikon: (
+                              <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Tandai Diterima",
+                            judul: "Tandai sudah diterima",
+                            tampil: sj.status === "TERKIRIM",
+                            onClick: () => onAdvanceStatus(sj, "DITERIMA"),
+                            ikon: (
+                              <svg className="w-5 h-5 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Hapus",
+                            judul: "Hapus",
+                            varian: "bahaya",
+                            tampil: sj.status === "DRAFT",
+                            onClick: () => onDelete(sj),
+                            ikon: <TrashIcon size={20} className="text-red-500" />,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
 

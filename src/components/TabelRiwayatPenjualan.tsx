@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { TrashIcon } from "./icons/ContentIcons";
 import DialogKonfirmasi from "./DialogKonfirmasi";
+import MenuAksi from "./MenuAksi";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface SaleItemRow {
   barang_nama?: string;
@@ -66,6 +68,53 @@ export default function TabelRiwayatPenjualan({
     nama: "",
     kota: "Bekasi",
   });
+  const fakturPromptRef = useRef<HTMLDivElement>(null);
+
+  const closeFakturPrompt = useCallback(() => {
+    setFakturPromptSale(null);
+  }, []);
+
+  const submitFakturPrompt = useCallback(() => {
+    const sale = fakturPromptSale;
+    const nama = fakturPromptInput.nama.trim();
+    const kota = fakturPromptInput.kota.trim() || "Bekasi";
+    if (!sale || !nama) return;
+    setFakturPromptSale(null);
+    if (fakturPromptMode === "preview") {
+      previewFaktur(sale, nama, kota);
+    } else {
+      reprintFaktur(sale, nama, kota);
+    }
+  }, [fakturPromptSale, fakturPromptInput, fakturPromptMode]);
+
+  // Tutup prompt faktur saat klik di luar
+  useClickOutside(fakturPromptRef, closeFakturPrompt, !!fakturPromptSale);
+
+  // Pintasan keyboard: Enter konfirmasi, Escape batal
+  useEffect(() => {
+    if (!fakturPromptSale) return;
+    // Jeda kecil supaya Enter yang membuka prompt tidak langsung konfirmasi.
+    let isReady = false;
+    const readyTimeout = setTimeout(() => {
+      isReady = true;
+    }, 200);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && isReady) {
+        e.preventDefault();
+        submitFakturPrompt();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeFakturPrompt();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(readyTimeout);
+    };
+  }, [fakturPromptSale, submitFakturPrompt, closeFakturPrompt]);
 
   const filteredSales = sales.filter(
     (sale) =>
@@ -617,178 +666,165 @@ export default function TabelRiwayatPenjualan({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            previewFaktur(sale);
-                          }}
-                          disabled={printingId === sale.id}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-indigo-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Pratinjau faktur (jendela mengambang)"
-                        >
-                          <svg
-                            className="w-5 h-5 text-indigo-600 dark:text-indigo-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            reprintThermal(sale);
-                          }}
-                          disabled={printingId === sale.id}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-cyan-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Cetak ulang struk thermal (80mm)"
-                        >
-                          <svg
-                            className="w-5 h-5 text-cyan-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            reprintFaktur(sale);
-                          }}
-                          disabled={printingId === sale.id}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-blue-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Cetak faktur A4 (buka tab baru)"
-                        >
-                          <svg
-                            className="w-5 h-5 text-blue-600 dark:text-blue-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `/surat-jalan?from=${sale.id}`;
-                          }}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-emerald-900/30 rounded-lg transition-all disabled:opacity-50"
-                          title="Buat surat jalan dari transaksi ini"
-                        >
-                          <svg
-                            className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1"
-                            />
-                          </svg>
-                        </button>
-                        {/* Revert button logic:
-                            - Only show if has_pelunasan = 1 (meaning there are payment records to revert)
-                            - This means the transaction had piutang and received payment(s)
-                            - Clicking revert will delete all pelunasan records and reset to original piutang
-                        */}
-                        {sale.status_transaksi !== "VOIDED" &&
-                          sale.has_pelunasan === 1 &&
-                          onRevert && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRevert(sale);
-                            }}
-                            className={`p-2 rounded-lg transition-all group ${
+                      <MenuAksi
+                        labelMenu={`Aksi untuk ${sale.nomor_faktur}`}
+                        aksi={[
+                          {
+                            label: "Pratinjau Faktur",
+                            judul: "Pratinjau faktur (jendela mengambang)",
+                            disabled: printingId === sale.id,
+                            onClick: () => previewFaktur(sale),
+                            ikon: (
+                              <svg
+                                className="w-5 h-5 text-indigo-600 dark:text-indigo-300"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Cetak Struk (80mm)",
+                            judul: "Cetak ulang struk thermal (80mm)",
+                            disabled: printingId === sale.id,
+                            onClick: () => reprintThermal(sale),
+                            ikon: (
+                              <svg
+                                className="w-5 h-5 text-cyan-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                                />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Cetak Faktur (A4)",
+                            judul: "Cetak faktur A4 (buka tab baru)",
+                            disabled: printingId === sale.id,
+                            onClick: () => reprintFaktur(sale),
+                            ikon: (
+                              <svg
+                                className="w-5 h-5 text-blue-600 dark:text-blue-300"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Buat Surat Jalan",
+                            judul: "Buat surat jalan dari transaksi ini",
+                            onClick: () => {
+                              window.location.href = `/surat-jalan?from=${sale.id}`;
+                            },
+                            ikon: (
+                              <svg
+                                className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1"
+                                />
+                              </svg>
+                            ),
+                          },
+                          // Aksi kembalikan pembayaran: hanya tampil bila ada
+                          // riwayat pelunasan yang bisa dibatalkan.
+                          {
+                            label:
                               sale.status_pembayaran === "LUNAS"
-                                ? "hover:bg-slate-50 dark:hover:bg-white/5"
-                                : "hover:bg-slate-50 dark:hover:bg-white/5"
-                            }`}
-                            title={
+                                ? "Kembalikan Pembayaran"
+                                : "Batalkan Pembayaran Sebagian",
+                            judul:
                               sale.status_pembayaran === "LUNAS"
                                 ? "Kembalikan pembayaran piutang (ke status AKTIF)"
-                                : "Batalkan pembayaran sebagian"
-                            }
-                          >
-                            <svg
-                              className={`w-5 h-5 ${
-                                sale.status_pembayaran === "LUNAS"
-                                  ? "text-blue-600 dark:text-blue-300 group-hover:text-blue-700 dark:text-blue-300"
-                                  : "text-orange-600 dark:text-orange-300 group-hover:text-orange-700 dark:text-orange-300"
-                              }`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                                : "Batalkan pembayaran sebagian",
+                            tampil:
+                              sale.status_transaksi !== "VOIDED" &&
+                              sale.has_pelunasan === 1 &&
+                              !!onRevert,
+                            onClick: () => onRevert?.(sale),
+                            ikon: (
+                              <svg
+                                className={`w-5 h-5 ${
+                                  sale.status_pembayaran === "LUNAS"
+                                    ? "text-blue-600 dark:text-blue-300"
+                                    : "text-orange-600 dark:text-orange-300"
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                />
+                              </svg>
+                            ),
+                          },
+                          {
+                            label: "Batalkan Transaksi",
+                            judul: "Batalkan Transaksi",
+                            varian: "bahaya",
+                            tampil: !!onDelete,
+                            disabled:
+                              deletingId === sale.id ||
+                              sale.status_transaksi === "VOIDED",
+                            onClick: () =>
                               setConfirmDialog({
                                 show: true,
                                 saleId: sale.id,
                                 invoiceNumber: sale.nomor_faktur,
-                              });
-                            }}
-                            disabled={
-                              deletingId === sale.id ||
-                              sale.status_transaksi === "VOIDED"
-                            }
-                            className="p-2 hover:bg-red-100 dark:bg-red-900/30 rounded-lg transition-all disabled:opacity-50"
-                            title="Batalkan Transaksi"
-                          >
-                            {deletingId === sale.id ? (
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
-                            ) : (
-                              <TrashIcon size={20} className="text-red-500" />
-                            )}
-                          </button>
-                        )}
-                      </div>
+                              }),
+                            ikon:
+                              deletingId === sale.id ? (
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                              ) : (
+                                <TrashIcon size={20} className="text-red-500" />
+                              ),
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
 
@@ -913,7 +949,7 @@ export default function TabelRiwayatPenjualan({
 
       {fakturPromptSale && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div ref={fakturPromptRef} className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
               <h3 className="text-white font-bold text-lg">
                 {fakturPromptMode === "preview"
@@ -966,26 +1002,14 @@ export default function TabelRiwayatPenjualan({
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setFakturPromptSale(null)}
+                  onClick={closeFakturPrompt}
                   className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const sale = fakturPromptSale;
-                    const nama = fakturPromptInput.nama.trim();
-                    const kota = fakturPromptInput.kota.trim() || "Bekasi";
-                    setFakturPromptSale(null);
-                    if (sale && nama) {
-                      if (fakturPromptMode === "preview") {
-                        previewFaktur(sale, nama, kota);
-                      } else {
-                        reprintFaktur(sale, nama, kota);
-                      }
-                    }
-                  }}
+                  onClick={submitFakturPrompt}
                   disabled={!fakturPromptInput.nama.trim()}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed"
                 >

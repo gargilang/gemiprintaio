@@ -3,6 +3,7 @@
 import { memo } from "react";
 import type { CashBook, KategoriTransaksi } from "@/types/database";
 import { stripReferenceId, type KategoriColor } from "./keuangan-utils";
+import MenuAksi from "@/components/MenuAksi";
 
 // Baris tabel buku kas (memoized) — diekstrak dari page.tsx (Fase 6 C1).
 // Murni presentational: semua data + handler datang lewat props.
@@ -69,71 +70,76 @@ const CashBookRow = memo(function CashBookRow({
         {formatRupiah(cashBook.saldo)}
       </td>
       <td className="px-3 py-3 text-center">
-        <div className="flex gap-2 justify-center">
-          {!viewingArchive ? (
-            <>
-              <button
-                onClick={() => onEdit(cashBook)}
-                className="p-2 text-pink-600 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
-                title="Edit Transaksi"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => onEditManual(cashBook)}
-                className="p-2 text-orange-600 dark:text-orange-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center"
-                title="Edit Manual (Timpa)"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => onDelete(cashBook)}
-                className="p-2 text-red-600 hover:bg-red-50 dark:bg-red-950/40 rounded-lg transition-colors inline-flex items-center justify-center"
-                title="Hapus"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
-            </>
-          ) : (
-            <span className="text-gray-400 text-sm italic">Hanya baca</span>
-          )}
-        </div>
+        {!viewingArchive ? (
+          <MenuAksi
+            labelMenu="Aksi transaksi"
+            aksi={[
+              {
+                label: "Edit Transaksi",
+                judul: "Edit Transaksi",
+                onClick: () => onEdit(cashBook),
+                ikon: (
+                  <svg
+                    className="w-5 h-5 text-pink-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                ),
+              },
+              {
+                label: "Edit Manual (Timpa)",
+                judul: "Edit Manual (Timpa)",
+                onClick: () => onEditManual(cashBook),
+                ikon: (
+                  <svg
+                    className="w-5 h-5 text-orange-600 dark:text-orange-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                    />
+                  </svg>
+                ),
+              },
+              {
+                label: "Hapus",
+                judul: "Hapus",
+                varian: "bahaya",
+                onClick: () => onDelete(cashBook),
+                ikon: (
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                ),
+              },
+            ]}
+          />
+        ) : (
+          <span className="text-gray-400 text-sm italic">Hanya baca</span>
+        )}
       </td>
     </tr>
   );

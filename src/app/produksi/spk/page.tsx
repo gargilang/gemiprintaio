@@ -182,6 +182,17 @@ export default function ProductionPage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
+  // Segarkan order yang sedang dibuka di modal agar state-nya ikut update
+  // tanpa perlu menutup dan membuka ulang modal.
+  const refreshSelectedOrder = async () => {
+    if (!selectedOrder) return;
+    const refreshed = await getProductionOrdersAction();
+    const next = (refreshed as ProductionOrder[]).find(
+      (order) => order.id === selectedOrder.id
+    );
+    if (next) setSelectedOrder(next);
+  };
+
   const handleUpdateStatus = async (
     orderId: string,
     newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
@@ -189,7 +200,8 @@ export default function ProductionPage() {
     try {
       await updateProductionStatusAction(orderId, newStatus);
       showMsg("success", "Status berhasil diperbarui");
-      loadOrders();
+      await loadOrders();
+      await refreshSelectedOrder();
     } catch (error) {
       console.error("Error updating status:", error);
       showMsg("error", "Gagal memperbarui status");
@@ -203,7 +215,8 @@ export default function ProductionPage() {
     try {
       await updateProductionItemStatusAction(itemId, { status: newStatus });
       showMsg("success", "Status item berhasil diperbarui");
-      loadOrders();
+      await loadOrders();
+      await refreshSelectedOrder();
     } catch (error) {
       console.error("Error updating item status:", error);
       showMsg("error", "Gagal memperbarui status item");
@@ -245,13 +258,7 @@ export default function ProductionPage() {
       });
       showMsg("success", "Konsumsi bahan produksi berhasil diposting");
       await loadOrders();
-      if (selectedOrder) {
-        const refreshed = await getProductionOrdersAction();
-        const next = (refreshed as ProductionOrder[]).find(
-          (order) => order.id === selectedOrder.id
-        );
-        if (next) setSelectedOrder(next);
-      }
+      await refreshSelectedOrder();
     } catch (error: any) {
       console.error("Error posting consumption:", error);
       showMsg("error", error?.message || "Gagal posting konsumsi bahan");
@@ -268,6 +275,7 @@ export default function ProductionPage() {
       );
       showMsg("success", "Konsumsi bahan dibatalkan");
       await loadOrders();
+      await refreshSelectedOrder();
     } catch (error: any) {
       console.error("Error voiding consumption:", error);
       showMsg("error", error?.message || "Gagal membatalkan konsumsi bahan");
@@ -571,27 +579,13 @@ export default function ProductionPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleUpdateStatus(
-                            order.id,
-                            e.target.value as
-                              | "MENUNGGU"
-                              | "PROSES"
-                              | "SELESAI"
-                              | "DIBATALKAN"
-                          )
-                        }
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
                           order.status
                         )}`}
                       >
-                        <option value="MENUNGGU">MENUNGGU</option>
-                        <option value="PROSES">PROSES</option>
-                        <option value="SELESAI">SELESAI</option>
-                        <option value="DIBATALKAN">DIBATALKAN</option>
-                      </select>
+                        {order.status}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-slate-300">
                       {order.dibuat_pada
@@ -658,6 +652,7 @@ export default function ProductionPage() {
           onPatchDraft={patchConsumptionDraft}
           onPostConsumption={handlePostConsumption}
           onVoidConsumption={handleVoidConsumption}
+          onUpdateOrderStatus={handleUpdateStatus}
           onPrint={handlePrintSPK}
         />
       )}

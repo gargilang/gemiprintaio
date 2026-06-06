@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { PrinterIcon } from "@/components/icons/PageIcons";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import type {
   ProductionOrder,
   ProductionItem,
@@ -32,6 +34,10 @@ export interface SpkDetailModalProps {
   onPatchDraft: (itemId: string, patch: Partial<ConsumptionDraft>) => void;
   onPostConsumption: (item: ProductionItem) => void;
   onVoidConsumption: (item: ProductionItem) => void;
+  onUpdateOrderStatus: (
+    orderId: string,
+    newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
+  ) => void;
   onPrint: (order: ProductionOrder) => void;
 }
 
@@ -45,11 +51,32 @@ export default function SpkDetailModal({
   onPatchDraft,
   onPostConsumption,
   onVoidConsumption,
+  onUpdateOrderStatus,
   onPrint,
 }: SpkDetailModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Tutup saat klik di luar panel modal.
+  useClickOutside(modalRef, () => onClose(), true);
+
+  // Tutup saat tombol Escape ditekan.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        ref={modalRef}
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
         <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-amber-700 to-amber-900 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -104,13 +131,27 @@ export default function SpkDetailModal({
             </div>
             <div>
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Status</div>
-              <span
-                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
+              <select
+                value={order.status}
+                onChange={(e) =>
+                  onUpdateOrderStatus(
+                    order.id,
+                    e.target.value as
+                      | "MENUNGGU"
+                      | "PROSES"
+                      | "SELESAI"
+                      | "DIBATALKAN"
+                  )
+                }
+                className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                   order.status
                 )}`}
               >
-                {order.status}
-              </span>
+                <option value="MENUNGGU">MENUNGGU</option>
+                <option value="PROSES">PROSES</option>
+                <option value="SELESAI">SELESAI</option>
+                <option value="DIBATALKAN">DIBATALKAN</option>
+              </select>
             </div>
           </div>
 
