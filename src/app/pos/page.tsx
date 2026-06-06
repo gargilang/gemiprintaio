@@ -28,6 +28,7 @@ import PpnFakturModal, {
 } from "@/components/PpnFakturModal";
 import TabelRiwayatPenjualan from "@/components/TabelRiwayatPenjualan";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
+import ModalFakturUmum from "./ModalFakturUmum";
 import ToastNotifikasi, {
   NotificationToastProps,
 } from "@/components/ToastNotifikasi";
@@ -1906,82 +1907,21 @@ export default function POSPage() {
         />
       )}
 
-      {showFakturUmumModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
-              <h3 className="text-white font-bold text-lg">
-                Info untuk Faktur
-              </h3>
-              <p className="text-white/90 text-xs mt-0.5">
-                Pelanggan tidak dipilih. Isi data berikut untuk dicetak di
-                faktur.
-              </p>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
-                  Kepada Yth.
-                </label>
-                <input
-                  type="text"
-                  value={fakturUmumInput.nama}
-                  onChange={(e) =>
-                    setFakturUmumInput((prev) => ({
-                      ...prev,
-                      nama: e.target.value,
-                    }))
-                  }
-                  placeholder="Nama / nama perusahaan"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
-                  Kota
-                </label>
-                <input
-                  type="text"
-                  value={fakturUmumInput.kota}
-                  onChange={(e) =>
-                    setFakturUmumInput((prev) => ({
-                      ...prev,
-                      kota: e.target.value,
-                    }))
-                  }
-                  placeholder="Bekasi"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowFakturUmumModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFakturUmum({
-                      nama: fakturUmumInput.nama.trim(),
-                      kota: fakturUmumInput.kota.trim() || "Bekasi",
-                    });
-                    setShowFakturUmumModal(false);
-                    // re-trigger checkout now that the info is captured
-                    setTimeout(() => handleCheckout(), 0);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee]"
-                >
-                  Lanjut Bayar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalFakturUmum
+        open={showFakturUmumModal}
+        value={fakturUmumInput}
+        onChange={setFakturUmumInput}
+        onClose={() => setShowFakturUmumModal(false)}
+        onConfirm={() => {
+          setFakturUmum({
+            nama: fakturUmumInput.nama.trim(),
+            kota: fakturUmumInput.kota.trim() || "Bekasi",
+          });
+          setShowFakturUmumModal(false);
+          // re-trigger checkout now that the info is captured
+          setTimeout(() => handleCheckout(), 0);
+        }}
+      />
 
       {notice && (
         <ToastNotifikasi type={notice.type} message={notice.message} />
