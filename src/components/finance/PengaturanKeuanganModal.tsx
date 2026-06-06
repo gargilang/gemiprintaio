@@ -2,7 +2,7 @@
 
 /**
  * PengaturanKeuanganModal — satu modal untuk semua pengaturan keuangan.
- * Tab: Orang | Kategori | Rumus | Uji coba
+ * Tab: Kolom | Kategori | Pengurus
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,7 +10,6 @@ import ModalFormShell from "@/components/ModalFormShell";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ExpressionAssistant from "@/components/finance/ExpressionAssistant";
 import KolomTab from "@/components/finance/KolomTab";
-import { astToDsl, DEFAULT_INPUT_COLUMNS } from "@/lib/ast";
 import { DEFAULT_FORMULAS } from "@/lib/ast/defaults";
 import type { ASTNode, FormulaGroup } from "@/lib/ast/types";
 
@@ -142,30 +141,6 @@ interface FormulaApi {
   displayOrder: number;
   description?: string | null;
 }
-
-const FORMULA_GROUP_LABEL: Record<FormulaGroup, string> = {
-  summary: "Ringkasan",
-  profit_share: "Bagi Hasil",
-  cash_advance: "Kasbon",
-  bonus: "Bonus",
-  custom: "Kustom",
-};
-
-const FORMULA_GROUP_ORDER: FormulaGroup[] = [
-  "summary",
-  "profit_share",
-  "cash_advance",
-  "bonus",
-  "custom",
-];
-
-const FORMULA_GROUP_DESCRIPTION: Record<FormulaGroup, string> = {
-  summary: "Rumus sistem (Omzet, Saldo, dll). Hanya isinya yang bisa diedit.",
-  profit_share: "Otomatis dari tab Orang. Persentase dari laba bersih.",
-  cash_advance: "Otomatis dari tab Orang. Akumulasi kategori transaksi.",
-  bonus: "Otomatis dari tab Orang. Persentase dari rumus lain.",
-  custom: "Rumus tambahan yang Anda buat sendiri.",
-};
 
 function slugifyFormulaKey(name: string): string {
   return (
@@ -535,7 +510,6 @@ export default function PengaturanKeuanganModal({
   const [formulas, setFormulas] = useState<FormulaApi[]>([]);
   const [rumusLoaded, setRumusLoaded] = useState(false);
   const [rumusSaving, setRunusSaving] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
   const [newFormulaDraft, setNewFormulaDraft] = useState<{
     name: string;
@@ -576,40 +550,6 @@ export default function PengaturanKeuanganModal({
     return m;
   }, [formulas]);
 
-  /** Render a one-line DSL summary used in the formula list rows. */
-  function formulaPreview(f: FormulaApi): string {
-    try {
-      const { normalizeAstColumns } = require("@/lib/ast/normalize") as typeof import("@/lib/ast/normalize");
-      const normalised = normalizeAstColumns(f.ast, formulaKeyByLetter);
-      return astToDsl(normalised, {
-        inputColumns: DEFAULT_INPUT_COLUMNS,
-        formulaKeys: Object.values(formulaKeyByLetter),
-      });
-    } catch {
-      return "";
-    }
-  }
-
-  /** Group formulas by formulaGroup, ordered for display. */
-  const formulasByGroup = useMemo(() => {
-    const out: Record<FormulaGroup, FormulaApi[]> = {
-      summary: [],
-      profit_share: [],
-      cash_advance: [],
-      bonus: [],
-      custom: [],
-    };
-    for (const f of formulas) {
-      const g = (f.formulaGroup ?? "custom") as FormulaGroup;
-      out[g] = out[g] ?? [];
-      out[g].push(f);
-    }
-    for (const g of FORMULA_GROUP_ORDER) {
-      out[g].sort((a, b) => a.displayOrder - b.displayOrder);
-    }
-    return out;
-  }, [formulas]);
-
   async function saveFormula(ast: ASTNode) {
     if (!editingFormula) return;
     setRunusSaving(true);
@@ -627,31 +567,6 @@ export default function PengaturanKeuanganModal({
       showMsg("success", `Rumus "${editingFormula.name}" disimpan.`);
     } catch (e) {
       showMsg("error", `Gagal menyimpan: ${(e as Error).message}`);
-    } finally {
-      setRunusSaving(false);
-    }
-  }
-
-  async function toggleFormula(f: FormulaApi) {
-    setRunusSaving(true);
-    try { await apiJSON("/api/cashbook-formula", { method: "POST", body: JSON.stringify({ action: "upsert", formula: { ...f, enabled: !f.enabled } }) }); await reloadRumus(); }
-    finally { setRunusSaving(false); }
-  }
-
-  async function toggleVisibleInSummary(f: FormulaApi) {
-    setRunusSaving(true);
-    try {
-      await apiJSON("/api/cashbook-formula", {
-        method: "POST",
-        body: JSON.stringify({
-          action: "upsert",
-          formula: {
-            ...f,
-            isVisibleInSummary: !(f.isVisibleInSummary ?? false),
-          },
-        }),
-      });
-      await reloadRumus();
     } finally {
       setRunusSaving(false);
     }
@@ -680,32 +595,6 @@ export default function PengaturanKeuanganModal({
           showMsg("error", `Gagal menghapus: ${(e as Error).message}`);
         } finally {
           setRunusSaving(false);
-        }
-      },
-    });
-  }
-
-  async function resetFormulas() {
-    setPendingConfirm({
-      title: "Kembalikan ke bawaan?",
-      message: "Semua rumus diganti dengan default sistem. Perubahan kustom akan hilang.",
-      confirmText: "Kembalikan",
-      type: "warning",
-      onConfirm: async () => {
-        setResetting(true);
-        try {
-          await apiJSON("/api/cashbook-formula", {
-            method: "POST",
-            body: JSON.stringify({ action: "reset" }),
-          });
-          await reloadRumus();
-          setEditingFormulaId(null);
-          onRecalcTriggered?.();
-          showMsg("success", "Rumus dikembalikan ke bawaan.");
-        } catch (e) {
-          showMsg("error", `Gagal reset: ${(e as Error).message}`);
-        } finally {
-          setResetting(false);
         }
       },
     });
@@ -751,27 +640,6 @@ export default function PengaturanKeuanganModal({
     } finally {
       setRunusSaving(false);
     }
-  }
-
-  // ── Uji coba state ─────────────────────────────────────────────────────────
-  const [testRows, setTestRows] = useState("OMZET\t1000000\t0\tPenjualan Cahaya\nBIAYA\t0\t150000\tListrik\nSUPPLY\t0\t200000\tTinta");
-  const [testOutputs, setTestOutputs] = useState<Array<Record<string, number | string | boolean>> | null>(null);
-  const [testError, setTestError] = useState<string | null>(null);
-
-  async function runTest() {
-    setTestError(null);
-    setTestOutputs(null);
-    const rows: Array<{ C: string; D: number; E: number; F: string }> = [];
-    for (const line of testRows.split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t) continue;
-      const p = t.split(/\t|,/);
-      rows.push({ C: (p[0] ?? "").trim(), D: Number(p[1] ?? 0) || 0, E: Number(p[2] ?? 0) || 0, F: (p[3] ?? "").trim() });
-    }
-    try {
-      const r = await apiJSON<{ outputs: Array<Record<string, number | string | boolean>> }>("/api/evaluate", { method: "POST", body: JSON.stringify({ rows }) });
-      setTestOutputs(r.outputs);
-    } catch (e) { setTestError((e as Error).message); }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
