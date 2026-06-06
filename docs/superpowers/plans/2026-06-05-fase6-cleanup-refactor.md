@@ -333,9 +333,9 @@ git commit -m "refactor(ui): split FormulirPembelian into item/ppn/roll componen
 - Modify: `src/components/ModalTambahBarang.tsx`
 - Create: `src/components/barang/PanelVarianRoll.tsx`, `barang/PanelHargaSatuan.tsx`
 
-- [ ] **Step 1: Petakan + ekstrak PanelVarianRoll & PanelHargaSatuan**
+- [x] **Step 1: Petakan + ekstrak PanelHargaSatuan**
 
-Pindahkan blok varian roll dan blok harga-per-satuan ke sub-komponen props eksplisit. Verifikasi iron rule #6 utuh. Perbaiki warning exhaustive-deps `loadMasterData` (baris ~90) & `useCallback` deps (baris ~454) dengan membungkus callback prop di induk.
+> Catatan eksekusi (koreksi audit): `ModalTambahBarang.tsx` TIDAK punya blok "varian roll" terpisah — strukturnya Section 1 (info dasar) + Section 2 (Harga Per Satuan) + Section 3 (stok). Dimensi roll di sini cuma checkbox `requires_dimension` yang mengunci satuan ke m². Jadi ekstraksi bersih = **`PanelHargaSatuan`** (Section 2, kartu harga berulang) ke `barang/PanelHargaSatuan.tsx` + tipe bersama `barang/types-barang.ts`. `PanelVarianRoll` tidak dibuat (tidak ada blok-nya). Iron rule #6 (m²) tetap utuh — logika dimensi tetap di induk. Warning exhaustive-deps `loadMasterData` (useCallback) & `handleSubmit` (deps lengkap) dibereskan.
 
 - [x] **Step 2: Verifikasi + commit**
 
