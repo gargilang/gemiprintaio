@@ -1,4 +1,30 @@
+---
+description: gemiprint project context, workflow, architecture, and live handoff rules
+alwaysApply: true
+---
+
 # gemiprint — Cursor Agent Rules
+
+## Mandatory Live Work Log (write as you go, NOT only at the end)
+
+`.cursor/work-log.md` is a crash-recovery handoff file. The owner's internet drops mid-task; if the log is only written at the end, a resumed chat cannot tell where work stopped. Treat the log like a flight recorder: update it DURING the work, not after.
+
+**Hard triggers — update the log immediately when ANY of these happen (do not batch, do not wait for task completion):**
+
+- Right after reading these rules and BEFORE the first edit: set `Current Status` (active task, plan, next step).
+- After every file you create/edit/delete: append one line (what changed + file path).
+- After every command you run that matters (migration, `type-check`, `build`, `jest`, git): record the command and its result (pass/fail).
+- The moment you hit a blocker, error, or change of plan.
+- Before any long-running command that might get interrupted (note "about to run X").
+
+**Rules for the log:**
+
+- Always keep `Current Status` accurate: active task, last completed step, next step, blockers, touched files, verification state. A fresh agent must be able to resume using ONLY this section.
+- Append; never delete unfinished handoff context. When a whole project/phase is done, compact old details into a short `Completed Summary` and keep only useful recovery context.
+- Keep entries terse (1-3 lines each). This is a recovery aid, not documentation.
+- The log is NOT a rules file. Permanent coding standards belong in `.cursor/rules/*.mdc`, never here.
+
+**Self-check before ending any turn:** if you edited files or ran commands this turn but did not touch `.cursor/work-log.md`, you broke this rule — update it now.
 
 ## Owner context
 
@@ -86,44 +112,44 @@ The whole app is normalized to Bahasa Indonesia. All application-owned artifacts
 The owner won't remember to ask; enforce by default.
 
 1. **Data fetching → `useCachedData` (SWR), never `useAsyncData`.** Instant paint from cache + background revalidate. Stable cache key per dataset (e.g. `"pelanggan"`, or `` `movement-ledger:${JSON.stringify(filters)}` ``). Bust cross-page caches with `useInvalidate("key")`. Reference: `src/app/barang/page.tsx`, `src/app/vendors/page.tsx`.
-
 2. **Schema change → THREE places in sync:** (a) new `supabase/migrations/<timestamp>_<name>.sql` (additive, `IF NOT EXISTS`, defaults); (b) `database/sqlite-schema.sql` fresh-install template; (c) `src/lib/db-unified.ts` runtime `ALTER TABLE ADD COLUMN` so existing SQLite installs migrate on start. Migrations already on cloud are immutable — write a new one.
-
 3. **Inventory mutation → `inventory-service.postInventoryMovement`, never raw `db.update("barang", { jumlah_stok })`.** The ledger `inventory_movements` is the source of truth for stock + AVCO. Roll cuts use `convertRollVariant`. Rebuild via `rebuildInventoryBalance(barangId)`.
-
 4. **Money/cashbook mutation → `keuangan` with a `[REF:<id>]` token in `keperluan`.** Void/revert search this token. Hutang/piutang flow through `payDebt` / `revertDebtPayment`; keep `keuangan`, `hutang.sisa_hutang`, `pembelian.jumlah_dibayar` in lock-step. CASH posts to `keuangan` immediately; NET30/COD creates `hutang` and posts only when paid.
-
 5. **Mutating server action → wrap in an auth guard** (`src/lib/auth-guard-server.ts`: `requireSession`, `requireAdminOrManager`, `requireProductionInventoryRole`, `requireAdminManagerOrSelf`). Pass `session.uid` as `dibuat_oleh`. Read actions can be ungated.
-
 6. **Roll/dimensional barang (`butuh_dimensi_status = 1`):** `jumlah` (m²) = `jumlah_roll × panjang × lebar` (never just `panjang × lebar`). Decrement uses roll-width-aligned length via `barang_roll_variants` + `linear_delta_m`. Conversions atomic + AVCO-neutral. Input order **Lebar × Panjang**. Roll qty integer ≥ 1.
-
 7. **Period-closed guard on dated mutations.** Anything accepting `tanggal` must check `accounting-periods-service.isDateInClosedPeriod`. Throw a friendly error pointing to the open period; never silently bypass.
-
 8. **Sync columns on every new synced table:** `sync_status, last_synced_at, sync_version, updated_at_server, updated_by_device, change_version, is_deleted, deleted_at, client_mutation_id`. Register it in `src/lib/sync-config.ts`.
-
 9. **Idempotent ledger IDs from source line:** `mov-${itemId}`, `void-${originalMovementId}`, `${conversionId}-out` / `${conversionId}-in-${i}`. Deterministic and retry-safe.
-
 10. **Verification before "done" (mandatory):** `npm run type-check` (0 errors) → `npm run build` → `npx jest <relevant test>` for touched services (`src/lib/__tests__/`). Jest runs two projects: `node` (services + API route tests under `src/app/**/__tests__/*.test.ts`) and `jsdom` (component tests `*.test.tsx`). UI-only changes may skip jest, still need type-check + build. New lint warnings you introduce must be fixed. CI (`.github/workflows/ci.yml`) re-runs lint + type-check + test + build + `check:versions` on every PR; a husky pre-commit hook runs `lint-staged` (eslint --fix) on staged files.
-
 11. **`onSuccess` for a newly created item passes `null` as the updated item**, so the parent does a full `reload()` instead of `updateInState` (which would never append the new row).
-
 12. **Seed/default SQL:** verify column names against actual migrations (e.g. `pengaturan_toko` bank fields are `bank_nama`, `bank_nomor`, `bank_atas_nama`). Default settings rows use `ON CONFLICT DO UPDATE SET`, not `DO NOTHING`, so `supabase:local:reset` restores defaults.
-
 13. **Finance categories:** show `display_name` as primary label; `category_code` secondary (small, monospace, amber, quoted). In `ExpressionAssistant`, suggestion `label` = display name, `hint` = `kode: ${code}`, `insert` = `"${code}"`.
-
 14. **Every mutation API route/server action MUST be role-guarded.** Use `requireSession` / `requireAdminOrManager` / `requireProductionInventoryRole` / `requireAdminManagerOrSelf` from `src/lib/auth-guard-server.ts`, and handle `AuthGuardError` in the catch (return its `.status`). Reads can be ungated. Never trust a client-sent `x-session-uid`; derive identity from the guard's `session.uid` (middleware sets the header from the verified JWT). Don't regress this — Fase 1 closed privilege-escalation holes here.
-
 15. **Validate hot-path mutation input with Zod** (`src/lib/schemas/`: `pos.ts`, `pembelian.ts`, `inventori.ts`). Use `z.coerce.number().finite()` for money/qty (rejects NaN, accepts numeric strings from Flutter), `.passthrough()` so no payload field is silently dropped, and `safeParse` → 422 on failure. Match enums to real values (payment methods: `CASH/TRANSFER/QRIS/DEBIT/DOWN_PAYMENT/NET30`).
-
 16. **Surface DB errors via `friendlyPgError(e, table)`** (`src/lib/pg-error.ts`) instead of throwing raw PostgREST messages to the UI (avoids leaking constraint names + unfriendly English). `payload_hash` for the mutation registry uses real SHA-256 via `hashPayload` (`src/lib/payload-hash-util.ts`), never `JSON.stringify(x).length`.
-
 17. **Composite mutations (createSale/createPurchase) atomicity:** the Postgres RPC path (`create_sale_with_inventory`, `create_purchase_with_inventory`) is **opt-in** via `usePgCompositeRpc()` (`src/lib/feature-flags.ts`, env `USE_PG_COMPOSITE_RPC=1`, default OFF). The default non-RPC path MUST keep compensating cleanup in the catch (`compensateFailedSale` / `compensateFailedPurchase`) — reverse inventory via `rebuildInventoryBalance`, delete `[REF:id]` keuangan rows, release NSFP, delete the header (FK cascade). Invoice/PO number collisions retry via `withDuplicateNumberRetry` (`src/lib/retry-utils.ts`). The sale RPC needs migration `20260605000000` (column `nomor_faktur`) applied before enabling.
-
 18. **`normalizeRecord` boolean conversion uses an explicit allowlist** (`src/lib/normalize-record.ts`), never a loose `key.includes("status")` heuristic — enum fields like `status_pembayaran`, `void_status_kode`, `roll_inventory_status`, `sync_status` are NOT booleans and must not be coerced to true/false.
-
 19. **Avoid N+1 in read paths.** For list endpoints, fetch related tables once and join in memory (Supabase: `.in("fk", ids)`; SQLite fallback: load bounded tables once). Reference: `getSales`, `getProductionOrders`. Heavy recalcs (`recalculateCashbookIfAvailable`) are coalesced via `createCoalescedRunner` (`src/lib/coalesce.ts`) — call freely; concurrent calls collapse.
-
 20. **Startup secrets fail-fast:** `SESSION_SECRET` must be ≥32 chars and `PASSWORD_ENC_SECRET` must be set in production (`src/lib/session.ts`, `src/lib/crypto.ts` throw otherwise — intentional). JWT TTL is 24h. Credential vault uses per-record salt (AES-256-GCM) with a legacy-format decrypt fallback. Raw SQL identifier interpolation (`db-unified.ts`, Tauri `main.rs`) must pass an `^[a-z_][a-z0-9_]*$` allowlist.
+
+## Code navigation — use Graphify first, before grep/file-search
+
+A Graphify knowledge graph exists at `graphify-out/`. Use it as the FIRST step for locating code, on **every kind of task** — not just "architecture questions" but also feature work, bug fixes, and refactors. The point is fewer tokens and fewer blind greps.
+
+- Before grepping or broad file-searching to find where something lives, run `graphify query "<what you're looking for>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). Example: starting "add a field to the pelanggan page" → `graphify query "pelanggan page data layer and form"` first.
+- Use grep/file-search only to (a) confirm an exact string/line after Graphify points you to a file, or (b) when a Graphify query returns nothing useful.
+- If the Graphify MCP server is configured, prefer its tools (`query_graph`, `get_node`, `get_neighbors`, `shortest_path`) over the CLI.
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost). Log it in the work log.
+- This section is the authoritative Graphify rule; `.cursor/rules/graphify.mdc` is managed by `graphify cursor install` and may be regenerated.
+
+## Iron rules — icons (SVG only, never emoji)
+
+This app uses explicit SVG icon components. **Never use an emoji as an icon** (no 🎂, ✅, 🚀, 📦, etc.) in UI, JSX, labels, buttons, headings, toasts, or stat cards.
+
+- Reuse an existing icon from `src/components/icons/`: `PageIcons.tsx` (page titles + navigation) and `ContentIcons.tsx` (content/category/badge icons).
+- If no suitable icon exists, add a new SVG component to the right file following the existing pattern: `({ className = "", size = N }: IconProps)`, `viewBox="0 0 24 24"`, strokes/fills via `currentColor` so it inherits text color and dark-mode pairs.
+- Import the component (e.g. `import { PersonIcon } from "@/components/icons/ContentIcons"`); do not inline raw `<svg>` blobs in feature pages when a reusable component fits.
+- Emoji in non-icon contexts (e.g. owner-facing chat text) is not what this rule targets — this rule is about icons rendered in the product UI.
 
 ## Iron rules — new page/UI shape
 
