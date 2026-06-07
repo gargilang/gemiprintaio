@@ -50,6 +50,15 @@ build/app/outputs/flutter-apk/app-release.apk
 
 ## Mobile Web Release
 
+**Otomatis (default):** setiap push ke `main` yang mengubah `flutter/**`
+memicu workflow `.github/workflows/deploy-mobile-web.yml`, yang mem-build
+Flutter web dan men-deploy ke project Vercel `gemiprint-mobile-web`
+(alias `m.gemiprint.com`). Tidak ada langkah manual yang diperlukan.
+Workflow juga bisa dijalankan manual via tab Actions ("Run workflow").
+
+Butuh GitHub Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+
+**Manual (fallback)** jika perlu deploy dari lokal tanpa menunggu CI:
 `m.gemiprint.com` is a separate static Vercel project. Build and deploy the
 Flutter web output:
 
