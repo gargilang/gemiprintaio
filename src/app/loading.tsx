@@ -1,6 +1,7 @@
 /**
  * Loading UI global App Router. Tampil otomatis saat segmen route memuat data
  * (Suspense boundary bawaan Next.js).
+ * Perubahan di sini tidak memengaruhi deploy Flutter mobile web.
  */
 export default function Loading() {
   return (
