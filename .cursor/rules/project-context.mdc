@@ -1,30 +1,9 @@
 ---
-description: gemiprint project context, workflow, architecture, and live handoff rules
+description: gemiprint project context, workflow, and architecture rules
 alwaysApply: true
 ---
 
 # gemiprint — Cursor Agent Rules
-
-## Mandatory Live Work Log (write as you go, NOT only at the end)
-
-`.cursor/work-log.md` is a crash-recovery handoff file. The owner's internet drops mid-task; if the log is only written at the end, a resumed chat cannot tell where work stopped. Treat the log like a flight recorder: update it DURING the work, not after.
-
-**Hard triggers — update the log immediately when ANY of these happen (do not batch, do not wait for task completion):**
-
-- Right after reading these rules and BEFORE the first edit: set `Current Status` (active task, plan, next step).
-- After every file you create/edit/delete: append one line (what changed + file path).
-- After every command you run that matters (migration, `type-check`, `build`, `jest`, git): record the command and its result (pass/fail).
-- The moment you hit a blocker, error, or change of plan.
-- Before any long-running command that might get interrupted (note "about to run X").
-
-**Rules for the log:**
-
-- Always keep `Current Status` accurate: active task, last completed step, next step, blockers, touched files, verification state. A fresh agent must be able to resume using ONLY this section.
-- Append; never delete unfinished handoff context. When a whole project/phase is done, compact old details into a short `Completed Summary` and keep only useful recovery context.
-- Keep entries terse (1-3 lines each). This is a recovery aid, not documentation.
-- The log is NOT a rules file. Permanent coding standards belong in `.cursor/rules/*.mdc`, never here.
-
-**Self-check before ending any turn:** if you edited files or ran commands this turn but did not touch `.cursor/work-log.md`, you broke this rule — update it now.
 
 ## Owner context
 
@@ -139,7 +118,7 @@ A Graphify knowledge graph exists at `graphify-out/`. Use it as the FIRST step f
 - Before grepping or broad file-searching to find where something lives, run `graphify query "<what you're looking for>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). Example: starting "add a field to the pelanggan page" → `graphify query "pelanggan page data layer and form"` first.
 - Use grep/file-search only to (a) confirm an exact string/line after Graphify points you to a file, or (b) when a Graphify query returns nothing useful.
 - If the Graphify MCP server is configured, prefer its tools (`query_graph`, `get_node`, `get_neighbors`, `shortest_path`) over the CLI.
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost). Log it in the work log.
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - This section is the authoritative Graphify rule; `.cursor/rules/graphify.mdc` is managed by `graphify cursor install` and may be regenerated.
 
 ## Iron rules — icons (SVG only, never emoji)

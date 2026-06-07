@@ -59,8 +59,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SvgPicture.asset('assets/logo-gemiprint-white.svg', width: 132),
-                const SizedBox(height: 16),
+                SvgPicture.asset(
+                  'assets/logo-gemiprint-putih.svg',
+                  height: 72,
+                ),
+                const SizedBox(height: 12),
+                // Wordmark brand "gemiprint" dengan font Bauhaus dan warna brand
+                RichText(
+                  text: const TextSpan(
+                    style: TextStyle(
+                      fontFamily: AppFonts.brand,
+                      fontSize: 34,
+                      fontStyle: FontStyle.italic,
+                      height: 1,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'gemi',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                      TextSpan(
+                        text: 'print',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   'Masuk ke akun Anda',
                   style: TextStyle(

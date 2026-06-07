@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
@@ -131,31 +130,6 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titleForPath(currentPath)),
-        actions: [
-          if (user != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Chip(
-                avatar: CircleAvatar(
-                  backgroundColor: Colors.white24,
-                  child: Text(
-                    user.displayName[0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                label: Text(
-                  user.displayName,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                ),
-                backgroundColor: Colors.white10,
-                side: BorderSide.none,
-              ),
-            ),
-        ],
       ),
       drawer: _buildDrawer(context, ref, user?.role, currentPath),
       body: child,
@@ -176,14 +150,30 @@ class AppShell extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  vertical: 20,
+                  vertical: 16,
                   horizontal: 16,
                 ),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: SvgPicture.asset(
-                    'assets/logo-gemiprint-white.svg',
-                    width: 112,
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontFamily: AppFonts.brand,
+                        fontSize: 24,
+                        fontStyle: FontStyle.italic,
+                        height: 1,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'gemi',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                        TextSpan(
+                          text: 'print',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
