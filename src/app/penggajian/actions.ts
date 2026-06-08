@@ -10,6 +10,7 @@
 
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { listBusinessActors } from "@/lib/services/business-actor-service";
+import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
   listKomponen,
   createKomponen,
@@ -230,5 +231,16 @@ export async function voidPayrollRunAction(runId: string) {
   } catch (error) {
     console.error("voidPayrollRunAction error:", error);
     throw error;
+  }
+}
+
+/** Nama toko untuk kop slip gaji. */
+export async function getNamaTokoAction(): Promise<string> {
+  try {
+    const s = await getShopSettings();
+    return s.nama_toko || "gemiprint";
+  } catch (error) {
+    console.error("getNamaTokoAction error:", error);
+    return "gemiprint";
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
 import ModalPinjamanKaryawan from "./ModalPinjamanKaryawan";
+import ModalPayrollRun from "./ModalPayrollRun";
 
 // MARKER_PAGE
 
@@ -42,6 +43,7 @@ export default function PenggajianPage() {
     id: string;
     nama: string;
   } | null>(null);
+  const [showPayrollRun, setShowPayrollRun] = useState(false);
   const invalidate = useInvalidate();
 
   const showMsg = useCallback(
@@ -87,13 +89,22 @@ export default function PenggajianPage() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleMuatUlang}
-            className="shrink-0 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition-colors"
-          >
-            Muat Ulang
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPayrollRun(true)}
+              className="px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold transition-colors"
+            >
+              Proses Penggajian
+            </button>
+            <button
+              type="button"
+              onClick={handleMuatUlang}
+              className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition-colors"
+            >
+              Muat Ulang
+            </button>
+          </div>
         </div>
       </div>
 
@@ -222,6 +233,14 @@ export default function PenggajianPage() {
         <ModalPinjamanKaryawan
           actor={kasbonTarget}
           onClose={() => setKasbonTarget(null)}
+          onSuccess={reload}
+          showNotification={showMsg}
+        />
+      )}
+
+      {showPayrollRun && (
+        <ModalPayrollRun
+          onClose={() => setShowPayrollRun(false)}
           onSuccess={reload}
           showNotification={showMsg}
         />

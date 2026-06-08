@@ -182,6 +182,9 @@ interface PayrollSlipRow {
   potongan_kasbon: number;
   neto: number;
   keuangan_ref_id: string | null;
+  komponen_snapshot?: string | null;
+  metode_bayar?: string;
+  nama?: string;
   status?: string;
 }
 
@@ -415,9 +418,24 @@ export async function listPayrollRun(): Promise<PayrollRunDetail[]> {
     (s) => Number(s.is_deleted ?? 0) === 0
   );
 
+  // Join nama karyawan sekali (hindari N+1).
+  const actorIds = Array.from(new Set(allSlips.map((s) => s.actor_id)));
+  const namaByActor = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const actorsRes = await db.query<{ id: string; display_name: string }>(
+      "business_actors",
+      {}
+    );
+    for (const a of actorsRes.data || []) {
+      namaByActor.set(a.id, a.display_name);
+    }
+  }
+
   return runs.map((run) => ({
     ...run,
-    slips: allSlips.filter((s) => s.payroll_run_id === run.id),
+    slips: allSlips
+      .filter((s) => s.payroll_run_id === run.id)
+      .map((s) => ({ ...s, nama: namaByActor.get(s.actor_id) || s.actor_id })),
   }));
 }
 
