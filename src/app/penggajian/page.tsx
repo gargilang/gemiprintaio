@@ -11,6 +11,7 @@ import {
   listRingkasanKaryawanAction,
   type RingkasanKaryawan,
 } from "./actions";
+import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
 
 // MARKER_PAGE
 
@@ -32,6 +33,10 @@ const TIPE_CHIP: Record<string, string> = {
 
 export default function PenggajianPage() {
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
+  const [komponenTarget, setKomponenTarget] = useState<{
+    id: string;
+    nama: string;
+  } | null>(null);
   const invalidate = useInvalidate();
 
   const showMsg = useCallback(
@@ -168,9 +173,15 @@ export default function PenggajianPage() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <span className="text-slate-400 dark:text-slate-500 text-xs">
-                        &mdash;
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setKomponenTarget({ id: k.actor_id, nama: k.nama })
+                        }
+                        className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold"
+                      >
+                        Atur Kompensasi
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -181,6 +192,15 @@ export default function PenggajianPage() {
       </div>
 
       {notice && <ToastNotifikasi {...notice} />}
+
+      {komponenTarget && (
+        <ModalKomponenKompensasi
+          actor={komponenTarget}
+          onClose={() => setKomponenTarget(null)}
+          onSuccess={reload}
+          showNotification={showMsg}
+        />
+      )}
     </div>
   );
 }
