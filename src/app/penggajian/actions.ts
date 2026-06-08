@@ -35,6 +35,45 @@ import {
   type MetodeBayar,
 } from "@/lib/services/payroll-service";
 
+// ── Ringkasan halaman (karyawan + komponen + saldo pinjaman) ────────────────
+export interface RingkasanKaryawan {
+  actor_id: string;
+  nama: string;
+  role_code: string;
+  jumlah_komponen: number;
+  tipe_komponen: string[];
+  saldo_pinjaman: number;
+}
+
+/**
+ * Muat ringkasan untuk halaman utama: tiap karyawan aktif beserta jumlah
+ * komponen kompensasi aktif, tipe-tipe komponennya, dan saldo pinjaman.
+ * Join di memori untuk menghindari N+1.
+ */
+export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]> {
+  try {
+    const actors = await listBusinessActors({ includeInactive: false });
+    const hasil: RingkasanKaryawan[] = [];
+    for (const a of actors) {
+      const komponen = await listKomponen(a.id);
+      const aktif = komponen.filter((k) => Number(k.aktif_status ?? 1) === 1);
+      const saldo = await hitungSaldoPinjaman(a.id);
+      hasil.push({
+        actor_id: a.id,
+        nama: a.display_name,
+        role_code: a.role_code,
+        jumlah_komponen: aktif.length,
+        tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
+        saldo_pinjaman: saldo,
+      });
+    }
+    return hasil;
+  } catch (error) {
+    console.error("listRingkasanKaryawanAction error:", error);
+    throw error;
+  }
+}
+
 // ── Karyawan (baca) ──────────────────────────────────────────────────────────
 export async function listKaryawanAction() {
   try {

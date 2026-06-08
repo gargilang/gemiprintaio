@@ -257,6 +257,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FULL_STAFF,
       },
       {
+        href: "/penggajian",
+        icon: <UsersIcon size={18} />,
+        label: "Penggajian",
+        color: "from-indigo-500 to-emerald-500",
+        allowedRoles: FULL_STAFF,
+      },
+      {
         href: "/aktivitas",
         icon: <AuditLogIcon size={18} />,
         label: "Log Audit",
@@ -317,6 +324,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/pesanan-pembelian": "Pesanan Pembelian",
   "/hutang": "Hutang",
   "/keuangan": "Keuangan",
+  "/penggajian": "Penggajian",
   "/laporan": "Laporan",
   "/laporan-ppn": "Laporan PPN",
   "/aktivitas": "Log Audit",
