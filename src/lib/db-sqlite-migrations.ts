@@ -1739,6 +1739,34 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     `);
   }
 
+  // Penggajian: GAJI (beban, mengurangi laba) + PINJAMAN_KARYAWAN (kasbon =
+  // piutang, NETRAL terhadap laba). metric_contributions menentukan dampak laba:
+  // GAJI → biaya_operasional; PINJAMAN_KARYAWAN → [] (hanya kas/saldo bergerak).
+  if (financeCategoryExists) {
+    const payrollCatCols = (
+      db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (payrollCatCols.includes("metric_contributions")) {
+      db.exec(`
+        INSERT OR IGNORE INTO finance_category_definitions
+          (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order, metric_contributions)
+        VALUES
+          ('fin-cat-gaji', 'GAJI', 'Gaji', 'bg-teal-100', 'text-teal-800', 'border-teal-300', 'kredit', 1, 130, '[{"column":"biaya_operasional","amount_field":"kredit","sign":1}]'),
+          ('fin-cat-pinjaman-karyawan', 'PINJAMAN_KARYAWAN', 'Pinjaman Karyawan', 'bg-cyan-100', 'text-cyan-800', 'border-cyan-300', 'both', 1, 140, '[]');
+      `);
+    } else {
+      db.exec(`
+        INSERT OR IGNORE INTO finance_category_definitions
+          (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order)
+        VALUES
+          ('fin-cat-gaji', 'GAJI', 'Gaji', 'bg-teal-100', 'text-teal-800', 'border-teal-300', 'kredit', 1, 130),
+          ('fin-cat-pinjaman-karyawan', 'PINJAMAN_KARYAWAN', 'Pinjaman Karyawan', 'bg-cyan-100', 'text-cyan-800', 'border-cyan-300', 'both', 1, 140);
+      `);
+    }
+  }
+
   // Maklon: placeholder barang for sale lines + auto-generated PO line items.
   // lacak_inventori_status=0 so stock never moves; cost is captured per line
   // via biaya_subkontrak / harga_satuan instead.

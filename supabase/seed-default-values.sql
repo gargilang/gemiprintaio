@@ -144,6 +144,16 @@ VALUES
   ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 1, 120)
 ON CONFLICT (category_code) DO NOTHING;
 
+-- Penggajian (Payroll): GAJI = beban gaji (mengurangi laba lewat biaya_operasional);
+-- PINJAMAN_KARYAWAN = kasbon sebagai piutang, NETRAL terhadap laba (metric_contributions
+-- kosong) — hanya kas/saldo yang bergerak, bukan biaya.
+INSERT INTO finance_category_definitions
+  (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order, metric_contributions)
+VALUES
+  ('fin-cat-gaji', 'GAJI', 'Gaji', 'bg-teal-100', 'text-teal-800', 'border-teal-300', 'kredit', 1, 130, '[{"column":"biaya_operasional","amount_field":"kredit","sign":1}]'::jsonb),
+  ('fin-cat-pinjaman-karyawan', 'PINJAMAN_KARYAWAN', 'Pinjaman Karyawan', 'bg-cyan-100', 'text-cyan-800', 'border-cyan-300', 'both', 1, 140, '[]'::jsonb)
+ON CONFLICT (category_code) DO NOTHING;
+
 INSERT INTO satuan_barang (id, nama, urutan_tampilan) VALUES
   ('unit-m2', 'm²', 0),
   ('unit-meter', 'meter', 1),

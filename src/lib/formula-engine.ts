@@ -196,6 +196,10 @@ export const DEFAULT_CATEGORY_CONTRIBUTIONS: Record<string, CategoryContribution
   RETUR_PENJUALAN_NONCASH: [{ column: "omzet", amount_field: "kredit", sign: -1 }],
   RETUR_HPP: [{ column: "biaya_bahan", amount_field: "debit", sign: -1 }],
   RETUR_PEMBELIAN: [],
+  // Penggajian: GAJI = beban operasional (mengurangi laba). PINJAMAN_KARYAWAN
+  // netral terhadap laba (piutang, bukan biaya) — hanya kas/saldo yang bergerak.
+  GAJI: [{ column: "biaya_operasional", amount_field: "kredit", sign: 1 }],
+  PINJAMAN_KARYAWAN: [],
 };
 
 /** Resolve KasbonConditions from raw DB value (string or object). */
