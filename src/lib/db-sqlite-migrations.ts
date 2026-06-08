@@ -1950,6 +1950,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       bruto REAL NOT NULL DEFAULT 0,
       potongan_kasbon REAL NOT NULL DEFAULT 0,
       neto REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','DIBAYAR','VOIDED')),
       metode_bayar TEXT NOT NULL DEFAULT 'CASH' CHECK(metode_bayar IN ('CASH','TRANSFER')),
       keuangan_ref_id TEXT,
       komponen_snapshot TEXT,

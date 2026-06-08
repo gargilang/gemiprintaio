@@ -593,6 +593,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           bruto REAL NOT NULL DEFAULT 0,
           potongan_kasbon REAL NOT NULL DEFAULT 0,
           neto REAL NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'DRAFT',
           metode_bayar TEXT NOT NULL DEFAULT 'CASH',
           keuangan_ref_id TEXT,
           komponen_snapshot TEXT,

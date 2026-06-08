@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS payroll_slip (
   bruto                NUMERIC NOT NULL DEFAULT 0,
   potongan_kasbon      NUMERIC NOT NULL DEFAULT 0,
   neto                 NUMERIC NOT NULL DEFAULT 0,
+  status               TEXT NOT NULL DEFAULT 'DRAFT'
+                         CHECK (status IN ('DRAFT','DIBAYAR','VOIDED')),
   metode_bayar         TEXT NOT NULL DEFAULT 'CASH'
                          CHECK (metode_bayar IN ('CASH','TRANSFER')),
   keuangan_ref_id      TEXT,
@@ -121,6 +123,7 @@ CREATE TABLE IF NOT EXISTS payroll_slip (
 
 CREATE INDEX IF NOT EXISTS idx_payroll_slip_run    ON payroll_slip(payroll_run_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_slip_actor  ON payroll_slip(actor_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_slip_status ON payroll_slip(status);
 CREATE INDEX IF NOT EXISTS idx_payroll_slip_sync   ON payroll_slip(sync_status);
 
 -- ── 4. pinjaman_karyawan ────────────────────────────────────────────────────
