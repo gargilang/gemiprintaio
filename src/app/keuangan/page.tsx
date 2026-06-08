@@ -1221,7 +1221,7 @@ export default function FinancePage() {
                     onClick={() => {
                       setSelectedKategoriFilters(new Set());
                     }}
-                    className="flex-1 text-xs px-2 py-1 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-100 transition-colors"
+                    className="flex-1 text-xs px-2 py-1 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     Bersihkan
                   </button>
@@ -1231,7 +1231,7 @@ export default function FinancePage() {
                   return (
                     <label
                       key={kat}
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"
