@@ -12,6 +12,7 @@ import {
   type RingkasanKaryawan,
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
+import ModalPinjamanKaryawan from "./ModalPinjamanKaryawan";
 
 // MARKER_PAGE
 
@@ -34,6 +35,10 @@ const TIPE_CHIP: Record<string, string> = {
 export default function PenggajianPage() {
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [komponenTarget, setKomponenTarget] = useState<{
+    id: string;
+    nama: string;
+  } | null>(null);
+  const [kasbonTarget, setKasbonTarget] = useState<{
     id: string;
     nama: string;
   } | null>(null);
@@ -173,15 +178,26 @@ export default function PenggajianPage() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setKomponenTarget({ id: k.actor_id, nama: k.nama })
-                        }
-                        className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold"
-                      >
-                        Atur Kompensasi
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setKasbonTarget({ id: k.actor_id, nama: k.nama })
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-xs font-semibold"
+                        >
+                          Kasbon
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setKomponenTarget({ id: k.actor_id, nama: k.nama })
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold"
+                        >
+                          Atur Kompensasi
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -197,6 +213,15 @@ export default function PenggajianPage() {
         <ModalKomponenKompensasi
           actor={komponenTarget}
           onClose={() => setKomponenTarget(null)}
+          onSuccess={reload}
+          showNotification={showMsg}
+        />
+      )}
+
+      {kasbonTarget && (
+        <ModalPinjamanKaryawan
+          actor={kasbonTarget}
+          onClose={() => setKasbonTarget(null)}
           onSuccess={reload}
           showNotification={showMsg}
         />
