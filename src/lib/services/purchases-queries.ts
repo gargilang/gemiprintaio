@@ -6,7 +6,10 @@
 import "server-only";
 
 import { db, getServerSupabaseClient } from "../db-unified";
-import { fetchLastNomorPembelian } from "../server-data-supabase";
+import {
+  fetchLastNomorPembelian,
+  fetchLastNomorPembelianMaklon,
+} from "../server-data-supabase";
 import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
   convertRollVariant,
@@ -283,15 +286,23 @@ export async function nextNomorPembelian(): Promise<string> {
  * dan laporan. Jatuh balik ke `MK-00001` kalau belum ada PO maklon sebelumnya.
  */
 export async function nextNomorPembelianMaklon(): Promise<string> {
-  const rows = await db.queryRaw<{ nomor_pembelian: string }>(
-    `SELECT nomor_pembelian FROM pembelian
-     WHERE nomor_pembelian LIKE 'MK-%'
-     ORDER BY nomor_pembelian DESC
-     LIMIT 1`,
-    []
-  );
+  let last: string | null | undefined;
+  if (getServerSupabaseClient()) {
+    // Supabase: queryRaw balik kosong di server (SQLite di-skip), jadi WAJIB
+    // lewat helper Supabase — kalau tidak, counter selalu MK-00001 dan PO
+    // maklon kedua dst. gagal duplikat unik nomor_pembelian.
+    last = await fetchLastNomorPembelianMaklon();
+  } else {
+    const rows = await db.queryRaw<{ nomor_pembelian: string }>(
+      `SELECT nomor_pembelian FROM pembelian
+       WHERE nomor_pembelian LIKE 'MK-%'
+       ORDER BY nomor_pembelian DESC
+       LIMIT 1`,
+      []
+    );
+    last = rows[0]?.nomor_pembelian;
+  }
   let nextNumber = 1;
-  const last = rows[0]?.nomor_pembelian;
   if (last) {
     const match = last.match(/(\d+)$/);
     if (match) nextNumber = parseInt(match[1], 10) + 1;

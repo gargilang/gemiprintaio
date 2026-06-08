@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       ketentuan_bayar,
       aktif_status,
       catatan,
+      tipe_vendor,
     } = body;
 
     if (!nama_perusahaan || !nama_perusahaan.trim()) {
@@ -66,6 +67,10 @@ export async function POST(req: NextRequest) {
       ketentuan_bayar: ketentuan_bayar?.trim() || null,
       aktif_status: aktif_status !== undefined ? (aktif_status ? 1 : 0) : 1,
       catatan: catatan?.trim() || null,
+      tipe_vendor:
+        tipe_vendor === "SUBKONTRAKTOR" || tipe_vendor === "KEDUANYA"
+          ? tipe_vendor
+          : "SUPPLIER",
     });
 
     if (!created?.id) {

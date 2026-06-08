@@ -164,6 +164,24 @@ export async function fetchLastNomorPembelian(): Promise<string | null> {
   return (data as { nomor_pembelian?: string } | null)?.nomor_pembelian ?? null;
 }
 
+/**
+ * Ambil nomor pembelian maklon (`MK-NNNNN`) terakhir dari Supabase.
+ * Diurutkan berdasarkan nomor_pembelian (zero-padded) supaya counter benar.
+ */
+export async function fetchLastNomorPembelianMaklon(): Promise<string | null> {
+  const sb = clientOrNull();
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("pembelian")
+    .select("nomor_pembelian")
+    .like("nomor_pembelian", "MK-%")
+    .order("nomor_pembelian", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { nomor_pembelian?: string } | null)?.nomor_pembelian ?? null;
+}
+
 export async function getReferencedHargaSatuanIds(
   ids: string[]
 ): Promise<Set<string>> {
