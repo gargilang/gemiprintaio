@@ -527,6 +527,120 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         )",
         [],
     )?;
+    // ── Modul Penggajian (Payroll) ──────────────────────────────────────
+    // Empat tabel baru (mirror database/sqlite-schema.sql + supabase migrasi
+    // 20260609000000_modul_penggajian.sql). Additive untuk install desktop lama.
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS komponen_kompensasi (
+          id TEXT PRIMARY KEY,
+          actor_id TEXT NOT NULL,
+          tipe TEXT NOT NULL,
+          nama TEXT NOT NULL,
+          metode TEXT NOT NULL DEFAULT 'TETAP',
+          nominal REAL NOT NULL DEFAULT 0,
+          persen REAL NOT NULL DEFAULT 0,
+          sumber_formula_key TEXT,
+          aktif_status INTEGER NOT NULL DEFAULT 1,
+          urutan_tampilan INTEGER NOT NULL DEFAULT 0,
+          catatan TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending',
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'server',
+          change_version INTEGER DEFAULT 0,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_actor ON komponen_kompensasi(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_aktif ON komponen_kompensasi(aktif_status);
+
+        CREATE TABLE IF NOT EXISTS payroll_run (
+          id TEXT PRIMARY KEY,
+          periode TEXT NOT NULL,
+          tanggal_bayar TEXT,
+          status TEXT NOT NULL DEFAULT 'DRAFT',
+          metode_bayar TEXT NOT NULL DEFAULT 'CASH',
+          total_bruto REAL NOT NULL DEFAULT 0,
+          total_potongan_kasbon REAL NOT NULL DEFAULT 0,
+          total_neto REAL NOT NULL DEFAULT 0,
+          catatan TEXT,
+          dibuat_oleh TEXT,
+          voided_at TEXT,
+          voided_by TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending',
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'server',
+          change_version INTEGER DEFAULT 0,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_payroll_run_status ON payroll_run(status);
+        CREATE INDEX IF NOT EXISTS idx_payroll_run_periode ON payroll_run(periode);
+
+        CREATE TABLE IF NOT EXISTS payroll_slip (
+          id TEXT PRIMARY KEY,
+          payroll_run_id TEXT NOT NULL,
+          actor_id TEXT NOT NULL,
+          bruto REAL NOT NULL DEFAULT 0,
+          potongan_kasbon REAL NOT NULL DEFAULT 0,
+          neto REAL NOT NULL DEFAULT 0,
+          metode_bayar TEXT NOT NULL DEFAULT 'CASH',
+          keuangan_ref_id TEXT,
+          komponen_snapshot TEXT,
+          catatan TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending',
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'server',
+          change_version INTEGER DEFAULT 0,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT,
+          FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_payroll_slip_run ON payroll_slip(payroll_run_id);
+        CREATE INDEX IF NOT EXISTS idx_payroll_slip_actor ON payroll_slip(actor_id);
+
+        CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
+          id TEXT PRIMARY KEY,
+          actor_id TEXT NOT NULL,
+          tanggal TEXT NOT NULL DEFAULT (date('now')),
+          jumlah REAL NOT NULL DEFAULT 0,
+          jenis TEXT NOT NULL,
+          keterangan TEXT,
+          keuangan_ref_id TEXT,
+          payroll_run_id TEXT,
+          dibuat_oleh TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending',
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 1,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'server',
+          change_version INTEGER DEFAULT 0,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT,
+          FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_jenis ON pinjaman_karyawan(jenis);
+        CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(payroll_run_id);",
+    );
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS sync_state (
           key TEXT PRIMARY KEY,

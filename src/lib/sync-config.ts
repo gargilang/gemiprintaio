@@ -48,10 +48,20 @@ export const MASTER_SYNC_TABLES = [
   "accounting_periods",
 ] as const;
 
+// Modul Penggajian (Payroll). Urutan: master komponen dulu, lalu run sebelum
+// slip/pinjaman (FK payroll_run_id).
+export const PAYROLL_SYNC_TABLES = [
+  "komponen_kompensasi",
+  "payroll_run",
+  "payroll_slip",
+  "pinjaman_karyawan",
+] as const;
+
 export const ALL_SYNC_TABLES = [
   ...CORE_SYNC_TABLES,
   ...BALANCE_SYNC_TABLES,
   ...MASTER_SYNC_TABLES,
+  ...PAYROLL_SYNC_TABLES,
 ] as const;
 
 export type SyncTable = (typeof ALL_SYNC_TABLES)[number];
