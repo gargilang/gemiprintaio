@@ -55,6 +55,9 @@ export default function TabelRiwayatPenjualan({
 }: SalesHistoryTableProps) {
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  // Secara bawaan transaksi yang dibatalkan (VOID) disembunyikan supaya
+  // daftar utama bersih. Data tidak dihapus, hanya disembunyikan dari tampilan.
+  const [tampilkanVoid, setTampilkanVoid] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -116,12 +119,24 @@ export default function TabelRiwayatPenjualan({
     };
   }, [fakturPromptSale, submitFakturPrompt, closeFakturPrompt]);
 
-  const filteredSales = sales.filter(
-    (sale) =>
-      sale.nomor_faktur.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.pelanggan_nama_snapshot?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Cocokkan kata kunci pencarian (faktur / nama pelanggan).
+  const cocokPencarian = (sale: Sale) =>
+    sale.nomor_faktur.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.pelanggan_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.pelanggan_nama_snapshot
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+  const isVoid = (sale: Sale) => sale.status_transaksi === "VOIDED";
+
+  // Hasil pencarian sebelum filter VOID (untuk menghitung jumlah VOID).
+  const sesuaiPencarian = sales.filter(cocokPencarian);
+  const jumlahVoid = sesuaiPencarian.filter(isVoid).length;
+
+  // Daftar yang tampil di tabel: sembunyikan VOID kecuali toggle dinyalakan.
+  const filteredSales = tampilkanVoid
+    ? sesuaiPencarian
+    : sesuaiPencarian.filter((sale) => !isVoid(sale));
 
   const formatRupiah = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -488,11 +503,15 @@ export default function TabelRiwayatPenjualan({
     }
   };
 
-  const totalPenjualan = filteredSales.reduce(
+  // Total dan piutang SELALU mengecualikan transaksi VOID, baik toggle
+  // tampilkan-void menyala atau tidak. Transaksi yang dibatalkan tidak
+  // boleh ikut menambah angka penjualan/piutang.
+  const salesUntukTotal = sesuaiPencarian.filter((sale) => !isVoid(sale));
+  const totalPenjualan = salesUntukTotal.reduce(
     (sum, sale) => sum + sale.total_jumlah,
     0
   );
-  const totalPiutang = filteredSales
+  const totalPiutang = salesUntukTotal
     .filter(
       (s) =>
         s.status_pembayaran === "AKTIF" || s.status_pembayaran === "SEBAGIAN"
@@ -557,6 +576,21 @@ export default function TabelRiwayatPenjualan({
         </div>
       </div>
 
+      {/* Toggle tampilkan transaksi yang dibatalkan (VOID) */}
+      {jumlahVoid > 0 && (
+        <div className="flex items-center justify-end">
+          <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-slate-300 select-none">
+            <input
+              type="checkbox"
+              checked={tampilkanVoid}
+              onChange={(e) => setTampilkanVoid(e.target.checked)}
+              className="rounded border-gray-300 dark:border-slate-600 text-[#00afef] focus:ring-[#00afef]"
+            />
+            Tampilkan transaksi dibatalkan ({jumlahVoid})
+          </label>
+        </div>
+      )}
+
       {/* Table */}
       {filteredSales.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-800">
@@ -616,11 +650,19 @@ export default function TabelRiwayatPenjualan({
                       setExpandedSale(expandedSale === sale.id ? null : sale.id)
                     }
                     className={`border-b border-gray-200 dark:border-slate-800 hover:bg-cyan-50 transition-all cursor-pointer ${
-                      index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+                      isVoid(sale)
+                        ? "bg-red-50/40 dark:bg-red-900/10 opacity-60"
+                        : index % 2 === 0
+                          ? "bg-white dark:bg-slate-900"
+                          : "bg-gray-50 dark:bg-slate-800"
                     }`}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-bold text-gray-800 dark:text-slate-100">
+                      <div
+                        className={`font-bold text-gray-800 dark:text-slate-100 ${
+                          isVoid(sale) ? "line-through text-gray-500 dark:text-slate-400" : ""
+                        }`}
+                      >
                         {sale.nomor_faktur}
                       </div>
                       {sale.status_transaksi === "VOIDED" && (

@@ -195,11 +195,17 @@ const PurchaseRow = memo(
       }
     );
 
+    const isVoid = purchase.status_transaksi === "VOIDED";
+
     return (
       <>
         <tr
           className={`border-b border-gray-200 dark:border-slate-800 hover:bg-indigo-50 transition-all cursor-pointer ${
-            index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+            isVoid
+              ? "bg-red-50/40 dark:bg-red-900/10 opacity-60"
+              : index % 2 === 0
+                ? "bg-white dark:bg-slate-900"
+                : "bg-gray-50 dark:bg-slate-800"
           }`}
           onClick={() => setShowDetails(!showDetails)}
         >
@@ -208,7 +214,9 @@ const PurchaseRow = memo(
           </td>
           <td className="px-4 py-3">
             <div className="font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-              <span>{purchase.nomor_faktur}</span>
+              <span className={isVoid ? "line-through text-gray-500 dark:text-slate-400" : ""}>
+                {purchase.nomor_faktur}
+              </span>
               {purchase.tipe_pembelian === "MAKLON" && (
                 <span
                   className="inline-block text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-[#0a1b3d] dark:text-slate-100 font-bold rounded uppercase tracking-wide"
@@ -471,6 +479,9 @@ export default function TabelPembelian({
   onRetur,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  // Secara bawaan pembelian yang dibatalkan (VOID) disembunyikan dari daftar
+  // utama. Data tidak dihapus, hanya disembunyikan dari tampilan.
+  const [tampilkanVoid, setTampilkanVoid] = useState(false);
   const [sortBy, setSortBy] = useState<"date" | "total" | "status" | "created">(
     "created"
   );
@@ -489,6 +500,11 @@ export default function TabelPembelian({
           (p.vendor_name && p.vendor_name.toLowerCase().includes(query)) ||
           (p.catatan && p.catatan.toLowerCase().includes(query))
       );
+    }
+
+    // Sembunyikan pembelian VOID kecuali toggle dinyalakan.
+    if (!tampilkanVoid) {
+      filtered = filtered.filter((p) => p.status_transaksi !== "VOIDED");
     }
 
     // Sort
@@ -522,10 +538,27 @@ export default function TabelPembelian({
     });
 
     return filtered;
-  }, [purchases, searchQuery, sortBy, sortOrder]);
+  }, [purchases, searchQuery, sortBy, sortOrder, tampilkanVoid]);
 
+  // Jumlah pembelian VOID (setelah filter pencarian) untuk label toggle.
+  const jumlahVoid = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return purchases.filter(
+      (p) =>
+        p.status_transaksi === "VOIDED" &&
+        (!query ||
+          p.nomor_faktur.toLowerCase().includes(query) ||
+          (p.vendor_name && p.vendor_name.toLowerCase().includes(query)) ||
+          (p.catatan && p.catatan.toLowerCase().includes(query)))
+    ).length;
+  }, [purchases, searchQuery]);
+
+  // Total pembelian SELALU mengecualikan transaksi VOID, baik toggle
+  // tampilkan-void menyala atau tidak.
   const totalPembelian = useMemo(() => {
-    return filteredPurchases.reduce((sum, p) => sum + p.total_harga, 0);
+    return filteredPurchases
+      .filter((p) => p.status_transaksi !== "VOIDED")
+      .reduce((sum, p) => sum + p.total_harga, 0);
   }, [filteredPurchases]);
 
   const handleSort = (field: "date" | "total" | "status") => {
@@ -573,6 +606,21 @@ export default function TabelPembelian({
           </div>
         </div>
       </div>
+
+      {/* Toggle tampilkan pembelian yang dibatalkan (VOID) */}
+      {jumlahVoid > 0 && (
+        <div className="flex items-center justify-end">
+          <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-slate-300 select-none">
+            <input
+              type="checkbox"
+              checked={tampilkanVoid}
+              onChange={(e) => setTampilkanVoid(e.target.checked)}
+              className="rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+            />
+            Tampilkan pembelian dibatalkan ({jumlahVoid})
+          </label>
+        </div>
+      )}
 
       {/* Table */}
       {filteredPurchases.length === 0 ? (

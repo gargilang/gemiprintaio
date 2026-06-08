@@ -262,7 +262,14 @@ export default function MaterialsPage() {
     const list = await getMaterialsAction();
     return (list as any[]) || [];
   });
-  const materials = useMemo(() => materialsData ?? [], [materialsData]);
+  // Placeholder sistem untuk pekerjaan maklon. Wajib ada di DB (dipakai keras
+  // oleh jalur maklon di POS), tapi bukan barang katalog — sembunyikan dari
+  // daftar Barang supaya tidak membingungkan pengguna. API tetap
+  // mengembalikannya untuk POS/proses maklon.
+  const materials = useMemo(
+    () => (materialsData ?? []).filter((m) => m.id !== "barang-jasa-maklon"),
+    [materialsData]
+  );
   const setMaterials = useCallback<
     (next: any[] | ((prev: any[]) => any[])) => void
   >(
