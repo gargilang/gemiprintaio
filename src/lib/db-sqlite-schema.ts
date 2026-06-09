@@ -6,21 +6,27 @@
  */
 
 import "server-only";
-export function migrateActorRolesLegacyCheckConstraint(db: {
+export function migratePeranPegawaiLegacyCheckConstraint(db: {
   prepare: (sql: string) => { get: () => { sql?: string } | undefined };
   pragma: (s: string) => void;
   exec: (sql: string) => void;
 }): void {
+  // Berjalan SETELAH rename English→Indonesia, jadi target tabelnya
+  // `peran_pegawai` (bukan `actor_roles`). SQLite `RENAME TO` ikut membawa
+  // CHECK constraint lama apa adanya, sehingga install lama yang masih punya
+  // CHECK `role_group IN ('profit_share',...)` tetap perlu dibangun ulang di
+  // sini agar nilai role_group baru (owner/management/sales/staff) tidak
+  // ditolak saat seed.
   const row = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actor_roles'"
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'peran_pegawai'"
     )
     .get();
   if (!row?.sql?.includes("profit_share")) return;
 
   db.pragma("foreign_keys = OFF");
   db.exec(`
-    CREATE TABLE actor_roles_v2 (
+    CREATE TABLE peran_pegawai_v2 (
       id            TEXT PRIMARY KEY,
       role_code     TEXT NOT NULL UNIQUE,
       role_label    TEXT NOT NULL,
@@ -31,7 +37,7 @@ export function migrateActorRolesLegacyCheckConstraint(db: {
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    INSERT INTO actor_roles_v2
+    INSERT INTO peran_pegawai_v2
       (id, role_code, role_label, role_group, description, display_order, created_at, updated_at)
     SELECT
       id,
@@ -53,18 +59,18 @@ export function migrateActorRolesLegacyCheckConstraint(db: {
       display_order,
       created_at,
       updated_at
-    FROM actor_roles;
+    FROM peran_pegawai;
 
-    DROP TABLE actor_roles;
-    ALTER TABLE actor_roles_v2 RENAME TO actor_roles;
+    DROP TABLE peran_pegawai;
+    ALTER TABLE peran_pegawai_v2 RENAME TO peran_pegawai;
   `);
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
-    CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+    CREATE INDEX IF NOT EXISTS idx_peran_pegawai_group ON peran_pegawai(role_group);
+    CREATE INDEX IF NOT EXISTS idx_peran_pegawai_order ON peran_pegawai(display_order);
   `);
   db.pragma("foreign_keys = ON");
   console.info(
-    "✅ Migrated actor_roles: role_group is now owner/management/sales/staff/other"
+    "✅ Migrated peran_pegawai: role_group is now owner/management/sales/staff/other"
   );
 }
 

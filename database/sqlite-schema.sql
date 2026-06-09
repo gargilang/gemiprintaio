@@ -717,13 +717,6 @@ CREATE TABLE keuangan (
       biaya_bahan REAL DEFAULT 0,
       saldo REAL DEFAULT 0,
       laba_bersih REAL DEFAULT 0,
-      kasbon_anwar REAL DEFAULT 0,
-      kasbon_suri REAL DEFAULT 0,
-      kasbon_cahaya REAL DEFAULT 0,
-      kasbon_dinil REAL DEFAULT 0,
-      bagi_hasil_anwar REAL DEFAULT 0,
-      bagi_hasil_suri REAL DEFAULT 0,
-      bagi_hasil_gemi REAL DEFAULT 0,
       catatan TEXT,
       dibuat_oleh TEXT,
       diarsipkan_pada TEXT,
@@ -738,14 +731,7 @@ CREATE TABLE keuangan (
       override_biaya_operasional INTEGER DEFAULT 0,
       override_biaya_bahan INTEGER DEFAULT 0,
       override_laba_bersih INTEGER DEFAULT 0,
-      override_kasbon_anwar INTEGER DEFAULT 0,
-      override_kasbon_suri INTEGER DEFAULT 0,
-      override_kasbon_cahaya INTEGER DEFAULT 0,
-      override_kasbon_dinil INTEGER DEFAULT 0,
-      override_bagi_hasil_anwar INTEGER DEFAULT 0,
-      override_bagi_hasil_suri INTEGER DEFAULT 0,
-      override_bagi_hasil_gemi INTEGER DEFAULT 0
-    , status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED','VOIDED')), voided_at TEXT, voided_by TEXT, void_reason TEXT, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
+    status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED','VOIDED')), voided_at TEXT, voided_by TEXT, void_reason TEXT, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
 
 -- Indexes for keuangan
 CREATE INDEX idx_keuangan_sync_status ON keuangan(sync_status);
@@ -768,20 +754,6 @@ CREATE TABLE finance_category_definitions (
 
 CREATE INDEX idx_finance_category_definitions_active ON finance_category_definitions(is_active, display_order);
 
--- Table: finance_participants
-CREATE TABLE finance_participants (
-      id TEXT PRIMARY KEY,
-      participant_code TEXT NOT NULL UNIQUE,
-      display_name TEXT NOT NULL,
-      role_type TEXT NOT NULL DEFAULT 'other' CHECK(role_type IN ('profit_share', 'cash_advance', 'other')),
-      is_active INTEGER NOT NULL DEFAULT 1,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
-
-CREATE INDEX idx_finance_participants_active ON finance_participants(is_active, display_order);
-
 -- Table: finance_metric_mappings
 CREATE TABLE finance_metric_mappings (
       id TEXT PRIMARY KEY,
@@ -794,8 +766,7 @@ CREATE TABLE finance_metric_mappings (
       display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
-      FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL);
+    , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
 
 CREATE INDEX idx_finance_metric_mappings_active ON finance_metric_mappings(is_active, metric_group, display_order);
 
@@ -1231,7 +1202,7 @@ CREATE TABLE komponen_kompensasi (
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE
     );
 
 CREATE INDEX idx_komponen_kompensasi_actor ON komponen_kompensasi(actor_id);
@@ -1294,7 +1265,7 @@ CREATE TABLE slip_gaji (
       deleted_at TEXT,
       client_mutation_id TEXT,
       FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE CASCADE,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE
     );
 
 CREATE INDEX idx_slip_gaji_run ON slip_gaji(proses_gaji_id);
@@ -1323,7 +1294,7 @@ CREATE TABLE pinjaman_karyawan (
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE,
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE,
       FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
     );
 

@@ -1,10 +1,10 @@
-/** Name from cash book column suffix (legacy), e.g. bagi_hasil_suri → Suri */
+/** Nama partisipan dari suffix kolom (fallback), mis. "kasbon_slot_1" → "Slot 1" */
 export function deriveParticipantNameFromSourceColumn(
   sourceColumn: string
 ): string | null {
-  const m = sourceColumn.match(/^(?:bagi_hasil|kasbon)_(.+)$/i);
+  const m = sourceColumn.match(/^(.+?)_(.+)$/);
   if (!m) return null;
-  const words = m[1].split("_").filter(Boolean);
+  const words = m[2].split("_").filter(Boolean);
   if (words.length === 0) return null;
   return words
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())

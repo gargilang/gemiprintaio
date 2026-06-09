@@ -188,21 +188,9 @@ SELECT
 FROM spesifikasi_cepat_barang
 WHERE kategori_id = 'cat-kertas';
 
--- Default flexible finance participants
-INSERT OR IGNORE INTO finance_participants (id, participant_code, display_name, role_type, is_active, display_order) VALUES
-  ('fin-participant-anwar', 'ANWAR', 'Anwar', 'profit_share', 1, 10),
-  ('fin-participant-suri', 'SURI', 'Suri', 'profit_share', 1, 20),
-  ('fin-participant-gemi', 'GEMI', 'Gemi', 'profit_share', 1, 30),
-  ('fin-participant-cahaya', 'CAHAYA', 'Cahaya', 'cash_advance', 1, 40),
-  ('fin-participant-dinil', 'DINIL', 'Dinil', 'cash_advance', 1, 50);
+-- Default flexible finance participants (kosong — diisi oleh pengguna via UI "Kelola Orang")
 
--- Default flexible finance metric mappings
-INSERT OR IGNORE INTO finance_metric_mappings (id, metric_key, metric_label, metric_group, source_column, participant_id, is_active, display_order) VALUES
-  ('fin-metric-bagi-hasil-anwar', 'bagi_hasil_anwar', 'Bagi Hasil', 'profit_share', 'bagi_hasil_anwar', 'fin-participant-anwar', 1, 10),
-  ('fin-metric-bagi-hasil-suri', 'bagi_hasil_suri', 'Bagi Hasil', 'profit_share', 'bagi_hasil_suri', 'fin-participant-suri', 1, 20),
-  ('fin-metric-bagi-hasil-gemi', 'bagi_hasil_gemi', 'Bagi Hasil', 'profit_share', 'bagi_hasil_gemi', 'fin-participant-gemi', 1, 30),
-  ('fin-metric-kasbon-cahaya', 'kasbon_cahaya', 'Kasbon', 'cash_advance', 'kasbon_cahaya', 'fin-participant-cahaya', 1, 40),
-  ('fin-metric-kasbon-dinil', 'kasbon_dinil', 'Kasbon', 'cash_advance', 'kasbon_dinil', 'fin-participant-dinil', 1, 50);
+-- Default flexible finance metric mappings (kosong — diisi oleh pengguna via UI)
 
 -- Default flexible finance category definitions
 INSERT OR IGNORE INTO finance_category_definitions (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order) VALUES

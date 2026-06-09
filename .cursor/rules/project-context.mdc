@@ -18,6 +18,21 @@ alwaysApply: true
 - Pick reasonable defaults for small ambiguities; note assumptions in the final summary.
 - **Block and ask only if:** deleting production data / wiping DB, changing domain/DNS/billing, money or access rules that can't be inferred, or changes that can't be rolled back easily.
 
+## Superpowers skills — auto-engage for BIG tasks only
+
+The Superpowers plugin provides skills (brainstorming, writing-plans, executing-plans, subagent-driven-development, test-driven-development, systematic-debugging, requesting/receiving-code-review, etc.). They raise quality but cost extra tokens, so scale them to task size. The owner often forgets to summon a skill manually — engage the right one yourself based on these triggers, and otherwise stay lean.
+
+**Big / complex task** (new feature across multiple files, architectural change, ambiguous or multi-step request, risky refactor): engage skills even if the owner didn't ask.
+- Unclear intent or design space → `brainstorming` first.
+- Confirmed multi-step work → `writing-plans`, then `executing-plans`.
+- Bug / test failure / unexpected behavior → `systematic-debugging` before proposing a fix.
+- New feature or bugfix code → `test-driven-development` where a test framework fits.
+- Before merging a major piece → `requesting-code-review`.
+
+**Small / clear task** (rename, swap a logo/asset, copy edit, one-file tweak, simple question): do NOT engage these skills. Just do the work. Running brainstorm/plan/review on trivial tasks wastes tokens — that is the opposite of what the owner wants.
+
+**Subagents (important cost guard):** when using `subagent-driven-development` or dispatching subagents, run them **one at a time — never spawn more than one subagent concurrently**. Parallel subagents blow up token usage and often fail to finish. Finish/verify one before starting the next.
+
 ## Tools and access (use without asking)
 
 - Cursor built-in browser (GitHub, Supabase, Vercel, GoDaddy — already logged in).
@@ -111,15 +126,19 @@ The owner won't remember to ask; enforce by default.
 19. **Avoid N+1 in read paths.** For list endpoints, fetch related tables once and join in memory (Supabase: `.in("fk", ids)`; SQLite fallback: load bounded tables once). Reference: `getSales`, `getProductionOrders`. Heavy recalcs (`recalculateCashbookIfAvailable`) are coalesced via `createCoalescedRunner` (`src/lib/coalesce.ts`) — call freely; concurrent calls collapse.
 20. **Startup secrets fail-fast:** `SESSION_SECRET` must be ≥32 chars and `PASSWORD_ENC_SECRET` must be set in production (`src/lib/session.ts`, `src/lib/crypto.ts` throw otherwise — intentional). JWT TTL is 24h. Credential vault uses per-record salt (AES-256-GCM) with a legacy-format decrypt fallback. Raw SQL identifier interpolation (`db-unified.ts`, Tauri `main.rs`) must pass an `^[a-z_][a-z0-9_]*$` allowlist.
 
-## Code navigation — use Graphify first, before grep/file-search
+## Code navigation — pick the cheapest tool for the job (token economy)
 
-A Graphify knowledge graph exists at `graphify-out/`. Use it as the FIRST step for locating code, on **every kind of task** — not just "architecture questions" but also feature work, bug fixes, and refactors. The point is fewer tokens and fewer blind greps.
+You have grep/file-search, file reads, and a Graphify knowledge graph (`graphify-out/`, plus an MCP server if configured). No tool is mandatory. Choose whichever reaches the answer with the **fewest tokens** for the task at hand. Don't run a graphify query just to satisfy a rule — and don't grep-chain through ten files when one graph query would answer it.
 
-- Before grepping or broad file-searching to find where something lives, run `graphify query "<what you're looking for>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`). Example: starting "add a field to the pelanggan page" → `graphify query "pelanggan page data layer and form"` first.
-- Use grep/file-search only to (a) confirm an exact string/line after Graphify points you to a file, or (b) when a Graphify query returns nothing useful.
-- If the Graphify MCP server is configured, prefer its tools (`query_graph`, `get_node`, `get_neighbors`, `shortest_path`) over the CLI.
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost).
-- This section is the authoritative Graphify rule; `.cursor/rules/graphify.mdc` is managed by `graphify cursor install` and may be regenerated.
+Rough guide (use judgment, not dogma):
+
+- **Local / known target** (rename a string, swap a logo/asset, edit one known file, find an exact symbol): grep/file-search/read is usually cheapest. Go straight to it.
+- **Relational / impact / architecture** ("what calls X and what breaks if I change it", "trace the flow from POS to cashbook", "which files touch this column"): Graphify is usually cheapest — it returns a small scoped subgraph instead of many full-file reads. Prefer MCP tools (`query_graph`, `get_node`, `get_neighbors`, `shortest_path`) when available, else `graphify query`/`path`/`explain`.
+- **Mixed**: a quick graphify query to locate, then a targeted read/grep to confirm the exact line, is often the cheapest combined path.
+
+After modifying code files in a session, you may run `graphify update .` (AST-only, no API cost) to keep the graph useful for later queries — optional, not required.
+
+This section is the authoritative code-navigation rule; `.cursor/rules/graphify.mdc` is managed by `graphify cursor install` and may be regenerated.
 
 ## Iron rules — icons (SVG only, never emoji)
 

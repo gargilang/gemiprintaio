@@ -124,13 +124,13 @@ export async function getServerSQLite(): Promise<any> {
 
 // ── Schema helpers (extracted) ──────────────────────────────────────────────
 import {
-  migrateActorRolesLegacyCheckConstraint,
+  migratePeranPegawaiLegacyCheckConstraint,
   migrateInventoryMovementsCheckConstraint,
   ensureCommercialWorkflowTables,
 } from "./db-sqlite-schema";
 
 export {
-  migrateActorRolesLegacyCheckConstraint,
+  migratePeranPegawaiLegacyCheckConstraint,
   migrateInventoryMovementsCheckConstraint,
   ensureCommercialWorkflowTables,
 } from "./db-sqlite-schema";

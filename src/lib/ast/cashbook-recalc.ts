@@ -64,13 +64,6 @@ export interface CashbookRecalcInputRow {
   biaya_bahan?: number;
   saldo?: number;
   laba_bersih?: number;
-  kasbon_anwar?: number;
-  kasbon_suri?: number;
-  kasbon_cahaya?: number;
-  kasbon_dinil?: number;
-  bagi_hasil_anwar?: number;
-  bagi_hasil_suri?: number;
-  bagi_hasil_gemi?: number;
 
   // Flag override — 1 / true berarti "pertahankan nilai DB, jangan hitung ulang".
   override_omzet?: number | boolean;
@@ -78,13 +71,6 @@ export interface CashbookRecalcInputRow {
   override_biaya_bahan?: number | boolean;
   override_saldo?: number | boolean;
   override_laba_bersih?: number | boolean;
-  override_kasbon_anwar?: number | boolean;
-  override_kasbon_suri?: number | boolean;
-  override_kasbon_cahaya?: number | boolean;
-  override_kasbon_dinil?: number | boolean;
-  override_bagi_hasil_anwar?: number | boolean;
-  override_bagi_hasil_suri?: number | boolean;
-  override_bagi_hasil_gemi?: number | boolean;
 
   [key: string]: unknown;
 }

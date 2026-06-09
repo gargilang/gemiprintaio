@@ -1,5 +1,8 @@
 /**
- * Profit-share configuration — used by Finance UI and cash book recalculation logic.
+ * Profit-share configuration — slot structure generik, diisi dari DB.
+ * Tidak ada lagi nama kolom legacy (bagi_hasil_anwar, kasbon_suri, dll).
+ * Slot diisi dari finance_metric_mappings + finance_participants yang
+ * diatur oleh pengguna melalui UI.
  */
 
 import { lookupFinanceSlotLabel } from "@/lib/finance-slot-labels";
@@ -14,27 +17,29 @@ export type ProfitShareSlotDef = {
   label: string;
 };
 
+/** Slot generik — sourceColumn dan kasbonColumn tidak lagi menunjuk ke kolom keuangan legacy.
+ *  Slot diisi oleh finance_metric_mappings.source_column (formula key) yang disimpan di transaction_computed. */
 export const PROFIT_SHARE_SLOTS: ProfitShareSlotDef[] = [
   {
-    sourceColumn: "bagi_hasil_anwar",
-    kasbonColumn: "kasbon_anwar",
+    sourceColumn: "bagi_hasil_slot_1",
+    kasbonColumn: "kasbon_slot_1",
     pribadiKategori: "PRIBADI-A",
     defaultFormula: "third_minus_kasbon",
-    label: lookupFinanceSlotLabel("bagi_hasil_anwar"),
+    label: lookupFinanceSlotLabel("bagi_hasil_slot_1"),
   },
   {
-    sourceColumn: "bagi_hasil_suri",
-    kasbonColumn: "kasbon_suri",
+    sourceColumn: "bagi_hasil_slot_2",
+    kasbonColumn: "kasbon_slot_2",
     pribadiKategori: "PRIBADI-S",
     defaultFormula: "third_minus_kasbon",
-    label: lookupFinanceSlotLabel("bagi_hasil_suri"),
+    label: lookupFinanceSlotLabel("bagi_hasil_slot_2"),
   },
   {
-    sourceColumn: "bagi_hasil_gemi",
+    sourceColumn: "bagi_hasil_slot_3",
     kasbonColumn: null,
     pribadiKategori: null,
     defaultFormula: "incremental_investor",
-    label: lookupFinanceSlotLabel("bagi_hasil_gemi"),
+    label: lookupFinanceSlotLabel("bagi_hasil_slot_3"),
   },
 ];
 

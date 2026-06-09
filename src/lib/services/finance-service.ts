@@ -1,6 +1,6 @@
 /**
  * Finance Service
- * Operasi buku kas dengan kalkulasi saldo berjalan
+ * Operasi buku kas dengan kalkulasi saldo berjalan via engine AST.
  */
 
 import "server-only";
@@ -39,13 +39,6 @@ export interface CashBookEntry {
   biaya_operasional: number;
   biaya_bahan: number;
   laba_bersih: number;
-  kasbon_anwar: number;
-  kasbon_suri: number;
-  kasbon_cahaya: number;
-  kasbon_dinil: number;
-  bagi_hasil_anwar: number;
-  bagi_hasil_suri: number;
-  bagi_hasil_gemi: number;
   urutan_tampilan: number;
   dibuat_oleh?: string;
   diarsipkan_pada?: string;
@@ -94,207 +87,8 @@ export async function getCashBookEntry(
 }
 
 /**
- * Hitung total berjalan berdasarkan entri sebelumnya
- */
-async function calculateRunningTotals(
-  kategori_transaksi: string,
-  debit: number,
-  kredit: number,
-  keperluan: string
-) {
-  // Ambil entri terakhir
-  const lastEntryResult = await db.query<CashBookEntry>("keuangan", {
-    orderBy: { column: "urutan_tampilan", ascending: false },
-  });
-
-  const lastEntry = (lastEntryResult.data || []).find(
-    (row) => row.status_transaksi !== "VOIDED"
-  );
-  const isFirstEntry = !lastEntry;
-
-  // Nilai sebelumnya
-  const prev = {
-    saldo: isFirstEntry ? 0 : lastEntry.saldo,
-    omzet: isFirstEntry ? 0 : lastEntry.omzet,
-    biaya_operasional: isFirstEntry ? 0 : lastEntry.biaya_operasional,
-    biaya_bahan: isFirstEntry ? 0 : lastEntry.biaya_bahan,
-    laba_bersih: isFirstEntry ? 0 : lastEntry.laba_bersih,
-    bagi_hasil_anwar: isFirstEntry ? 0 : lastEntry.bagi_hasil_anwar,
-    bagi_hasil_suri: isFirstEntry ? 0 : lastEntry.bagi_hasil_suri,
-    bagi_hasil_gemi: isFirstEntry ? 0 : lastEntry.bagi_hasil_gemi,
-    kasbon_anwar: isFirstEntry ? 0 : lastEntry.kasbon_anwar,
-    kasbon_suri: isFirstEntry ? 0 : lastEntry.kasbon_suri,
-    kasbon_cahaya: isFirstEntry ? 0 : lastEntry.kasbon_cahaya,
-    kasbon_dinil: isFirstEntry ? 0 : lastEntry.kasbon_dinil,
-  };
-
-  // OMZET
-  let omzet;
-  if (kategori_transaksi === "OMZET" || kategori_transaksi === "PIUTANG") {
-    omzet = isFirstEntry ? debit : prev.omzet + debit;
-  } else if (
-    kategori_transaksi === "RETUR_PENJUALAN" ||
-    kategori_transaksi === "RETUR_PENJUALAN_NONCASH"
-  ) {
-    omzet = isFirstEntry ? -kredit : prev.omzet - kredit;
-  } else {
-    omzet = isFirstEntry ? 0 : prev.omzet;
-  }
-
-  // BIAYA OPERASIONAL
-  let biaya_operasional;
-  if (isFirstEntry) {
-    biaya_operasional = 0;
-  } else {
-    if (
-      kategori_transaksi === "BIAYA" ||
-      kategori_transaksi === "TABUNGAN" ||
-      kategori_transaksi === "KOMISI"
-    ) {
-      biaya_operasional = prev.biaya_operasional + kredit;
-    } else {
-      biaya_operasional = prev.biaya_operasional;
-    }
-  }
-
-  // BIAYA BAHAN
-  let biaya_bahan;
-  if (isFirstEntry) {
-    if (kategori_transaksi === "HPP") {
-      biaya_bahan = kredit;
-    } else if (kategori_transaksi === "RETUR_HPP") {
-      biaya_bahan = -debit;
-    } else {
-      biaya_bahan = 0;
-    }
-  } else {
-    if (kategori_transaksi === "HPP") {
-      biaya_bahan = prev.biaya_bahan + kredit;
-    } else if (kategori_transaksi === "RETUR_HPP") {
-      biaya_bahan = prev.biaya_bahan - debit;
-    } else {
-      biaya_bahan = prev.biaya_bahan;
-    }
-  }
-
-  // SALDO
-  // HPP adalah entri jurnal non-kas — keluarkan dari saldo kas.
-  // Aliran kas keluar yang sebenarnya terjadi saat pembelian (entri SUPPLY).
-  //
-  // MAKLON (pembayaran cetak subkontrak) dan SUPPLY (pembelian biasa) adalah
-  // arus kas keluar nyata: hanya menggeser `saldo` (debit − kredit). Mereka TIDAK
-  // menambah biaya_operasional atau biaya_bahan karena biayanya sudah dibukukan
-  // sebagai HPP saat penjualan pemicu dibuat. Menambahkan lagi di sini akan
-  // double-count cost di laba_bersih.
-  const saldo =
-    kategori_transaksi === "HPP" ||
-    kategori_transaksi === "RETUR_HPP" ||
-    kategori_transaksi === "RETUR_PENJUALAN_NONCASH"
-      ? isFirstEntry
-        ? 0
-        : prev.saldo
-      : isFirstEntry
-        ? debit - kredit
-        : prev.saldo + debit - kredit;
-
-  // LABA BERSIH
-  const laba_bersih = omzet - (biaya_operasional + biaya_bahan);
-
-  // KASBON ANWAR
-  let kasbon_anwar;
-  if (kategori_transaksi === "PRIBADI-A") {
-    if (isFirstEntry) {
-      kasbon_anwar = debit > 0 ? -debit : kredit;
-    } else {
-      kasbon_anwar =
-        debit > 0 ? prev.kasbon_anwar - debit : prev.kasbon_anwar + kredit;
-    }
-  } else {
-    kasbon_anwar = isFirstEntry ? 0 : prev.kasbon_anwar;
-  }
-
-  // KASBON SURI
-  let kasbon_suri;
-  if (kategori_transaksi === "PRIBADI-S") {
-    if (isFirstEntry) {
-      kasbon_suri = debit > 0 ? -debit : kredit;
-    } else {
-      kasbon_suri =
-        debit > 0 ? prev.kasbon_suri - debit : prev.kasbon_suri + kredit;
-    }
-  } else {
-    kasbon_suri = isFirstEntry ? 0 : prev.kasbon_suri;
-  }
-
-  // BAGI HASIL ANWAR
-  const bagi_hasil_anwar = laba_bersih / 3 - kasbon_anwar;
-
-  // BAGI HASIL SURI
-  const bagi_hasil_suri = laba_bersih / 3 - kasbon_suri;
-
-  // BAGI HASIL GEMI
-  const labaIncrement = isFirstEntry
-    ? laba_bersih
-    : laba_bersih - prev.laba_bersih;
-  const investorDebit = kategori_transaksi === "INVESTOR" ? debit : 0;
-  const investorKredit = kategori_transaksi === "INVESTOR" ? kredit : 0;
-  const bagi_hasil_gemi =
-    labaIncrement / 3 + prev.bagi_hasil_gemi + investorDebit - investorKredit;
-
-  // KASBON CAHAYA
-  let kasbon_cahaya;
-  const hasCahaya = keperluan.toLowerCase().includes("cahaya");
-  const isCahayaCategory =
-    kategori_transaksi === "INVESTOR" || kategori_transaksi === "BIAYA";
-
-  if (hasCahaya && isCahayaCategory) {
-    if (isFirstEntry) {
-      kasbon_cahaya = debit > 0 ? -debit : kredit;
-    } else {
-      kasbon_cahaya =
-        debit > 0 ? prev.kasbon_cahaya - debit : prev.kasbon_cahaya + kredit;
-    }
-  } else {
-    kasbon_cahaya = isFirstEntry ? 0 : prev.kasbon_cahaya;
-  }
-
-  // KASBON DINIL
-  let kasbon_dinil;
-  const hasDinil = keperluan.toLowerCase().includes("dinil");
-  const isDinilCategory =
-    kategori_transaksi === "INVESTOR" || kategori_transaksi === "BIAYA";
-
-  if (hasDinil && isDinilCategory) {
-    if (isFirstEntry) {
-      kasbon_dinil = debit > 0 ? -debit : kredit;
-    } else {
-      kasbon_dinil =
-        debit > 0 ? prev.kasbon_dinil - debit : prev.kasbon_dinil + kredit;
-    }
-  } else {
-    kasbon_dinil = isFirstEntry ? 0 : prev.kasbon_dinil;
-  }
-
-  return {
-    saldo,
-    omzet,
-    biaya_operasional,
-    biaya_bahan,
-    laba_bersih,
-    kasbon_anwar,
-    kasbon_suri,
-    kasbon_cahaya,
-    kasbon_dinil,
-    bagi_hasil_anwar,
-    bagi_hasil_suri,
-    bagi_hasil_gemi,
-  };
-}
-
-/**
- * Buat entri buku kas baru (selaras dengan legacy POST /api/finance/cash-book).
- * Sisipkan total berjalan, lalu jalankan recalculateCashbook saat SQLite native
- * tersedia supaya override / aturan batch cocok dengan engine recalc AST.
+ * Buat entri buku kas baru — insert dengan nilai nol dulu,
+ * lalu jalankan recalc AST penuh untuk mengisi semua kolom terhitung.
  */
 export async function createCashBookEntry(data: {
   tanggal: string;
@@ -321,14 +115,6 @@ export async function createCashBookEntry(data: {
   }
 
   const nextOrder = await nextUrutanTampilanKeuangan();
-
-  const totals = await calculateRunningTotals(
-    data.kategori_transaksi,
-    debit,
-    kredit,
-    data.keperluan || ""
-  );
-
   const id = generateId();
   const now = getCurrentTimestamp();
 
@@ -344,7 +130,13 @@ export async function createCashBookEntry(data: {
     dibuat_oleh: data.dibuat_oleh ?? "",
     dibuat_pada: now,
     diperbarui_pada: now,
-    ...totals,
+    omzet: 0,
+    biaya_operasional: 0,
+    biaya_bahan: 0,
+    saldo: 0,
+    laba_bersih: 0,
+    reference_type: data.keperluan?.includes("[REF:") ? "system" : null,
+    reference_id: null,
   };
 
   const result = await db.insert("keuangan", entry);
@@ -616,13 +408,6 @@ export const CASHBOOK_MANUAL_OVERRIDE_FIELDS = [
   "biaya_operasional",
   "biaya_bahan",
   "laba_bersih",
-  "kasbon_anwar",
-  "kasbon_suri",
-  "kasbon_cahaya",
-  "kasbon_dinil",
-  "bagi_hasil_anwar",
-  "bagi_hasil_suri",
-  "bagi_hasil_gemi",
 ] as const;
 
 export type CashbookManualOverrideField =
@@ -956,13 +741,6 @@ export async function importCashbookFromCSV(
           biaya_bahan: 0,
           saldo: 0,
           laba_bersih: 0,
-          kasbon_anwar: 0,
-          kasbon_suri: 0,
-          kasbon_cahaya: 0,
-          kasbon_dinil: 0,
-          bagi_hasil_anwar: 0,
-          bagi_hasil_suri: 0,
-          bagi_hasil_gemi: 0,
         });
 
         nextDisplayOrder++;

@@ -101,13 +101,6 @@ const LEGACY_COMPUTED_COLUMNS = [
   "biaya_bahan",
   "saldo",
   "laba_bersih",
-  "kasbon_anwar",
-  "kasbon_suri",
-  "kasbon_cahaya",
-  "kasbon_dinil",
-  "bagi_hasil_anwar",
-  "bagi_hasil_suri",
-  "bagi_hasil_gemi",
 ];
 
 const LEGACY_OVERRIDE_COLUMNS = [
@@ -116,13 +109,6 @@ const LEGACY_OVERRIDE_COLUMNS = [
   "override_biaya_bahan",
   "override_saldo",
   "override_laba_bersih",
-  "override_kasbon_anwar",
-  "override_kasbon_suri",
-  "override_kasbon_cahaya",
-  "override_kasbon_dinil",
-  "override_bagi_hasil_anwar",
-  "override_bagi_hasil_suri",
-  "override_bagi_hasil_gemi",
 ];
 
 // ════════════════════════════════════════════════════════════════════════════

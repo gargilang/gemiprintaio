@@ -1157,13 +1157,6 @@ CREATE TABLE IF NOT EXISTS keuangan (
   biaya_bahan REAL DEFAULT 0,
   saldo REAL DEFAULT 0,
   laba_bersih REAL DEFAULT 0,
-  kasbon_anwar REAL DEFAULT 0,
-  kasbon_suri REAL DEFAULT 0,
-  kasbon_cahaya REAL DEFAULT 0,
-  kasbon_dinil REAL DEFAULT 0,
-  bagi_hasil_anwar REAL DEFAULT 0,
-  bagi_hasil_suri REAL DEFAULT 0,
-  bagi_hasil_gemi REAL DEFAULT 0,
   catatan TEXT,
   dibuat_oleh TEXT,
   diarsipkan_pada TEXT,
@@ -1178,13 +1171,6 @@ CREATE TABLE IF NOT EXISTS keuangan (
   override_biaya_operasional INTEGER DEFAULT 0,
   override_biaya_bahan INTEGER DEFAULT 0,
   override_laba_bersih INTEGER DEFAULT 0,
-  override_kasbon_anwar INTEGER DEFAULT 0,
-  override_kasbon_suri INTEGER DEFAULT 0,
-  override_kasbon_cahaya INTEGER DEFAULT 0,
-  override_kasbon_dinil INTEGER DEFAULT 0,
-  override_bagi_hasil_anwar INTEGER DEFAULT 0,
-  override_bagi_hasil_suri INTEGER DEFAULT 0,
-  override_bagi_hasil_gemi INTEGER DEFAULT 0,
   status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED', 'VOIDED')),
   voided_at TIMESTAMPTZ,
   voided_by TEXT,
@@ -1215,20 +1201,6 @@ CREATE TABLE IF NOT EXISTS finance_category_definitions (
   sync_version INTEGER DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS finance_participants (
-  id TEXT PRIMARY KEY,
-  participant_code TEXT NOT NULL UNIQUE,
-  display_name TEXT NOT NULL,
-  role_type TEXT NOT NULL DEFAULT 'other' CHECK(role_type IN ('profit_share', 'cash_advance', 'other')),
-  is_active INTEGER NOT NULL DEFAULT 1,
-  display_order INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
-  last_synced_at TIMESTAMPTZ,
-  sync_version INTEGER DEFAULT 1
-);
-
 CREATE TABLE IF NOT EXISTS finance_metric_mappings (
   id TEXT PRIMARY KEY,
   metric_key TEXT NOT NULL UNIQUE,
@@ -1242,20 +1214,17 @@ CREATE TABLE IF NOT EXISTS finance_metric_mappings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
   last_synced_at TIMESTAMPTZ,
-  sync_version INTEGER DEFAULT 1,
-  FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL
+  sync_version INTEGER DEFAULT 1
 );
 
 -- ============================================================================
 -- BUSINESS ACTORS V2 (generic, name-free architecture)
 -- ============================================================================
 -- See migration 20260521090000_business_actors_v2.sql for full context.
--- These tables coexist with finance_participants / cashbook_partner during
--- the migration window. After validation, the legacy tables + the hardcoded
--- kasbon_*/bagi_hasil_* columns on `keuangan` will be dropped.
+-- This is the generic, name-free architecture for business actors and roles.
 
 -- role_group is a display category for job titles (not a formula type).
-CREATE TABLE IF NOT EXISTS actor_roles (
+CREATE TABLE IF NOT EXISTS peran_pegawai (
   id            TEXT PRIMARY KEY,
   role_code     TEXT NOT NULL UNIQUE,
   role_label    TEXT NOT NULL,
@@ -1267,13 +1236,13 @@ CREATE TABLE IF NOT EXISTS actor_roles (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
-CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+CREATE INDEX IF NOT EXISTS idx_peran_pegawai_group ON peran_pegawai(role_group);
+CREATE INDEX IF NOT EXISTS idx_peran_pegawai_order ON peran_pegawai(display_order);
 
-CREATE TABLE IF NOT EXISTS business_actors (
+CREATE TABLE IF NOT EXISTS pegawai (
   id                       TEXT PRIMARY KEY,
   display_name             TEXT NOT NULL,
-  role_code                TEXT NOT NULL REFERENCES actor_roles(role_code) ON UPDATE CASCADE,
+  role_code                TEXT NOT NULL REFERENCES peran_pegawai(role_code) ON UPDATE CASCADE,
   is_active                INTEGER NOT NULL DEFAULT 1,
   display_order            INTEGER NOT NULL DEFAULT 0,
   notes                    TEXT,
@@ -1286,11 +1255,11 @@ CREATE TABLE IF NOT EXISTS business_actors (
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_business_actors_role   ON business_actors(role_code);
-CREATE INDEX IF NOT EXISTS idx_business_actors_active ON business_actors(is_active);
-CREATE INDEX IF NOT EXISTS idx_business_actors_order  ON business_actors(display_order);
+CREATE INDEX IF NOT EXISTS idx_pegawai_role   ON pegawai(role_code);
+CREATE INDEX IF NOT EXISTS idx_pegawai_active ON pegawai(is_active);
+CREATE INDEX IF NOT EXISTS idx_pegawai_order  ON pegawai(display_order);
 
-CREATE TABLE IF NOT EXISTS transaction_computed (
+CREATE TABLE IF NOT EXISTS transaksi_terhitung (
   transaction_id TEXT NOT NULL REFERENCES keuangan(id) ON DELETE CASCADE,
   formula_key    TEXT NOT NULL,
   value          REAL NOT NULL DEFAULT 0,
@@ -1298,10 +1267,10 @@ CREATE TABLE IF NOT EXISTS transaction_computed (
   PRIMARY KEY (transaction_id, formula_key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_tc_formula_key ON transaction_computed(formula_key);
-CREATE INDEX IF NOT EXISTS idx_tc_transaction ON transaction_computed(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transaksi_terhitung_formula_key ON transaksi_terhitung(formula_key);
+CREATE INDEX IF NOT EXISTS idx_transaksi_terhitung_transaction ON transaksi_terhitung(transaction_id);
 
-CREATE TABLE IF NOT EXISTS transaction_overrides (
+CREATE TABLE IF NOT EXISTS transaksi_penggantian (
   transaction_id  TEXT NOT NULL REFERENCES keuangan(id) ON DELETE CASCADE,
   formula_key     TEXT NOT NULL,
   override_value  REAL NOT NULL,
@@ -1309,7 +1278,7 @@ CREATE TABLE IF NOT EXISTS transaction_overrides (
   PRIMARY KEY (transaction_id, formula_key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_to_formula_key ON transaction_overrides(formula_key);
+CREATE INDEX IF NOT EXISTS idx_transaksi_penggantian_formula_key ON transaksi_penggantian(formula_key);
 
 -- ============================================================================
 -- TRIGGERS FOR UPDATED_AT

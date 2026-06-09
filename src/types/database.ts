@@ -252,13 +252,6 @@ export interface CashBook {
   biaya_bahan: number;
   saldo: number;
   laba_bersih: number;
-  kasbon_anwar: number;
-  kasbon_suri: number;
-  kasbon_cahaya: number;
-  kasbon_dinil: number;
-  bagi_hasil_anwar: number;
-  bagi_hasil_suri: number;
-  bagi_hasil_gemi: number;
   catatan?: string;
   dibuat_oleh?: string;
   dibuat_pada: string;

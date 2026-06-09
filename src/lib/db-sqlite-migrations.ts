@@ -8,11 +8,134 @@
 import "server-only";
 
 import {
-  migrateActorRolesLegacyCheckConstraint,
+  migratePeranPegawaiLegacyCheckConstraint,
   migrateInventoryMovementsCheckConstraint,
   ensureCommercialWorkflowTables,
 } from "./db-sqlite-schema";
 import { SYNC_V2_TABLES, serverSqliteColumnsCache } from "./db-sqlite";
+
+/**
+ * Authoritative English → Indonesian table rename map for the runtime SQLite
+ * runner. Each pair carries the dependent indexes whose names embed the old
+ * table name so they can be dropped and recreated under the Indonesian names.
+ * Ordered so `peran_pegawai` precedes `pegawai` (FK-safe).
+ */
+const ENGLISH_TO_INDONESIAN_TABLE_RENAMES: ReadonlyArray<{
+  oldTable: string;
+  newTable: string;
+  indexes: ReadonlyArray<{ oldName: string; newName: string; column: string }>;
+}> = [
+  {
+    oldTable: "actor_roles",
+    newTable: "peran_pegawai",
+    indexes: [
+      { oldName: "idx_actor_roles_group", newName: "idx_peran_pegawai_group", column: "role_group" },
+      { oldName: "idx_actor_roles_order", newName: "idx_peran_pegawai_order", column: "display_order" },
+    ],
+  },
+  {
+    oldTable: "business_actors",
+    newTable: "pegawai",
+    indexes: [
+      { oldName: "idx_business_actors_role", newName: "idx_pegawai_role", column: "role_code" },
+      { oldName: "idx_business_actors_active", newName: "idx_pegawai_active", column: "is_active" },
+      { oldName: "idx_business_actors_order", newName: "idx_pegawai_order", column: "display_order" },
+    ],
+  },
+  {
+    oldTable: "transaction_computed",
+    newTable: "transaksi_terhitung",
+    indexes: [
+      { oldName: "idx_tc_formula_key", newName: "idx_transaksi_terhitung_formula_key", column: "formula_key" },
+      { oldName: "idx_tc_transaction", newName: "idx_transaksi_terhitung_transaction", column: "transaction_id" },
+    ],
+  },
+  {
+    oldTable: "transaction_overrides",
+    newTable: "transaksi_penggantian",
+    indexes: [
+      { oldName: "idx_to_formula_key", newName: "idx_transaksi_penggantian_formula_key", column: "formula_key" },
+    ],
+  },
+  {
+    oldTable: "cashbook_formula",
+    newTable: "rumus_buku_kas",
+    indexes: [
+      { oldName: "idx_cashbook_formula_order", newName: "idx_rumus_buku_kas_order", column: "display_order" },
+      { oldName: "idx_cashbook_formula_key", newName: "idx_rumus_buku_kas_key", column: "formula_key" },
+      { oldName: "idx_cashbook_formula_actor", newName: "idx_rumus_buku_kas_actor", column: "actor_id" },
+      { oldName: "idx_cashbook_formula_group", newName: "idx_rumus_buku_kas_group", column: "formula_group" },
+    ],
+  },
+];
+
+/**
+ * Renames the legacy English-named tables to their Indonesian equivalents on
+ * existing local installs, preserving all rows. Per pair this:
+ *   - skips when the Indonesian table already exists (already migrated),
+ *   - skips when the English table is absent (fresh install from new schema),
+ *   - otherwise renames inside a transaction with `foreign_keys = OFF`, drops
+ *     the old-named dependent indexes, and recreates them under the Indonesian
+ *     names, rolling back on any error.
+ * Must run BEFORE the bootstrap CREATE TABLE statements so they operate on the
+ * renamed tables.
+ */
+export function migrateEnglishTablesToIndonesian(db: {
+  prepare: (sql: string) => {
+    get: (...params: unknown[]) => unknown;
+    all: () => unknown[];
+  };
+  pragma: (s: string) => void;
+  exec: (sql: string) => void;
+}): void {
+  const tableExists = (name: string): boolean =>
+    db
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
+      )
+      .get(name) !== undefined;
+
+  for (const { oldTable, newTable, indexes } of ENGLISH_TO_INDONESIAN_TABLE_RENAMES) {
+    // Already migrated — the Indonesian-named table exists (Req 5.2).
+    if (tableExists(newTable)) continue;
+    // Fresh install from the updated schema — nothing to rename (Req 5.5).
+    if (!tableExists(oldTable)) continue;
+
+    db.pragma("foreign_keys = OFF");
+    db.exec("BEGIN TRANSACTION;");
+    try {
+      // RENAME preserves all existing rows (Req 5.1, 8.1, 8.2).
+      db.exec(`ALTER TABLE ${oldTable} RENAME TO ${newTable};`);
+
+      // SQLite keeps dependent indexes pointing at the renamed table but under
+      // their old names; drop them and recreate under the Indonesian names
+      // (Req 5.3). Only recreate indexes whose target column exists, since the
+      // additive cashbook_formula columns are backfilled later in bootstrap.
+      const cols = new Set(
+        (
+          db.prepare(`PRAGMA table_info(${newTable})`).all() as Array<{
+            name: string;
+          }>
+        ).map((c) => c.name)
+      );
+      for (const { oldName, newName, column } of indexes) {
+        db.exec(`DROP INDEX IF EXISTS ${oldName};`);
+        if (cols.has(column)) {
+          db.exec(
+            `CREATE INDEX IF NOT EXISTS ${newName} ON ${newTable}(${column});`
+          );
+        }
+      }
+      db.exec("COMMIT;");
+    } catch (error) {
+      db.exec("ROLLBACK;");
+      throw error;
+    } finally {
+      db.pragma("foreign_keys = ON");
+    }
+    console.info(`✅ Renamed SQLite table ${oldTable} → ${newTable}`);
+  }
+}
 
 export function migrateCashbookFormulaDbColumnNullable(db: {
   prepare: (sql: string) => {
@@ -24,7 +147,7 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
 }): void {
   const row = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cashbook_formula'"
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rumus_buku_kas'"
     )
     .get();
   // Detect the legacy NOT NULL constraint. Match both `db_column TEXT NOT NULL`
@@ -33,7 +156,7 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
 
   db.pragma("foreign_keys = OFF");
   db.exec(`
-    CREATE TABLE cashbook_formula_v2 (
+    CREATE TABLE rumus_buku_kas_v2 (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       column_key TEXT NOT NULL UNIQUE,
@@ -51,7 +174,7 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
   // Copy preserving any extra columns that may have been added by earlier
   // additive migrations (formula_key, actor_id, formula_group, is_visible_in_summary).
   const cols = (
-    db.prepare("PRAGMA table_info(cashbook_formula)").all() as Array<{
+    db.prepare("PRAGMA table_info(rumus_buku_kas)").all() as Array<{
       name: string;
     }>
   ).map((c) => c.name);
@@ -66,14 +189,14 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
   for (const col of extraCols) {
     if (col === "formula_group") {
       db.exec(
-        `ALTER TABLE cashbook_formula_v2 ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
       );
     } else if (col === "is_visible_in_summary") {
       db.exec(
-        `ALTER TABLE cashbook_formula_v2 ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
       );
     } else {
-      db.exec(`ALTER TABLE cashbook_formula_v2 ADD COLUMN ${col} TEXT`);
+      db.exec(`ALTER TABLE rumus_buku_kas_v2 ADD COLUMN ${col} TEXT`);
     }
   }
 
@@ -93,35 +216,40 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
   ].join(", ");
 
   db.exec(`
-    INSERT INTO cashbook_formula_v2 (${baseColList})
-    SELECT ${baseColList} FROM cashbook_formula;
+    INSERT INTO rumus_buku_kas_v2 (${baseColList})
+    SELECT ${baseColList} FROM rumus_buku_kas;
 
-    DROP TABLE cashbook_formula;
-    ALTER TABLE cashbook_formula_v2 RENAME TO cashbook_formula;
+    DROP TABLE rumus_buku_kas;
+    ALTER TABLE rumus_buku_kas_v2 RENAME TO rumus_buku_kas;
   `);
   db.exec(
-    `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_order ON cashbook_formula(display_order);`
+    `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_order ON rumus_buku_kas(display_order);`
   );
   if (extraCols.includes("formula_key")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key ON cashbook_formula(formula_key);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_key ON rumus_buku_kas(formula_key);`
     );
   }
   if (extraCols.includes("actor_id")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_actor ON rumus_buku_kas(actor_id);`
     );
   }
   if (extraCols.includes("formula_group")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_group ON rumus_buku_kas(formula_group);`
     );
   }
   db.pragma("foreign_keys = ON");
-  console.info("✅ Migrated cashbook_formula: db_column is now nullable");
+  console.info("✅ Migrated rumus_buku_kas: db_column is now nullable");
 }
 
 export function ensureServerSQLiteSyncV2Schema(db: any) {
+  // Rename legacy English-named tables to Indonesian BEFORE any bootstrap
+  // CREATE/ALTER runs, so all subsequent statements operate on the renamed
+  // tables (Req 5.1–5.3, 5.5).
+  migrateEnglishTablesToIndonesian(db);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS finance_category_definitions (
       id TEXT PRIMARY KEY,
@@ -133,25 +261,6 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       direction TEXT NOT NULL DEFAULT 'both' CHECK(direction IN ('debit', 'kredit', 'both')),
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      sync_status TEXT DEFAULT 'pending',
-      last_synced_at TEXT,
-      sync_version INTEGER DEFAULT 1
-    );
-
-    CREATE TABLE IF NOT EXISTS finance_participants (
-      id TEXT PRIMARY KEY,
-      participant_code TEXT NOT NULL UNIQUE,
-      display_name TEXT NOT NULL,
-      role_type TEXT NOT NULL DEFAULT 'other',
-      is_active INTEGER NOT NULL DEFAULT 1,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      profit_formula TEXT,
-      share_divisor INTEGER DEFAULT 3,
-      bagi_hasil_column TEXT,
-      kasbon_column TEXT,
-      pribadi_kategori TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       sync_status TEXT DEFAULT 'pending',
@@ -172,8 +281,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       sync_status TEXT DEFAULT 'pending',
       last_synced_at TEXT,
-      sync_version INTEGER DEFAULT 1,
-      FOREIGN KEY (participant_id) REFERENCES finance_participants(id) ON DELETE SET NULL
+      sync_version INTEGER DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS finance_metric_column_rules (
@@ -191,8 +299,8 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
     -- AST-backed user-editable formulas (new visual-builder system).
     -- db_column is nullable: formulas like modal_kas/piutang_kas/kas have no
-    -- corresponding column in keuangan and only write to transaction_computed.
-    CREATE TABLE IF NOT EXISTS cashbook_formula (
+    -- corresponding column in keuangan and only write to transaksi_terhitung.
+    CREATE TABLE IF NOT EXISTS rumus_buku_kas (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       column_key TEXT NOT NULL UNIQUE,
@@ -206,28 +314,15 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_cashbook_formula_order
-      ON cashbook_formula(display_order);
+    CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_order
+      ON rumus_buku_kas(display_order);
 
-    CREATE TABLE IF NOT EXISTS cashbook_partner (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      category TEXT,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_cashbook_partner_order
-      ON cashbook_partner(display_order);
-
-    -- ── business_actors v2 (generic, name-free architecture) ─────────────
-    -- Coexists with finance_participants + cashbook_partner during the
-    -- migration window. See supabase/migrations/20260521090000_business_actors_v2.sql
+    -- ── pegawai v2 (generic, name-free architecture) ─────────────────────
+    -- See supabase/migrations/20260521090000_business_actors_v2.sql
     -- role_group is a display category for organising job titles in the UI.
     -- It does NOT restrict formula types — any actor can have profit share,
     -- kasbon, and bonus simultaneously regardless of their role.
-    CREATE TABLE IF NOT EXISTS actor_roles (
+    CREATE TABLE IF NOT EXISTS peran_pegawai (
       id            TEXT PRIMARY KEY,
       role_code     TEXT NOT NULL UNIQUE,
       role_label    TEXT NOT NULL,
@@ -238,10 +333,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_actor_roles_group ON actor_roles(role_group);
-    CREATE INDEX IF NOT EXISTS idx_actor_roles_order ON actor_roles(display_order);
+    CREATE INDEX IF NOT EXISTS idx_peran_pegawai_group ON peran_pegawai(role_group);
+    CREATE INDEX IF NOT EXISTS idx_peran_pegawai_order ON peran_pegawai(display_order);
 
-    CREATE TABLE IF NOT EXISTS business_actors (
+    CREATE TABLE IF NOT EXISTS pegawai (
       id                       TEXT PRIMARY KEY,
       display_name             TEXT NOT NULL,
       role_code                TEXT NOT NULL,
@@ -255,14 +350,14 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       bonus_source_formula_key TEXT,
       created_at               TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at               TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (role_code) REFERENCES actor_roles(role_code) ON UPDATE CASCADE
+      FOREIGN KEY (role_code) REFERENCES peran_pegawai(role_code) ON UPDATE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_business_actors_role   ON business_actors(role_code);
-    CREATE INDEX IF NOT EXISTS idx_business_actors_active ON business_actors(is_active);
-    CREATE INDEX IF NOT EXISTS idx_business_actors_order  ON business_actors(display_order);
+    CREATE INDEX IF NOT EXISTS idx_pegawai_role   ON pegawai(role_code);
+    CREATE INDEX IF NOT EXISTS idx_pegawai_active ON pegawai(is_active);
+    CREATE INDEX IF NOT EXISTS idx_pegawai_order  ON pegawai(display_order);
 
-    CREATE TABLE IF NOT EXISTS transaction_computed (
+    CREATE TABLE IF NOT EXISTS transaksi_terhitung (
       transaction_id TEXT NOT NULL,
       formula_key    TEXT NOT NULL,
       value          REAL NOT NULL DEFAULT 0,
@@ -271,10 +366,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       FOREIGN KEY (transaction_id) REFERENCES keuangan(id) ON DELETE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_tc_formula_key ON transaction_computed(formula_key);
-    CREATE INDEX IF NOT EXISTS idx_tc_transaction ON transaction_computed(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_transaksi_terhitung_formula_key ON transaksi_terhitung(formula_key);
+    CREATE INDEX IF NOT EXISTS idx_transaksi_terhitung_transaction ON transaksi_terhitung(transaction_id);
 
-    CREATE TABLE IF NOT EXISTS transaction_overrides (
+    CREATE TABLE IF NOT EXISTS transaksi_penggantian (
       transaction_id  TEXT NOT NULL,
       formula_key     TEXT NOT NULL,
       override_value  REAL NOT NULL,
@@ -283,13 +378,13 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       FOREIGN KEY (transaction_id) REFERENCES keuangan(id) ON DELETE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_to_formula_key ON transaction_overrides(formula_key);
+    CREATE INDEX IF NOT EXISTS idx_transaksi_penggantian_formula_key ON transaksi_penggantian(formula_key);
   `);
 
-  // Recreate actor_roles when an older CHECK constraint blocks new group values.
-  migrateActorRolesLegacyCheckConstraint(db);
+  // Recreate peran_pegawai when an older CHECK constraint blocks new group values.
+  migratePeranPegawaiLegacyCheckConstraint(db);
 
-  // Recreate cashbook_formula when older db_column NOT NULL constraint blocks
+  // Recreate rumus_buku_kas when older db_column NOT NULL constraint blocks
   // formulas like modal_kas/piutang_kas/kas that have no keuangan column.
   migrateCashbookFormulaDbColumnNullable(db);
 
@@ -332,7 +427,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // Upsert seed roles so existing installs get updated role_group values.
   // role_group is a display-only category; it does not restrict formula types.
   db.exec(`
-    INSERT INTO actor_roles
+    INSERT INTO peran_pegawai
       (id, role_code, role_label, role_group, description, display_order) VALUES
       ('role-pemilik',    'PEMILIK',    'Pemilik / Investor',   'owner',      'Pemilik atau investor usaha',                10),
       ('role-direktur',   'DIREKTUR',   'Direktur',             'owner',      'Direksi / direktur',                         20),
@@ -350,72 +445,67 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       description = excluded.description;
   `);
 
-  // ── Backfill new columns on cashbook_formula (mirror Supabase migration) ─
+  // ── Backfill new columns on rumus_buku_kas (mirror Supabase migration) ─
   // Adds formula_key / actor_id / formula_group additively so the legacy
   // letter-keyed system keeps working while the new semantic system rolls in.
   const cashbookFormulaCols = (
-    db.prepare("PRAGMA table_info(cashbook_formula)").all() as Array<{
+    db.prepare("PRAGMA table_info(rumus_buku_kas)").all() as Array<{
       name: string;
     }>
   ).map((c) => c.name);
 
   if (cashbookFormulaCols.length > 0) {
     if (!cashbookFormulaCols.includes("formula_key")) {
-      db.exec(`ALTER TABLE cashbook_formula ADD COLUMN formula_key TEXT`);
-      db.exec(`UPDATE cashbook_formula SET formula_key = db_column WHERE formula_key IS NULL`);
+      db.exec(`ALTER TABLE rumus_buku_kas ADD COLUMN formula_key TEXT`);
+      db.exec(`UPDATE rumus_buku_kas SET formula_key = db_column WHERE formula_key IS NULL`);
     }
     if (!cashbookFormulaCols.includes("actor_id")) {
-      db.exec(`ALTER TABLE cashbook_formula ADD COLUMN actor_id TEXT`);
+      db.exec(`ALTER TABLE rumus_buku_kas ADD COLUMN actor_id TEXT`);
     }
     if (!cashbookFormulaCols.includes("formula_group")) {
       db.exec(
-        `ALTER TABLE cashbook_formula ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+        `ALTER TABLE rumus_buku_kas ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
       );
-      db.exec(`UPDATE cashbook_formula
+      db.exec(`UPDATE rumus_buku_kas
                  SET formula_group = 'summary'
                  WHERE db_column IN ('omzet', 'biaya_operasional', 'biaya_bahan', 'saldo', 'laba_bersih')
                    AND formula_group = 'custom'`);
-      db.exec(`UPDATE cashbook_formula
+      db.exec(`UPDATE rumus_buku_kas
                  SET formula_group = 'profit_share'
                  WHERE db_column LIKE 'bagi_hasil_%'
                    AND formula_group = 'custom'`);
-      db.exec(`UPDATE cashbook_formula
+      db.exec(`UPDATE rumus_buku_kas
                  SET formula_group = 'cash_advance'
                  WHERE db_column LIKE 'kasbon_%'
                    AND formula_group = 'custom'`);
     }
     if (!cashbookFormulaCols.includes("is_visible_in_summary")) {
       db.exec(
-        `ALTER TABLE cashbook_formula ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+        `ALTER TABLE rumus_buku_kas ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
       );
       // Mirror the Supabase default: actor-driven groups visible, others hidden.
-      db.exec(`UPDATE cashbook_formula
+      db.exec(`UPDATE rumus_buku_kas
                  SET is_visible_in_summary = 1
                  WHERE formula_group IN ('profit_share', 'cash_advance', 'bonus')`);
     }
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_cashbook_formula_key   ON cashbook_formula(formula_key);
-             CREATE INDEX IF NOT EXISTS idx_cashbook_formula_actor ON cashbook_formula(actor_id);
-             CREATE INDEX IF NOT EXISTS idx_cashbook_formula_group ON cashbook_formula(formula_group);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_key   ON rumus_buku_kas(formula_key);
+             CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_actor ON rumus_buku_kas(actor_id);
+             CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_group ON rumus_buku_kas(formula_group);`);
 
     // Per-person formulas without a linked actor are legacy seed data —
     // hard-delete them so they don't clutter the Kolom and Rumus tabs.
     // System formulas (formula_group = 'summary') are preserved.
     db.exec(`
-      DELETE FROM cashbook_formula
+      DELETE FROM rumus_buku_kas
       WHERE actor_id IS NULL
         AND COALESCE(is_system, 0) = 0
         AND formula_group IN ('profit_share', 'cash_advance', 'bonus')
     `);
 
-    // cashbook_partner is purely legacy in the v2 architecture (replaced by
-    // business_actors). Drop every row so old "Cahaya/Suri/Gemi" partners
-    // don't appear in any UI.
-    db.exec(`DELETE FROM cashbook_partner`);
-
     // Hardcoded "PRIBADI-A" / "PRIBADI-S" categories were seeded for the
-    // original Anwar/Suri kasbon split. Remove them from new installs and
-    // existing databases — users can recreate categories with their own
-    // names via tab Kategori.
+    // original kasbon split. Remove them from new installs and existing
+    // databases — users can recreate categories with their own names via
+    // tab Kategori.
     db.exec(`
       DELETE FROM finance_category_definitions
       WHERE category_code IN ('PRIBADI-A', 'PRIBADI-S')
@@ -444,14 +534,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         ('rule-omzet','omzet','Omzet','accumulator',NULL,NULL,0,20),
         ('rule-biaya-ops','biaya_operasional','Biaya Operasional','accumulator',NULL,NULL,0,30),
         ('rule-biaya-bahan','biaya_bahan','Biaya Bahan','accumulator',NULL,NULL,0,40),
-        ('rule-laba','laba_bersih','Laba Bersih','formula','omzet - biaya_operasional - biaya_bahan',NULL,0,50),
-        ('rule-kasbon-anwar','kasbon_anwar','Kasbon Mitra 1','kasbon_conditional',NULL,'{"categories":["PRIBADI-A"],"keperluan_contains":null,"amount":"kredit_minus_debit"}',0,60),
-        ('rule-kasbon-suri','kasbon_suri','Kasbon Mitra 2','kasbon_conditional',NULL,'{"categories":["PRIBADI-S"],"keperluan_contains":null,"amount":"kredit_minus_debit"}',0,70),
-        ('rule-kasbon-cahaya','kasbon_cahaya','Kasbon Karyawan 1','kasbon_conditional',NULL,'{"categories":["INVESTOR","BIAYA"],"keperluan_contains":"cahaya","amount":"kredit_minus_debit"}',0,80),
-        ('rule-kasbon-dinil','kasbon_dinil','Kasbon Karyawan 2','kasbon_conditional',NULL,'{"categories":["INVESTOR","BIAYA"],"keperluan_contains":"dinil","amount":"kredit_minus_debit"}',0,90),
-        ('rule-bagi-hasil-anwar','bagi_hasil_anwar','Bagi Hasil Slot 1','profit_share',NULL,NULL,1,100),
-        ('rule-bagi-hasil-suri','bagi_hasil_suri','Bagi Hasil Slot 2','profit_share',NULL,NULL,1,110),
-        ('rule-bagi-hasil-gemi','bagi_hasil_gemi','Bagi Hasil Slot 3','profit_share',NULL,NULL,1,120);
+        ('rule-laba','laba_bersih','Laba Bersih','formula','omzet - biaya_operasional - biaya_bahan',NULL,0,50);
 
       UPDATE finance_category_definitions
         SET metric_contributions = '[{"column":"omzet","amount_field":"debit","sign":1}]'
@@ -462,71 +545,6 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       UPDATE finance_category_definitions
         SET metric_contributions = '[{"column":"biaya_bahan","amount_field":"kredit","sign":1}]'
         WHERE category_code IN ('SUPPLY','HUTANG') AND metric_contributions IS NULL;
-    `);
-  }
-
-  const fpCols = (
-    db.prepare("PRAGMA table_info(finance_participants)").all() as Array<{
-      name: string;
-    }>
-  ).map((c) => c.name);
-  if (fpCols.length > 0) {
-    if (!fpCols.includes("profit_formula")) {
-      db.exec(`ALTER TABLE finance_participants ADD COLUMN profit_formula TEXT`);
-    }
-    if (!fpCols.includes("share_divisor")) {
-      db.exec(
-        `ALTER TABLE finance_participants ADD COLUMN share_divisor INTEGER DEFAULT 3`
-      );
-    }
-    if (!fpCols.includes("bagi_hasil_column")) {
-      db.exec(
-        `ALTER TABLE finance_participants ADD COLUMN bagi_hasil_column TEXT`
-      );
-    }
-    if (!fpCols.includes("kasbon_column")) {
-      db.exec(`ALTER TABLE finance_participants ADD COLUMN kasbon_column TEXT`);
-    }
-    if (!fpCols.includes("pribadi_kategori")) {
-      db.exec(
-        `ALTER TABLE finance_participants ADD COLUMN pribadi_kategori TEXT`
-      );
-    }
-    if (!fpCols.includes("participant_role")) {
-      db.exec(
-        `ALTER TABLE finance_participants ADD COLUMN participant_role TEXT DEFAULT 'PEMILIK'`
-      );
-    }
-    if (!fpCols.includes("share_percent")) {
-      db.exec(
-        `ALTER TABLE finance_participants ADD COLUMN share_percent REAL DEFAULT 100`
-      );
-    }
-    db.exec(`
-      UPDATE finance_participants SET
-        profit_formula = 'third_minus_kasbon', share_divisor = 3,
-        bagi_hasil_column = 'bagi_hasil_anwar', kasbon_column = 'kasbon_anwar',
-        pribadi_kategori = 'PRIBADI-A'
-      WHERE id = 'fin-participant-anwar' AND profit_formula IS NULL;
-      UPDATE finance_participants SET
-        profit_formula = 'third_minus_kasbon', share_divisor = 3,
-        bagi_hasil_column = 'bagi_hasil_suri', kasbon_column = 'kasbon_suri',
-        pribadi_kategori = 'PRIBADI-S'
-      WHERE id = 'fin-participant-suri' AND profit_formula IS NULL;
-      UPDATE finance_participants SET
-        profit_formula = 'incremental_investor', share_divisor = 3,
-        bagi_hasil_column = 'bagi_hasil_gemi'
-      WHERE id = 'fin-participant-gemi' AND profit_formula IS NULL;
-      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 1'
-      WHERE id = 'fin-participant-anwar' AND display_name IN ('Anwar', 'anwar', 'ANWAR');
-      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 2'
-      WHERE id = 'fin-participant-suri' AND display_name IN ('Suri', 'suri', 'SURI');
-      UPDATE finance_participants SET display_name = 'Mitra bagi hasil 3'
-      WHERE id = 'fin-participant-gemi' AND display_name IN ('Gemi', 'gemi', 'GEMI');
-      UPDATE finance_participants SET display_name = 'Karyawan kasbon 1'
-      WHERE id = 'fin-participant-cahaya' AND display_name IN ('Cahaya', 'cahaya', 'CAHAYA');
-      UPDATE finance_participants SET display_name = 'Karyawan kasbon 2'
-      WHERE id = 'fin-participant-dinil' AND display_name IN ('Dinil', 'dinil', 'DINIL');
     `);
   }
 
@@ -1794,22 +1812,22 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const cashbookFormulaExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'cashbook_formula' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'rumus_buku_kas' LIMIT 1"
     )
     .get();
   if (cashbookFormulaExists) {
     db.prepare(
-      `UPDATE cashbook_formula
+      `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi penjualan + piutang dikurangi retur penjualan kas dan non-kas.'
        WHERE db_column = 'omzet' OR formula_key = 'omzet'`
     ).run(omzetReturnAst);
     db.prepare(
-      `UPDATE cashbook_formula
+      `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi HPP dikurangi HPP barang yang diretur.'
        WHERE db_column = 'biaya_bahan' OR formula_key = 'biaya_bahan'`
     ).run(hppAst);
     db.prepare(
-      `UPDATE cashbook_formula
+      `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Saldo kas berjalan; HPP, retur HPP, dan retur penjualan non-kas tidak mengubah kas.'
        WHERE db_column = 'saldo' OR formula_key = 'saldo'`
     ).run(saldoReturnAst);
@@ -1819,7 +1837,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     // (kasbon = piutang, netral terhadap laba).
     const biayaOpsGajiAst = `{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"columnRef","column":"E"},"else":{"type":"literal","value":0}},"else":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"H"},"right":{"type":"columnRef","column":"E"}},"else":{"type":"prevOutput","column":"H"}}}`;
     db.prepare(
-      `UPDATE cashbook_formula
+      `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi BIAYA + TABUNGAN + GAJI (beban gaji ikut mengurangi laba).'
        WHERE db_column = 'biaya_operasional' OR formula_key = 'biaya_operasional'`
     ).run(biayaOpsGajiAst);
@@ -1918,7 +1936,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_actor ON komponen_kompensasi(actor_id);
     CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_aktif ON komponen_kompensasi(aktif_status);
@@ -1977,7 +1995,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       deleted_at TEXT,
       client_mutation_id TEXT,
       FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE CASCADE,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_slip_gaji_run ON slip_gaji(proses_gaji_id);
     CREATE INDEX IF NOT EXISTS idx_slip_gaji_actor ON slip_gaji(actor_id);
@@ -2004,7 +2022,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE,
+      FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE,
       FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
     );
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
@@ -2015,4 +2033,4 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   serverSqliteColumnsCache.clear();
 }
-
+

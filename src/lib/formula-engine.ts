@@ -175,13 +175,6 @@ export const DEFAULT_COLUMN_RULES: FinanceColumnRule[] = [
   { id: "rule-biaya-ops", column_name: "biaya_operasional", display_name: "Biaya Operasional", rule_type: "accumulator", formula_expression: null, kasbon_conditions: null, is_system: 0, display_order: 30 },
   { id: "rule-biaya-bahan", column_name: "biaya_bahan", display_name: "Biaya Bahan", rule_type: "accumulator", formula_expression: null, kasbon_conditions: null, is_system: 0, display_order: 40 },
   { id: "rule-laba", column_name: "laba_bersih", display_name: "Laba Bersih", rule_type: "formula", formula_expression: "omzet - biaya_operasional - biaya_bahan", kasbon_conditions: null, is_system: 0, display_order: 50 },
-  { id: "rule-kasbon-anwar", column_name: "kasbon_anwar", display_name: "Kasbon Mitra 1", rule_type: "kasbon_conditional", formula_expression: null, kasbon_conditions: { categories: ["PRIBADI-A"], keperluan_contains: null, amount: "kredit_minus_debit" }, is_system: 0, display_order: 60 },
-  { id: "rule-kasbon-suri", column_name: "kasbon_suri", display_name: "Kasbon Mitra 2", rule_type: "kasbon_conditional", formula_expression: null, kasbon_conditions: { categories: ["PRIBADI-S"], keperluan_contains: null, amount: "kredit_minus_debit" }, is_system: 0, display_order: 70 },
-  { id: "rule-kasbon-cahaya", column_name: "kasbon_cahaya", display_name: "Kasbon Karyawan 1", rule_type: "kasbon_conditional", formula_expression: null, kasbon_conditions: { categories: ["INVESTOR", "BIAYA"], keperluan_contains: "cahaya", amount: "kredit_minus_debit" }, is_system: 0, display_order: 80 },
-  { id: "rule-kasbon-dinil", column_name: "kasbon_dinil", display_name: "Kasbon Karyawan 2", rule_type: "kasbon_conditional", formula_expression: null, kasbon_conditions: { categories: ["INVESTOR", "BIAYA"], keperluan_contains: "dinil", amount: "kredit_minus_debit" }, is_system: 0, display_order: 90 },
-  { id: "rule-bagi-hasil-anwar", column_name: "bagi_hasil_anwar", display_name: "Bagi Hasil Slot 1", rule_type: "profit_share", formula_expression: null, kasbon_conditions: null, is_system: 1, display_order: 100 },
-  { id: "rule-bagi-hasil-suri", column_name: "bagi_hasil_suri", display_name: "Bagi Hasil Slot 2", rule_type: "profit_share", formula_expression: null, kasbon_conditions: null, is_system: 1, display_order: 110 },
-  { id: "rule-bagi-hasil-gemi", column_name: "bagi_hasil_gemi", display_name: "Bagi Hasil Slot 3", rule_type: "profit_share", formula_expression: null, kasbon_conditions: null, is_system: 1, display_order: 120 },
 ];
 
 export const DEFAULT_CATEGORY_CONTRIBUTIONS: Record<string, CategoryContributionRule[]> = {

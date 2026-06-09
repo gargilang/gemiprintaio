@@ -85,6 +85,12 @@ database/gemiprint.db
 # Windows accidental redirection artifacts (e.g. `cmd 2>nul`)
 nul
 
+# Local diagnostic snapshots
+.dev-diagnostics/
+
+# Run-log generator data uji (artefak per-run, jangan di-commit)
+scripts/uji/run-*.json
+
 # Flutter
 flutter/.dart_tool/
 flutter/.flutter-plugins

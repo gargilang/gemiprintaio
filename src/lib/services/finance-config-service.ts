@@ -94,13 +94,7 @@ const DEFAULT_CATEGORIES: FinanceCategoryDefinition[] = [
   { category_code: "MAKLON", display_name: "Maklon", color_bg: "bg-fuchsia-100", color_text: "text-fuchsia-800", color_border: "border-fuchsia-300", direction: "kredit", display_order: 78 },
 ];
 
-const DEFAULT_MAPPINGS: FinanceMetricMapping[] = [
-  { metric_key: "bagi_hasil_anwar", metric_label: "Bagi Hasil", metric_group: "profit_share", source_column: "bagi_hasil_anwar", participant_name: "Mitra bagi hasil 1", display_order: 10 },
-  { metric_key: "bagi_hasil_suri", metric_label: "Bagi Hasil", metric_group: "profit_share", source_column: "bagi_hasil_suri", participant_name: "Mitra bagi hasil 2", display_order: 20 },
-  { metric_key: "bagi_hasil_gemi", metric_label: "Bagi Hasil", metric_group: "profit_share", source_column: "bagi_hasil_gemi", participant_name: "Mitra bagi hasil 3", display_order: 30 },
-  { metric_key: "kasbon_cahaya", metric_label: "Kasbon", metric_group: "cash_advance", source_column: "kasbon_cahaya", participant_name: "Karyawan 1", display_order: 40 },
-  { metric_key: "kasbon_dinil", metric_label: "Kasbon", metric_group: "cash_advance", source_column: "kasbon_dinil", participant_name: "Karyawan 2", display_order: 50 },
-];
+const DEFAULT_MAPPINGS: FinanceMetricMapping[] = [];
 
 async function nextDisplayOrderParticipants(): Promise<number> {
   const sb = getServerSupabaseClient();
