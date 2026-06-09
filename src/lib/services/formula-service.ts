@@ -2,10 +2,10 @@
  * formula-service (v2)
  *
  * Generator formula AST generik untuk perhitungan yang digerakkan actor.
- * Menggantikan logika berbasis-slot hardcoded di profit-share-config.ts /
- * cashbook-config-sync.ts dengan satu aturan: setiap business_actor yang
- * peran-nya punya grup bertipe calc otomatis mendapat cashbook_formula
- * yang cocok dengan `formula_key`, `actor_id`, dan `formula_group` semantik.
+ * Menggantikan logika berbasis-slot hardcoded lama dengan satu aturan: setiap
+ * business_actor yang peran-nya punya grup bertipe calc otomatis mendapat
+ * rumus_buku_kas yang cocok dengan `formula_key`, `actor_id`, dan
+ * `formula_group` semantik.
  *
  * Tiga pola didukung sekarang; pola baru ditambahkan dengan extending
  * dispatch di `syncFormulasForActor`:
@@ -186,7 +186,7 @@ export interface SyncFormulasResult {
 }
 
 /**
- * Diberi sebuah actor, periksa field calc-nya dan pastikan cashbook_formula
+ * Diberi sebuah actor, periksa field calc-nya dan pastikan rumus_buku_kas
  * memiliki tepat set formula yang menempel padanya.
  *
  * Peran murni label jabatan — TIDAK membatasi tipe formula yang bisa dimiliki

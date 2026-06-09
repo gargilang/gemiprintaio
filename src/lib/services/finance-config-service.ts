@@ -6,17 +6,6 @@ import {
   resolveMetricParticipantName,
 } from "@/lib/finance-metric-utils";
 import {
-  type ProfitFormula,
-  PROFIT_SHARE_SLOTS,
-  buildProfitSharePartnersFromConfig,
-  slotForSourceColumn,
-} from "@/lib/profit-share-config";
-import {
-  syncProfitShareFormulas,
-  syncCashbookPartnerFromParticipant,
-  removeCashbookPartnerByDisplayName,
-} from "@/lib/services/cashbook-config-sync";
-import {
   type FinanceColumnRule,
   type CategoryWithContributions,
   DEFAULT_COLUMN_RULES,
@@ -49,25 +38,8 @@ export interface FinanceMetricMapping {
   display_order: number;
 }
 
-export interface FinanceParticipant {
-  id: string;
-  participant_code: string;
-  display_name: string;
-  role_type: "profit_share" | "cash_advance" | "other";
-  display_order: number;
-  is_active: number;
-  profit_formula?: ProfitFormula | null;
-  share_divisor?: number | null;
-  share_percent?: number | null;
-  participant_role?: string | null;
-  bagi_hasil_column?: string | null;
-  kasbon_column?: string | null;
-  pribadi_kategori?: string | null;
-}
-
 export interface FinanceConfigPayload {
   categories: FinanceCategoryDefinition[];
-  participants: FinanceParticipant[];
   metricMappings: FinanceMetricMapping[];
   columnRules: FinanceColumnRule[];
 }
@@ -95,23 +67,6 @@ const DEFAULT_CATEGORIES: FinanceCategoryDefinition[] = [
 ];
 
 const DEFAULT_MAPPINGS: FinanceMetricMapping[] = [];
-
-async function nextDisplayOrderParticipants(): Promise<number> {
-  const sb = getServerSupabaseClient();
-  if (sb) {
-    const { data } = await sb
-      .from("finance_participants")
-      .select("display_order")
-      .order("display_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    return (Number((data as { display_order?: number })?.display_order) || 0) + 10;
-  }
-  const existing = await db.queryRaw<{ max_order: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM finance_participants"
-  );
-  return (existing[0]?.max_order || 0) + 10;
-}
 
 async function nextDisplayOrderCategories(): Promise<number> {
   const sb = getServerSupabaseClient();
@@ -152,7 +107,6 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
     data: null as FinanceCategoryDefinition[] | null,
   };
   let metricRows: FinanceMetricMapping[] = [];
-  let participantRows: FinanceParticipant[] = [];
 
   try {
     const categoriesQuery = await db.query<FinanceCategoryDefinition>(
@@ -170,31 +124,6 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
   try {
     const sb = getServerSupabaseClient();
     if (sb) {
-      const { data, error } = await sb
-        .from("finance_participants")
-        .select(
-          "id, participant_code, display_name, role_type, display_order, is_active, profit_formula, share_divisor, bagi_hasil_column, kasbon_column, pribadi_kategori, share_percent, participant_role"
-        )
-        .eq("is_active", 1)
-        .order("display_order", { ascending: true });
-      if (error) throw error;
-      participantRows = (data || []) as FinanceParticipant[];
-    } else {
-      participantRows =
-        (
-          await db.query<FinanceParticipant>("finance_participants", {
-            where: { is_active: 1 },
-            orderBy: { column: "display_order", ascending: true },
-          })
-        ).data || [];
-    }
-  } catch {
-    participantRows = [];
-  }
-
-  try {
-    const sb = getServerSupabaseClient();
-    if (sb) {
       const { data: mappings, error: em } = await sb
         .from("finance_metric_mappings")
         .select(
@@ -205,24 +134,9 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
         .order("display_order", { ascending: true });
       if (em) throw em;
 
-      const { data: participants } = await sb
-        .from("finance_participants")
-        .select("id, display_name")
-        .eq("is_active", 1);
-
-      const pmap = new Map(
-        (participants || []).map((p: { id: string; display_name: string }) => [
-          p.id,
-          p.display_name,
-        ])
-      );
-
       metricRows = (mappings || []).map((m: Record<string, unknown>) => {
         const sourceColumn = m.source_column as string;
         const participantId = (m.participant_id as string | null) ?? null;
-        const linkedName = participantId
-          ? pmap.get(participantId) ?? null
-          : null;
         return {
           id: m.id as string,
           metric_key: m.metric_key as string,
@@ -230,9 +144,7 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
           metric_group: m.metric_group as FinanceMetricMapping["metric_group"],
           source_column: sourceColumn,
           participant_id: participantId,
-          participant_name:
-            linkedName ??
-            deriveParticipantNameFromSourceColumn(sourceColumn),
+          participant_name: deriveParticipantNameFromSourceColumn(sourceColumn),
           display_order: Number(m.display_order),
         };
       });
@@ -245,10 +157,8 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
         m.metric_group,
         m.source_column,
         m.participant_id,
-        p.display_name AS participant_name,
         m.display_order
       FROM finance_metric_mappings m
-      LEFT JOIN finance_participants p ON p.id = m.participant_id
       WHERE m.is_active = 1
       ORDER BY m.metric_group ASC, m.display_order ASC`
       );
@@ -263,16 +173,10 @@ export async function getFinanceConfig(): Promise<FinanceConfigPayload> {
       resolveMetricParticipantName(m) ?? m.participant_name ?? null,
   }));
 
-  participantRows = await enrichParticipantProfitDefaults(
-    participantRows,
-    metricRows
-  );
-
   const columnRules = await getColumnRules();
 
   return {
     categories: categoriesResult.data?.length ? categoriesResult.data : DEFAULT_CATEGORIES,
-    participants: participantRows,
     metricMappings: metricRows?.length ? metricRows : DEFAULT_MAPPINGS,
     columnRules,
   };
@@ -305,14 +209,6 @@ export async function listFinanceCategories(): Promise<
     display_name: c.display_name,
     direction: c.direction,
   }));
-}
-
-export async function getProfitSharePartnersForRecalc() {
-  const config = await getFinanceConfig();
-  return buildProfitSharePartnersFromConfig(
-    config.participants,
-    config.metricMappings
-  );
 }
 
 // ── Column Rules ──────────────────────────────────────────────────────────
@@ -529,417 +425,6 @@ export async function updateCategoryContributions(
   } catch { /* Kolom SQLite mungkin belum ada */ }
 
   return { data: { id: categoryId }, error: null };
-}
-
-async function enrichParticipantProfitDefaults(
-  rows: FinanceParticipant[],
-  mappings: FinanceMetricMapping[]
-): Promise<FinanceParticipant[]> {
-  return rows.map((p) => {
-    if (p.role_type !== "profit_share") return p;
-    const linkedMapping = mappings.find(
-      (m) =>
-        m.metric_group === "profit_share" && m.participant_id === p.id
-    );
-    const mappingCol =
-      p.bagi_hasil_column ||
-      linkedMapping?.source_column ||
-      PROFIT_SHARE_SLOTS.find((s) =>
-        s.label.toLowerCase().includes(p.display_name.toLowerCase())
-      )?.sourceColumn;
-    const slot = mappingCol ? slotForSourceColumn(mappingCol) : undefined;
-    return {
-      ...p,
-      profit_formula:
-        (p.profit_formula as ProfitFormula | null) ||
-        slot?.defaultFormula ||
-        "third_minus_kasbon",
-      share_divisor: p.share_divisor && p.share_divisor > 0 ? p.share_divisor : 3,
-      bagi_hasil_column: p.bagi_hasil_column ?? slot?.sourceColumn ?? null,
-      kasbon_column: p.kasbon_column ?? slot?.kasbonColumn ?? null,
-      pribadi_kategori: p.pribadi_kategori ?? slot?.pribadiKategori ?? null,
-    };
-  });
-}
-
-export async function createFinanceParticipant(input: {
-  participant_code: string;
-  display_name: string;
-  role_type: "profit_share" | "cash_advance" | "other";
-  profit_formula?: ProfitFormula | null;
-  share_divisor?: number;
-  share_percent?: number;
-  participant_role?: string;
-  bagi_hasil_column?: string | null;
-  kasbon_column?: string | null;
-  pribadi_kategori?: string | null;
-}) {
-  const id = `fin-participant-${Date.now()}`;
-  const displayOrder = await nextDisplayOrderParticipants();
-  const payload: Record<string, unknown> = {
-    id,
-    participant_code: input.participant_code.toUpperCase().trim(),
-    display_name: input.display_name.trim(),
-    role_type: input.role_type,
-    display_order: displayOrder,
-    is_active: 1,
-    participant_role: input.participant_role ?? "PEMILIK",
-    share_percent: input.share_percent ?? 100,
-  };
-  if (input.role_type === "profit_share") {
-    payload.profit_formula = input.profit_formula ?? "percentage_based";
-    payload.share_divisor = input.share_divisor ?? 3;
-    payload.bagi_hasil_column = input.bagi_hasil_column ?? null;
-    payload.kasbon_column = input.kasbon_column ?? null;
-    payload.pribadi_kategori = input.pribadi_kategori ?? null;
-  }
-  const result = await db.insert("finance_participants", payload);
-  if (!result.error) {
-    await syncCashbookPartnerFromParticipant({
-      display_name: input.display_name,
-      role_type: input.role_type,
-      pribadi_kategori: input.pribadi_kategori ?? null,
-      display_order: displayOrder,
-    });
-  }
-  return result;
-}
-
-export async function updateProfitShareParticipant(
-  id: string,
-  input: {
-    profit_formula: ProfitFormula;
-    share_divisor: number;
-  }
-) {
-  const divisor = input.share_divisor > 0 ? input.share_divisor : 3;
-  const sb = getServerSupabaseClient();
-  const patch = {
-    profit_formula: input.profit_formula,
-    share_divisor: divisor,
-    updated_at: new Date().toISOString(),
-  };
-  if (sb) {
-    const { error } = await sb
-      .from("finance_participants")
-      .update(patch)
-      .eq("id", id);
-    if (error) return { data: null, error: new Error(error.message) };
-  }
-  return db.update("finance_participants", id, {
-    profit_formula: input.profit_formula,
-    share_divisor: divisor,
-  });
-}
-
-export async function setupBagiHasilPartner(input: {
-  display_name: string;
-  participant_role?: string;
-  profit_formula?: ProfitFormula;
-  share_divisor?: number;
-  source_column?: string;
-}) {
-  const name = input.display_name.trim();
-  if (!name) {
-    return { data: null, error: new Error("Nama mitra bagi hasil wajib diisi.") };
-  }
-
-  const config = await getFinanceConfig();
-
-  // ID partisipan aktif - slot yang merujuk ke partisipan nonaktif dianggap orphan
-  const activeParticipantIds = new Set(config.participants.map((p) => p.id));
-
-  // Resolve slot: utamakan source_column yang diminta eksplisit, lalu cari slot kosong/orphan
-  let slot = input.source_column
-    ? slotForSourceColumn(input.source_column) ?? null
-    : null;
-
-  if (!slot) {
-    // Cari slot pertama tanpa mapping, ATAU dengan mapping yang tidak punya partisipan,
-    // ATAU dengan mapping yang partisipannya sudah tidak aktif
-    for (const s of PROFIT_SHARE_SLOTS) {
-      const m = config.metricMappings.find(
-        (mm) => mm.metric_group === "profit_share" && mm.source_column === s.sourceColumn
-      );
-      if (!m || !m.participant_id || !activeParticipantIds.has(m.participant_id)) {
-        slot = s;
-        break;
-      }
-    }
-  }
-
-  if (!slot) {
-    return {
-      data: null,
-      error: new Error(
-        "Semua slot bagi hasil sudah terpakai (maks. 3 orang). Hapus orang lain terlebih dahulu."
-      ),
-    };
-  }
-
-  const existing = config.metricMappings.find(
-    (m) =>
-      m.metric_group === "profit_share" && m.source_column === slot!.sourceColumn
-  );
-
-  // Hanya blokir kalau slot diambil oleh partisipan AKTIF
-  if (existing?.participant_id && activeParticipantIds.has(existing.participant_id)) {
-    return {
-      data: null,
-      error: new Error(
-        `Slot sudah dipakai orang lain. Hapus terlebih dahulu.`
-      ),
-    };
-  }
-
-  // Hitung partisipan profit_share aktif yang sudah ada untuk hitung pembagian merata
-  const existingPartners = config.participants.filter(
-    (p) => p.role_type === "profit_share" && p.is_active !== 0
-  );
-  const newCount = existingPartners.length + 1;
-  const equalPercent = Math.round((100 / newCount) * 100) / 100;
-  // Sesuaikan partner pertama supaya menyerap sisa pembulatan
-  const firstPercent = Math.round((100 - equalPercent * (newCount - 1)) * 100) / 100;
-
-  const formula: ProfitFormula = "percentage_based";
-  const shareDivisor = input.share_divisor && input.share_divisor > 0 ? input.share_divisor : 3;
-  const code = name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "")
-    .toUpperCase()
-    .slice(0, 16) || `MITRA${Date.now().toString(36).toUpperCase().slice(-6)}`;
-
-  // Coba reaktivasi partisipan nonaktif yang sudah ada dengan kode yang sama
-  // sebelum membuat yang baru (menghindari pelanggaran constraint unik)
-  let participantId: string | null = null;
-  const sb = getServerSupabaseClient();
-  if (sb) {
-    const { data: existingByCode } = await sb
-      .from("finance_participants")
-      .select("id")
-      .eq("participant_code", code)
-      .maybeSingle();
-    if (existingByCode?.id) {
-      const { error: reactivateErr } = await sb.from("finance_participants").update({
-        display_name: name,
-        is_active: 1,
-        participant_role: input.participant_role ?? "PEMILIK",
-        share_percent: equalPercent,
-        profit_formula: formula,
-        share_divisor: shareDivisor,
-        bagi_hasil_column: slot.sourceColumn,
-        kasbon_column: slot.kasbonColumn,
-        pribadi_kategori: slot.pribadiKategori,
-      }).eq("id", existingByCode.id);
-      if (!reactivateErr) participantId = existingByCode.id;
-    }
-  }
-
-  if (!participantId) {
-    const created = await createFinanceParticipant({
-      participant_code: code,
-      display_name: name,
-      role_type: "profit_share",
-      profit_formula: formula,
-      share_divisor: shareDivisor,
-      share_percent: equalPercent,
-      participant_role: input.participant_role ?? "PEMILIK",
-      bagi_hasil_column: slot.sourceColumn,
-      kasbon_column: slot.kasbonColumn,
-      pribadi_kategori: slot.pribadiKategori,
-    });
-    if (created.error) return created;
-    participantId = (created.data as { id: string })?.id ?? null;
-  }
-
-  // Distribusikan ulang persentase untuk partner lama secara merata
-  for (let i = 0; i < existingPartners.length; i++) {
-    const p = existingPartners[i];
-    const pct = i === 0 ? firstPercent : equalPercent;
-    await db.update("finance_participants", p.id, {
-      share_percent: pct,
-      profit_formula: "percentage_based",
-    });
-  }
-
-  if (!participantId) {
-    return { data: null, error: new Error("Gagal membuat mitra bagi hasil.") };
-  }
-
-  if (existing?.id) {
-    const updated = await updateFinanceMetricMapping(existing.id, {
-      participant_id: participantId,
-      metric_group: "profit_share",
-    });
-    if (updated.error) return updated;
-    await syncCashbookPartnerFromParticipant({
-      display_name: name,
-      role_type: "profit_share",
-      pribadi_kategori: slot.pribadiKategori,
-      display_order: 0,
-    });
-    const configAfterLink = await getFinanceConfig();
-    await syncProfitShareFormulas(
-      configAfterLink.participants,
-      configAfterLink.metricMappings
-    );
-    return { data: { participantId, mappingId: existing.id }, error: null };
-  }
-
-  const mapped = await createFinanceMetricMapping({
-    metric_key: `${slot.sourceColumn}_${Date.now()}`,
-    metric_label: "Bagi Hasil",
-    metric_group: "profit_share",
-    source_column: slot.sourceColumn,
-    participant_id: participantId,
-  });
-  if (mapped.error) return mapped;
-
-  await syncCashbookPartnerFromParticipant({
-    display_name: name,
-    role_type: "profit_share",
-    pribadi_kategori: slot.pribadiKategori,
-    display_order: 0,
-  });
-  const configAfter = await getFinanceConfig();
-  await syncProfitShareFormulas(
-    configAfter.participants,
-    configAfter.metricMappings
-  );
-
-  return {
-    data: { participantId, mappingId: (mapped.data as { id: string })?.id },
-    error: null,
-  };
-}
-
-export async function removeBagiHasilPartner(participantId: string) {
-  const config = await getFinanceConfig();
-  const removed = config.participants.find((p) => p.id === participantId);
-  const mappings = config.metricMappings.filter(
-    (m) => m.participant_id === participantId && m.metric_group === "profit_share"
-  );
-  // Lepas partisipan dari mapping (set participant_id = null) supaya slot bisa dipakai ulang
-  for (const m of mappings) {
-    if (m.id) {
-      const unlinked = await updateFinanceMetricMapping(m.id, {
-        participant_id: null,
-        metric_group: "profit_share",
-      });
-      if (unlinked.error) return unlinked;
-    }
-  }
-  const result = await deleteFinanceParticipant(participantId);
-  if (result.error) return result;
-
-  // Distribusikan ulang persentase secara merata di antara partner profit_share aktif yang tersisa
-  const remaining = config.participants.filter(
-    (p) =>
-      p.role_type === "profit_share" &&
-      p.is_active !== 0 &&
-      p.id !== participantId
-  );
-  if (remaining.length > 0) {
-    const equalPercent = Math.round((100 / remaining.length) * 100) / 100;
-    const firstPercent =
-      Math.round((100 - equalPercent * (remaining.length - 1)) * 100) / 100;
-    for (let i = 0; i < remaining.length; i++) {
-      await db.update("finance_participants", remaining[i].id, {
-        share_percent: i === 0 ? firstPercent : equalPercent,
-        profit_formula: "percentage_based",
-      });
-    }
-  }
-
-  if (removed?.display_name) {
-    await removeCashbookPartnerByDisplayName(removed.display_name);
-  }
-  const configAfter = await getFinanceConfig();
-  await syncProfitShareFormulas(
-    configAfter.participants,
-    configAfter.metricMappings
-  );
-
-  return result;
-}
-
-export async function updateBagiHasilPercents(
-  percents: Array<{ participant_id: string; share_percent: number; participant_role?: string }>
-) {
-  for (const item of percents) {
-    const update: Record<string, unknown> = {
-      share_percent: item.share_percent,
-      profit_formula: "percentage_based",
-    };
-    if (item.participant_role) {
-      update.participant_role = item.participant_role;
-    }
-    const result = await db.update("finance_participants", item.participant_id, update);
-    if (result.error) return result;
-  }
-  const config = await getFinanceConfig();
-  await syncProfitShareFormulas(config.participants, config.metricMappings);
-  return { data: { ok: true }, error: null };
-}
-
-export async function countActiveMappingsForParticipant(
-  participantId: string
-): Promise<number> {
-  const sb = getServerSupabaseClient();
-  if (sb) {
-    const { count, error } = await sb
-      .from("finance_metric_mappings")
-      .select("id", { count: "exact", head: true })
-      .eq("participant_id", participantId)
-      .eq("is_active", 1);
-    if (error) throw error;
-    return count ?? 0;
-  }
-  const rows = await db.queryRaw<{ c: number }>(
-    `SELECT COUNT(*) AS c FROM finance_metric_mappings
-     WHERE participant_id = ? AND is_active = 1`,
-    [participantId]
-  );
-  return rows[0]?.c ?? 0;
-}
-
-export async function deleteFinanceParticipant(id: string) {
-  const config = await getFinanceConfig();
-  const participant = config.participants.find((p) => p.id === id);
-
-  const linked = await countActiveMappingsForParticipant(id);
-  if (linked > 0) {
-    return {
-      data: null,
-      error: new Error(
-        `Masih ada ${linked} kartu ringkasan yang memakai orang ini. Hapus kartu tersebut di tab Kartu ringkasan terlebih dahulu.`
-      ),
-    };
-  }
-
-  const sb = getServerSupabaseClient();
-  if (sb) {
-    const { error: participantError } = await sb
-      .from("finance_participants")
-      .update({ is_active: 0, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (participantError) {
-      return { data: null, error: new Error(participantError.message) };
-    }
-
-    await db.update("finance_participants", id, { is_active: 0 });
-    if (participant?.display_name) {
-      await removeCashbookPartnerByDisplayName(participant.display_name);
-    }
-    return { data: { id }, error: null };
-  }
-
-  const result = await db.update("finance_participants", id, { is_active: 0 });
-  if (!result.error && participant?.display_name) {
-    await removeCashbookPartnerByDisplayName(participant.display_name);
-  }
-  return result;
 }
 
 export async function createFinanceCategory(input: {

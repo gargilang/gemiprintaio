@@ -42,7 +42,7 @@ export interface OpsiDraftGaji {
   potonganPerActor?: Record<string, number>;
 }
 
-interface BusinessActorRow {
+interface PegawaiRow {
   id: string;
   display_name: string;
   is_active?: number;
@@ -86,7 +86,7 @@ export async function hitungDraftGaji(
   const sumberNilai = opsi.sumberNilai || {};
   const potonganPerActor = opsi.potonganPerActor || {};
 
-  const actorsResult = await db.query<BusinessActorRow>("business_actors", {});
+  const actorsResult = await db.query<PegawaiRow>("pegawai", {});
   const actors = (actorsResult.data || []).filter(
     (a) => Number(a.is_deleted ?? 0) === 0 && Number(a.is_active ?? 1) === 1
   );
@@ -423,7 +423,7 @@ export async function daftarProsesGaji(): Promise<ProsesGajiDetail[]> {
   const namaByActor = new Map<string, string>();
   if (actorIds.length > 0) {
     const actorsRes = await db.query<{ id: string; display_name: string }>(
-      "business_actors",
+      "pegawai",
       {}
     );
     for (const a of actorsRes.data || []) {

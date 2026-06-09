@@ -98,34 +98,34 @@ example/integration checks and the existing Jest suite only — no property-test
       all rows are present, and Indonesian-named indexes exist; assert a second run is a no-op.
     - _Requirements: 5.1, 5.2, 5.3, 5.5, 8.1_
 
-- [ ] 7. Update the SQLite FK-ordered table list (`src/lib/db-sqlite.ts`)
+- [x] 7. Update the SQLite FK-ordered table list (`src/lib/db-sqlite.ts`)
   - Update `SYNC_V2_TABLES`: replace `actor_roles`→`peran_pegawai` and `business_actors`→`pegawai`,
     remove `finance_participants`, keeping `peran_pegawai` before `pegawai` for FK safety.
   - Confirm the `db-unified.ts` pull loop over `SYNC_V2_TABLES` needs no further change.
   - _Requirements: 5.4, 1.10_
 
-- [ ] 8. Update the service layer and Type_Row definitions
-  - [ ] 8.1 Substitute table-name literals in raw-SQL/db calls
+- [x] 8. Update the service layer and Type_Row definitions
+  - [x] 8.1 Substitute table-name literals in raw-SQL/db calls
     - Update `db.query`/`db.queryOne`/`db.insert`/`db.update`/`db.delete` first-argument literals and
       raw SQL across the affected services (`transaction-computed-service.ts`, `finance-service.ts`,
       `cashbook-formula-service.ts`, `finance-config-service.ts`, and others) to the Indonesian names.
     - Update any `tableExists`/runtime presence checks that reference a renamed table.
     - _Requirements: 6.1, 6.3, 1.10_
-  - [ ] 8.2 Update Supabase `.from("...")` calls and preserve graceful degradation
+  - [x] 8.2 Update Supabase `.from("...")` calls and preserve graceful degradation
     - Update every `.from("...")` reference to a renamed table to the Indonesian name.
     - Keep the existing `"does not exist"`/`"schema cache"` graceful-degradation handling, keyed on the
       new table names.
     - _Requirements: 6.1, 6.4_
-  - [ ] 8.3 Rename Type_Row interfaces and all usages
+  - [x] 8.3 Rename Type_Row interfaces and all usages
     - Rename `BusinessActorRow` → `PegawaiRow`, `RawBusinessActorRow` → `RawPegawaiRow`, and the
       role row types as applicable, updating all usages consistently via symbol rename.
     - _Requirements: 6.2_
-  - [ ] 8.4 Handle service code that reads/writes `finance_participants`
+  - [x] 8.4 Handle service code that reads/writes `finance_participants`
     - Update or remove the `finance_participants` reads/writes in `finance-config-service.ts` and
       `cashbook-config-sync.ts` so the code compiles and behaves correctly after the table is dropped.
     - _Requirements: 6.1, 1.7_
 
-- [ ] 9. Remove dead code in `createCashBookEntry`
+- [x] 9. Remove dead code in `createCashBookEntry`
   - Confirm via a search of readers that nothing depends on `createCashBookEntry` populating
     `reference_type`/`reference_id`; if the `keuangan` insert requires them, allow the function to fail
     rather than substitute placeholder values.
@@ -133,19 +133,19 @@ example/integration checks and the existing Jest suite only — no property-test
     `src/lib/services/finance-service.ts`.
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 10. Remove dormant slot placeholders
-  - [ ] 10.1 Remove slot definitions and labels
+- [x] 10. Remove dormant slot placeholders
+  - [x] 10.1 Remove slot definitions and labels
     - Remove the `bagi_hasil_slot_1/2/3` and `kasbon_slot_1/2/3` entries from `PROFIT_SHARE_SLOTS` in
       `src/lib/profit-share-config.ts` and the corresponding entries from `FINANCE_SLOT_LABELS` in
       `src/lib/finance-slot-labels.ts`.
     - _Requirements: 10.1, 10.2, 10.3, 10.5_
-  - [ ] 10.2 Update consumers of the removed slot definitions
+  - [x] 10.2 Update consumers of the removed slot definitions
     - Update `slotForSourceColumn`, `defaultProfitSharePartners`, `findAvailableProfitShareSlot`,
       `findOrphanProfitShareSlot`, and `resolveProfitShareSlotForNewPartner` so they compile and behave
       correctly with an empty/real slot set.
     - _Requirements: 10.4_
 
-- [ ] 11. Normalize UI labels (Pengurus → Pegawai)
+- [x] 11. Normalize UI labels (Pengurus → Pegawai)
   - Replace user-facing "Pengurus" occurrences (page text, tab labels, button `title`s, `aria-label`s,
     notifications) across `src/app/**` and `src/components/**` with "Pegawai", preserving sentence
     structure and meaning.
@@ -156,14 +156,14 @@ example/integration checks and the existing Jest suite only — no property-test
     unchanged.
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
 
-- [ ] 12. Update the test suite to the Indonesian names
+- [x] 12. Update the test suite to the Indonesian names
   - Update `mockTable("business_actors")` → `mockTable("pegawai")` in
     `pinjaman-karyawan-service.test.ts` and `penggajian-service.test.ts`, the `UPDATE cashbook_formula`
     regex → `rumus_buku_kas` in `return-finance.test.ts`, and any other renamed-table references in
     `*.test.ts(x)`.
   - _Requirements: 7.1, 7.2_
 
-- [ ] 13. Final verification and mapping-consistency check
+- [x] 13. Final verification and mapping-consistency check
   - Run a repository-wide search for every old name and confirm matches remain ONLY inside
     already-applied Supabase migration files (never in `schema.sql`, `database/sqlite-schema.sql`,
     `src/**`, or test files).

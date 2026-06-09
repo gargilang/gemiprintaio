@@ -46,9 +46,9 @@ export const SYNC_V2_TABLES = [
   "vendor",
   "profil",
   "kredensial",
-  // actor_roles harus sebelum business_actors (FK role_code).
-  "actor_roles",
-  "business_actors",
+  // peran_pegawai harus sebelum pegawai (FK role_code).
+  "peran_pegawai",
+  "pegawai",
   "penjualan",
   "item_penjualan",
   "penawaran",
@@ -72,7 +72,6 @@ export const SYNC_V2_TABLES = [
   "item_finishing",
   "keuangan",
   "finance_category_definitions",
-  "finance_participants",
   "finance_metric_mappings",
   "pengaturan_toko",
   "nsfp_pool",
@@ -116,10 +115,10 @@ export async function getServerSQLite(): Promise<any> {
 }
 
 /**
- * SQLite cannot ALTER a CHECK constraint. Older installs created actor_roles
- * with role_group IN ('profit_share','cash_advance','bonus','other').
- * Recreate the table without that constraint and map legacy values to the
- * new display categories (owner / management / sales / staff / other).
+ * SQLite cannot ALTER a CHECK constraint. Older installs created peran_pegawai
+ * (formerly actor_roles) with role_group IN ('profit_share','cash_advance',
+ * 'bonus','other'). Recreate the table without that constraint and map legacy
+ * values to the new display categories (owner / management / sales / staff / other).
  */
 
 // ── Schema helpers (extracted) ──────────────────────────────────────────────

@@ -2,8 +2,8 @@
  * business-actor-service
  *
  * CRUD untuk tabel orang/peran yang generik (tanpa nama hardcoded):
- *   • actor_roles      — katalog jabatan (Pemilik, Manajer, Sales, …)
- *   • business_actors  — setiap orang / entitas nyata yang muncul di keuangan
+ *   • peran_pegawai      — katalog jabatan (Pemilik, Manajer, Sales, …)
+ *   • pegawai  — setiap orang / entitas nyata yang muncul di keuangan
  *
  * Peran hanya label tampilan. Tipe formula yang diterima actor (bagi hasil,
  * kasbon, bonus) ditentukan independen oleh field calc mana yang non-null
@@ -63,7 +63,7 @@ export type BusinessActorInput = Omit<
   display_order?: number;
 };
 
-interface RawBusinessActorRow {
+interface RawPegawaiRow {
   id: string;
   display_name: string;
   role_code: string;
@@ -101,7 +101,7 @@ function parseCategoriesField(raw: unknown): string[] | null {
   return null;
 }
 
-function normalizeActorRow(raw: RawBusinessActorRow): BusinessActor {
+function normalizeActorRow(raw: RawPegawaiRow): BusinessActor {
   return {
     id: raw.id,
     display_name: raw.display_name,
@@ -125,10 +125,10 @@ function normalizeActorRow(raw: RawBusinessActorRow): BusinessActor {
   };
 }
 
-// ── actor_roles ─────────────────────────────────────────────────────────────
+// ── peran_pegawai ─────────────────────────────────────────────────────────────
 
 export async function listActorRoles(): Promise<ActorRole[]> {
-  const result = await db.query<ActorRole>("actor_roles", {
+  const result = await db.query<ActorRole>("peran_pegawai", {
     orderBy: { column: "display_order", ascending: true },
   });
   if (result.error || !result.data) return [];
@@ -145,7 +145,7 @@ export async function listActorRoles(): Promise<ActorRole[]> {
 export async function getActorRoleByCode(
   roleCode: string
 ): Promise<ActorRole | null> {
-  const result = await db.queryOne<ActorRole>("actor_roles", {
+  const result = await db.queryOne<ActorRole>("peran_pegawai", {
     where: { role_code: roleCode },
   });
   if (result.error || !result.data) return null;
@@ -175,7 +175,7 @@ export async function createActorRole(input: {
     return { id: existing.id, error: new Error("Kode peran sudah dipakai") };
   }
   const nextOrder = await nextRoleDisplayOrder();
-  const res = await db.insert("actor_roles", {
+  const res = await db.insert("peran_pegawai", {
     id,
     role_code: code,
     role_label: input.role_label.trim() || code,
@@ -188,19 +188,19 @@ export async function createActorRole(input: {
 
 async function nextRoleDisplayOrder(): Promise<number> {
   const rows = await db.queryRaw<{ m: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS m FROM actor_roles"
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM peran_pegawai"
   );
   return (rows[0]?.m ?? 0) + 10;
 }
 
-// ── business_actors ─────────────────────────────────────────────────────────
+// ── pegawai ─────────────────────────────────────────────────────────
 
 export async function listBusinessActors(opts: {
   includeInactive?: boolean;
 } = {}): Promise<BusinessActor[]> {
   const where: Record<string, unknown> = {};
   if (!opts.includeInactive) where.is_active = 1;
-  const result = await db.query<RawBusinessActorRow>("business_actors", {
+  const result = await db.query<RawPegawaiRow>("pegawai", {
     where,
     orderBy: { column: "display_order", ascending: true },
   });
@@ -211,7 +211,7 @@ export async function listBusinessActors(opts: {
 export async function getBusinessActor(
   id: string
 ): Promise<BusinessActor | null> {
-  const result = await db.queryOne<RawBusinessActorRow>("business_actors", {
+  const result = await db.queryOne<RawPegawaiRow>("pegawai", {
     where: { id },
   });
   if (result.error || !result.data) return null;
@@ -220,7 +220,7 @@ export async function getBusinessActor(
 
 async function nextActorDisplayOrder(): Promise<number> {
   const rows = await db.queryRaw<{ m: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS m FROM business_actors"
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM pegawai"
   );
   return (rows[0]?.m ?? 0) + 10;
 }
@@ -287,13 +287,13 @@ export async function createBusinessActor(
       ...payload,
       cash_advance_categories: input.cash_advance_categories ?? null,
     };
-    const { error } = await sb.from("business_actors").insert(supaPayload);
+    const { error } = await sb.from("pegawai").insert(supaPayload);
     if (error && !error.message.includes("does not exist")) {
       return { data: null, error: new Error(error.message) };
     }
   }
 
-  const localRes = await db.insert("business_actors", payload);
+  const localRes = await db.insert("pegawai", payload);
   if (localRes.error) return { data: null, error: localRes.error };
 
   const created = await getBusinessActor(id);
@@ -344,7 +344,7 @@ export async function updateBusinessActor(
         patch.cash_advance_categories ?? null;
     }
     const { error } = await sb
-      .from("business_actors")
+      .from("pegawai")
       .update(supaFields)
       .eq("id", id);
     if (error && !error.message.includes("does not exist")) {
@@ -352,7 +352,7 @@ export async function updateBusinessActor(
     }
   }
 
-  const localRes = await db.update("business_actors", id, fields);
+  const localRes = await db.update("pegawai", id, fields);
   if (localRes.error) return { data: null, error: localRes.error };
 
   const updated = await getBusinessActor(id);
@@ -361,7 +361,7 @@ export async function updateBusinessActor(
 
 /**
  * Soft delete (nonaktifkan): mempertahankan semua nilai computed historis.
- * Hard delete hanya boleh saat tidak ada baris transaction_computed yang merujuk
+ * Hard delete hanya boleh saat tidak ada baris transaksi_terhitung yang merujuk
  * ke actor ini.
  * any formula owned by this actor.
  */
@@ -392,7 +392,7 @@ export async function deleteBusinessActor(
   let linkedKeys: string[] = [];
   try {
     const rows = await db.queryRaw<{ formula_key: string }>(
-      "SELECT DISTINCT formula_key FROM cashbook_formula WHERE actor_id = ?",
+      "SELECT DISTINCT formula_key FROM rumus_buku_kas WHERE actor_id = ?",
       [id]
     );
     linkedKeys = rows.map((r) => r.formula_key).filter(Boolean);
@@ -404,7 +404,7 @@ export async function deleteBusinessActor(
     const placeholders = linkedKeys.map(() => "?").join(",");
     try {
       const hits = await db.queryRaw<{ c: number }>(
-        `SELECT COUNT(*) AS c FROM transaction_computed WHERE formula_key IN (${placeholders})`,
+        `SELECT COUNT(*) AS c FROM transaksi_terhitung WHERE formula_key IN (${placeholders})`,
         linkedKeys
       );
       if ((hits[0]?.c ?? 0) > 0) {
@@ -415,7 +415,7 @@ export async function deleteBusinessActor(
         };
       }
     } catch {
-      // transaction_computed missing — proceed with delete.
+      // transaksi_terhitung missing — proceed with delete.
     }
   }
 
@@ -423,20 +423,20 @@ export async function deleteBusinessActor(
   try {
     const sb = getServerSupabaseClient();
     if (sb) {
-      await sb.from("cashbook_formula").delete().eq("actor_id", id);
+      await sb.from("rumus_buku_kas").delete().eq("actor_id", id);
     }
-    await db.executeRaw("DELETE FROM cashbook_formula WHERE actor_id = ?", [id]);
+    await db.executeRaw("DELETE FROM rumus_buku_kas WHERE actor_id = ?", [id]);
   } catch {
     // Best-effort; akan tertangkap di delete actor di bawah kalau benar-benar gagal.
   }
 
   const sb = getServerSupabaseClient();
   if (sb) {
-    const { error } = await sb.from("business_actors").delete().eq("id", id);
+    const { error } = await sb.from("pegawai").delete().eq("id", id);
     if (error && !error.message.includes("does not exist")) {
       return { error: new Error(error.message) };
     }
   }
-  const res = await db.delete("business_actors", id);
+  const res = await db.delete("pegawai", id);
   return { error: res.error };
 }

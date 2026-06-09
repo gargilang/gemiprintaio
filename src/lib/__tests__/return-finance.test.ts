@@ -24,6 +24,8 @@ function loadAst(filePath: string, columnKey: "G" | "I" | "J"): ASTNode {
   //       description = ...
   //   WHERE column_key = '<column>' OR ...
   // and pick the one whose WHERE matches the requested column_key.
+  // NB: parses immutable historical migration files, which still use the
+  // pre-rename table name `cashbook_formula` — do NOT change to rumus_buku_kas.
   const updateRegex =
     /UPDATE\s+cashbook_formula\s*SET\s+ast\s*=\s*'([\s\S]*?)'::jsonb,?[\s\S]*?WHERE\s+column_key\s*=\s*'([A-Z])'/g;
   let match: RegExpExecArray | null;

@@ -12,7 +12,7 @@ export async function GET() {
     if (getServerSupabaseClient()) {
       // Fetch cashbook rows + computed metrics in parallel — both queries
       // hit Supabase so they share the same network latency. systemMetrics
-      // exposes the v2 transaction_computed values (kas, modal_kas, etc.)
+      // exposes the v2 transaksi_terhitung values (kas, modal_kas, etc.)
       // alongside the legacy keuangan columns so the UI can render every
       // summary card from a single endpoint instead of two.
       const [cashBooks, latestMap] = await Promise.all([

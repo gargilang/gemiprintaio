@@ -182,7 +182,7 @@ export default function FinancePage() {
   // Fetch system metrics (Modal Kas, Piutang Kas, Kas) for archive view only.
   // For active view, /api/finance/cash-book already returns systemMetrics
   // alongside the rows so we avoid a second round-trip.
-  // These come from cashbook_formula via transaction_computed and aren't
+  // These come from rumus_buku_kas via transaksi_terhitung and aren't
   // available on the raw `keuangan` rows.
   useEffect(() => {
     if (!viewingArchive) return;
@@ -259,7 +259,7 @@ export default function FinancePage() {
 
   // Memoized summary values — recalculate once per cashBooks change.
   // Reads the cumulative metrics from the latest visible row's hardcoded
-  // columns. The new transaction_computed-backed feed handles per-actor
+  // columns. The new transaksi_terhitung-backed feed handles per-actor
   // metrics; this block only powers the four cards at the top of the page.
   const summaryData = useMemo(() => {
     if (cashBooks.length === 0) {
@@ -415,7 +415,7 @@ export default function FinancePage() {
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
       // /api/finance/cash-book also returns systemMetrics (kas, modal_kas,
-      // piutang_kas) computed by the AST engine via transaction_computed.
+      // piutang_kas) computed by the AST engine via transaksi_terhitung.
       // Reading them from the same response avoids a separate /summary-v2
       // round-trip and keeps the Kas card in sync with the table data.
       if (data.systemMetrics) {
@@ -1149,7 +1149,7 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Pengurus Usaha — DynamicActorSummary + transaction_computed */}
+      {/* Pegawai Usaha — DynamicActorSummary + transaksi_terhitung */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
@@ -1269,7 +1269,7 @@ export default function FinancePage() {
                 <button
                   onClick={() => { setPengaturanDefaultTab("kolom"); setShowPengaturanModal(true); }}
                   className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                  title="Kelola pengurus, kategori transaksi, dan rumus kalkulasi"
+                  title="Kelola pegawai, kategori transaksi, dan rumus kalkulasi"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />

@@ -84,7 +84,7 @@ export interface FormulaDefinition {
   column: OutputColumn;
   /**
    * keuangan DB column to write into (legacy hardcoded columns).
-   * Set to null for formulas that only use transaction_computed (no keuangan column).
+   * Set to null for formulas that only use transaksi_terhitung (no keuangan column).
    */
   dbColumn: string | null;
   /** Semantic identifier ("omzet", "kasbon_andi"). Falls back to `dbColumn`. */

@@ -135,8 +135,6 @@ export async function createCashBookEntry(data: {
     biaya_bahan: 0,
     saldo: 0,
     laba_bersih: 0,
-    reference_type: data.keperluan?.includes("[REF:") ? "system" : null,
-    reference_id: null,
   };
 
   const result = await db.insert("keuangan", entry);
@@ -180,7 +178,7 @@ export async function deleteCashBookEntry(id: string): Promise<void> {
 /**
  * Hitung ulang seluruh baris buku kas memakai formula AST + partner.
  * Memakai SQLite native saat tersedia DAN Supabase saat tersedia, supaya
- * mirror `transaction_computed` v2 tetap konsisten dengan kolom `keuangan`
+ * mirror `transaksi_terhitung` v2 tetap konsisten dengan kolom `keuangan`
  * legacy terlepas dari DB mana yang dibaca UI.
  *
  * Mengembalikan true kalau setidaknya satu jalur recalc sukses.
@@ -212,7 +210,7 @@ async function recalculateCashbookCore(): Promise<boolean> {
     console.warn("[recalculateCashbookIfAvailable] SQLite path failed:", e);
   }
   // 2. Supabase (cloud-of-record). Selalu jalankan saat Supabase sudah dikonfigurasi,
-  // walau SQLite juga sudah jalan, karena UI membaca transaction_computed
+  // walau SQLite juga sudah jalan, karena UI membaca transaksi_terhitung
   // dari Supabase via getLatestPerFormulaKey.
   try {
     const ok = await recalculateCashbookViaSupabase();
@@ -263,11 +261,11 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
   ]);
   const batch = computeCashbookRecalculationUpdates(sorted, formulas, partners);
 
-  // Muat override v2 supaya kita memakainya saat menulis transaction_computed.
+  // Muat override v2 supaya kita memakainya saat menulis transaksi_terhitung.
   const overrideMap = new Map<string, Map<string, number>>();
   try {
     const { data: ovs } = await sb
-      .from("transaction_overrides")
+      .from("transaksi_penggantian")
       .select("transaction_id, formula_key, override_value");
     for (const r of (ovs ?? []) as Array<{
       transaction_id: string;
@@ -314,11 +312,11 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
     }
   }
 
-  // Tulis dual-write best-effort ke transaction_computed; tolerate tabel hilang.
+  // Tulis dual-write best-effort ke transaksi_terhitung; tolerate tabel hilang.
   if (computedRows.length > 0) {
     try {
       const { error: tcErr } = await sb
-        .from("transaction_computed")
+        .from("transaksi_terhitung")
         .upsert(computedRows, {
           onConflict: "transaction_id,formula_key",
         });
@@ -327,10 +325,10 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
         !tcErr.message.includes("does not exist") &&
         !tcErr.message.includes("schema cache")
       ) {
-        console.warn("transaction_computed upsert:", tcErr.message);
+        console.warn("transaksi_terhitung upsert:", tcErr.message);
       }
     } catch (e) {
-      console.warn("transaction_computed upsert exception:", e);
+      console.warn("transaksi_terhitung upsert exception:", e);
     }
   }
 

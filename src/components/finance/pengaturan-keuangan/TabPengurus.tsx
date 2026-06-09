@@ -74,7 +74,7 @@ function describeActor(a: BusinessActorApi): string[] {
 // ── Quick-add category button ────────────────────────────────────────────────
 
 /**
- * Inline mini-form to add a new category without leaving the Tambah Pengurus
+ * Inline mini-form to add a new category without leaving the Tambah Pegawai
  * form. Shows a small "+" button; clicking it expands an inline input.
  */
 function QuickAddCategoryButton({
@@ -296,7 +296,7 @@ export default function TabPengurus({
     ) {
       showMsg(
         "error",
-        "Centang minimal satu rumus (Bagi Hasil, Kasbon, atau Bonus) supaya pengurus muncul di Ringkasan."
+        "Centang minimal satu rumus (Bagi Hasil, Kasbon, atau Bonus) supaya pegawai muncul di Ringkasan."
       );
       return;
     }
@@ -324,7 +324,7 @@ export default function TabPengurus({
       setFormOpen(false);
       await reloadOrang();
       // Reload formulas too — syncFormulasForActor just created/updated
-      // formula rows in cashbook_formula. Without this, the Kolom tab
+      // formula rows in rumus_buku_kas. Without this, the Kolom tab
       // keeps showing stale data until the user closes and reopens the modal.
       onFormulasChanged?.();
       onActorsChanged?.();
@@ -371,7 +371,7 @@ export default function TabPengurus({
         header={
           <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pengurus" : "Tambah Pengurus"}</h3>
+              <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pegawai" : "Tambah Pegawai"}</h3>
               <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Centang rumus yang berlaku untuk orang ini.</p>
             </div>
             <button
@@ -534,7 +534,7 @@ export default function TabPengurus({
             </label>
           </div>
           <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "" }); setFormOpen(true); }} className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
-            + Tambah Pengurus
+            + Tambah Pegawai
           </button>
         </div>
 
@@ -542,8 +542,8 @@ export default function TabPengurus({
 
         {!orangLoading && filteredActors.length === 0 && (
           <div className="py-12 text-center text-slate-500 text-sm space-y-2">
-            <p>Belum ada pengurus. Tekan <strong>+ Tambah Pengurus</strong> untuk mulai.</p>
-            <p className="text-xs text-slate-400">Bar Bagi Hasil / Kasbon / Bonus muncul otomatis begitu ada pengurus aktif.</p>
+            <p>Belum ada pegawai. Tekan <strong>+ Tambah Pegawai</strong> untuk mulai.</p>
+            <p className="text-xs text-slate-400">Bar Bagi Hasil / Kasbon / Bonus muncul otomatis begitu ada pegawai aktif.</p>
           </div>
         )}
 
@@ -601,14 +601,14 @@ export default function TabPengurus({
                                   labelMenu={`Aksi untuk ${a.display_name}`}
                                   aksi={[
                                     {
-                                      label: "Edit Pengurus",
-                                      judul: "Edit pengurus",
+                                      label: "Edit Pegawai",
+                                      judul: "Edit pegawai",
                                       onClick: () => { setEditingActorId(a.id); setOrangForm(actorToForm(a)); setFormOpen(true); },
                                       ikon: <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
                                     },
                                     {
-                                      label: "Nonaktifkan Pengurus",
-                                      judul: "Nonaktifkan pengurus",
+                                      label: "Nonaktifkan Pegawai",
+                                      judul: "Nonaktifkan pegawai",
                                       tampil: a.is_active === 1,
                                       onClick: () => handleDeactivate(a),
                                       ikon: <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,

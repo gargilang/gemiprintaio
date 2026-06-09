@@ -4,7 +4,7 @@
  * GET             list active actors (?include_inactive=1 to include archived)
  * POST            create OR update OR deactivate OR delete depending on `action`
  *
- * Creating / updating an actor auto-syncs the matching cashbook_formula
+ * Creating / updating an actor auto-syncs the matching rumus_buku_kas
  * (kasbon / bagi hasil / bonus) and triggers a cashbook recalc so the new
  * bar lights up immediately.
  */

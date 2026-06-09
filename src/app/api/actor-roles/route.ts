@@ -1,5 +1,5 @@
 /**
- * /api/actor-roles — list + create user-defined roles for business_actors.
+ * /api/actor-roles — list + create user-defined roles for pegawai.
  */
 
 import { NextRequest, NextResponse } from "next/server";

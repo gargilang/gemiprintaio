@@ -45,7 +45,7 @@ import {
 } from "../services/pinjaman-karyawan-service";
 
 function seedActor(actorId: string) {
-  mockTable("business_actors").set(actorId, {
+  mockTable("pegawai").set(actorId, {
     id: actorId,
     display_name: `Karyawan ${actorId}`,
     role_code: "KARYAWAN",

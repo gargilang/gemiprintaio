@@ -7,7 +7,7 @@
  *   1. Kolom sistem (Tanggal, Kategori, Nominal, Keperluan, Aksi) yang
  *      di-render dari konstanta lokal — tidak bisa dihapus, tidak bisa
  *      disembunyikan (icon gembok pada toggle).
- *   2. Kolom kalkulasi (semua `cashbook_formula`) yang punya rumus AST.
+ *   2. Kolom kalkulasi (semua `rumus_buku_kas`) yang punya rumus AST.
  *      User bisa toggle "Tampil di tabel" (= is_visible_in_summary), edit
  *      rumus, dan hapus kolom non-sistem non-actor.
  *
@@ -291,7 +291,7 @@ export default function KolomTab({
               const deleteReason = f.isSystem
                 ? "Kolom sistem tidak bisa dihapus"
                 : f.actorId
-                  ? "Hapus dari tab Pengurus untuk menghilangkan kolom ini"
+                  ? "Hapus dari tab Pegawai untuk menghilangkan kolom ini"
                   : "";
               return (
                 <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
@@ -306,7 +306,7 @@ export default function KolomTab({
                     <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span className="text-[11px] text-slate-500 dark:text-slate-400">{f.name}</span>
                       {f.isSystem && <BadgeTag tone="slate">Sistem</BadgeTag>}
-                      {f.actorId && <BadgeTag tone="blue">Pengurus</BadgeTag>}
+                      {f.actorId && <BadgeTag tone="blue">Pegawai</BadgeTag>}
                       {!f.isSystem && !f.actorId && <BadgeTag tone="violet">Kustom</BadgeTag>}
                       {!f.isSystem && groupLabel && (
                         <BadgeTag tone="emerald">{groupLabel}</BadgeTag>
@@ -351,7 +351,7 @@ export default function KolomTab({
                   className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 italic"
                 >
                   Belum ada kolom kalkulasi. Tambah kolom baru atau buat
-                  pengurus dengan rumus di tab Pengurus.
+                  pegawai dengan rumus di tab Pegawai.
                 </td>
               </tr>
             )}

@@ -14,7 +14,7 @@ import {
 // These reproduce the original Google Sheets behaviour for columns L (Kasbon
 // Suri), M (Bagi Hasil Suri), N (Bagi Hasil Gemi), O (Kasbon Cahaya). They
 // are NOT seeded in production any more — the same shapes are now generated
-// dynamically from `business_actors` via `formula-service.ts`. They live
+// dynamically from `pegawai` via `formula-service.ts`. They live
 // here purely so the engine's behaviour stays verifiable end-to-end.
 
 const lit = (value: string | number | boolean): ASTNode => ({

@@ -335,7 +335,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     enabled: true,
     isSystem: true,
     displayOrder: 70,
-    description: "Total kasbon aktif yang sedang dipinjam pengurus.",
+    description: "Total kasbon aktif yang sedang dipinjam pegawai.",
   },
   {
     id: "formula-kas",

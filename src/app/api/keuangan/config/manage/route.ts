@@ -3,20 +3,13 @@ import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   createFinanceCategory,
   createFinanceMetricMapping,
-  createFinanceParticipant,
   deleteFinanceCategory,
   deleteFinanceMetricMapping,
-  deleteFinanceParticipant,
-  removeBagiHasilPartner,
-  setupBagiHasilPartner,
-  updateBagiHasilPercents,
   updateFinanceMetricMapping,
-  updateProfitShareParticipant,
   updateColumnRule,
   updateCategoryContributions,
 } from "@/lib/services/finance-config-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
-import type { ProfitFormula } from "@/lib/profit-share-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,23 +19,6 @@ export async function POST(request: NextRequest) {
     await requireAdminOrManager();
     const body = await request.json();
     const action = String(body?.action || "");
-
-    if (action === "create_participant") {
-      const result = await createFinanceParticipant({
-        participant_code: body.participant_code,
-        display_name: body.display_name,
-        role_type: body.role_type || "other",
-      });
-      if (result.error) throw result.error;
-      await recalculateCashbookIfAvailable();
-      return NextResponse.json({ ok: true });
-    }
-
-    if (action === "delete_participant") {
-      const result = await deleteFinanceParticipant(body.id);
-      if (result.error) throw result.error;
-      return NextResponse.json({ ok: true });
-    }
 
     if (action === "create_category") {
       const result = await createFinanceCategory({
@@ -85,44 +61,6 @@ export async function POST(request: NextRequest) {
     if (action === "delete_mapping") {
       const result = await deleteFinanceMetricMapping(body.id);
       if (result.error) throw result.error;
-      return NextResponse.json({ ok: true });
-    }
-
-    if (action === "setup_bagi_hasil_partner") {
-      const result = await setupBagiHasilPartner({
-        display_name: body.display_name,
-        participant_role: body.participant_role,
-        profit_formula: body.profit_formula as ProfitFormula | undefined,
-        share_divisor: body.share_divisor,
-        source_column: body.source_column,
-      });
-      if (result.error) throw result.error;
-      await recalculateCashbookIfAvailable();
-      return NextResponse.json({ ok: true, data: result.data });
-    }
-
-    if (action === "update_bagi_hasil_percents") {
-      const percents = Array.isArray(body.percents) ? body.percents : [];
-      const result = await updateBagiHasilPercents(percents);
-      if (result.error) throw result.error;
-      await recalculateCashbookIfAvailable();
-      return NextResponse.json({ ok: true });
-    }
-
-    if (action === "update_profit_share_partner") {
-      const result = await updateProfitShareParticipant(body.id, {
-        profit_formula: body.profit_formula as ProfitFormula,
-        share_divisor: Number(body.share_divisor) || 3,
-      });
-      if (result.error) throw result.error;
-      await recalculateCashbookIfAvailable();
-      return NextResponse.json({ ok: true });
-    }
-
-    if (action === "remove_bagi_hasil_partner") {
-      const result = await removeBagiHasilPartner(body.participant_id);
-      if (result.error) throw result.error;
-      await recalculateCashbookIfAvailable();
       return NextResponse.json({ ok: true });
     }
 

@@ -1,7 +1,7 @@
 /**
  * transaction-computed-service
  *
- * Helper baca/agregasi untuk tabel `transaction_computed` v2. Inilah
+ * Helper baca/agregasi untuk tabel `transaksi_terhitung` v2. Inilah
  * yang dikonsumsi UI Keuangan baru (Bagi Hasil, Kasbon, Bonus) untuk
  * merender total per-orang tanpa menyentuh kolom hardcoded legacy
  * di tabel `keuangan`.
@@ -51,7 +51,7 @@ export async function getMonthSummary(
   try {
     const rows = await db.queryRaw<{ formula_key: string; total: number }>(
       `SELECT tc.formula_key AS formula_key, SUM(tc.value) AS total
-         FROM transaction_computed tc
+         FROM transaksi_terhitung tc
         ${whereClause}
         GROUP BY tc.formula_key`,
       params
@@ -79,7 +79,7 @@ export async function getLatestPerFormulaKey(
   const sb = getServerSupabaseClient();
   if (sb) {
     let q = sb
-      .from("transaction_computed")
+      .from("transaksi_terhitung")
       .select("transaction_id, formula_key, value, keuangan!inner(tanggal, urutan_tampilan, dibuat_pada)");
     if (yearMonth) {
       // Supabase tidak mendukung strftime — jatuh balik ke filter rentang.
@@ -129,12 +129,12 @@ export async function getLatestPerFormulaKey(
     }
     const rows = await db.queryRaw<{ formula_key: string; value: number }>(
       `SELECT tc.formula_key AS formula_key, tc.value AS value
-         FROM transaction_computed tc
+         FROM transaksi_terhitung tc
          JOIN keuangan k ON k.id = tc.transaction_id
          ${whereClause}
          JOIN (
            SELECT tc2.formula_key, MAX(k2.urutan_tampilan) AS max_order
-             FROM transaction_computed tc2
+             FROM transaksi_terhitung tc2
              JOIN keuangan k2 ON k2.id = tc2.transaction_id
             ${whereClause ? whereClause.replace(/\bk\b/g, "k2") : ""}
             GROUP BY tc2.formula_key
@@ -157,7 +157,7 @@ export async function getComputedRow(
 ): Promise<ComputedRowMap> {
   try {
     const rows = await db.queryRaw<{ formula_key: string; value: number }>(
-      "SELECT formula_key, value FROM transaction_computed WHERE transaction_id = ?",
+      "SELECT formula_key, value FROM transaksi_terhitung WHERE transaction_id = ?",
       [transactionId]
     );
     const out: ComputedRowMap = {};
@@ -175,7 +175,7 @@ export async function getActorMetrics(
 ): Promise<ComputedSummary> {
   try {
     const keyRows = await db.queryRaw<{ formula_key: string }>(
-      "SELECT DISTINCT formula_key FROM cashbook_formula WHERE actor_id = ? AND enabled = 1",
+      "SELECT DISTINCT formula_key FROM rumus_buku_kas WHERE actor_id = ? AND enabled = 1",
       [actorId]
     );
     const keys = keyRows.map((r) => r.formula_key).filter(Boolean);
@@ -192,7 +192,7 @@ export async function getActorMetrics(
     }
     const rows = await db.queryRaw<{ formula_key: string; total: number }>(
       `SELECT formula_key, SUM(value) AS total
-         FROM transaction_computed tc
+         FROM transaksi_terhitung tc
         WHERE formula_key IN (${placeholders})
           ${dateClause}
         GROUP BY formula_key`,
@@ -221,7 +221,7 @@ export async function setOverride(
   const sb = getServerSupabaseClient();
   if (sb) {
     const { error } = await sb
-      .from("transaction_overrides")
+      .from("transaksi_penggantian")
       .upsert(payload, { onConflict: "transaction_id,formula_key" });
     if (error && !error.message.includes("does not exist")) {
       return { error: new Error(error.message) };
@@ -229,7 +229,7 @@ export async function setOverride(
   }
   try {
     await db.executeRaw(
-      `INSERT INTO transaction_overrides (transaction_id, formula_key, override_value, overridden_at)
+      `INSERT INTO transaksi_penggantian (transaction_id, formula_key, override_value, overridden_at)
        VALUES (?, ?, ?, ?)
        ON CONFLICT(transaction_id, formula_key) DO UPDATE SET
          override_value = excluded.override_value,
@@ -249,7 +249,7 @@ export async function clearOverride(
   const sb = getServerSupabaseClient();
   if (sb) {
     const { error } = await sb
-      .from("transaction_overrides")
+      .from("transaksi_penggantian")
       .delete()
       .eq("transaction_id", transactionId)
       .eq("formula_key", formulaKey);
@@ -259,7 +259,7 @@ export async function clearOverride(
   }
   try {
     await db.executeRaw(
-      "DELETE FROM transaction_overrides WHERE transaction_id = ? AND formula_key = ?",
+      "DELETE FROM transaksi_penggantian WHERE transaction_id = ? AND formula_key = ?",
       [transactionId, formulaKey]
     );
   } catch (e) {

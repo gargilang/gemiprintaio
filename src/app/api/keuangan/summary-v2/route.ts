@@ -4,7 +4,7 @@
  * Returns:
  *   formulasByGroup: every active formula bucketed into summary / profit_share /
  *                    cash_advance / bonus / custom (drives which bar shows what)
- *   actors:          active business_actors with their role_group
+ *   actors:          active pegawai with their role_group
  *   summaryByKey:    { formula_key: latest_value } for the requested month
  *
  * The legacy /api/finance/config endpoint remains in place during the

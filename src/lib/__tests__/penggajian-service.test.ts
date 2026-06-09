@@ -53,7 +53,7 @@ import {
 import { hitungSaldoPinjaman } from "../services/pinjaman-karyawan-service";
 
 function seedActor(id: string, nama: string) {
-  mockTable("business_actors").set(id, {
+  mockTable("pegawai").set(id, {
     id,
     display_name: nama,
     role_code: "KARYAWAN",

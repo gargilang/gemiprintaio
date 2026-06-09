@@ -543,9 +543,9 @@ export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void
 
 /**
  * SQLite cannot ALTER a column to drop NOT NULL. Older installs created
- * cashbook_formula with `db_column TEXT NOT NULL`, which blocks seeding
+ * rumus_buku_kas with `db_column TEXT NOT NULL`, which blocks seeding
  * formulas like modal_kas/piutang_kas/kas that legitimately have no
- * keuangan column (they only flow through transaction_computed).
+ * keuangan column (they only flow through transaksi_terhitung).
  *
  * Recreate the table with a nullable db_column. The data is preserved.
  */

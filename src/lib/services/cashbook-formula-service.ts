@@ -133,7 +133,7 @@ export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
   const sb = getServerSupabaseClient();
   if (sb) {
     const { data, error } = await sb
-      .from("cashbook_formula")
+      .from("rumus_buku_kas")
       .select(FORMULA_COLUMNS)
       .order("display_order", { ascending: true });
     if (error) {
@@ -146,7 +146,7 @@ export async function listFormulasRaw(): Promise<FormulaDefinition[]> {
   const sqliteRows = await withSqlite((sqlite) =>
     sqlite
       .prepare(
-        "SELECT * FROM cashbook_formula ORDER BY display_order ASC"
+        "SELECT * FROM rumus_buku_kas ORDER BY display_order ASC"
       )
       .all() as FormulaRow[]
   );
@@ -175,7 +175,7 @@ export async function getFormula(
   const sb = getServerSupabaseClient();
   if (sb) {
     const { data, error } = await sb
-      .from("cashbook_formula")
+      .from("rumus_buku_kas")
       .select(FORMULA_COLUMNS)
       .eq("id", id)
       .maybeSingle();
@@ -183,7 +183,7 @@ export async function getFormula(
   }
   const row = await withSqlite((sqlite) =>
     sqlite
-      .prepare("SELECT * FROM cashbook_formula WHERE id = ?")
+      .prepare("SELECT * FROM rumus_buku_kas WHERE id = ?")
       .get(id) as FormulaRow | undefined
   );
   return row ? rowToFormula(row) : null;
@@ -222,7 +222,7 @@ export async function upsertFormula(
 
   const sb = getServerSupabaseClient();
   if (sb) {
-    const { error } = await sb.from("cashbook_formula").upsert(
+    const { error } = await sb.from("rumus_buku_kas").upsert(
       {
         ...payload,
         ast:
@@ -236,12 +236,12 @@ export async function upsertFormula(
 
   await withSqlite((sqlite) => {
     const existing = sqlite
-      .prepare("SELECT id FROM cashbook_formula WHERE id = ?")
+      .prepare("SELECT id FROM rumus_buku_kas WHERE id = ?")
       .get(id);
     if (existing) {
       sqlite
         .prepare(
-          `UPDATE cashbook_formula SET
+          `UPDATE rumus_buku_kas SET
              name = @name,
              column_key = @column_key,
              db_column = @db_column,
@@ -266,7 +266,7 @@ export async function upsertFormula(
     } else {
       sqlite
         .prepare(
-          `INSERT INTO cashbook_formula
+          `INSERT INTO rumus_buku_kas
              (id, name, column_key, db_column, formula_key, actor_id, formula_group, is_visible_in_summary, ast, enabled, is_system, display_order, description)
            VALUES
              (@id, @name, @column_key, @db_column, @formula_key, @actor_id, @formula_group, @is_visible_in_summary, @ast, @enabled, @is_system, @display_order, @description)`
@@ -286,11 +286,11 @@ export async function upsertFormula(
 export async function deleteFormula(id: string): Promise<void> {
   const sb = getServerSupabaseClient();
   if (sb) {
-    const { error } = await sb.from("cashbook_formula").delete().eq("id", id);
+    const { error } = await sb.from("rumus_buku_kas").delete().eq("id", id);
     if (error) throw error;
   }
   await withSqlite((sqlite) =>
-    sqlite.prepare("DELETE FROM cashbook_formula WHERE id = ?").run(id)
+    sqlite.prepare("DELETE FROM rumus_buku_kas WHERE id = ?").run(id)
   );
 }
 
@@ -409,7 +409,7 @@ export async function deletePartner(id: string): Promise<void> {
  * manual, dll) bisa dipulihkan di pemanggilan API berikutnya.
  *
  * Formula per-actor (kasbon, bagi hasil, bonus) TIDAK di-seed di sini —
- * itu di-generate dinamis lewat `syncFormulasForActor` dari tab Pengurus.
+ * itu di-generate dinamis lewat `syncFormulasForActor` dari tab Pegawai.
  */
 export async function seedDefaultsIfEmpty(): Promise<{
   formulasInserted: number;
@@ -423,13 +423,13 @@ export async function seedDefaultsIfEmpty(): Promise<{
     // Cari formula sistem mana yang hilang dan hanya insert yang itu.
     const ids = DEFAULT_FORMULAS.map((f) => f.id);
     const { data: existing } = await sb
-      .from("cashbook_formula")
+      .from("rumus_buku_kas")
       .select("id")
       .in("id", ids);
     const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
     // Upsert semua formula sistem supaya perubahan AST di defaults.ts menyebar
     // ke instalasi yang sudah ada tanpa perlu migrasi DB manual.
-    const { error } = await sb.from("cashbook_formula").upsert(
+    const { error } = await sb.from("rumus_buku_kas").upsert(
       DEFAULT_FORMULAS.map((f) => ({
         id: f.id,
         name: f.name,
@@ -458,7 +458,7 @@ export async function seedDefaultsIfEmpty(): Promise<{
   // SQLite path — same logic, plain SQL.
   await withSqlite((sqlite) => {
     const stmt = sqlite.prepare(
-      `INSERT OR REPLACE INTO cashbook_formula
+      `INSERT OR REPLACE INTO rumus_buku_kas
          (id, name, column_key, db_column, formula_key, actor_id, formula_group,
           is_visible_in_summary, ast, enabled, is_system, display_order, description)
        VALUES
@@ -500,12 +500,12 @@ export async function seedDefaultsIfEmpty(): Promise<{
 export async function resetFormulasToDefaults(): Promise<void> {
   const sb = getServerSupabaseClient();
   if (sb) {
-    await sb.from("cashbook_formula").delete().neq("id", "");
+    await sb.from("rumus_buku_kas").delete().neq("id", "");
     await sb.from("cashbook_partner").delete().neq("id", "");
   }
   await withSqlite((sqlite) => {
     sqlite.exec(
-      "DELETE FROM cashbook_formula; DELETE FROM cashbook_partner;"
+      "DELETE FROM rumus_buku_kas; DELETE FROM cashbook_partner;"
     );
   });
   await seedDefaultsIfEmpty();

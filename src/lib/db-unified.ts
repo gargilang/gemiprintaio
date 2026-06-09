@@ -908,7 +908,7 @@ class UnifiedDatabase {
             .prepare(`SELECT id FROM ${table} WHERE id = ?`)
             .get(data.id);
           if (existing) return { data: { id: (existing as any).id }, error: null };
-          // id not found — try by participant_code if available (finance_participants)
+          // id not found — try by participant_code if available (finance_metric_mappings)
           if (data.participant_code) {
             const byCode = db
               .prepare(`SELECT id FROM ${table} WHERE participant_code = ?`)

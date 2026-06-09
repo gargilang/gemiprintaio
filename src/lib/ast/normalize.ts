@@ -7,7 +7,7 @@
  * speaks formula keys, so we normalise legacy ASTs through these
  * helpers before printing or persisting.
  *
- * The mapping is driven by the live `cashbook_formula` table — the
+ * The mapping is driven by the live `rumus_buku_kas` table — the
  * caller passes in `letterToKey` derived from `column_key → formula_key`.
  * Unknown letters are left alone so we can surface them as diagnostics
  * rather than silently rewriting them.

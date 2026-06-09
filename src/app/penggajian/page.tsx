@@ -126,7 +126,7 @@ export default function PenggajianPage() {
         ) : karyawan.length === 0 ? (
           <div className="p-10 text-center text-slate-500 dark:text-slate-400">
             Belum ada karyawan aktif. Tambahkan orang lewat menu Pengaturan
-            Keuangan &rarr; Pengurus.
+            Keuangan &rarr; Pegawai.
           </div>
         ) : (
           <div className="overflow-x-auto">

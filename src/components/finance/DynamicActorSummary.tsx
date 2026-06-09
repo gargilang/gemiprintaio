@@ -114,7 +114,7 @@ export default function DynamicActorSummary({
   if (isLoading && !data) {
     return (
       <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
-        Memuat ringkasan pengurus…
+        Memuat ringkasan pegawai…
       </div>
     );
   }
@@ -137,8 +137,8 @@ export default function DynamicActorSummary({
       <div className="mb-6 space-y-2">
         <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
           <span>
-            Belum ada pengurus terdaftar. Tambah di{" "}
-            <strong>Pengaturan → Pengurus</strong>, lalu centang bagi hasil, kasbon,
+            Belum ada pegawai terdaftar. Tambah di{" "}
+            <strong>Pengaturan → Pegawai</strong>, lalu centang bagi hasil, kasbon,
             atau bonus agar angka muncul di kolom di bawah.
           </span>
           {onOpenPeopleSettings && (
@@ -147,7 +147,7 @@ export default function DynamicActorSummary({
               onClick={onOpenPeopleSettings}
               className="text-blue-700 dark:text-blue-300 hover:text-blue-900 font-semibold underline whitespace-nowrap"
             >
-              Buka Pengaturan → Pengurus
+              Buka Pengaturan → Pegawai
             </button>
           )}
         </div>
@@ -172,9 +172,9 @@ export default function DynamicActorSummary({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-            Pengurus Usaha
+            Pegawai Usaha
             <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-              ({actorRows.length} pengurus)
+              ({actorRows.length} pegawai)
             </span>
           </button>
           {onOpenPeopleSettings && (
@@ -182,8 +182,8 @@ export default function DynamicActorSummary({
               type="button"
               onClick={onOpenPeopleSettings}
               className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-              title="Pengaturan → Pengurus"
-              aria-label="Pengaturan Pengurus"
+              title="Pengaturan → Pegawai"
+              aria-label="Pengaturan Pegawai"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -232,7 +232,7 @@ export default function DynamicActorSummary({
                         <div className="font-semibold text-gray-900 dark:text-slate-100 truncate">{row.displayName}</div>
                         {noMetrics && (
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            Belum ada rumus — edit di Pengaturan → Pengurus
+                            Belum ada rumus — edit di Pengaturan → Pegawai
                           </p>
                         )}
                       </td>
@@ -265,13 +265,13 @@ export default function DynamicActorSummary({
 
       {legacyCount > 0 && (
         <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
-          {legacyCount} rumus lama masih aktif di belakang layar. Kelola pengurus di{" "}
+          {legacyCount} rumus lama masih aktif di belakang layar. Kelola pegawai di{" "}
           {onOpenPeopleSettings ? (
             <button type="button" onClick={onOpenPeopleSettings} className="underline font-semibold">
-              Pengaturan → Pengurus
+              Pengaturan → Pegawai
             </button>
           ) : (
-            <strong>Pengaturan → Pengurus</strong>
+            <strong>Pengaturan → Pegawai</strong>
           )}
           , lalu nonaktifkan sisa rumus lama di Pengaturan → Kolom bila sudah tidak dipakai.
         </p>

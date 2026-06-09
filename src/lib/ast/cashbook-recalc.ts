@@ -106,7 +106,7 @@ function inputForRow(row: CashbookRecalcInputRow): InputRow {
  * The result includes both:
  *   • `updates`: legacy keuangan column patch (omzet, biaya_*, kasbon_*, etc.)
  *   • `computed`: semantic (formulaKey → value) pairs destined for
- *     `transaction_computed` in the v2 architecture
+ *     `transaksi_terhitung` in the v2 architecture
  *
  * Both are emitted so callers can dual-write during the migration window.
  */
@@ -184,7 +184,7 @@ export function computeCashbookRecalculationUpdates(
               : 0
             : Number(value) || 0;
 
-      // Always populate the semantic (transaction_computed) map.
+      // Always populate the semantic (transaksi_terhitung) map.
       if (formulaKey) computed[formulaKey] = numeric;
 
       // Legacy keuangan column update — skip when an explicit override exists.
@@ -236,8 +236,8 @@ export async function recalculateCashbook(
 
   // Detect whether the v2 mirror tables exist locally so we can dual-write
   // without crashing on installs that haven't run the migration yet.
-  const hasComputedTable = tableExists(db, "transaction_computed");
-  const hasOverridesTable = tableExists(db, "transaction_overrides");
+  const hasComputedTable = tableExists(db, "transaksi_terhitung");
+  const hasOverridesTable = tableExists(db, "transaksi_penggantian");
 
   const overrideMap = hasOverridesTable
     ? loadOverrideMap(db)
@@ -245,7 +245,7 @@ export async function recalculateCashbook(
 
   const tcInsert = hasComputedTable
     ? db.prepare(
-        `INSERT INTO transaction_computed (transaction_id, formula_key, value, computed_at)
+        `INSERT INTO transaksi_terhitung (transaction_id, formula_key, value, computed_at)
          VALUES (?, ?, ?, datetime('now'))
          ON CONFLICT(transaction_id, formula_key) DO UPDATE SET
            value = excluded.value,
@@ -263,7 +263,7 @@ export async function recalculateCashbook(
       db.prepare(sql).run(...vals, id);
     }
 
-    // v2 dual-write: transaction_computed, honouring transaction_overrides.
+    // v2 dual-write: transaksi_terhitung, honouring transaksi_penggantian.
     if (tcInsert) {
       const rowOverrides = overrideMap.get(id);
       for (const [formulaKey, value] of Object.entries(computed)) {
@@ -294,7 +294,7 @@ function loadOverrideMap(db: Database.Database): Map<string, Map<string, number>
   try {
     const rows = db
       .prepare(
-        "SELECT transaction_id, formula_key, override_value FROM transaction_overrides"
+        "SELECT transaction_id, formula_key, override_value FROM transaksi_penggantian"
       )
       .all() as Array<{
       transaction_id: string;
@@ -340,7 +340,7 @@ function loadFormulasFromSqlite(db: Database.Database): FormulaDefinition[] {
   try {
     const rows = db
       .prepare(
-        "SELECT * FROM cashbook_formula WHERE enabled = 1 ORDER BY display_order ASC"
+        "SELECT * FROM rumus_buku_kas WHERE enabled = 1 ORDER BY display_order ASC"
       )
       .all() as FormulaRow[];
     if (rows.length === 0) return cloneDefaults(DEFAULT_FORMULAS);
