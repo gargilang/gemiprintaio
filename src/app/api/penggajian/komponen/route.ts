@@ -9,7 +9,7 @@ import {
   updateKomponen,
   deleteKomponen,
 } from "@/lib/services/komponen-kompensasi-service";
-import { komponenActionSchema } from "@/lib/schemas/payroll";
+import { komponenActionSchema } from "@/lib/schemas/penggajian";
 
 /** GET /api/penggajian/komponen?actor_id=... — daftar komponen (ungated read). */
 export async function GET(req: NextRequest) {

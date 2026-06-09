@@ -4,51 +4,51 @@ export const dynamic = "force-dynamic";
 
 import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
-  listPayrollRun,
-  hitungDraftPayroll,
-  simpanDraftPayroll,
-  bayarPayrollRun,
-  voidPayrollRun,
-} from "@/lib/services/payroll-service";
-import { payrollRunActionSchema } from "@/lib/schemas/payroll";
+  daftarProsesGaji,
+  hitungDraftGaji,
+  simpanDraftGaji,
+  bayarProsesGaji,
+  batalkanProsesGaji,
+} from "@/lib/services/penggajian-service";
+import { prosesGajiActionSchema } from "@/lib/schemas/penggajian";
 
-/** GET /api/penggajian/run — daftar payroll run + slip (ungated read). */
+/** GET /api/penggajian/proses — daftar proses gaji + slip (ungated read). */
 export async function GET() {
   try {
-    const runs = await listPayrollRun();
+    const runs = await daftarProsesGaji();
     return NextResponse.json({ runs });
   } catch (error: any) {
-    console.error("Error fetching payroll runs:", error);
+    console.error("Error memuat proses gaji:", error);
     return NextResponse.json(
-      { error: error.message || "Gagal memuat data payroll" },
+      { error: error.message || "Gagal memuat data penggajian" },
       { status: 500 }
     );
   }
 }
 
-/** POST /api/penggajian/run — hitung | simpan | bayar | void (guarded). */
+/** POST /api/penggajian/proses — hitung | simpan | bayar | void (guarded). */
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAdminOrManager();
     const body = await req.json();
-    const parsed = payrollRunActionSchema.safeParse(body);
+    const parsed = prosesGajiActionSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data payroll tidak valid", issues: parsed.error.issues },
+        { error: "Data penggajian tidak valid", issues: parsed.error.issues },
         { status: 422 }
       );
     }
     const data = parsed.data;
 
     if (data.action === "hitung") {
-      const draft = await hitungDraftPayroll(data.periode, {
+      const draft = await hitungDraftGaji(data.periode, {
         sumberNilai: data.sumber_nilai,
         potonganPerActor: data.potongan_per_actor,
       });
       return NextResponse.json({ draft });
     }
     if (data.action === "simpan") {
-      const runId = await simpanDraftPayroll(
+      const runId = await simpanDraftGaji(
         {
           periode: data.periode,
           slips: data.slips as any,
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ run_id: runId }, { status: 201 });
     }
     if (data.action === "bayar") {
-      await bayarPayrollRun(
+      await bayarProsesGaji(
         data.run_id,
         data.tanggal_bayar,
         data.metode_bayar,
@@ -70,15 +70,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
     // void
-    await voidPayrollRun(data.run_id, session.uid);
+    await batalkanProsesGaji(data.run_id, session.uid);
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error("Error mutating payroll run:", error);
+    console.error("Error mutasi proses gaji:", error);
     return NextResponse.json(
-      { error: error.message || "Gagal memproses payroll" },
+      { error: error.message || "Gagal memproses penggajian" },
       { status: 500 }
     );
   }

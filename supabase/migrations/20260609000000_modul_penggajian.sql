@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Migrasi: modul_penggajian (Payroll)
+-- Migrasi: modul_penggajian
 -- Tujuan: Memisahkan tiga konsep akuntansi yang selama ini tercampur di gemiprint:
 --   1. Beban Gaji        → biaya (mengurangi laba).
 --   2. Pinjaman Karyawan → piutang (kasbon, BUKAN biaya).
@@ -7,8 +7,8 @@
 --
 -- Empat tabel baru, semua additive (tidak menghapus/menyentuh tabel lama):
 --   - komponen_kompensasi : definisi berulang komponen gaji per karyawan.
---   - payroll_run         : proses penggajian berkala (header).
---   - payroll_slip        : slip gaji per karyawan dalam satu run.
+--   - proses_gaji         : proses penggajian berkala (header).
+--   - slip_gaji        : slip gaji per karyawan dalam satu run.
 --   - pinjaman_karyawan   : ledger kasbon/pinjaman (saldo = piutang berjalan).
 --
 -- Mengikuti pola business_actors_v2: RLS + policy anon_full_access, 9 kolom sync.
@@ -55,9 +55,9 @@ CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_actor   ON komponen_kompensas
 CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_aktif   ON komponen_kompensasi(aktif_status);
 CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_sync    ON komponen_kompensasi(sync_status);
 
--- ── 2. payroll_run ──────────────────────────────────────────────────────────
+-- ── 2. proses_gaji ──────────────────────────────────────────────────────────
 -- Header proses penggajian satu periode. status DRAFT → DIBAYAR → VOIDED.
-CREATE TABLE IF NOT EXISTS payroll_run (
+CREATE TABLE IF NOT EXISTS proses_gaji (
   id                       TEXT PRIMARY KEY,
   periode                  TEXT NOT NULL,
   tanggal_bayar            DATE,
@@ -86,16 +86,16 @@ CREATE TABLE IF NOT EXISTS payroll_run (
   client_mutation_id       TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_payroll_run_status   ON payroll_run(status);
-CREATE INDEX IF NOT EXISTS idx_payroll_run_periode  ON payroll_run(periode);
-CREATE INDEX IF NOT EXISTS idx_payroll_run_sync     ON payroll_run(sync_status);
+CREATE INDEX IF NOT EXISTS idx_proses_gaji_status   ON proses_gaji(status);
+CREATE INDEX IF NOT EXISTS idx_proses_gaji_periode  ON proses_gaji(periode);
+CREATE INDEX IF NOT EXISTS idx_proses_gaji_sync     ON proses_gaji(sync_status);
 
--- ── 3. payroll_slip ─────────────────────────────────────────────────────────
+-- ── 3. slip_gaji ─────────────────────────────────────────────────────────
 -- Satu slip per karyawan per run. neto = bruto - potongan_kasbon.
 -- komponen_snapshot menyimpan rincian komponen (JSON) untuk audit + cetak slip.
-CREATE TABLE IF NOT EXISTS payroll_slip (
+CREATE TABLE IF NOT EXISTS slip_gaji (
   id                   TEXT PRIMARY KEY,
-  payroll_run_id       TEXT NOT NULL REFERENCES payroll_run(id) ON DELETE CASCADE,
+  proses_gaji_id       TEXT NOT NULL REFERENCES proses_gaji(id) ON DELETE CASCADE,
   actor_id             TEXT NOT NULL REFERENCES business_actors(id) ON DELETE CASCADE,
   bruto                NUMERIC NOT NULL DEFAULT 0,
   potongan_kasbon      NUMERIC NOT NULL DEFAULT 0,
@@ -121,17 +121,17 @@ CREATE TABLE IF NOT EXISTS payroll_slip (
   client_mutation_id   TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_payroll_slip_run    ON payroll_slip(payroll_run_id);
-CREATE INDEX IF NOT EXISTS idx_payroll_slip_actor  ON payroll_slip(actor_id);
-CREATE INDEX IF NOT EXISTS idx_payroll_slip_status ON payroll_slip(status);
-CREATE INDEX IF NOT EXISTS idx_payroll_slip_sync   ON payroll_slip(sync_status);
+CREATE INDEX IF NOT EXISTS idx_slip_gaji_run    ON slip_gaji(proses_gaji_id);
+CREATE INDEX IF NOT EXISTS idx_slip_gaji_actor  ON slip_gaji(actor_id);
+CREATE INDEX IF NOT EXISTS idx_slip_gaji_status ON slip_gaji(status);
+CREATE INDEX IF NOT EXISTS idx_slip_gaji_sync   ON slip_gaji(sync_status);
 
 -- ── 4. pinjaman_karyawan ────────────────────────────────────────────────────
 -- Ledger kasbon sebagai PIUTANG (bukan biaya). Saldo seorang karyawan =
 --   Σ(TARIK) − Σ(POTONG_GAJI) − Σ(BAYAR_TUNAI).
 -- jenis:
 --   TARIK       → karyawan ambil kasbon, menaikkan saldo pinjaman (kas keluar).
---   POTONG_GAJI → dipotong saat payroll, menurunkan saldo (tidak ada kas keluar).
+--   POTONG_GAJI → dipotong saat proses gaji, menurunkan saldo (tidak ada kas keluar).
 --   BAYAR_TUNAI → karyawan kembalikan tunai, menurunkan saldo (kas masuk).
 CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
   id                   TEXT PRIMARY KEY,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
                          CHECK (jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI')),
   keterangan           TEXT,
   keuangan_ref_id      TEXT,
-  payroll_run_id       TEXT REFERENCES payroll_run(id) ON DELETE SET NULL,
+  proses_gaji_id       TEXT REFERENCES proses_gaji(id) ON DELETE SET NULL,
   dibuat_oleh          TEXT,
   dibuat_pada          TIMESTAMPTZ DEFAULT NOW(),
   diperbarui_pada      TIMESTAMPTZ DEFAULT NOW(),
@@ -160,24 +160,24 @@ CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
 
 CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor  ON pinjaman_karyawan(actor_id);
 CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_jenis  ON pinjaman_karyawan(jenis);
-CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run    ON pinjaman_karyawan(payroll_run_id);
+CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run    ON pinjaman_karyawan(proses_gaji_id);
 CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_sync   ON pinjaman_karyawan(sync_status);
 
 -- ── RLS policies (mirror pola anon_full_access dari business_actors_v2) ──────
 -- App internal, semua pengguna terpercaya; service_role hanya server-side.
 ALTER TABLE komponen_kompensasi ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payroll_run         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payroll_slip        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proses_gaji         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE slip_gaji        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pinjaman_karyawan   ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS anon_full_access ON komponen_kompensasi;
 CREATE POLICY anon_full_access ON komponen_kompensasi FOR ALL TO anon USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS anon_full_access ON payroll_run;
-CREATE POLICY anon_full_access ON payroll_run FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS anon_full_access ON proses_gaji;
+CREATE POLICY anon_full_access ON proses_gaji FOR ALL TO anon USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS anon_full_access ON payroll_slip;
-CREATE POLICY anon_full_access ON payroll_slip FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS anon_full_access ON slip_gaji;
+CREATE POLICY anon_full_access ON slip_gaji FOR ALL TO anon USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS anon_full_access ON pinjaman_karyawan;
 CREATE POLICY anon_full_access ON pinjaman_karyawan FOR ALL TO anon USING (true) WITH CHECK (true);
@@ -186,11 +186,21 @@ CREATE POLICY anon_full_access ON pinjaman_karyawan FOR ALL TO anon USING (true)
 DROP POLICY IF EXISTS "Service role full access" ON komponen_kompensasi;
 CREATE POLICY "Service role full access" ON komponen_kompensasi FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Service role full access" ON payroll_run;
-CREATE POLICY "Service role full access" ON payroll_run FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Service role full access" ON proses_gaji;
+CREATE POLICY "Service role full access" ON proses_gaji FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Service role full access" ON payroll_slip;
-CREATE POLICY "Service role full access" ON payroll_slip FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Service role full access" ON slip_gaji;
+CREATE POLICY "Service role full access" ON slip_gaji FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Service role full access" ON pinjaman_karyawan;
 CREATE POLICY "Service role full access" ON pinjaman_karyawan FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- ── Beban gaji ikut mengurangi laba ─────────────────────────────────────────
+-- Kolom buku kas `biaya_operasional` (column_key H) sebelumnya hanya akumulasi
+-- BIAYA + TABUNGAN. Tambahkan GAJI supaya beban gaji (bruto) mengurangi laba —
+-- ini koreksi inti yang diminta owner. PINJAMAN_KARYAWAN sengaja TIDAK masuk
+-- sini (kasbon = piutang, netral terhadap laba).
+UPDATE cashbook_formula
+SET ast = '{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"columnRef","column":"E"},"else":{"type":"literal","value":0}},"else":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"H"},"right":{"type":"columnRef","column":"E"}},"else":{"type":"prevOutput","column":"H"}}}'::jsonb,
+    description = 'Akumulasi BIAYA + TABUNGAN + GAJI (beban gaji ikut mengurangi laba).'
+WHERE column_key = 'H' OR db_column = 'biaya_operasional' OR formula_key = 'biaya_operasional';

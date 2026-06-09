@@ -144,7 +144,7 @@ VALUES
   ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 1, 120)
 ON CONFLICT (category_code) DO NOTHING;
 
--- Penggajian (Payroll): GAJI = beban gaji (mengurangi laba lewat biaya_operasional);
+-- Penggajian: GAJI = beban gaji (mengurangi laba lewat biaya_operasional);
 -- PINJAMAN_KARYAWAN = kasbon sebagai piutang, NETRAL terhadap laba (metric_contributions
 -- kosong) — hanya kas/saldo yang bergerak, bukan biaya.
 INSERT INTO finance_category_definitions

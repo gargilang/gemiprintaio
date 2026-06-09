@@ -1,6 +1,6 @@
 /**
  * Generator slip gaji (A5/struk sederhana) untuk satu karyawan dalam satu
- * payroll run. Berisi rincian komponen (snapshot), bruto, potongan kasbon, dan
+ * proses gaji. Berisi rincian komponen (snapshot), bruto, potongan kasbon, dan
  * neto (yang diterima). Mengikuti pola cetak faktur-print: tulis HTML ke window
  * popup, fallback ke iframe tersembunyi bila popup diblokir.
  */

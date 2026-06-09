@@ -8,18 +8,18 @@ import { formatRupiah } from "@/lib/format-id";
 import { getTodayJakarta } from "@/lib/date-utils";
 import { printSlipGaji } from "@/lib/slip-gaji-print";
 import {
-  listPayrollRunAction,
-  hitungDraftPayrollAction,
-  simpanDraftPayrollAction,
-  bayarPayrollRunAction,
-  voidPayrollRunAction,
+  daftarProsesGajiAction,
+  hitungDraftGajiAction,
+  simpanDraftGajiAction,
+  bayarProsesGajiAction,
+  batalkanProsesGajiAction,
   getNamaTokoAction,
 } from "./actions";
 import type {
-  DraftPayroll,
-  DraftSlip,
-  PayrollRunDetail,
-} from "@/lib/services/payroll-service";
+  DraftGaji,
+  DraftSlipGaji,
+  ProsesGajiDetail,
+} from "@/lib/services/penggajian-service";
 
 // MARKER_MODAL
 
@@ -34,38 +34,38 @@ function bulanIni(): string {
   return getTodayJakarta().slice(0, 7);
 }
 
-export interface ModalPayrollRunProps {
+export interface ModalProsesGajiProps {
   onClose: () => void;
   onSuccess: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
 }
 
-export default function ModalPayrollRun({
+export default function ModalProsesGaji({
   onClose,
   onSuccess,
   showNotification,
-}: ModalPayrollRunProps) {
+}: ModalProsesGajiProps) {
   const invalidate = useInvalidate();
 
-  const { data, isLoading, refresh } = useCachedData<PayrollRunDetail[]>(
-    "payroll-runs",
-    () => listPayrollRunAction()
+  const { data, isLoading, refresh } = useCachedData<ProsesGajiDetail[]>(
+    "proses-gaji",
+    () => daftarProsesGajiAction()
   );
   const runs = useMemo(() => data ?? [], [data]);
 
   // Wizard state.
   const [periode, setPeriode] = useState(bulanIni());
   const [omzet, setOmzet] = useState("");
-  const [draft, setDraft] = useState<DraftPayroll | null>(null);
+  const [draft, setDraft] = useState<DraftGaji | null>(null);
   const [potongan, setPotongan] = useState<Record<string, number>>({});
   const [tanggalBayar, setTanggalBayar] = useState(getTodayJakarta());
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "TRANSFER">("CASH");
   const [busy, setBusy] = useState(false);
   const [confirmBayar, setConfirmBayar] = useState(false);
-  const [voidTarget, setVoidTarget] = useState<PayrollRunDetail | null>(null);
+  const [voidTarget, setVoidTarget] = useState<ProsesGajiDetail | null>(null);
 
   const reloadRuns = useCallback(() => {
-    invalidate("payroll-runs");
+    invalidate("proses-gaji");
     void refresh();
   }, [invalidate, refresh]);
 
@@ -76,7 +76,7 @@ export default function ModalPayrollRun({
       const sumber: Record<string, number> = omzet
         ? { omzet: Number(omzet) || 0 }
         : {};
-      const result = await hitungDraftPayrollAction(periode, {
+      const result = await hitungDraftGajiAction(periode, {
         sumberNilai: sumber,
         potonganPerActor: {},
       });
@@ -86,14 +86,14 @@ export default function ModalPayrollRun({
       for (const s of result.slips) init[s.actor_id] = s.potongan_kasbon;
       setPotongan(init);
     } catch (e: any) {
-      showNotification("error", e?.message || "Gagal menghitung draft payroll.");
+      showNotification("error", e?.message || "Gagal menghitung draft gaji.");
     } finally {
       setBusy(false);
     }
   }, [periode, omzet, showNotification]);
 
   // Slip yang sudah disesuaikan potongannya oleh owner (clamp ke min(saldo,bruto)).
-  const slipsAdjusted: DraftSlip[] = useMemo(() => {
+  const slipsAdjusted: DraftSlipGaji[] = useMemo(() => {
     if (!draft) return [];
     return draft.slips.map((s) => {
       const diminta = potongan[s.actor_id] ?? s.potongan_kasbon;
@@ -120,22 +120,22 @@ export default function ModalPayrollRun({
     setConfirmBayar(false);
     try {
       setBusy(true);
-      const payload: DraftPayroll = {
+      const payload: DraftGaji = {
         periode: draft.periode,
         slips: slipsAdjusted,
         total_bruto: totalAdjusted.bruto,
         total_potongan_kasbon: totalAdjusted.potongan,
         total_neto: totalAdjusted.neto,
       };
-      const saved = await simpanDraftPayrollAction(payload);
-      await bayarPayrollRunAction(saved.run_id, tanggalBayar, metodeBayar);
-      showNotification("success", "Payroll berhasil dibayar.");
+      const saved = await simpanDraftGajiAction(payload);
+      await bayarProsesGajiAction(saved.run_id, tanggalBayar, metodeBayar);
+      showNotification("success", "Penggajian berhasil dibayar.");
       setDraft(null);
       setPotongan({});
       reloadRuns();
       onSuccess();
     } catch (e: any) {
-      showNotification("error", e?.message || "Gagal memproses pembayaran payroll.");
+      showNotification("error", e?.message || "Gagal memproses pembayaran gaji.");
     } finally {
       setBusy(false);
     }
@@ -153,18 +153,18 @@ export default function ModalPayrollRun({
   const handleVoid = useCallback(async () => {
     if (!voidTarget) return;
     try {
-      await voidPayrollRunAction(voidTarget.id);
-      showNotification("success", "Payroll run dibatalkan.");
+      await batalkanProsesGajiAction(voidTarget.id);
+      showNotification("success", "Proses gaji dibatalkan.");
       setVoidTarget(null);
       reloadRuns();
       onSuccess();
     } catch (e: any) {
-      showNotification("error", e?.message || "Gagal membatalkan payroll run.");
+      showNotification("error", e?.message || "Gagal membatalkan proses gaji.");
     }
   }, [voidTarget, reloadRuns, onSuccess, showNotification]);
 
   const handleCetakSlip = useCallback(
-    async (run: PayrollRunDetail, slip: PayrollRunDetail["slips"][number]) => {
+    async (run: ProsesGajiDetail, slip: ProsesGajiDetail["slips"][number]) => {
       try {
         const namaToko = await getNamaTokoAction();
         let komponen: { nama: string; tipe?: string; nilai: number }[] = [];
@@ -228,7 +228,7 @@ export default function ModalPayrollRun({
           onClick={() => setConfirmBayar(true)}
           className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold disabled:opacity-60"
         >
-          {busy ? "Memproses..." : "Bayar Payroll"}
+          {busy ? "Memproses..." : "Bayar Gaji"}
         </button>
       )}
     </div>
@@ -404,7 +404,7 @@ export default function ModalPayrollRun({
               </p>
             ) : runs.length === 0 ? (
               <p className="text-sm text-slate-400 dark:text-slate-500 italic">
-                Belum ada payroll run.
+                Belum ada proses gaji.
               </p>
             ) : (
               <div className="space-y-3">
@@ -484,7 +484,7 @@ export default function ModalPayrollRun({
 
       <DialogKonfirmasi
         show={confirmBayar}
-        title="Bayar payroll sekarang?"
+        title="Bayar gaji sekarang?"
         message={`Total dibayar (neto) ${formatRupiah(totalAdjusted.neto)}. Beban gaji ${formatRupiah(totalAdjusted.bruto)} akan tercatat. Lanjutkan?`}
         type="warning"
         confirmText="Bayar"
@@ -494,7 +494,7 @@ export default function ModalPayrollRun({
 
       <DialogKonfirmasi
         show={!!voidTarget}
-        title="Batalkan payroll run?"
+        title="Batalkan proses gaji?"
         message="Semua entri buku kas dan potongan kasbon dari run ini akan dibalik. Lanjutkan?"
         type="danger"
         confirmText="Batalkan"

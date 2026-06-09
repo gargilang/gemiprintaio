@@ -1,11 +1,11 @@
 /**
- * Test service payroll run + slip + void (inti modul penggajian).
+ * Test service proses gaji + slip + pembatalan (inti modul penggajian).
  *
  * Aturan akuntansi (dikonfirmasi owner):
  *   - BEBAN GAJI = bruto penuh (mengurangi laba), bukan neto.
  *   - Potongan kasbon saat gajian = pelunasan piutang (pinjaman), netral laba.
  *
- * Mekanik kas saat bayar payroll, per slip:
+ * Mekanik kas saat bayar gaji, per slip:
  *   - keuangan GAJI kredit = bruto      → saldo turun bruto, biaya_operasional naik bruto.
  *   - keuangan PINJAMAN_KARYAWAN debit = potongan → saldo naik potongan, netral laba.
  *   ⇒ net kas keluar = bruto − potongan = neto; beban gaji tetap = bruto.
@@ -44,12 +44,12 @@ jest.mock("@/lib/services/accounting-periods-service", () => ({
 }));
 
 import {
-  hitungDraftPayroll,
-  simpanDraftPayroll,
-  bayarPayrollRun,
-  voidPayrollRun,
-  listPayrollRun,
-} from "../services/payroll-service";
+  hitungDraftGaji,
+  simpanDraftGaji,
+  bayarProsesGaji,
+  batalkanProsesGaji,
+  daftarProsesGaji,
+} from "../services/penggajian-service";
 import { hitungSaldoPinjaman } from "../services/pinjaman-karyawan-service";
 
 function seedActor(id: string, nama: string) {
@@ -89,7 +89,7 @@ beforeEach(() => {
   isDateInClosedPeriodMock.mockReset().mockResolvedValue(false);
 });
 
-describe("hitungDraftPayroll", () => {
+describe("hitungDraftGaji", () => {
   it("menghitung bruto per karyawan dan potongan kasbon (potong penuh)", async () => {
     seedActor("a1", "Budi");
     seedActor("a2", "Sari");
@@ -112,7 +112,7 @@ describe("hitungDraftPayroll", () => {
     // Sari: gaji pokok 2jt, tanpa kasbon.
     seedKomponen("k3", "a2", { nominal: 2000000 });
 
-    const draft = await hitungDraftPayroll("2026-06", {
+    const draft = await hitungDraftGaji("2026-06", {
       sumberNilai: { omzet: 20000000 },
       potonganPerActor: { a1: 1000000 },
     });
@@ -145,7 +145,7 @@ describe("hitungDraftPayroll", () => {
       is_deleted: 0,
     });
     // Minta potong 5jt padahal bruto cuma 2jt → dibatasi ke 2jt.
-    const draft = await hitungDraftPayroll("2026-06", {
+    const draft = await hitungDraftGaji("2026-06", {
       potonganPerActor: { a1: 5000000 },
     });
     const budi = draft.slips[0];
@@ -157,13 +157,13 @@ describe("hitungDraftPayroll", () => {
     seedActor("a1", "Budi");
     seedActor("a2", "TanpaGaji");
     seedKomponen("k1", "a1", { nominal: 1000000 });
-    const draft = await hitungDraftPayroll("2026-06", {});
+    const draft = await hitungDraftGaji("2026-06", {});
     expect(draft.slips).toHaveLength(1);
     expect(draft.slips[0].actor_id).toBe("a1");
   });
 });
 
-describe("bayarPayrollRun", () => {
+describe("bayarProsesGaji", () => {
   async function buatDraftBudi() {
     seedActor("a1", "Budi");
     seedKomponen("k1", "a1", { nominal: 4000000 });
@@ -174,15 +174,15 @@ describe("bayarPayrollRun", () => {
       jumlah: 1000000,
       is_deleted: 0,
     });
-    const draft = await hitungDraftPayroll("2026-06", {
+    const draft = await hitungDraftGaji("2026-06", {
       potonganPerActor: { a1: 1000000 },
     });
-    return simpanDraftPayroll(draft, "user-1");
+    return simpanDraftGaji(draft, "user-1");
   }
 
   it("posting GAJI bruto + PINJAMAN_KARYAWAN debit potongan, run DIBAYAR", async () => {
     const runId = await buatDraftBudi();
-    await bayarPayrollRun(runId, "2026-06-25", "TRANSFER", "user-1");
+    await bayarProsesGaji(runId, "2026-06-25", "TRANSFER", "user-1");
 
     const cashbook = Array.from(mockTable("keuangan").values());
     const gaji = cashbook.find((r) => r.kategori_transaksi === "GAJI")!;
@@ -204,14 +204,14 @@ describe("bayarPayrollRun", () => {
       mockTable("pinjaman_karyawan").values()
     ).find((r) => r.jenis === "POTONG_GAJI")!;
     expect(potongLedger.jumlah).toBe(1000000);
-    expect(potongLedger.payroll_run_id).toBe(runId);
+    expect(potongLedger.proses_gaji_id).toBe(runId);
     expect(await hitungSaldoPinjaman("a1")).toBe(0);
 
     // Run + slip DIBAYAR.
-    const run = mockTable("payroll_run").get(runId)!;
+    const run = mockTable("proses_gaji").get(runId)!;
     expect(run.status).toBe("DIBAYAR");
     expect(run.tanggal_bayar).toBe("2026-06-25");
-    const slip = Array.from(mockTable("payroll_slip").values())[0];
+    const slip = Array.from(mockTable("slip_gaji").values())[0];
     expect(slip.keuangan_ref_id).toBe(gaji.id);
   });
 
@@ -219,20 +219,20 @@ describe("bayarPayrollRun", () => {
     const runId = await buatDraftBudi();
     isDateInClosedPeriodMock.mockResolvedValue(true);
     await expect(
-      bayarPayrollRun(runId, "2026-01-01", "CASH", "user-1")
+      bayarProsesGaji(runId, "2026-01-01", "CASH", "user-1")
     ).rejects.toThrow(/periode/i);
   });
 
   it("menolak bayar run yang bukan DRAFT", async () => {
     const runId = await buatDraftBudi();
-    await bayarPayrollRun(runId, "2026-06-25", "CASH", "user-1");
+    await bayarProsesGaji(runId, "2026-06-25", "CASH", "user-1");
     await expect(
-      bayarPayrollRun(runId, "2026-06-25", "CASH", "user-1")
+      bayarProsesGaji(runId, "2026-06-25", "CASH", "user-1")
     ).rejects.toThrow(/DRAFT/i);
   });
 });
 
-describe("voidPayrollRun", () => {
+describe("batalkanProsesGaji", () => {
   it("membalik semua: hapus keuangan, balik POTONG_GAJI, status VOIDED", async () => {
     seedActor("a1", "Budi");
     seedKomponen("k1", "a1", { nominal: 4000000 });
@@ -243,16 +243,16 @@ describe("voidPayrollRun", () => {
       jumlah: 1000000,
       is_deleted: 0,
     });
-    const draft = await hitungDraftPayroll("2026-06", {
+    const draft = await hitungDraftGaji("2026-06", {
       potonganPerActor: { a1: 1000000 },
     });
-    const runId = await simpanDraftPayroll(draft, "user-1");
-    await bayarPayrollRun(runId, "2026-06-25", "CASH", "user-1");
+    const runId = await simpanDraftGaji(draft, "user-1");
+    await bayarProsesGaji(runId, "2026-06-25", "CASH", "user-1");
 
     // Sebelum void: saldo 0, ada keuangan.
     expect(await hitungSaldoPinjaman("a1")).toBe(0);
 
-    await voidPayrollRun(runId, "user-1");
+    await batalkanProsesGaji(runId, "user-1");
 
     // Keuangan ber-[REF:gaji-<runId>] hilang.
     const sisaKeuangan = Array.from(mockTable("keuangan").values()).filter((r) =>
@@ -264,27 +264,27 @@ describe("voidPayrollRun", () => {
     expect(await hitungSaldoPinjaman("a1")).toBe(1000000);
 
     // Run VOIDED.
-    expect(mockTable("payroll_run").get(runId)!.status).toBe("VOIDED");
-    const slip = Array.from(mockTable("payroll_slip").values())[0];
+    expect(mockTable("proses_gaji").get(runId)!.status).toBe("VOIDED");
+    const slip = Array.from(mockTable("slip_gaji").values())[0];
     expect(slip.status).toBe("VOIDED");
   });
 
   it("menolak void run yang belum DIBAYAR", async () => {
     seedActor("a1", "Budi");
     seedKomponen("k1", "a1", { nominal: 1000000 });
-    const draft = await hitungDraftPayroll("2026-06", {});
-    const runId = await simpanDraftPayroll(draft, "user-1");
-    await expect(voidPayrollRun(runId, "user-1")).rejects.toThrow(/DIBAYAR/i);
+    const draft = await hitungDraftGaji("2026-06", {});
+    const runId = await simpanDraftGaji(draft, "user-1");
+    await expect(batalkanProsesGaji(runId, "user-1")).rejects.toThrow(/DIBAYAR/i);
   });
 });
 
-describe("listPayrollRun", () => {
+describe("daftarProsesGaji", () => {
   it("mengembalikan run beserta slip, mengabaikan run terhapus", async () => {
     seedActor("a1", "Budi");
     seedKomponen("k1", "a1", { nominal: 1000000 });
-    const draft = await hitungDraftPayroll("2026-06", {});
-    const runId = await simpanDraftPayroll(draft, "user-1");
-    const list = await listPayrollRun();
+    const draft = await hitungDraftGaji("2026-06", {});
+    const runId = await simpanDraftGaji(draft, "user-1");
+    const list = await daftarProsesGaji();
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe(runId);
     expect(list[0].slips).toHaveLength(1);

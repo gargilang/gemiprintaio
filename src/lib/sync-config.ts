@@ -48,12 +48,12 @@ export const MASTER_SYNC_TABLES = [
   "accounting_periods",
 ] as const;
 
-// Modul Penggajian (Payroll). Urutan: master komponen dulu, lalu run sebelum
-// slip/pinjaman (FK payroll_run_id).
+// Modul Penggajian. Urutan: master komponen dulu, lalu run sebelum
+// slip/pinjaman (FK proses_gaji_id).
 export const PAYROLL_SYNC_TABLES = [
   "komponen_kompensasi",
-  "payroll_run",
-  "payroll_slip",
+  "proses_gaji",
+  "slip_gaji",
   "pinjaman_karyawan",
 ] as const;
 

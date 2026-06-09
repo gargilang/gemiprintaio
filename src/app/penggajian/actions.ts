@@ -4,7 +4,7 @@
  * Server Actions modul Penggajian.
  *
  * Wrapper tipis di atas service. Aksi mutasi dibungkus guard requireAdminOrManager
- * (payroll sensitif) dan meneruskan session.uid sebagai dibuat_oleh — identitas
+ * (penggajian sensitif) dan meneruskan session.uid sebagai dibuat_oleh — identitas
  * tidak pernah diambil dari klien. Aksi baca boleh ungated.
  */
 
@@ -26,15 +26,15 @@ import {
   revertPinjaman,
 } from "@/lib/services/pinjaman-karyawan-service";
 import {
-  listPayrollRun,
-  hitungDraftPayroll,
-  simpanDraftPayroll,
-  bayarPayrollRun,
-  voidPayrollRun,
-  type DraftPayroll,
-  type OpsiDraft,
+  daftarProsesGaji,
+  hitungDraftGaji,
+  simpanDraftGaji,
+  bayarProsesGaji,
+  batalkanProsesGaji,
+  type DraftGaji,
+  type OpsiDraftGaji,
   type MetodeBayar,
-} from "@/lib/services/payroll-service";
+} from "@/lib/services/penggajian-service";
 
 // ── Ringkasan halaman (karyawan + komponen + saldo pinjaman) ────────────────
 export interface RingkasanKaryawan {
@@ -177,59 +177,59 @@ export async function revertPinjamanAction(id: string) {
   }
 }
 
-// ── Payroll run ──────────────────────────────────────────────────────────────
-export async function listPayrollRunAction() {
+// ── Proses gaji ──────────────────────────────────────────────────────────────
+export async function daftarProsesGajiAction() {
   try {
-    return await listPayrollRun();
+    return await daftarProsesGaji();
   } catch (error) {
-    console.error("listPayrollRunAction error:", error);
+    console.error("daftarProsesGajiAction error:", error);
     throw error;
   }
 }
 
-export async function hitungDraftPayrollAction(periode: string, opsi: OpsiDraft = {}) {
+export async function hitungDraftGajiAction(periode: string, opsi: OpsiDraftGaji = {}) {
   try {
     await requireAdminOrManager();
-    return await hitungDraftPayroll(periode, opsi);
+    return await hitungDraftGaji(periode, opsi);
   } catch (error) {
-    console.error("hitungDraftPayrollAction error:", error);
+    console.error("hitungDraftGajiAction error:", error);
     throw error;
   }
 }
 
-export async function simpanDraftPayrollAction(draft: DraftPayroll) {
+export async function simpanDraftGajiAction(draft: DraftGaji) {
   try {
     const s = await requireAdminOrManager();
-    const runId = await simpanDraftPayroll(draft, s.uid);
+    const runId = await simpanDraftGaji(draft, s.uid);
     return { success: true, run_id: runId };
   } catch (error) {
-    console.error("simpanDraftPayrollAction error:", error);
+    console.error("simpanDraftGajiAction error:", error);
     throw error;
   }
 }
 
-export async function bayarPayrollRunAction(
+export async function bayarProsesGajiAction(
   runId: string,
   tanggalBayar: string,
   metodeBayar: MetodeBayar
 ) {
   try {
     const s = await requireAdminOrManager();
-    await bayarPayrollRun(runId, tanggalBayar, metodeBayar, s.uid);
+    await bayarProsesGaji(runId, tanggalBayar, metodeBayar, s.uid);
     return { success: true };
   } catch (error) {
-    console.error("bayarPayrollRunAction error:", error);
+    console.error("bayarProsesGajiAction error:", error);
     throw error;
   }
 }
 
-export async function voidPayrollRunAction(runId: string) {
+export async function batalkanProsesGajiAction(runId: string) {
   try {
     const s = await requireAdminOrManager();
-    await voidPayrollRun(runId, s.uid);
+    await batalkanProsesGaji(runId, s.uid);
     return { success: true };
   } catch (error) {
-    console.error("voidPayrollRunAction error:", error);
+    console.error("batalkanProsesGajiAction error:", error);
     throw error;
   }
 }

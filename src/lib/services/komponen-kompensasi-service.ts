@@ -7,7 +7,7 @@
  *   - metode TETAP  → nominal tetap per periode.
  *   - metode PERSEN → persen × nilai sumber (mis. 5% dari `omzet` periode).
  *
- * `hitungBrutoPeriode` dipakai payroll-service untuk menghitung gaji bruto satu
+ * `hitungBrutoPeriode` dipakai penggajian-service untuk menghitung gaji bruto satu
  * karyawan dalam satu periode. Nilai sumber (omzet/laba/dll.) dipasok caller
  * dari ringkasan keuangan periode itu — service ini tidak query buku kas.
  */

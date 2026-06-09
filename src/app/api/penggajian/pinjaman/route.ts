@@ -10,7 +10,7 @@ import {
   bayarPinjamanTunai,
   revertPinjaman,
 } from "@/lib/services/pinjaman-karyawan-service";
-import { pinjamanActionSchema } from "@/lib/schemas/payroll";
+import { pinjamanActionSchema } from "@/lib/schemas/penggajian";
 
 /**
  * GET /api/penggajian/pinjaman?actor_id=... — daftar pinjaman + saldo (ungated).

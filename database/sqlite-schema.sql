@@ -1206,7 +1206,7 @@ CREATE TABLE item_surat_jalan (
 CREATE INDEX idx_item_surat_jalan_sj ON item_surat_jalan(surat_jalan_id);
 CREATE INDEX idx_item_surat_jalan_sync_status ON item_surat_jalan(sync_status);
 
--- ── Modul Penggajian (Payroll) ──────────────────────────────────────────────
+-- ── Modul Penggajian ──────────────────────────────────────────────
 -- Table: komponen_kompensasi (definisi komponen gaji per karyawan)
 CREATE TABLE komponen_kompensasi (
       id TEXT PRIMARY KEY,
@@ -1238,8 +1238,8 @@ CREATE INDEX idx_komponen_kompensasi_actor ON komponen_kompensasi(actor_id);
 CREATE INDEX idx_komponen_kompensasi_aktif ON komponen_kompensasi(aktif_status);
 CREATE INDEX idx_komponen_kompensasi_sync ON komponen_kompensasi(sync_status);
 
--- Table: payroll_run (header proses penggajian satu periode)
-CREATE TABLE payroll_run (
+-- Table: proses_gaji (header proses penggajian satu periode)
+CREATE TABLE proses_gaji (
       id TEXT PRIMARY KEY,
       periode TEXT NOT NULL,
       tanggal_bayar TEXT,
@@ -1265,14 +1265,14 @@ CREATE TABLE payroll_run (
       client_mutation_id TEXT
     );
 
-CREATE INDEX idx_payroll_run_status ON payroll_run(status);
-CREATE INDEX idx_payroll_run_periode ON payroll_run(periode);
-CREATE INDEX idx_payroll_run_sync ON payroll_run(sync_status);
+CREATE INDEX idx_proses_gaji_status ON proses_gaji(status);
+CREATE INDEX idx_proses_gaji_periode ON proses_gaji(periode);
+CREATE INDEX idx_proses_gaji_sync ON proses_gaji(sync_status);
 
--- Table: payroll_slip (slip gaji per karyawan dalam satu run)
-CREATE TABLE payroll_slip (
+-- Table: slip_gaji (slip gaji per karyawan dalam satu run)
+CREATE TABLE slip_gaji (
       id TEXT PRIMARY KEY,
-      payroll_run_id TEXT NOT NULL,
+      proses_gaji_id TEXT NOT NULL,
       actor_id TEXT NOT NULL,
       bruto REAL NOT NULL DEFAULT 0,
       potongan_kasbon REAL NOT NULL DEFAULT 0,
@@ -1293,13 +1293,13 @@ CREATE TABLE payroll_slip (
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE CASCADE,
+      FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE CASCADE,
       FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
     );
 
-CREATE INDEX idx_payroll_slip_run ON payroll_slip(payroll_run_id);
-CREATE INDEX idx_payroll_slip_actor ON payroll_slip(actor_id);
-CREATE INDEX idx_payroll_slip_sync ON payroll_slip(sync_status);
+CREATE INDEX idx_slip_gaji_run ON slip_gaji(proses_gaji_id);
+CREATE INDEX idx_slip_gaji_actor ON slip_gaji(actor_id);
+CREATE INDEX idx_slip_gaji_sync ON slip_gaji(sync_status);
 
 -- Table: pinjaman_karyawan (ledger kasbon sebagai piutang)
 CREATE TABLE pinjaman_karyawan (
@@ -1310,7 +1310,7 @@ CREATE TABLE pinjaman_karyawan (
       jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI')),
       keterangan TEXT,
       keuangan_ref_id TEXT,
-      payroll_run_id TEXT,
+      proses_gaji_id TEXT,
       dibuat_oleh TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')),
@@ -1324,12 +1324,12 @@ CREATE TABLE pinjaman_karyawan (
       deleted_at TEXT,
       client_mutation_id TEXT,
       FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE,
-      FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE SET NULL
+      FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
     );
 
 CREATE INDEX idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
 CREATE INDEX idx_pinjaman_karyawan_jenis ON pinjaman_karyawan(jenis);
-CREATE INDEX idx_pinjaman_karyawan_run ON pinjaman_karyawan(payroll_run_id);
+CREATE INDEX idx_pinjaman_karyawan_run ON pinjaman_karyawan(proses_gaji_id);
 CREATE INDEX idx_pinjaman_karyawan_sync ON pinjaman_karyawan(sync_status);
 
 -- Table: biaya_tambahan_penjualan

@@ -335,7 +335,7 @@ export default function ModalKomponenKompensasi({
       <DialogKonfirmasi
         show={!!hapusTarget}
         title="Hapus komponen?"
-        message={`Hapus komponen "${hapusTarget?.nama ?? ""}"? Tindakan ini tidak memengaruhi payroll yang sudah dibayar.`}
+        message={`Hapus komponen "${hapusTarget?.nama ?? ""}"? Tindakan ini tidak memengaruhi penggajian yang sudah dibayar.`}
         type="danger"
         confirmText="Hapus"
         onConfirm={handleHapus}

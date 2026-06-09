@@ -308,7 +308,7 @@ export default function ModalPinjamanKaryawan({
               </ul>
             )}
             <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-              Potongan gaji hanya bisa dibatalkan lewat pembatalan payroll run.
+              Potongan gaji hanya bisa dibatalkan lewat pembatalan proses gaji.
             </p>
           </div>
         </div>

@@ -12,7 +12,7 @@
  * token `[REF:pinjaman-<id>]` di `keperluan` agar revert konsisten:
  *   - TARIK       → kredit (kas keluar saat karyawan ambil kasbon).
  *   - BAYAR_TUNAI → debit  (kas masuk saat karyawan kembalikan tunai).
- *   - POTONG_GAJI → TIDAK menyentuh kas (dipotong dari gaji oleh payroll-service;
+ *   - POTONG_GAJI → TIDAK menyentuh kas (dipotong dari gaji oleh penggajian-service;
  *                   service ini hanya menghitungnya dalam saldo).
  */
 
@@ -30,7 +30,7 @@ export interface PinjamanKaryawan {
   jenis: "TARIK" | "POTONG_GAJI" | "BAYAR_TUNAI";
   keterangan: string | null;
   keuangan_ref_id: string | null;
-  payroll_run_id: string | null;
+  proses_gaji_id: string | null;
   dibuat_oleh: string | null;
   dibuat_pada?: string;
   is_deleted?: number;
@@ -118,7 +118,7 @@ export async function catatTarikPinjaman(
         jenis: "TARIK",
         keterangan,
         keuangan_ref_id: null,
-        payroll_run_id: null,
+        proses_gaji_id: null,
         dibuat_oleh: input.dibuatOleh || null,
       };
       const insertRes = await db.insert("pinjaman_karyawan", pinjamanRow);
@@ -190,7 +190,7 @@ export async function bayarPinjamanTunai(
         jenis: "BAYAR_TUNAI",
         keterangan,
         keuangan_ref_id: null,
-        payroll_run_id: null,
+        proses_gaji_id: null,
         dibuat_oleh: input.dibuatOleh || null,
       };
       const insertRes = await db.insert("pinjaman_karyawan", pinjamanRow);
@@ -233,7 +233,7 @@ export async function bayarPinjamanTunai(
 /**
  * Batalkan satu baris pinjaman (TARIK / BAYAR_TUNAI): hapus baris keuangan
  * ber-[REF] dan tandai pinjaman is_deleted. Baris POTONG_GAJI dibatalkan lewat
- * void payroll run, bukan di sini.
+ * pembatalan proses gaji, bukan di sini.
  */
 export async function revertPinjaman(pinjamanId: string): Promise<void> {
   try {
@@ -246,7 +246,7 @@ export async function revertPinjaman(pinjamanId: string): Promise<void> {
       }
       if (existing.data.jenis === "POTONG_GAJI") {
         throw new Error(
-          "Potongan gaji hanya bisa dibatalkan lewat pembatalan payroll run."
+          "Potongan gaji hanya bisa dibatalkan lewat pembatalan proses gaji."
         );
       }
 

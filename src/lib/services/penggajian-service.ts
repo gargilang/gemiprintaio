@@ -1,5 +1,5 @@
 /**
- * Service payroll run + slip + void (inti modul penggajian).
+ * Service proses gaji + slip + pembatalan (inti modul penggajian).
  */
 
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
@@ -12,11 +12,11 @@ import {
 } from "@/lib/services/komponen-kompensasi-service";
 import { hitungSaldoPinjaman } from "@/lib/services/pinjaman-karyawan-service";
 
-export type StatusPayroll = "DRAFT" | "DIBAYAR" | "VOIDED";
+export type StatusProsesGaji = "DRAFT" | "DIBAYAR" | "VOIDED";
 export type MetodeBayar = "CASH" | "TRANSFER";
 
 /** Satu slip dalam hasil hitung draft (belum tertulis ke DB). */
-export interface DraftSlip {
+export interface DraftSlipGaji {
   actor_id: string;
   nama: string;
   bruto: number;
@@ -26,16 +26,16 @@ export interface DraftSlip {
   rincian: RincianKomponen[];
 }
 
-/** Hasil hitung draft payroll satu periode. */
-export interface DraftPayroll {
+/** Hasil hitung draft gaji satu periode. */
+export interface DraftGaji {
   periode: string;
-  slips: DraftSlip[];
+  slips: DraftSlipGaji[];
   total_bruto: number;
   total_potongan_kasbon: number;
   total_neto: number;
 }
 
-export interface OpsiDraft {
+export interface OpsiDraftGaji {
   /** Nilai sumber untuk komponen PERSEN (mis. { omzet, laba }). */
   sumberNilai?: Record<string, number>;
   /** Potongan kasbon per karyawan yang dipilih owner (default 0). */
@@ -75,14 +75,14 @@ async function nextKeuanganOrder(): Promise<number> {
 }
 
 /**
- * Hitung draft payroll satu periode (TIDAK menulis DB).
+ * Hitung draft gaji satu periode (TIDAK menulis DB).
  * Untuk tiap karyawan aktif yang punya komponen: bruto, saldo pinjaman,
  * potongan kasbon = min(pilihan owner, saldo, bruto), neto = bruto − potongan.
  */
-export async function hitungDraftPayroll(
+export async function hitungDraftGaji(
   periode: string,
-  opsi: OpsiDraft = {}
-): Promise<DraftPayroll> {
+  opsi: OpsiDraftGaji = {}
+): Promise<DraftGaji> {
   const sumberNilai = opsi.sumberNilai || {};
   const potonganPerActor = opsi.potonganPerActor || {};
 
@@ -91,7 +91,7 @@ export async function hitungDraftPayroll(
     (a) => Number(a.is_deleted ?? 0) === 0 && Number(a.is_active ?? 1) === 1
   );
 
-  const slips: DraftSlip[] = [];
+  const slips: DraftSlipGaji[] = [];
   for (const actor of actors) {
     const { bruto, rincian } = await hitungBrutoPeriode(actor.id, sumberNilai);
     // Karyawan tanpa komponen aktif dilewati (bukan penerima gaji).
@@ -121,18 +121,18 @@ export async function hitungDraftPayroll(
 }
 
 /**
- * Simpan draft ke DB: insert payroll_run (status DRAFT) + payroll_slip per
+ * Simpan draft ke DB: insert proses_gaji (status DRAFT) + slip_gaji per
  * karyawan. Mengembalikan id run. Tidak menyentuh kas (belum dibayar).
  */
-export async function simpanDraftPayroll(
-  draft: DraftPayroll,
+export async function simpanDraftGaji(
+  draft: DraftGaji,
   dibuatOleh?: string
 ): Promise<string> {
   try {
     const runId = await db.transaction(async () => {
       const id = generateId();
       const now = getCurrentTimestamp();
-      const runRes = await db.insert("payroll_run", {
+      const runRes = await db.insert("proses_gaji", {
         id,
         periode: draft.periode,
         tanggal_bayar: null,
@@ -149,9 +149,9 @@ export async function simpanDraftPayroll(
       if (runRes.error) throw runRes.error;
 
       for (const slip of draft.slips) {
-        const slipRes = await db.insert("payroll_slip", {
+        const slipRes = await db.insert("slip_gaji", {
           id: generateId(),
-          payroll_run_id: id,
+          proses_gaji_id: id,
           actor_id: slip.actor_id,
           bruto: slip.bruto,
           potongan_kasbon: slip.potongan_kasbon,
@@ -170,13 +170,13 @@ export async function simpanDraftPayroll(
     });
     return runId;
   } catch (e) {
-    lemparRamah(e, "payroll_run");
+    lemparRamah(e, "proses_gaji");
   }
 }
 
-interface PayrollSlipRow {
+interface SlipGajiRow {
   id: string;
-  payroll_run_id: string;
+  proses_gaji_id: string;
   actor_id: string;
   bruto: number;
   potongan_kasbon: number;
@@ -189,7 +189,7 @@ interface PayrollSlipRow {
 }
 
 /**
- * Bayar payroll run (DRAFT → DIBAYAR) dalam satu transaksi:
+ * Bayar proses gaji (DRAFT → DIBAYAR) dalam satu transaksi:
  *   - Guard period-closed pada tanggal bayar.
  *   - Per slip: posting keuangan GAJI kredit = BRUTO (beban penuh, mengurangi
  *     laba) ber-[REF:gaji-<runId>]. Bila ada potongan kasbon, posting keuangan
@@ -198,7 +198,7 @@ interface PayrollSlipRow {
  *   ⇒ net kas keluar = neto; beban gaji tercatat = bruto.
  *   - Set run + slip DIBAYAR, simpan keuangan_ref_id GAJI di slip.
  */
-export async function bayarPayrollRun(
+export async function bayarProsesGaji(
   runId: string,
   tanggalBayar: string,
   metodeBayar: MetodeBayar,
@@ -213,16 +213,16 @@ export async function bayarPayrollRun(
   try {
     await db.transaction(async () => {
       const runRes = await db.queryOne<{ id: string; status: string; periode: string }>(
-        "payroll_run",
+        "proses_gaji",
         { where: { id: runId } }
       );
-      if (!runRes.data) throw new Error("Payroll run tidak ditemukan.");
+      if (!runRes.data) throw new Error("Proses gaji tidak ditemukan.");
       if (runRes.data.status !== "DRAFT") {
-        throw new Error("Hanya payroll run berstatus DRAFT yang bisa dibayar.");
+        throw new Error("Hanya proses gaji berstatus DRAFT yang bisa dibayar.");
       }
 
-      const slipsRes = await db.query<PayrollSlipRow>("payroll_slip", {
-        where: { payroll_run_id: runId },
+      const slipsRes = await db.query<SlipGajiRow>("slip_gaji", {
+        where: { proses_gaji_id: runId },
       });
       const slips = (slipsRes.data || []).filter(
         (s) => (s.status ?? "DRAFT") !== "VOIDED"
@@ -279,7 +279,7 @@ export async function bayarPayrollRun(
             jenis: "POTONG_GAJI",
             keterangan: "Potongan kasbon saat gajian " + runRes.data.periode,
             keuangan_ref_id: potongKasId,
-            payroll_run_id: runId,
+            proses_gaji_id: runId,
             dibuat_oleh: dibuatOleh || null,
             dibuat_pada: now,
             diperbarui_pada: now,
@@ -287,7 +287,7 @@ export async function bayarPayrollRun(
           if (ledgerRes.error) throw ledgerRes.error;
         }
 
-        const slipUpd = await db.update("payroll_slip", slip.id, {
+        const slipUpd = await db.update("slip_gaji", slip.id, {
           status: "DIBAYAR",
           metode_bayar: metodeBayar,
           keuangan_ref_id: gajiId,
@@ -295,7 +295,7 @@ export async function bayarPayrollRun(
         if (slipUpd.error) throw slipUpd.error;
       }
 
-      const runUpd = await db.update("payroll_run", runId, {
+      const runUpd = await db.update("proses_gaji", runId, {
         status: "DIBAYAR",
         tanggal_bayar: tanggalBayar,
         metode_bayar: metodeBayar,
@@ -305,29 +305,29 @@ export async function bayarPayrollRun(
 
     await recalculateCashbookIfAvailable();
   } catch (e) {
-    lemparRamah(e, "payroll_run");
+    lemparRamah(e, "proses_gaji");
   }
 }
 
 /**
- * Batalkan payroll run yang sudah DIBAYAR (DIBAYAR → VOIDED): balik semua.
+ * Batalkan proses gaji yang sudah DIBAYAR (DIBAYAR → VOIDED): balik semua.
  *   - Hapus baris keuangan ber-[REF:gaji-<runId>] (GAJI + PINJAMAN_KARYAWAN).
  *   - Tandai baris pinjaman_karyawan POTONG_GAJI run ini is_deleted (saldo balik).
  *   - Set run + slip VOIDED.
  */
-export async function voidPayrollRun(
+export async function batalkanProsesGaji(
   runId: string,
   dibatalkanOleh?: string
 ): Promise<void> {
   try {
     await db.transaction(async () => {
       const runRes = await db.queryOne<{ id: string; status: string }>(
-        "payroll_run",
+        "proses_gaji",
         { where: { id: runId } }
       );
-      if (!runRes.data) throw new Error("Payroll run tidak ditemukan.");
+      if (!runRes.data) throw new Error("Proses gaji tidak ditemukan.");
       if (runRes.data.status !== "DIBAYAR") {
-        throw new Error("Hanya payroll run berstatus DIBAYAR yang bisa dibatalkan.");
+        throw new Error("Hanya proses gaji berstatus DIBAYAR yang bisa dibatalkan.");
       }
 
       const token = refToken(runId);
@@ -348,7 +348,7 @@ export async function voidPayrollRun(
       // 2) Balik baris pinjaman POTONG_GAJI milik run ini.
       const potongan = await db.query<{ id: string; jenis: string }>(
         "pinjaman_karyawan",
-        { where: { payroll_run_id: runId } }
+        { where: { proses_gaji_id: runId } }
       );
       for (const row of potongan.data || []) {
         if (row.jenis === "POTONG_GAJI") {
@@ -360,15 +360,15 @@ export async function voidPayrollRun(
       }
 
       // 3) Set slip VOIDED.
-      const slips = await db.query<{ id: string }>("payroll_slip", {
-        where: { payroll_run_id: runId },
+      const slips = await db.query<{ id: string }>("slip_gaji", {
+        where: { proses_gaji_id: runId },
       });
       for (const slip of slips.data || []) {
-        await db.update("payroll_slip", slip.id, { status: "VOIDED" });
+        await db.update("slip_gaji", slip.id, { status: "VOIDED" });
       }
 
       // 4) Set run VOIDED.
-      const runUpd = await db.update("payroll_run", runId, {
+      const runUpd = await db.update("proses_gaji", runId, {
         status: "VOIDED",
         voided_at: now,
         voided_by: dibatalkanOleh || null,
@@ -378,31 +378,31 @@ export async function voidPayrollRun(
 
     await recalculateCashbookIfAvailable();
   } catch (e) {
-    lemparRamah(e, "payroll_run");
+    lemparRamah(e, "proses_gaji");
   }
 }
 
-export interface PayrollRunDetail {
+export interface ProsesGajiDetail {
   id: string;
   periode: string;
   tanggal_bayar: string | null;
-  status: StatusPayroll;
+  status: StatusProsesGaji;
   metode_bayar: MetodeBayar;
   total_bruto: number;
   total_potongan_kasbon: number;
   total_neto: number;
   catatan: string | null;
   dibuat_pada?: string;
-  slips: PayrollSlipRow[];
+  slips: SlipGajiRow[];
 }
 
 /**
- * Daftar payroll run beserta slip-nya (join di memori, hindari N+1).
+ * Daftar proses gaji beserta slip-nya (join di memori, hindari N+1).
  * Mengabaikan run yang is_deleted.
  */
-export async function listPayrollRun(): Promise<PayrollRunDetail[]> {
-  const runsRes = await db.query<PayrollRunDetail & { is_deleted?: number }>(
-    "payroll_run",
+export async function daftarProsesGaji(): Promise<ProsesGajiDetail[]> {
+  const runsRes = await db.query<ProsesGajiDetail & { is_deleted?: number }>(
+    "proses_gaji",
     { orderBy: { column: "dibuat_pada", ascending: false } }
   );
   const runs = (runsRes.data || []).filter(
@@ -410,8 +410,8 @@ export async function listPayrollRun(): Promise<PayrollRunDetail[]> {
   );
   if (runs.length === 0) return [];
 
-  const slipsRes = await db.query<PayrollSlipRow & { is_deleted?: number }>(
-    "payroll_slip",
+  const slipsRes = await db.query<SlipGajiRow & { is_deleted?: number }>(
+    "slip_gaji",
     {}
   );
   const allSlips = (slipsRes.data || []).filter(
@@ -434,7 +434,7 @@ export async function listPayrollRun(): Promise<PayrollRunDetail[]> {
   return runs.map((run) => ({
     ...run,
     slips: allSlips
-      .filter((s) => s.payroll_run_id === run.id)
+      .filter((s) => s.proses_gaji_id === run.id)
       .map((s) => ({ ...s, nama: namaByActor.get(s.actor_id) || s.actor_id })),
   }));
 }

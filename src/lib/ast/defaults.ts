@@ -111,17 +111,24 @@ const astOmzet: ASTNode = iff(
 
 /**
  * H: BIAYA OPERASIONAL
- *   =IF(ROW()=2, 0, IF(OR(C="BIAYA",C="TABUNGAN"), H_prev + E, H_prev))
+ *   =IF(ROW()=2, 0, IF(OR(C="BIAYA",C="TABUNGAN",C="GAJI"), H_prev + E, H_prev))
+ * GAJI ikut sebagai beban operasional (penggajian) — mengurangi laba.
  */
 const astBiayaOps: ASTNode = iff(
   isFirstRow(),
   iff(
-    or(op("=", col("C"), lit("BIAYA")), op("=", col("C"), lit("TABUNGAN"))),
+    or(
+      or(op("=", col("C"), lit("BIAYA")), op("=", col("C"), lit("TABUNGAN"))),
+      op("=", col("C"), lit("GAJI"))
+    ),
     col("E"),
     lit(0)
   ),
   iff(
-    or(op("=", col("C"), lit("BIAYA")), op("=", col("C"), lit("TABUNGAN"))),
+    or(
+      or(op("=", col("C"), lit("BIAYA")), op("=", col("C"), lit("TABUNGAN"))),
+      op("=", col("C"), lit("GAJI"))
+    ),
     op("+", prev("H"), col("E")),
     prev("H")
   )

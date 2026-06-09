@@ -225,7 +225,7 @@ INSERT OR IGNORE INTO finance_category_definitions (id, category_code, display_n
   ('fin-cat-retur-penjualan-noncash', 'RETUR_PENJUALAN_NONCASH', 'Retur Penjualan (non-kas)', 'bg-rose-50', 'text-rose-700', 'border-rose-200', 'kredit', 1, 33),
   ('fin-cat-piutang', 'PIUTANG', 'Piutang', 'bg-lime-100', 'text-lime-800', 'border-lime-300', 'debit', 1, 120);
 
--- Penggajian (Payroll): GAJI mengurangi laba (biaya_operasional); PINJAMAN_KARYAWAN
+-- Penggajian: GAJI mengurangi laba (biaya_operasional); PINJAMAN_KARYAWAN
 -- netral terhadap laba (kasbon = piutang, bukan biaya).
 INSERT OR IGNORE INTO finance_category_definitions
   (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order, metric_contributions) VALUES

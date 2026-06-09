@@ -1743,12 +1743,12 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // piutang, NETRAL terhadap laba). metric_contributions menentukan dampak laba:
   // GAJI → biaya_operasional; PINJAMAN_KARYAWAN → [] (hanya kas/saldo bergerak).
   if (financeCategoryExists) {
-    const payrollCatCols = (
+    const gajiCatCols = (
       db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
         name: string;
       }>
     ).map((c) => c.name);
-    if (payrollCatCols.includes("metric_contributions")) {
+    if (gajiCatCols.includes("metric_contributions")) {
       db.exec(`
         INSERT OR IGNORE INTO finance_category_definitions
           (id, category_code, display_name, color_bg, color_text, color_border, direction, is_active, display_order, metric_contributions)
@@ -1813,6 +1813,16 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
        SET ast = ?, description = 'Saldo kas berjalan; HPP, retur HPP, dan retur penjualan non-kas tidak mengubah kas.'
        WHERE db_column = 'saldo' OR formula_key = 'saldo'`
     ).run(saldoReturnAst);
+
+    // Beban gaji ikut mengurangi laba: tambahkan GAJI ke akumulasi
+    // biaya_operasional (kolom H). PINJAMAN_KARYAWAN sengaja dikecualikan
+    // (kasbon = piutang, netral terhadap laba).
+    const biayaOpsGajiAst = `{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"columnRef","column":"E"},"else":{"type":"literal","value":0}},"else":{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"BIAYA"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"TABUNGAN"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"GAJI"}}},"then":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"H"},"right":{"type":"columnRef","column":"E"}},"else":{"type":"prevOutput","column":"H"}}}`;
+    db.prepare(
+      `UPDATE cashbook_formula
+       SET ast = ?, description = 'Akumulasi BIAYA + TABUNGAN + GAJI (beban gaji ikut mengurangi laba).'
+       WHERE db_column = 'biaya_operasional' OR formula_key = 'biaya_operasional'`
+    ).run(biayaOpsGajiAst);
   }
 
   const satuanExists = db
@@ -1881,7 +1891,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       metadata TEXT
     );
   `);
-  // ── Modul Penggajian (Payroll) ────────────────────────────────────────────
+  // ── Modul Penggajian ────────────────────────────────────────────
   // Empat tabel baru (mirror supabase/migrations/20260609000000_modul_penggajian.sql)
   // agar install SQLite lama ikut bermigrasi saat startup. Semua additive.
   db.exec(`
@@ -1914,7 +1924,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_aktif ON komponen_kompensasi(aktif_status);
     CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_sync ON komponen_kompensasi(sync_status);
 
-    CREATE TABLE IF NOT EXISTS payroll_run (
+    CREATE TABLE IF NOT EXISTS proses_gaji (
       id TEXT PRIMARY KEY,
       periode TEXT NOT NULL,
       tanggal_bayar TEXT,
@@ -1939,13 +1949,13 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       deleted_at TEXT,
       client_mutation_id TEXT
     );
-    CREATE INDEX IF NOT EXISTS idx_payroll_run_status ON payroll_run(status);
-    CREATE INDEX IF NOT EXISTS idx_payroll_run_periode ON payroll_run(periode);
-    CREATE INDEX IF NOT EXISTS idx_payroll_run_sync ON payroll_run(sync_status);
+    CREATE INDEX IF NOT EXISTS idx_proses_gaji_status ON proses_gaji(status);
+    CREATE INDEX IF NOT EXISTS idx_proses_gaji_periode ON proses_gaji(periode);
+    CREATE INDEX IF NOT EXISTS idx_proses_gaji_sync ON proses_gaji(sync_status);
 
-    CREATE TABLE IF NOT EXISTS payroll_slip (
+    CREATE TABLE IF NOT EXISTS slip_gaji (
       id TEXT PRIMARY KEY,
-      payroll_run_id TEXT NOT NULL,
+      proses_gaji_id TEXT NOT NULL,
       actor_id TEXT NOT NULL,
       bruto REAL NOT NULL DEFAULT 0,
       potongan_kasbon REAL NOT NULL DEFAULT 0,
@@ -1966,12 +1976,12 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       is_deleted INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       client_mutation_id TEXT,
-      FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE CASCADE,
+      FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE CASCADE,
       FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_payroll_slip_run ON payroll_slip(payroll_run_id);
-    CREATE INDEX IF NOT EXISTS idx_payroll_slip_actor ON payroll_slip(actor_id);
-    CREATE INDEX IF NOT EXISTS idx_payroll_slip_sync ON payroll_slip(sync_status);
+    CREATE INDEX IF NOT EXISTS idx_slip_gaji_run ON slip_gaji(proses_gaji_id);
+    CREATE INDEX IF NOT EXISTS idx_slip_gaji_actor ON slip_gaji(actor_id);
+    CREATE INDEX IF NOT EXISTS idx_slip_gaji_sync ON slip_gaji(sync_status);
 
     CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
       id TEXT PRIMARY KEY,
@@ -1981,7 +1991,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI')),
       keterangan TEXT,
       keuangan_ref_id TEXT,
-      payroll_run_id TEXT,
+      proses_gaji_id TEXT,
       dibuat_oleh TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')),
@@ -1995,11 +2005,11 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       deleted_at TEXT,
       client_mutation_id TEXT,
       FOREIGN KEY (actor_id) REFERENCES business_actors(id) ON DELETE CASCADE,
-      FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE SET NULL
+      FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
     );
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_jenis ON pinjaman_karyawan(jenis);
-    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(payroll_run_id);
+    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(proses_gaji_id);
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_sync ON pinjaman_karyawan(sync_status);
   `);
 

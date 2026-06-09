@@ -558,7 +558,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_actor ON komponen_kompensasi(actor_id);
         CREATE INDEX IF NOT EXISTS idx_komponen_kompensasi_aktif ON komponen_kompensasi(aktif_status);
 
-        CREATE TABLE IF NOT EXISTS payroll_run (
+        CREATE TABLE IF NOT EXISTS proses_gaji (
           id TEXT PRIMARY KEY,
           periode TEXT NOT NULL,
           tanggal_bayar TEXT,
@@ -583,12 +583,12 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           deleted_at TEXT,
           client_mutation_id TEXT
         );
-        CREATE INDEX IF NOT EXISTS idx_payroll_run_status ON payroll_run(status);
-        CREATE INDEX IF NOT EXISTS idx_payroll_run_periode ON payroll_run(periode);
+        CREATE INDEX IF NOT EXISTS idx_proses_gaji_status ON proses_gaji(status);
+        CREATE INDEX IF NOT EXISTS idx_proses_gaji_periode ON proses_gaji(periode);
 
-        CREATE TABLE IF NOT EXISTS payroll_slip (
+        CREATE TABLE IF NOT EXISTS slip_gaji (
           id TEXT PRIMARY KEY,
-          payroll_run_id TEXT NOT NULL,
+          proses_gaji_id TEXT NOT NULL,
           actor_id TEXT NOT NULL,
           bruto REAL NOT NULL DEFAULT 0,
           potongan_kasbon REAL NOT NULL DEFAULT 0,
@@ -609,10 +609,10 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           is_deleted INTEGER NOT NULL DEFAULT 0,
           deleted_at TEXT,
           client_mutation_id TEXT,
-          FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE CASCADE
+          FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_payroll_slip_run ON payroll_slip(payroll_run_id);
-        CREATE INDEX IF NOT EXISTS idx_payroll_slip_actor ON payroll_slip(actor_id);
+        CREATE INDEX IF NOT EXISTS idx_slip_gaji_run ON slip_gaji(proses_gaji_id);
+        CREATE INDEX IF NOT EXISTS idx_slip_gaji_actor ON slip_gaji(actor_id);
 
         CREATE TABLE IF NOT EXISTS pinjaman_karyawan (
           id TEXT PRIMARY KEY,
@@ -622,7 +622,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           jenis TEXT NOT NULL,
           keterangan TEXT,
           keuangan_ref_id TEXT,
-          payroll_run_id TEXT,
+          proses_gaji_id TEXT,
           dibuat_oleh TEXT,
           dibuat_pada TEXT DEFAULT (datetime('now')),
           diperbarui_pada TEXT DEFAULT (datetime('now')),
@@ -635,11 +635,11 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
           is_deleted INTEGER NOT NULL DEFAULT 0,
           deleted_at TEXT,
           client_mutation_id TEXT,
-          FOREIGN KEY (payroll_run_id) REFERENCES payroll_run(id) ON DELETE SET NULL
+          FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
         );
         CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
         CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_jenis ON pinjaman_karyawan(jenis);
-        CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(payroll_run_id);",
+        CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(proses_gaji_id);",
     );
 
     conn.execute(

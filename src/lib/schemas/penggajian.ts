@@ -74,7 +74,7 @@ export const pinjamanActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("revert") }).merge(revertPinjamanSchema),
 ]);
 
-// ── Payroll run ──────────────────────────────────────────────────────────────
+// ── Proses gaji ──────────────────────────────────────────────────────────────
 export const metodeBayarEnum = z.enum(["CASH", "TRANSFER"]);
 
 /** Hitung draft (tanpa tulis DB). */
@@ -111,7 +111,7 @@ export const simpanDraftSchema = z
   })
   .passthrough();
 
-/** Bayar payroll run (DRAFT → DIBAYAR). */
+/** Bayar proses gaji (DRAFT → DIBAYAR). */
 export const bayarRunSchema = z
   .object({
     action: z.literal("bayar"),
@@ -121,7 +121,7 @@ export const bayarRunSchema = z
   })
   .passthrough();
 
-/** Batalkan payroll run (DIBAYAR → VOIDED). */
+/** Batalkan proses gaji (DIBAYAR → VOIDED). */
 export const voidRunSchema = z
   .object({
     action: z.literal("void"),
@@ -129,7 +129,7 @@ export const voidRunSchema = z
   })
   .passthrough();
 
-export const payrollRunActionSchema = z.discriminatedUnion("action", [
+export const prosesGajiActionSchema = z.discriminatedUnion("action", [
   hitungDraftSchema,
   simpanDraftSchema,
   bayarRunSchema,
@@ -138,4 +138,4 @@ export const payrollRunActionSchema = z.discriminatedUnion("action", [
 
 export type KomponenActionInput = z.infer<typeof komponenActionSchema>;
 export type PinjamanActionInput = z.infer<typeof pinjamanActionSchema>;
-export type PayrollRunActionInput = z.infer<typeof payrollRunActionSchema>;
+export type ProsesGajiActionInput = z.infer<typeof prosesGajiActionSchema>;

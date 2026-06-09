@@ -13,7 +13,7 @@ import {
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
 import ModalPinjamanKaryawan from "./ModalPinjamanKaryawan";
-import ModalPayrollRun from "./ModalPayrollRun";
+import ModalProsesGaji from "./ModalProsesGaji";
 
 // MARKER_PAGE
 
@@ -43,7 +43,7 @@ export default function PenggajianPage() {
     id: string;
     nama: string;
   } | null>(null);
-  const [showPayrollRun, setShowPayrollRun] = useState(false);
+  const [showProsesGaji, setShowProsesGaji] = useState(false);
   const invalidate = useInvalidate();
 
   const showMsg = useCallback(
@@ -92,7 +92,7 @@ export default function PenggajianPage() {
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowPayrollRun(true)}
+              onClick={() => setShowProsesGaji(true)}
               className="px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold transition-colors"
             >
               Proses Penggajian
@@ -238,9 +238,9 @@ export default function PenggajianPage() {
         />
       )}
 
-      {showPayrollRun && (
-        <ModalPayrollRun
-          onClose={() => setShowPayrollRun(false)}
+      {showProsesGaji && (
+        <ModalProsesGaji
+          onClose={() => setShowProsesGaji(false)}
           onSuccess={reload}
           showNotification={showMsg}
         />

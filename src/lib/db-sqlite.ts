@@ -81,10 +81,10 @@ export const SYNC_V2_TABLES = [
   // surat_jalan harus sebelum item_surat_jalan (FK surat_jalan_id).
   "surat_jalan",
   "item_surat_jalan",
-  // Modul Penggajian (Payroll). payroll_run sebelum slip/pinjaman (FK).
+  // Modul Penggajian. proses_gaji sebelum slip/pinjaman (FK).
   "komponen_kompensasi",
-  "payroll_run",
-  "payroll_slip",
+  "proses_gaji",
+  "slip_gaji",
   "pinjaman_karyawan",
 ];
 
