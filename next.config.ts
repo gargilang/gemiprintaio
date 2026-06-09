@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const isTauri = process.env.TAURI === "true";
+const isDev = process.env.NODE_ENV === "development";
 // Separate dev output when running `next dev` in parallel (e.g. `npm run dev:all`):
 // default `.next` for browser dev, `.next-tauri` for the Tauri shell on :3001.
 const isTauriDevShell = process.env.TAURI_DEV_SHELL === "1";
@@ -31,9 +32,9 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // TODO: ganti unsafe-inline dengan nonce (butuh middleware nonce).
-              // unsafe-eval sudah dibuang — Recharts dkk tidak memerlukannya.
-              "script-src 'self' 'unsafe-inline'",
+              // TODO: ganti unsafe-inline dengan nonce (butuh proxy nonce).
+              // Dev-only unsafe-eval keeps React debug stacks working.
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
@@ -104,8 +105,9 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better debugging
   reactStrictMode: true,
 
-  // Turbopack configuration (Next.js 16+)
-  // Empty config to silence the warning - Turbopack works fine with defaults
+  // Turbopack configuration (Next.js 16+).
+  // Keep this empty and let Next infer the app root. Setting `root` to this
+  // project on Next 16.2.4 can make CSS imports resolve from the parent folder.
   turbopack: {},
 };
 

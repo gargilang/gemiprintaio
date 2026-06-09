@@ -32,7 +32,10 @@ function isAllowedCorsOrigin(origin: string | null): boolean {
   return false;
 }
 
-function applyApiCors(request: NextRequest, response: NextResponse): NextResponse {
+function applyApiCors(
+  request: NextRequest,
+  response: NextResponse
+): NextResponse {
   if (!request.nextUrl.pathname.startsWith("/api/")) return response;
   const origin = request.headers.get("origin");
   if (origin && isAllowedCorsOrigin(origin)) {
@@ -62,7 +65,9 @@ const PUBLIC_PREFIXES = [
 ];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
 }
 
 function getSecret(): Uint8Array | null {
@@ -76,7 +81,7 @@ let loggedMissingSessionSecret = false;
 const MOBILE_UA =
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
 
@@ -94,10 +99,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/") &&
     isAllowedCorsOrigin(request.headers.get("origin"))
   ) {
-    return applyApiCors(
-      request,
-      new NextResponse(null, { status: 204 })
-    );
+    return applyApiCors(request, new NextResponse(null, { status: 204 }));
   }
 
   if (
@@ -117,7 +119,7 @@ export async function middleware(request: NextRequest) {
     if (!loggedMissingSessionSecret) {
       loggedMissingSessionSecret = true;
       console.warn(
-        "[middleware] SESSION_SECRET is not set. Add it to .env.local for local dev (see .env.example). API routes return 503 until it is set."
+        "[proxy] SESSION_SECRET is not set. Add it to .env.local for local dev (see .env.example). API routes return 503 until it is set."
       );
     }
     if (pathname.startsWith("/api/")) {

@@ -18,7 +18,9 @@
   "scripts": {
     "dev": "npm run dev:web",
     "dev:web": "next dev -p 3000",
+    "dev:web:turbo": "next dev --turbopack -p 3000",
     "dev:tauri-shell": "cross-env TAURI_DEV_SHELL=1 next dev -p 3001",
+    "diag:dev": "node scripts/diagnose-dev-env.mjs",
     "dev:all": "concurrently -n web,tauri -c cyan,magenta \"npm run dev:web\" \"npm run tauri:dev\"",
     "dev:flutter-web": "cd flutter && flutter run -d edge --web-port=8080",
     "rebuild:native": "npm rebuild better-sqlite3",
