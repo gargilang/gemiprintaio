@@ -5,6 +5,7 @@ import { TrashIcon } from "./icons/ContentIcons";
 import DialogKonfirmasi from "./DialogKonfirmasi";
 import MenuAksi from "./MenuAksi";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { updateSaleCustomerAction } from "@/app/produksi/spk/actions";
 
 interface SaleItemRow {
   barang_nama?: string;
@@ -77,11 +78,20 @@ export default function TabelRiwayatPenjualan({
     setFakturPromptSale(null);
   }, []);
 
-  const submitFakturPrompt = useCallback(() => {
+  const submitFakturPrompt = useCallback(async () => {
     const sale = fakturPromptSale;
     const nama = fakturPromptInput.nama.trim();
     const kota = fakturPromptInput.kota.trim() || "Bekasi";
     if (!sale || !nama) return;
+    // Simpan nama ke transaksi supaya sinkron dengan SPK (operator) — bukan
+    // lagi print-only. Nama bebas -> snapshot.
+    try {
+      await updateSaleCustomerAction(sale.id, {
+        pelanggan_nama_snapshot: nama,
+      });
+    } catch (e) {
+      console.error("Gagal menyimpan nama pelanggan:", e);
+    }
     setFakturPromptSale(null);
     if (fakturPromptMode === "preview") {
       previewFaktur(sale, nama, kota);
