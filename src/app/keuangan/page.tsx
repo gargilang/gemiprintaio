@@ -41,6 +41,7 @@ import ModalTransaksiKeuangan, {
 import {
   stripReferenceId,
   resolveKategoriColor,
+  adalahKategoriNonKas,
   type FinanceCategoryConfig,
 } from "./keuangan-utils";
 
@@ -136,18 +137,22 @@ export default function FinancePage() {
     onConfirm: () => void;
   } | null>(null);
   const [showBiayaDetail, setShowBiayaDetail] = useState(false);
-  const [showKasDetail, setShowKasDetail] = useState(false);
-  const [systemMetrics, setSystemMetrics] = useState<{
-    modal_kas: number;
-    piutang_kas: number;
-    kas: number;
-  }>({ modal_kas: 0, piutang_kas: 0, kas: 0 });
   const [financeCategories, setFinanceCategories] = useState<
     FinanceCategoryConfig[]
   >(initialFinanceConfig?.categories ?? []);
   const [showPengaturanModal, setShowPengaturanModal] = useState(false);
   const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("pengurus");
   const [actorSummaryTick, setActorSummaryTick] = useState(0);
+
+  // Paksa RingkasanPengurus memuat ulang summary-v2 setelah transaksi berubah.
+  // Kartu Saldo/Omzet/Biaya dihitung langsung dari state lokal cashBooks, tapi
+  // "Bagi Hasil" adalah rumus profit-share yang dihitung server dari omzet/biaya,
+  // jadi harus di-refetch tiap kali transaksi ditambah/diubah/dihapus — kalau
+  // tidak, angkanya basi sampai pengguna refresh manual. RingkasanPengurus pakai
+  // keepPreviousData sehingga refetch ini tidak memunculkan spinner.
+  const bumpActorSummary = useCallback(() => {
+    setActorSummaryTick((t) => t + 1);
+  }, []);
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -179,24 +184,6 @@ export default function FinancePage() {
   // Archive viewing state
   const [viewingArchive, setViewingArchive] = useState<string | null>(null);
 
-  // Fetch system metrics (Modal Kas, Piutang Kas, Kas) for archive view only.
-  // For active view, /api/finance/cash-book already returns systemMetrics
-  // alongside the rows so we avoid a second round-trip.
-  // These come from rumus_buku_kas via transaksi_terhitung and aren't
-  // available on the raw `keuangan` rows.
-  useEffect(() => {
-    if (!viewingArchive) return;
-    let cancelled = false;
-    const url = `/api/keuangan/summary-v2?month=${encodeURIComponent(viewingArchive)}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((body: { systemMetrics?: { modal_kas: number; piutang_kas: number; kas: number } }) => {
-        if (cancelled) return;
-        if (body.systemMetrics) setSystemMetrics(body.systemMetrics);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [actorSummaryTick, viewingArchive]);
   const [currentArchiveInfo, setCurrentArchiveInfo] = useState<{
     label: string;
     archived_at: string;
@@ -227,7 +214,7 @@ export default function FinancePage() {
 
   const kategoriOptions = useMemo(
     () =>
-      financeCategories.length > 0
+      (financeCategories.length > 0
         ? financeCategories.map((x) => x.category_code)
         : [
             "KAS",
@@ -243,14 +230,23 @@ export default function FinancePage() {
             "TABUNGAN",
             "HUTANG",
             "PIUTANG",
-          ],
+          ]
+      // Kategori non-kas (HPP/RETUR_HPP) disembunyikan dari ledger, jadi tak
+      // perlu jadi opsi filter.
+      ).filter((kode) => !adalahKategoriNonKas(kode)),
     [financeCategories]
   );
 
   // Filtered cashbooks based on kategori selection
   const filteredCashBooks = useMemo(() => {
-    if (selectedKategoriFilters.size === 0) return cashBooks;
-    return cashBooks.filter((cb) =>
+    // Sembunyikan entri jurnal non-kas (HPP/RETUR_HPP) dari ledger — tidak
+    // menggerakkan saldo dan membingungkan bila tampil di antara transaksi kas.
+    // Tetap utuh di DB & tetap dihitung di kartu ringkasan + Laporan Laba Rugi.
+    const visible = cashBooks.filter(
+      (cb) => !adalahKategoriNonKas(cb.kategori_transaksi)
+    );
+    if (selectedKategoriFilters.size === 0) return visible;
+    return visible.filter((cb) =>
       selectedKategoriFilters.has(cb.kategori_transaksi)
     );
   }, [cashBooks, selectedKategoriFilters]);
@@ -412,17 +408,6 @@ export default function FinancePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
-      // /api/finance/cash-book also returns systemMetrics (kas, modal_kas,
-      // piutang_kas) computed by the AST engine via transaksi_terhitung.
-      // Reading them from the same response avoids a separate /summary-v2
-      // round-trip and keeps the Kas card in sync with the table data.
-      if (data.systemMetrics) {
-        setSystemMetrics({
-          modal_kas: data.systemMetrics.modal_kas ?? 0,
-          piutang_kas: data.systemMetrics.piutang_kas ?? 0,
-          kas: data.systemMetrics.kas ?? 0,
-        });
-      }
 
       // Set viewing archive state
       setViewingArchive(archiveLabel || null);
@@ -659,6 +644,8 @@ export default function FinancePage() {
       if (!editingCashBook) {
         await loadCashBooks();
       }
+      // Bagi Hasil (rumus server) ikut berubah → refetch ringkasan pengurus.
+      bumpActorSummary();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -768,6 +755,8 @@ export default function FinancePage() {
 
           // Remove from local state instead of reloading
           setCashBooks((prev) => prev.filter((cb) => cb.id !== cashBook.id));
+          // Bagi Hasil ikut berubah → refetch ringkasan pengurus.
+          bumpActorSummary();
         } catch (err) {
           console.error(err);
           showMsg(
@@ -793,6 +782,7 @@ export default function FinancePage() {
 
       // Clear local state instead of reloading
       setCashBooks([]);
+      bumpActorSummary();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -880,16 +870,19 @@ export default function FinancePage() {
     } else {
       await loadCashBooks();
     }
+    bumpActorSummary();
   };
 
   const handleEditManualSuccess = async () => {
     showMsg("success", " Data berhasil di-override!");
     await loadCashBooks();
+    bumpActorSummary();
   };
 
   const handleCloseBooksSuccess = async () => {
     showMsg("success", " Buku berhasil ditutup!");
     await loadCashBooks();
+    bumpActorSummary();
   };
 
   const handleSelectArchive = async (archive: {
@@ -949,6 +942,7 @@ export default function FinancePage() {
           setViewingArchive(null);
           setCurrentArchiveInfo(null);
           await loadCashBooks();
+          bumpActorSummary();
         } catch (err: any) {
           console.error("Restore archive error:", err);
           showMsg("error", err.message || "Gagal restore arsip");
@@ -1010,51 +1004,7 @@ export default function FinancePage() {
         </div>
       </div>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        {/* Card 0: Kas (Clickable, expandable to Modal Kas + Piutang Kas) */}
-        <div
-          onClick={() => setShowKasDetail(!showKasDetail)}
-          className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-cyan-500 cursor-pointer hover:shadow-lg transition-all duration-200"
-        >
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1 flex items-center justify-between">
-            <span>Kas</span>
-            <svg
-              className={`w-5 h-5 transform transition-transform ${
-                showKasDetail ? "rotate-180" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </p>
-          <p className="text-2xl font-bold text-cyan-700">
-            {formatRupiah(systemMetrics.kas)}
-          </p>
-          {showKasDetail && (
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-slate-300">Modal Kas:</span>
-                <span className="text-sm font-semibold text-cyan-700">
-                  {formatRupiah(systemMetrics.modal_kas)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-slate-300">Piutang Kas:</span>
-                <span className="text-sm font-semibold text-cyan-700">
-                  {formatRupiah(systemMetrics.piutang_kas)}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {/* Card 1: Saldo */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-pink-600">
           <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">Saldo</p>
@@ -1469,6 +1419,7 @@ export default function FinancePage() {
                       formatRupiah={formatRupiah}
                       formatDateJakarta={formatDateJakarta}
                       getKategoriColor={getKategoriColor}
+                      kategoriLabelMap={kategoriLabelMap}
                       onEdit={handleOpenEditModal}
                       onEditManual={handleOpenEditManual}
                       onDelete={handleDelete}

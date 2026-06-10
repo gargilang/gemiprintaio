@@ -48,6 +48,10 @@ import {
 } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 import {
+  ID_BARANG_PLACEHOLDER_MAKLON,
+  ID_HARGA_PLACEHOLDER_MAKLON,
+} from "@/lib/barang-placeholder";
+import {
   type User,
   type Customer,
   type Material,
@@ -331,6 +335,7 @@ export default function POSPage() {
   const materialCategories = useMemo(() => {
     const names = new Set<string>();
     for (const m of materials) {
+      if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) continue;
       if (m.kategori_nama) names.add(m.kategori_nama);
     }
     return [...names].sort((a, b) => {
@@ -346,6 +351,12 @@ export default function POSPage() {
   const filteredMaterials = useMemo(() => {
     const q = materialSearch.trim().toLowerCase();
     return materials.filter((m) => {
+      // Placeholder sistem untuk pekerjaan maklon — bukan barang katalog.
+      // Sembunyikan dari grid Pilih Barang (sama seperti di halaman Barang)
+      // supaya kasir tidak bingung / tidak menambahkannya manual. Alur maklon
+      // yang benar lewat tombol "+ Maklon". Tetap ada di `materials` agar
+      // lookup internal tidak rusak.
+      if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) return false;
       if (
         materialCategoryFilter !== "ALL" &&
         m.kategori_nama !== materialCategoryFilter
@@ -634,10 +645,10 @@ export default function POSPage() {
 
     // Build N CartItems, one per line — all share the same vendor + metode.
     const newItems: CartItem[] = value.lines.map((line) => ({
-      // Placeholder ids — server uses 'barang-jasa-maklon' regardless.
-      barang_id: "barang-jasa-maklon",
+      // Placeholder ids — server pakai konstanta yang sama, lihat barang-placeholder.ts.
+      barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
       barang_nama: line.deskripsi_pekerjaan,
-      harga_satuan_id: "harga-jasa-maklon-pcs",
+      harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
       nama_satuan: line.nama_satuan || "pcs",
       faktor_konversi: 1,
       harga_satuan: line.harga_satuan,

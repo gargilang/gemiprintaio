@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedData } from "@/lib/use-cached-data";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { MovementLedgerIcon } from "@/components/icons/PageIcons";
 import { getMovementLedgerAction } from "./actions";
 import type { InventoryMovementType } from "@/lib/services/inventory-service";
@@ -183,7 +184,7 @@ export default function MovementLedgerPage() {
         <input className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" type="date" value={pendingFilters.date_to} onChange={(e) => setPendingFilters((prev) => ({ ...prev, date_to: e.target.value }))} />
         <select className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={pendingFilters.barang_id} onChange={(e) => setPendingFilters((prev) => ({ ...prev, barang_id: e.target.value }))}>
           <option value="">Semua barang</option>
-          {data.materials.map((material: any) => <option key={material.id} value={material.id}>{material.nama}</option>)}
+          {sembunyikanPlaceholderBarang(data.materials).map((material: any) => <option key={material.id} value={material.id}>{material.nama}</option>)}
         </select>
         <select className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={pendingFilters.movement_type} onChange={(e) => setPendingFilters((prev) => ({ ...prev, movement_type: e.target.value as "" | InventoryMovementType }))}>
           {movementTypes.map((type) => <option key={type || "all"} value={type}>{type || "Semua tipe"}</option>)}

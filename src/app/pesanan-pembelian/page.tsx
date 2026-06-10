@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedData } from "@/lib/use-cached-data";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { PurchaseOrderFlowIcon } from "@/components/icons/PageIcons";
 import {
   createPurchaseOrderAction,
@@ -227,7 +228,7 @@ ${po.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${po.catatan}</div
             </select>
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" onChange={(e) => { addItem(e.target.value); e.currentTarget.value = ""; }} disabled={saving}>
               <option value="">Tambah barang</option>
-              {data.materials.map((m: any) => (
+              {sembunyikanPlaceholderBarang(data.materials).map((m: any) => (
                 <option key={m.id} value={m.id}>{m.nama}</option>
               ))}
             </select>

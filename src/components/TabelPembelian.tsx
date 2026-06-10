@@ -417,7 +417,7 @@ const PurchaseRow = memo(
         </tr>
         {showDetails && (
           <tr className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
-            <td colSpan={6} className="px-4 py-3">
+            <td colSpan={7} className="px-4 py-3">
               <div className="text-xs">
                 <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                   Detail Item:

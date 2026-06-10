@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { QuotationIcon } from "@/components/icons/PageIcons";
 import MenuAksi from "@/components/MenuAksi";
 import {
@@ -222,7 +223,7 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
             </select>
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" onChange={(e) => { addItem(e.target.value); e.currentTarget.value = ""; }}>
               <option value="">Tambah barang</option>
-              {data.materials.map((m: any) => (
+              {sembunyikanPlaceholderBarang(data.materials).map((m: any) => (
                 <option key={m.id} value={m.id}>{m.nama}</option>
               ))}
             </select>

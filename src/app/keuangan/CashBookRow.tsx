@@ -2,7 +2,11 @@
 
 import { memo } from "react";
 import type { CashBook, KategoriTransaksi } from "@/types/database";
-import { stripReferenceId, type KategoriColor } from "./keuangan-utils";
+import {
+  stripReferenceId,
+  humanizeKategoriKode,
+  type KategoriColor,
+} from "./keuangan-utils";
 import MenuAksi from "@/components/MenuAksi";
 
 // Baris tabel buku kas (memoized) — diekstrak dari page.tsx (Fase 6 C1).
@@ -15,6 +19,8 @@ export interface CashBookRowProps {
   formatRupiah: (amount: number) => string;
   formatDateJakarta: (date: string) => string;
   getKategoriColor: (kategori: KategoriTransaksi) => KategoriColor;
+  /** Peta kode kategori → label ramah manusia (dari konfigurasi keuangan). */
+  kategoriLabelMap?: Map<string, string>;
   onEdit: (cb: CashBook) => void;
   onEditManual: (cb: CashBook) => void;
   onDelete: (cb: CashBook) => void;
@@ -27,11 +33,17 @@ const CashBookRow = memo(function CashBookRow({
   formatRupiah,
   formatDateJakarta,
   getKategoriColor,
+  kategoriLabelMap,
   onEdit,
   onEditManual,
   onDelete,
 }: CashBookRowProps) {
   const kategoriColor = getKategoriColor(cashBook.kategori_transaksi);
+  // Tampilkan label ramah manusia (tanpa underscore), bukan kode mentah.
+  // Prioritas: display_name dari konfigurasi → humanize kode sebagai fallback.
+  const kategoriLabel =
+    kategoriLabelMap?.get(cashBook.kategori_transaksi) ||
+    humanizeKategoriKode(cashBook.kategori_transaksi);
 
   return (
     <tr
@@ -46,8 +58,9 @@ const CashBookRow = memo(function CashBookRow({
       <td className="px-3 py-3">
         <span
           className={`inline-block px-2 py-1 text-xs font-semibold rounded-lg border ${kategoriColor.bg} ${kategoriColor.text} ${kategoriColor.border}`}
+          title={cashBook.kategori_transaksi}
         >
-          {cashBook.kategori_transaksi}
+          {kategoriLabel}
         </span>
       </td>
       <td className="px-3 py-3 text-sm text-right font-semibold">

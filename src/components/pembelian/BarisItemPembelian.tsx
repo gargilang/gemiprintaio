@@ -4,6 +4,7 @@ import PilihanCari from "../PilihanCari";
 import { PlusIcon, TrashIcon } from "../icons/ContentIcons";
 import { type Material, type PurchaseItem, isDimensionalMaterial } from "./types";
 import { sumBatchRolls } from "./split-utils";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 
 // Satu baris item di FormulirPembelian. Diekstrak (Fase 6 B4).
 // Komponen props-only: induk pegang daftar item + handler-nya.
@@ -42,7 +43,7 @@ export default function BarisItemPembelian({
     >
       <td className="px-3 py-2 align-top">
         <PilihanCari
-          options={materials.map((m) => ({
+          options={sembunyikanPlaceholderBarang(materials).map((m) => ({
             value: m.id,
             label: m.nama,
           }))}

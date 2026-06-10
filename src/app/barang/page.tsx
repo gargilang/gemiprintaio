@@ -24,6 +24,7 @@ import {
   getQuickSpecsAction,
 } from "./actions";
 import { useCachedData } from "@/lib/use-cached-data";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 
 // Memoized Material Row Component — avoids unnecessary re-renders
 const MaterialRow = memo(
@@ -267,7 +268,7 @@ export default function MaterialsPage() {
   // daftar Barang supaya tidak membingungkan pengguna. API tetap
   // mengembalikannya untuk POS/proses maklon.
   const materials = useMemo(
-    () => (materialsData ?? []).filter((m) => m.id !== "barang-jasa-maklon"),
+    () => sembunyikanPlaceholderBarang(materialsData ?? []),
     [materialsData]
   );
   const setMaterials = useCallback<

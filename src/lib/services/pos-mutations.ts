@@ -20,6 +20,10 @@ import {
 } from "./purchases-service";
 import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
+  ID_BARANG_PLACEHOLDER_MAKLON,
+  ID_HARGA_PLACEHOLDER_MAKLON,
+} from "../barang-placeholder";
+import {
   getInventoryMovements,
   postInventoryMovement,
   rebuildInventoryBalance,
@@ -615,9 +619,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           penjualan_id: saleId,
           // Baris maklon memakai barang placeholder yang sudah di-seed agar FK valid
           // tanpa memasukkan baris stok palsu di katalog.
-          barang_id: isMaklon ? "barang-jasa-maklon" : item.barang_id,
+          barang_id: isMaklon ? ID_BARANG_PLACEHOLDER_MAKLON : item.barang_id,
           harga_satuan_id: isMaklon
-            ? "harga-jasa-maklon-pcs"
+            ? ID_HARGA_PLACEHOLDER_MAKLON
             : item.harga_satuan_id || null,
           jumlah: item.jumlah,
           nama_satuan: item.nama_satuan,

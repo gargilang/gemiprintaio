@@ -189,10 +189,14 @@ export default function KeranjangPOS({
           ukuran = `${item.panjang} × ${item.lebar} m`;
         }
         return {
-          nama: item.barang_nama,
-          keterangan: item.tipe_item === "MAKLON" && item.vendor_subkontrak_nama
-            ? `Maklon: ${item.vendor_subkontrak_nama}`
-            : undefined,
+          // Untuk baris maklon, tampilkan deskripsi pekerjaan (sama seperti
+          // faktur penjualan). JANGAN pernah tulis nama vendor subkontraktor di
+          // penawaran — itu dokumen yang dilihat pelanggan, dan membocorkan
+          // nama subkontraktor bisa membuat pelanggan memotong gemiprint.
+          nama:
+            item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+              ? item.deskripsi_pekerjaan
+              : item.barang_nama,
           ukuran,
           qty: item.jumlah,
           satuan: item.nama_satuan,

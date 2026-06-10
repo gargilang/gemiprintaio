@@ -9,6 +9,10 @@ import { db, getServerSupabaseClient, isCompositeTransactionAtomic } from "../db
 import { fetchLastNomorPembelian } from "../server-data-supabase";
 import { recalculateCashbookIfAvailable } from "./finance-service";
 import {
+  ID_BARANG_PLACEHOLDER_MAKLON,
+  ID_HARGA_PLACEHOLDER_MAKLON,
+} from "../barang-placeholder";
+import {
   convertRollVariant,
   findOrCreateRollVariant,
   getInventoryMovements,
@@ -670,8 +674,8 @@ export async function createMaklonPurchase(input: {
       const purchaseItem = {
         id: itemId,
         pembelian_id: purchaseId,
-        barang_id: "barang-jasa-maklon",
-        harga_satuan_id: "harga-jasa-maklon-pcs",
+        barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
+        harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
         nama_satuan: "pcs",
         faktor_konversi: 1,
         jumlah: item.jumlah > 0 ? item.jumlah : 1,

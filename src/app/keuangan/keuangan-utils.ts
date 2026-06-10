@@ -25,6 +25,42 @@ export const stripReferenceId = (text: string | null | undefined): string => {
   return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
 };
 
+/**
+ * Kategori "non-kas" — entri jurnal akuntansi yang TIDAK menggerakkan saldo kas
+ * (lihat rumus saldo di `src/lib/ast/defaults.ts`). HPP & pembaliknya mencatat
+ * harga pokok untuk perhitungan laba, bukan uang yang benar-benar keluar dari
+ * laci (kas sudah keluar saat beli/bayar bahan). Karena membingungkan bila
+ * nyempil di daftar buku kas, baris dengan kategori ini disembunyikan dari
+ * tampilan ledger — angkanya tetap utuh di database & tetap dihitung di kartu
+ * ringkasan (Total Biaya) dan Laporan Laba Rugi.
+ *
+ * Catatan: penyaringan hanya di tampilan halaman Buku Keuangan. Engine recalc,
+ * summary, dan laporan tetap memproses baris ini seperti biasa.
+ */
+export const KATEGORI_NONKAS: ReadonlySet<string> = new Set([
+  "HPP",
+  "RETUR_HPP",
+]);
+
+/** Benar bila kategori adalah entri jurnal non-kas (disembunyikan dari ledger). */
+export function adalahKategoriNonKas(kode: string | null | undefined): boolean {
+  return kode != null && KATEGORI_NONKAS.has(kode);
+}
+
+/**
+ * Ubah kode kategori (SCREAMING_SNAKE_CASE) jadi label ramah manusia sebagai
+ * fallback terakhir bila konfigurasi belum punya `display_name`.
+ * Contoh: "PINJAMAN_KARYAWAN" → "Pinjaman Karyawan".
+ */
+export function humanizeKategoriKode(kode: string): string {
+  return kode
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((kata) => kata.charAt(0).toUpperCase() + kata.slice(1))
+    .join(" ");
+}
+
 /** Palet warna bawaan per kategori, dipakai bila kategori tidak punya warna kustom. */
 const FALLBACK_KATEGORI_COLORS: Record<string, KategoriColor> = {
   KAS: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-800 dark:text-blue-200", border: "border-blue-300" },

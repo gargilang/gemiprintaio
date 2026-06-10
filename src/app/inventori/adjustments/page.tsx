@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
+import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { StockAdjustmentIcon } from "@/components/icons/PageIcons";
 import {
   createInventoryAdjustmentAction,
@@ -101,7 +102,7 @@ export default function StockAdjustmentsPage() {
               disabled={saving}
             >
               <option value="">Pilih barang</option>
-              {data.materials.map((m: any) => (
+              {sembunyikanPlaceholderBarang(data.materials).map((m: any) => (
                 <option key={m.id} value={m.id}>{m.nama} - stok {m.jumlah_stok || 0}</option>
               ))}
             </select>
