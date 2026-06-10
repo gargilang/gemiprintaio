@@ -41,6 +41,18 @@ function refToken(pinjamanId: string): string {
   return `[REF:pinjaman-${pinjamanId}]`;
 }
 
+/**
+ * Lempar error ramah. Error domain (Error biasa tanpa kode PG) sudah berbahasa
+ * Indonesia dan diteruskan apa adanya supaya pesannya tidak tertelan; hanya
+ * error DB (punya `code`) yang diterjemahkan via friendlyPgError agar tidak
+ * membocorkan detail constraint. Selaras dengan penggajian-service.lemparRamah.
+ */
+function lemparRamah(e: unknown, table: string): never {
+  const code = (e as { code?: string } | null)?.code;
+  if (!code && e instanceof Error) throw e;
+  throw new Error(friendlyPgError(e, table));
+}
+
 /** Ambil urutan_tampilan berikutnya untuk baris keuangan baru. */
 async function nextKeuanganOrder(): Promise<number> {
   const maxOrderResult = await db.query<{ urutan_tampilan: number }>("keuangan", {
@@ -155,7 +167,7 @@ export async function catatTarikPinjaman(
     await recalculateCashbookIfAvailable();
     return hasil;
   } catch (e) {
-    throw new Error(friendlyPgError(e, "pinjaman_karyawan"));
+    lemparRamah(e, "pinjaman_karyawan");
   }
 }
 
@@ -226,7 +238,7 @@ export async function bayarPinjamanTunai(
     await recalculateCashbookIfAvailable();
     return hasil;
   } catch (e) {
-    throw new Error(friendlyPgError(e, "pinjaman_karyawan"));
+    lemparRamah(e, "pinjaman_karyawan");
   }
 }
 
@@ -272,6 +284,6 @@ export async function revertPinjaman(pinjamanId: string): Promise<void> {
 
     await recalculateCashbookIfAvailable();
   } catch (e) {
-    throw new Error(friendlyPgError(e, "pinjaman_karyawan"));
+    lemparRamah(e, "pinjaman_karyawan");
   }
 }
