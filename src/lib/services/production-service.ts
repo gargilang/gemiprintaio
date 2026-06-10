@@ -13,6 +13,7 @@ import {
   type RollVariant,
 } from "./inventory-service";
 import { getShopSettings } from "./shop-settings-service";
+import { deriveOrderStatus } from "@/lib/produksi/status-produksi";
 
 export interface ProductionOrder {
   id: string;
@@ -21,7 +22,7 @@ export interface ProductionOrder {
   nomor_faktur?: string;
   pelanggan_nama?: string;
   total_item: number;
-  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN";
+  status: string;
   prioritas: "NORMAL" | "KILAT";
   tanggal_deadline?: string | null;
   catatan?: string | null;
@@ -29,6 +30,7 @@ export interface ProductionOrder {
   dibuat_pada?: string;
   diperbarui_pada?: string;
   diselesaikan_pada?: string | null;
+  status_override_manual?: boolean;
   items?: ProductionItem[];
 }
 
@@ -49,7 +51,7 @@ export interface ProductionItem {
   keterangan_dimensi?: string | null;
   mesin_printing?: string | null;
   jenis_bahan?: string | null;
-  status: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI";
+  status: string;
   catatan_produksi?: string | null;
   operator_id?: string | null;
   operator_nama?: string;
@@ -57,6 +59,7 @@ export interface ProductionItem {
   selesai_proses?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
+  is_maklon?: boolean;
   finishing?: FinishingItem[];
   consumption?: ProductionMaterialConsumption | null;
 }
@@ -217,6 +220,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
 
             return {
               ...item,
+              is_maklon: saleItem?.tipe_item === "MAKLON",
               barang_id: (item as any).barang_id || saleItem?.barang_id || null,
               billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
               billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
@@ -347,6 +351,7 @@ export async function getProductionOrderById(
 
         return {
           ...item,
+          is_maklon: saleItem?.tipe_item === "MAKLON",
           barang_id: (item as any).barang_id || saleItem?.barang_id || null,
           billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
           billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
@@ -581,6 +586,7 @@ export async function updateProductionOrderStatus(
   try {
     const updateData: any = {
       status,
+      status_override_manual: 1,
     };
 
     if (status === "SELESAI") {
@@ -598,6 +604,47 @@ export async function updateProductionOrderStatus(
     console.error("Error updating production order status:", error);
     throw error;
   }
+}
+
+/**
+ * Hitung ulang status order dari status semua itemnya, hormati override manual.
+ * - override false  -> selalu samakan ke hasil derivasi
+ * - override true   -> hanya matikan override bila derivasi sudah == status saat ini
+ *                      (reset-otomatis); selain itu status order dibiarkan.
+ */
+export async function recomputeOrderStatusFromItems(
+  orderId: string
+): Promise<void> {
+  const orderRes = await db.queryOne<any>("order_produksi", {
+    where: { id: orderId },
+  });
+  const order = orderRes.data;
+  if (!order) return;
+
+  const itemsRes = await db.query<any>("item_produksi", {
+    where: { order_produksi_id: orderId },
+  });
+  const statuses = (itemsRes.data || []).map((i: any) => String(i.status));
+  const derived = deriveOrderStatus(statuses);
+
+  const overrideOn =
+    order.status_override_manual === 1 ||
+    order.status_override_manual === true;
+
+  if (!overrideOn) {
+    const patch: any = { status: derived };
+    if (derived === "SELESAI") patch.diselesaikan_pada = new Date().toISOString();
+    await db.update("order_produksi", orderId, patch);
+    return;
+  }
+
+  // Override aktif: reset-otomatis bila derivasi kembali selaras.
+  if (derived === String(order.status)) {
+    await db.update("order_produksi", orderId, {
+      status_override_manual: 0,
+    });
+  }
+  // derivasi != status saat ini -> hormati override, jangan sentuh status.
 }
 
 function positiveNumber(value: unknown): number {
@@ -893,11 +940,85 @@ export async function updateProductionItemStatus(
       throw result.error;
     }
 
+    // Otomasi: hitung ulang status order dari item (hormati override manual).
+    const ownerRes = await db.queryOne<any>("item_produksi", {
+      where: { id: itemId },
+    });
+    const orderId = ownerRes.data?.order_produksi_id;
+    if (orderId) {
+      await recomputeOrderStatusFromItems(orderId);
+    }
+
     return true;
   } catch (error) {
     console.error("Error updating production item status:", error);
     throw error;
   }
+}
+
+/**
+ * Set order = SELESAI manual dengan cascade ke item.
+ * Tiap item non-terminal dicoba di-SELESAI-kan via updateProductionItemStatus
+ * (menghormati aturan roll PENDING). Item yang terhalang dilewati & dilaporkan.
+ * Setelah cascade, status order dihitung ulang (bisa jatuh ke PROSES bila masih
+ * ada item belum selesai) — mencegah SELESAI palsu.
+ */
+export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
+  selesai: string[];
+  terhalang: { id: string; nama: string }[];
+  statusOrderAkhir: string;
+}> {
+  const itemsRes = await db.query<any>("item_produksi", {
+    where: { order_produksi_id: orderId },
+  });
+  const items = itemsRes.data || [];
+
+  const selesai: string[] = [];
+  const terhalang: { id: string; nama: string }[] = [];
+
+  for (const item of items) {
+    if (item.status === "SELESAI" || item.status === "DIBATALKAN") continue;
+    try {
+      await updateProductionItemStatus(item.id, { status: "SELESAI" });
+      selesai.push(item.id);
+    } catch {
+      // Terhalang (mis. roll PENDING belum dikonfirmasi).
+      terhalang.push({ id: item.id, nama: String(item.barang_nama || item.id) });
+    }
+  }
+
+  // updateProductionItemStatus sudah memanggil recompute per item, tapi panggil
+  // sekali lagi untuk memastikan status order final konsisten.
+  await recomputeOrderStatusFromItems(orderId);
+  const orderRes = await db.queryOne<any>("order_produksi", {
+    where: { id: orderId },
+  });
+  return {
+    selesai,
+    terhalang,
+    statusOrderAkhir: String(orderRes.data?.status || "MENUNGGU"),
+  };
+}
+
+/**
+ * Set nama pelanggan sebuah penjualan: pelanggan terdaftar (pelanggan_id) ATAU
+ * nama bebas (pelanggan_nama_snapshot). Sisi yang tidak dipakai di-null-kan.
+ * Dipakai dari modal SPK maupun prompt cetak faktur di Riwayat Penjualan.
+ */
+export async function updateSaleCustomer(
+  penjualanId: string,
+  data: { pelanggan_id?: string | null; pelanggan_nama_snapshot?: string | null }
+): Promise<boolean> {
+  const usePelangganId = !!(data.pelanggan_id && data.pelanggan_id.trim());
+  const patch = usePelangganId
+    ? { pelanggan_id: data.pelanggan_id!.trim(), pelanggan_nama_snapshot: null }
+    : {
+        pelanggan_id: null,
+        pelanggan_nama_snapshot: data.pelanggan_nama_snapshot?.trim() || null,
+      };
+  const result = await db.update("penjualan", penjualanId, patch);
+  if (result.error) throw result.error;
+  return true;
 }
 
 /**
