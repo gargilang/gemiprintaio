@@ -24,7 +24,7 @@ export default function KelolaOrangRedirectPage() {
           </svg>
         </div>
         <p className="text-slate-600 text-sm">
-          Fitur Kelola Orang sekarang ada di <strong>Keuangan → Pengaturan → Pegawai</strong>.
+          Fitur Kelola Orang sekarang ada di <strong>Keuangan → Pengaturan → Pengurus</strong>.
         </p>
         <p className="text-slate-400 text-xs">Mengalihkan…</p>
       </div>

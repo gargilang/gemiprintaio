@@ -25,7 +25,7 @@ export default function KelolaPengurusRedirectPage() {
           </svg>
         </div>
         <p className="text-slate-600 text-sm">
-          Fitur Kelola Pegawai sekarang ada di <strong>Keuangan → Pengaturan → Pegawai</strong>.
+          Fitur Kelola Pengurus sekarang ada di <strong>Keuangan → Pengaturan → Pengurus</strong>.
         </p>
         <p className="text-slate-400 text-xs">Mengalihkan…</p>
       </div>

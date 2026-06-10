@@ -291,7 +291,7 @@ export default function KolomTab({
               const deleteReason = f.isSystem
                 ? "Kolom sistem tidak bisa dihapus"
                 : f.actorId
-                  ? "Hapus dari tab Pegawai untuk menghilangkan kolom ini"
+                  ? "Hapus dari tab Pengurus untuk menghilangkan kolom ini"
                   : "";
               return (
                 <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60">
@@ -306,7 +306,7 @@ export default function KolomTab({
                     <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span className="text-[11px] text-slate-500 dark:text-slate-400">{f.name}</span>
                       {f.isSystem && <BadgeTag tone="slate">Sistem</BadgeTag>}
-                      {f.actorId && <BadgeTag tone="blue">Pegawai</BadgeTag>}
+                      {f.actorId && <BadgeTag tone="blue">Pengurus</BadgeTag>}
                       {!f.isSystem && !f.actorId && <BadgeTag tone="violet">Kustom</BadgeTag>}
                       {!f.isSystem && groupLabel && (
                         <BadgeTag tone="emerald">{groupLabel}</BadgeTag>
@@ -351,7 +351,7 @@ export default function KolomTab({
                   className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 italic"
                 >
                   Belum ada kolom kalkulasi. Tambah kolom baru atau buat
-                  pegawai dengan rumus di tab Pegawai.
+                  pengurus dengan rumus di tab Pengurus.
                 </td>
               </tr>
             )}
