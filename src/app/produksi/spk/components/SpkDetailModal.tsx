@@ -146,7 +146,11 @@ export default function SpkDetailModal({
                 )}`}
               >
                 {STATUS_ORDER.map((s) => (
-                  <option key={s} value={s}>
+                  <option
+                    key={s}
+                    value={s}
+                    className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                  >
                     {labelStatus(s)}
                   </option>
                 ))}
@@ -197,7 +201,11 @@ export default function SpkDetailModal({
                   >
                     {daftarStatusUntukItem({ is_maklon: item.is_maklon }).map(
                       (s) => (
-                        <option key={s} value={s}>
+                        <option
+                          key={s}
+                          value={s}
+                          className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                        >
                           {labelStatus(s)}
                         </option>
                       )
