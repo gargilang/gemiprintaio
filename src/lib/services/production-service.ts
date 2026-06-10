@@ -882,7 +882,8 @@ export async function voidProductionMaterialConsumption(
   if (upd.error) throw upd.error;
   await db.update("item_produksi", row.item_produksi_id, {
     roll_inventory_status: "PENDING",
-    status: "PRINTING",
+    status: "MENUNGGU",
+    mulai_proses: null,
     diperbarui_pada: getCurrentTimestamp(),
   });
   // Status item diubah langsung di sini; picu derivasi status order.
