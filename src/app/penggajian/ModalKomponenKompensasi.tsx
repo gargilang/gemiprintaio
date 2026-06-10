@@ -78,10 +78,24 @@ export default function ModalKomponenKompensasi({
     () => getInfoBagiHasilAction(actor.id)
   );
 
+  // Modal selalu dibuka fresh (mount per buka) — segarkan sisa jatah supaya
+  // tidak basi bila bagi hasil orang lain baru saja diubah.
+  useEffect(() => {
+    void refreshBagiHasil();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (infoBagiHasil) {
+      // Kalau orang ini sudah punya bagi hasil, tampilkan nilainya. Kalau belum,
+      // auto-isi dengan sisa jatah (default), persis perilaku tab Pengurus —
+      // tinggal tekan Simpan untuk menerima default, atau ubah dulu.
       setBagiHasilInput(
-        infoBagiHasil.persen != null ? String(infoBagiHasil.persen) : ""
+        infoBagiHasil.persen != null
+          ? String(infoBagiHasil.persen)
+          : infoBagiHasil.sisa > 0
+            ? String(infoBagiHasil.sisa)
+            : ""
       );
       setSisaBagiHasil(infoBagiHasil.sisa);
     }
