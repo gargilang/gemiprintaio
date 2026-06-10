@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import { updateProductionItemStatus } from "@/lib/services/production-service";
-
-const ITEM_STATUSES = [
-  "MENUNGGU",
-  "PRINTING",
-  "FINISHING",
-  "SELESAI",
-] as const;
+import { itemStatusSchema } from "@/lib/schemas/produksi";
 
 export async function PATCH(
   request: NextRequest,
@@ -27,10 +21,10 @@ export async function PATCH(
       );
     }
 
-    if (!ITEM_STATUSES.includes(status)) {
+    if (!itemStatusSchema.safeParse(status).success) {
       return NextResponse.json(
         { success: false, error: "Status tidak valid" },
-        { status: 400 }
+        { status: 422 }
       );
     }
 
