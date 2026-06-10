@@ -1195,6 +1195,23 @@ export async function voidSale(
     });
     if (upd.error) throw upd.error;
 
+    // Lepas NSFP yang terkunci ke penjualan ini (TERPAKAI -> TERSEDIA),
+    // konsisten dengan compensateFailedSale. Faktur pajak batal => nomor seri
+    // bisa dipakai lagi untuk faktur lain.
+    const nsfpRows = await db.query<any>("nsfp_pool", {
+      where: { penjualan_id: id },
+    });
+    if (nsfpRows.error) throw nsfpRows.error;
+    for (const n of nsfpRows.data || []) {
+      if (n.status !== "TERPAKAI") continue;
+      const updNsfp = await db.update("nsfp_pool", n.id, {
+        status: "TERSEDIA",
+        penjualan_id: null,
+        diperbarui_pada: getCurrentTimestamp(),
+      });
+      if (updNsfp.error) throw updNsfp.error;
+    }
+
     // Batalkan SPK (order_produksi) yang dibuat penjualan ini beserta itemnya.
     // Guard di atas sudah menolak void bila ada SPK PROSES/PRINTING/FINISHING/
     // SELESAI, jadi yang tersisa di sini hanya MENUNGGU/DIBATALKAN. Soft-cancel
