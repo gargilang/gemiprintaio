@@ -8,6 +8,11 @@ import type {
   ProductionItem,
 } from "@/lib/services/production-service";
 import { getStatusColor, getPriorityColor } from "./spk-status";
+import {
+  STATUS_ORDER,
+  daftarStatusUntukItem,
+  labelStatus,
+} from "@/lib/produksi/status-produksi";
 
 interface RollVariantOption {
   id: string;
@@ -27,17 +32,12 @@ export interface SpkDetailModalProps {
   rollVariantsByItem: Record<string, RollVariantOption[]>;
   consumptionDrafts: Record<string, ConsumptionDraft>;
   onClose: () => void;
-  onUpdateItemStatus: (
-    itemId: string,
-    newStatus: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI"
-  ) => void;
+  onUpdateItemStatus: (itemId: string, newStatus: string) => void;
   onPatchDraft: (itemId: string, patch: Partial<ConsumptionDraft>) => void;
   onPostConsumption: (item: ProductionItem) => void;
   onVoidConsumption: (item: ProductionItem) => void;
-  onUpdateOrderStatus: (
-    orderId: string,
-    newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
-  ) => void;
+  onUpdateOrderStatus: (orderId: string, newStatus: string) => void;
+  onEditCustomer: () => void;
   onPrint: (order: ProductionOrder) => void;
 }
 
@@ -52,6 +52,7 @@ export default function SpkDetailModal({
   onPostConsumption,
   onVoidConsumption,
   onUpdateOrderStatus,
+  onEditCustomer,
   onPrint,
 }: SpkDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -115,9 +116,15 @@ export default function SpkDetailModal({
             </div>
             <div>
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Pelanggan</div>
-              <div className="font-semibold">
+              <button
+                type="button"
+                onClick={onEditCustomer}
+                className="font-semibold text-left text-amber-700 dark:text-amber-300 hover:underline"
+                title="Ubah nama pelanggan"
+              >
                 {order.pelanggan_nama || "Pelanggan Umum"}
-              </div>
+                <span className="ml-1 text-xs text-gray-400">(ubah)</span>
+              </button>
             </div>
             <div>
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Prioritas</div>
@@ -133,24 +140,16 @@ export default function SpkDetailModal({
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Status</div>
               <select
                 value={order.status}
-                onChange={(e) =>
-                  onUpdateOrderStatus(
-                    order.id,
-                    e.target.value as
-                      | "MENUNGGU"
-                      | "PROSES"
-                      | "SELESAI"
-                      | "DIBATALKAN"
-                  )
-                }
+                onChange={(e) => onUpdateOrderStatus(order.id, e.target.value)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                   order.status
                 )}`}
               >
-                <option value="MENUNGGU">MENUNGGU</option>
-                <option value="PROSES">PROSES</option>
-                <option value="SELESAI">SELESAI</option>
-                <option value="DIBATALKAN">DIBATALKAN</option>
+                {STATUS_ORDER.map((s) => (
+                  <option key={s} value={s}>
+                    {labelStatus(s)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -191,24 +190,18 @@ export default function SpkDetailModal({
                   </div>
                   <select
                     value={item.status}
-                    onChange={(e) =>
-                      onUpdateItemStatus(
-                        item.id,
-                        e.target.value as
-                          | "MENUNGGU"
-                          | "PRINTING"
-                          | "FINISHING"
-                          | "SELESAI"
-                      )
-                    }
+                    onChange={(e) => onUpdateItemStatus(item.id, e.target.value)}
                     className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                       item.status
                     )}`}
                   >
-                    <option value="MENUNGGU">MENUNGGU</option>
-                    <option value="PRINTING">PRINTING</option>
-                    <option value="FINISHING">FINISHING</option>
-                    <option value="SELESAI">SELESAI</option>
+                    {daftarStatusUntukItem({ is_maklon: item.is_maklon }).map(
+                      (s) => (
+                        <option key={s} value={s}>
+                          {labelStatus(s)}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
