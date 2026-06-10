@@ -28,6 +28,8 @@ import {
   listActorRoles,
 } from "@/lib/services/business-actor-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { hitungSaldoPinjaman } from "@/lib/services/pinjaman-karyawan-service";
+import { listKomponen } from "@/lib/services/komponen-kompensasi-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,6 +81,34 @@ export async function GET(request: NextRequest) {
       formulas,
     });
 
+    // Injeksi kasbon (ledger) + bonus/komisi (komponen) per pengurus.
+    // Sumber kebenaran: pinjaman_karyawan & komponen_kompensasi — bukan AST,
+    // karena form Pengurus tidak lagi membuat rumus kasbon/bonus per orang.
+    let adaKasbon = false;
+    let adaBonus = false;
+    for (const row of summary.rows) {
+      if (row.isGlobal || !row.actorId) continue;
+      const saldoKasbon = await hitungSaldoPinjaman(row.actorId);
+      const komponen = await listKomponen(row.actorId);
+      const bonusKomisi = komponen
+        .filter((k) => Number(k.aktif_status ?? 1) === 1 && (k.tipe === "BONUS" || k.tipe === "KOMISI"))
+        .reduce((sum, k) => sum + (k.metode === "TETAP" ? Number(k.nominal) || 0 : 0), 0);
+      if (saldoKasbon !== 0) {
+        row.metrics["kasbon_ledger"] = saldoKasbon;
+        adaKasbon = true;
+      }
+      if (bonusKomisi !== 0) {
+        row.metrics["bonus_komponen"] = bonusKomisi;
+        adaBonus = true;
+      }
+    }
+    if (adaKasbon) {
+      summary.columns.push({ formulaKey: "kasbon_ledger", label: "Kasbon", group: "cash_advance" });
+    }
+    if (adaBonus) {
+      summary.columns.push({ formulaKey: "bonus_komponen", label: "Bonus/Komisi", group: "bonus" });
+    }
+
     // Surface key system metrics so the page can render summary cards
     // without computing them client-side. The values come from the
     // latest computed row in the requested month.
@@ -89,7 +119,7 @@ export async function GET(request: NextRequest) {
       saldo: latestMap.saldo ?? 0,
       laba_bersih: latestMap.laba_bersih ?? 0,
       modal_kas: latestMap.modal_kas ?? 0,
-      piutang_kas: latestMap.piutang_kas ?? 0,
+      saldo_kasbon: latestMap.saldo_kasbon ?? 0,
       kas: latestMap.kas ?? 0,
     };
 
