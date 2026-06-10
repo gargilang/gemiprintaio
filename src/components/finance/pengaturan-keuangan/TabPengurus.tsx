@@ -142,6 +142,15 @@ export default function TabPengurus({
     return out;
   }, [filteredActors, roleByCode]);
 
+  // Sisa jatah bagi hasil = 100 − Σ(bagi hasil pengurus AKTIF lain).
+  // Saat edit, kecualikan diri sendiri agar tidak menghitung jatahnya dua kali.
+  const sisaBagiHasil = useMemo(() => {
+    const terpakai = actors
+      .filter((a) => a.is_active === 1 && a.id !== editingActorId)
+      .reduce((sum, a) => sum + (a.profit_share_percent ?? 0), 0);
+    return Math.max(0, 100 - terpakai);
+  }, [actors, editingActorId]);
+
   const setF = <K extends keyof OrangForm>(k: K, v: OrangForm[K]) =>
     setOrangForm((f) => ({ ...f, [k]: v }));
 
@@ -154,6 +163,11 @@ export default function TabPengurus({
     if (!orangForm.role_code) { showMsg("error", "Pilih jabatan terlebih dulu"); return; }
     if (!orangForm.enable_profit_share) {
       showMsg("error", "Aktifkan Bagi Hasil supaya pengurus muncul di Ringkasan.");
+      return;
+    }
+    const persenInput = Number(orangForm.profit_share_percent) || 0;
+    if (persenInput > sisaBagiHasil) {
+      showMsg("error", `Bagi hasil ${persenInput}% melebihi sisa jatah ${sisaBagiHasil}%. Total semua pengurus maksimal 100%.`);
       return;
     }
     setOrangSaving(true);
@@ -283,6 +297,7 @@ export default function TabPengurus({
               <div className="mt-3">
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Persentase (%)</label>
                 <input type="number" min="0" max="100" step="0.01" value={orangForm.profit_share_percent} onChange={(e) => setF("profit_share_percent", e.target.value)} placeholder="Mis. 40" className="w-40 px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Sisa jatah bagi hasil tersedia: <strong>{sisaBagiHasil}%</strong>. Total semua pengurus tidak boleh lebih dari 100%.</p>
               </div>
             )}
           </div>
@@ -308,7 +323,7 @@ export default function TabPengurus({
               Tampilkan nonaktif
             </label>
           </div>
-          <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "" }); setFormOpen(true); }} className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
+          <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "", enable_profit_share: true, profit_share_percent: String(sisaBagiHasil) }); setFormOpen(true); }} className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
             + Tambah Pengurus
           </button>
         </div>
