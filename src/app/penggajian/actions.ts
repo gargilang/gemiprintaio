@@ -48,6 +48,7 @@ export interface RingkasanKaryawan {
   jumlah_komponen: number;
   tipe_komponen: string[];
   saldo_pinjaman: number;
+  profit_share_percent: number | null;
 }
 
 /**
@@ -70,6 +71,7 @@ export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]
         jumlah_komponen: aktif.length,
         tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
         saldo_pinjaman: saldo,
+        profit_share_percent: a.profit_share_percent,
       });
     }
     return hasil;
