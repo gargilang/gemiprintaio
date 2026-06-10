@@ -28,6 +28,7 @@ import { hashPayload } from "./payload-hash-util";
 // normalizeRecord dipindah ke modul murni `normalize-record.ts` (D-I2) supaya
 // deteksi boolean memakai whitelist yang aman + bisa di-unit-test.
 import { normalizeRecord } from "./normalize-record";
+import { supabaseTargetLabel } from "./supabase-target";
 export { normalizeRecord };
 
 /**
@@ -371,7 +372,9 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
     lastServerOnlineCheck = now;
 
     if (serverOnlineStatus) {
-      console.info("🌐 Supabase online - using cloud database");
+      console.info(
+        `🌐 Supabase online - using ${supabaseTargetLabel()} database`
+      );
     } else {
       if (error) {
         console.warn("📴 Supabase profil check failed:", error.message, error);

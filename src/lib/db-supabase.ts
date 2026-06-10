@@ -16,6 +16,7 @@ import "server-only";
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
+import { supabaseTargetLabel } from "./supabase-target";
 
 // ── Re-export environment helpers used by both sqlite and unified ────────────
 export function isBrowser(): boolean {
@@ -155,7 +156,9 @@ export async function isServerSupabaseAvailable(): Promise<boolean> {
     lastServerOnlineCheck = now;
 
     if (serverOnlineStatus) {
-      console.info("🌐 Supabase online - using cloud database");
+      console.info(
+        `🌐 Supabase online - using ${supabaseTargetLabel()} database`
+      );
     } else {
       if (error) {
         console.warn("📴 Supabase profil check failed:", error.message, error);
