@@ -33,144 +33,25 @@ interface BusinessActorApi {
   bonus_percent: number | null;
   bonus_source_formula_key: string | null;
 }
-interface FinanceCatOption { category_code: string; display_name: string; }
-
 interface OrangForm {
   display_name: string; role_code: string; notes: string;
   enable_profit_share: boolean; profit_share_percent: string;
-  enable_cash_advance: boolean; kasbon_category_codes: string[]; keperluan_keyword: string;
-  enable_bonus: boolean; bonus_percent: string; bonus_source_formula_key: string;
 }
 const EMPTY_ORANG: OrangForm = {
   display_name: "", role_code: "", notes: "",
   enable_profit_share: false, profit_share_percent: "",
-  enable_cash_advance: false, kasbon_category_codes: [], keperluan_keyword: "",
-  enable_bonus: false, bonus_percent: "", bonus_source_formula_key: "omzet",
 };
 function actorToForm(a: BusinessActorApi): OrangForm {
   return {
     display_name: a.display_name, role_code: a.role_code, notes: a.notes ?? "",
     enable_profit_share: a.profit_share_percent !== null,
     profit_share_percent: a.profit_share_percent != null ? String(a.profit_share_percent) : "",
-    enable_cash_advance: (a.cash_advance_categories?.length ?? 0) > 0,
-    kasbon_category_codes: a.cash_advance_categories ?? [], keperluan_keyword: a.keperluan_keyword ?? "",
-    enable_bonus: a.bonus_percent !== null,
-    bonus_percent: a.bonus_percent != null ? String(a.bonus_percent) : "",
-    bonus_source_formula_key: a.bonus_source_formula_key ?? "omzet",
   };
 }
 function describeActor(a: BusinessActorApi): string[] {
   const p: string[] = [];
   if (a.profit_share_percent !== null) p.push(`Bagi hasil ${a.profit_share_percent}%`);
-  if ((a.cash_advance_categories?.length ?? 0) > 0) {
-    const cats = a.cash_advance_categories!.join("/");
-    p.push(`Kasbon ${cats}${a.keperluan_keyword ? ` · "${a.keperluan_keyword}"` : ""}`);
-  }
-  if (a.bonus_percent !== null)
-    p.push(`Bonus ${a.bonus_percent}% dari ${a.bonus_source_formula_key ?? "omzet"}`);
   return p;
-}
-
-// ── Quick-add category button ────────────────────────────────────────────────
-
-/**
- * Inline mini-form to add a new category without leaving the Tambah Pegawai
- * form. Shows a small "+" button; clicking it expands an inline input.
- */
-function QuickAddCategoryButton({
-  onAdded,
-}: {
-  onAdded: (code: string) => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  function slugifyCode(n: string): string {
-    return n
-      .trim()
-      // Strip DSL syntax characters
-      .replace(/[\[\]"']/g, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .toUpperCase()
-      .slice(0, 24) || `KAT${Date.now().toString(36).toUpperCase().slice(-6)}`;
-  }
-
-  async function submit() {
-    const n = name.trim();
-    if (!n) return;
-    setSaving(true);
-    setErr(null);
-    try {
-      const code = slugifyCode(n);
-      await apiJSON("/api/keuangan/config/manage", {
-        method: "POST",
-        body: JSON.stringify({ action: "create_category", category_code: code, display_name: n }),
-      });
-      await onAdded(code);
-      setName("");
-      setOpen(false);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-[11px] text-violet-700 hover:text-violet-900 font-semibold flex items-center gap-0.5"
-        title="Tambah kategori baru"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Tambah kategori
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <input
-        type="text"
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") void submit(); if (e.key === "Escape") setOpen(false); }}
-        placeholder="Nama kategori baru"
-        className="px-2 py-1 text-xs border border-violet-300 dark:border-violet-700 rounded-md w-40 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-      />
-      {name.trim() && (
-        <span className="text-[10px] text-slate-400 font-mono">
-          → &quot;{slugifyCode(name)}&quot;
-        </span>
-      )}
-      <button
-        type="button"
-        disabled={saving || !name.trim()}
-        onClick={submit}
-        className="px-2 py-1 text-[11px] rounded bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
-      >
-        {saving ? "…" : "Tambah"}
-      </button>
-      <button
-        type="button"
-        onClick={() => { setOpen(false); setName(""); setErr(null); }}
-        className="px-2 py-1 text-[11px] rounded border border-slate-300 text-slate-600 hover:bg-slate-100"
-      >
-        Batal
-      </button>
-      {err && <span className="text-[11px] text-rose-600">{err}</span>}
-    </div>
-  );
 }
 
 export interface TabPengurusProps {
@@ -203,7 +84,6 @@ export default function TabPengurus({
   // ── Orang state ────────────────────────────────────────────────────────────
   const [actors, setActors] = useState<BusinessActorApi[]>([]);
   const [roles, setRoles] = useState<ActorRoleApi[]>([]);
-  const [finCats, setFinCats] = useState<FinanceCatOption[]>([]);
   const [orangLoaded, setOrangLoaded] = useState(false);
   const [orangLoading, setOrangLoading] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
@@ -230,9 +110,6 @@ export default function TabPengurus({
   useEffect(() => {
     if (open && !orangLoaded) {
       void reloadOrang();
-      apiJSON<{ categories: FinanceCatOption[] }>("/api/keuangan/categories")
-        .then((r) => setFinCats(r.categories ?? []))
-        .catch(() => {});
     }
   }, [open, orangLoaded, reloadOrang]);
 
@@ -247,7 +124,7 @@ export default function TabPengurus({
   }, [roles]);
 
   const filteredActors = useMemo(() => {
-    let list = [...actors];
+    let list = actors.filter((a) => a.profit_share_percent !== null);
     const q = orangSearch.trim().toLowerCase();
     if (q) list = list.filter((a) =>
       a.display_name.toLowerCase().includes(q) || a.role_code.toLowerCase().includes(q)
@@ -268,40 +145,16 @@ export default function TabPengurus({
   const setF = <K extends keyof OrangForm>(k: K, v: OrangForm[K]) =>
     setOrangForm((f) => ({ ...f, [k]: v }));
 
-  const toggleKasbonCat = (code: string) => {
-    const up = code.toUpperCase();
-    setOrangForm((f) => {
-      const has = f.kasbon_category_codes.includes(up);
-      return { ...f, kasbon_category_codes: has ? f.kasbon_category_codes.filter((c) => c !== up) : [...f.kasbon_category_codes, up] };
-    });
-  };
-
   const orangPreview: string[] = [];
   if (orangForm.enable_profit_share) orangPreview.push(`Bagi hasil = Laba Bersih × ${Number(orangForm.profit_share_percent) || 0}%`);
-  if (orangForm.enable_cash_advance) {
-    orangPreview.push(orangForm.kasbon_category_codes.length > 0
-      ? `Kasbon dari ${orangForm.kasbon_category_codes.join("/")}${orangForm.keperluan_keyword ? ` · "${orangForm.keperluan_keyword}"` : ""}`
-      : "Kasbon: pilih minimal satu kategori");
-  }
-  if (orangForm.enable_bonus) orangPreview.push(`Bonus = ${orangForm.bonus_source_formula_key || "omzet"} × ${Number(orangForm.bonus_percent) || 0}%`);
   if (orangPreview.length === 0) orangPreview.push("Belum ada rumus aktif.");
 
   async function submitOrang() {
     if (!orangForm.display_name.trim()) { showMsg("error", "Nama wajib diisi"); return; }
     if (!orangForm.role_code) { showMsg("error", "Pilih jabatan terlebih dulu"); return; }
-    if (
-      !orangForm.enable_profit_share &&
-      !orangForm.enable_cash_advance &&
-      !orangForm.enable_bonus
-    ) {
-      showMsg(
-        "error",
-        "Centang minimal satu rumus (Bagi Hasil, Kasbon, atau Bonus) supaya pegawai muncul di Ringkasan."
-      );
+    if (!orangForm.enable_profit_share) {
+      showMsg("error", "Aktifkan Bagi Hasil supaya pengurus muncul di Ringkasan.");
       return;
-    }
-    if (orangForm.enable_cash_advance && orangForm.kasbon_category_codes.length === 0) {
-      showMsg("error", "Pilih minimal satu kategori untuk kasbon"); return;
     }
     setOrangSaving(true);
     try {
@@ -314,10 +167,6 @@ export default function TabPengurus({
           role_code: orangForm.role_code,
           notes: orangForm.notes,
           profit_share_percent: orangForm.enable_profit_share ? Number(orangForm.profit_share_percent) || 0 : null,
-          cash_advance_categories: orangForm.enable_cash_advance ? orangForm.kasbon_category_codes.map((c) => c.toUpperCase()) : null,
-          keperluan_keyword: orangForm.enable_cash_advance ? orangForm.keperluan_keyword.trim() || null : null,
-          bonus_percent: orangForm.enable_bonus ? Number(orangForm.bonus_percent) || 0 : null,
-          bonus_source_formula_key: orangForm.enable_bonus ? orangForm.bonus_source_formula_key.trim() || "omzet" : null,
         }),
       });
       showMsg("success", editingActorId ? `${orangForm.display_name} diperbarui.` : `${orangForm.display_name} ditambahkan.`);
@@ -371,8 +220,8 @@ export default function TabPengurus({
         header={
           <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pegawai" : "Tambah Pegawai"}</h3>
-              <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Centang rumus yang berlaku untuk orang ini.</p>
+              <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pengurus" : "Tambah Pengurus"}</h3>
+              <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Atur persentase bagi hasil untuk orang ini.</p>
             </div>
             <button
               type="button"
@@ -439,82 +288,8 @@ export default function TabPengurus({
           </div>
 
           {/* Kasbon */}
-          <div className={`rounded-lg border-2 p-4 transition-colors ${orangForm.enable_cash_advance ? "border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"}`}>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={orangForm.enable_cash_advance} onChange={(e) => setF("enable_cash_advance", e.target.checked)} className="w-4 h-4 accent-violet-500" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Kasbon</span>
-              <span className="text-xs text-slate-400">akumulasi dari kategori transaksi tertentu</span>
-            </label>
-            {orangForm.enable_cash_advance && (
-              <div className="mt-3 space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">Kategori transaksi untuk kasbon</label>
-                    <QuickAddCategoryButton
-                      onAdded={async (code) => {
-                        // Reload category list and auto-check the new category.
-                        const r = await apiJSON<{ categories: FinanceCatOption[] }>("/api/keuangan/categories");
-                        setFinCats(r.categories ?? []);
-                        const up = code.toUpperCase();
-                        setOrangForm((f) => ({
-                          ...f,
-                          kasbon_category_codes: f.kasbon_category_codes.includes(up)
-                            ? f.kasbon_category_codes
-                            : [...f.kasbon_category_codes, up],
-                        }));
-                      }}
-                    />
-                  </div>
-                  {finCats.length === 0 ? (
-                    <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2">Daftar kategori belum dimuat. Buka tab Kategori untuk menambah kategori.</p>
-                  ) : (
-                    <div className="max-h-36 overflow-y-auto rounded-md border border-violet-200 bg-white dark:bg-slate-900 divide-y divide-violet-50">
-                      {finCats.map((cat) => {
-                        const code = cat.category_code.toUpperCase();
-                        const checked = orangForm.kasbon_category_codes.includes(code);
-                        return (
-                          <label key={code} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${checked ? "bg-violet-50 dark:bg-violet-950/40" : ""}`}>
-                            <input type="checkbox" checked={checked} onChange={() => toggleKasbonCat(code)} className="w-4 h-4 accent-violet-600 shrink-0" />
-                            <span className="font-mono text-xs font-semibold text-amber-700 dark:text-amber-300">&quot;{code}&quot;</span>
-                            <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{cat.display_name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Keperluan harus mengandung (opsional)</label>
-                  <input type="text" value={orangForm.keperluan_keyword} onChange={(e) => setF("keperluan_keyword", e.target.value)} placeholder="Kata kunci untuk membedakan jika ada 2 orang di kategori yang sama" className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Bonus */}
-          <div className={`rounded-lg border-2 p-4 transition-colors ${orangForm.enable_bonus ? "border-emerald-300 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/40" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"}`}>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={orangForm.enable_bonus} onChange={(e) => setF("enable_bonus", e.target.checked)} className="w-4 h-4 accent-emerald-500" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Bonus</span>
-              <span className="text-xs text-slate-400">persentase dari omzet / laba / rumus lain</span>
-            </label>
-            {orangForm.enable_bonus && (
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Persentase (%)</label>
-                  <input type="number" min="0" max="100" step="0.01" value={orangForm.bonus_percent} onChange={(e) => setF("bonus_percent", e.target.value)} placeholder="Mis. 5" className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Dari rumus</label>
-                  <select value={orangForm.bonus_source_formula_key} onChange={(e) => setF("bonus_source_formula_key", e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white dark:bg-slate-900">
-                    <option value="omzet">Omzet</option>
-                    <option value="laba_bersih">Laba Bersih</option>
-                    <option value="biaya_operasional">Biaya Operasional</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Catatan */}
           <div>
@@ -534,7 +309,7 @@ export default function TabPengurus({
             </label>
           </div>
           <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "" }); setFormOpen(true); }} className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
-            + Tambah Pegawai
+            + Tambah Pengurus
           </button>
         </div>
 
@@ -542,8 +317,8 @@ export default function TabPengurus({
 
         {!orangLoading && filteredActors.length === 0 && (
           <div className="py-12 text-center text-slate-500 text-sm space-y-2">
-            <p>Belum ada pegawai. Tekan <strong>+ Tambah Pegawai</strong> untuk mulai.</p>
-            <p className="text-xs text-slate-400">Bar Bagi Hasil / Kasbon / Bonus muncul otomatis begitu ada pegawai aktif.</p>
+            <p>Belum ada pengurus. Tekan <strong>+ Tambah Pengurus</strong> untuk mulai.</p>
+            <p className="text-xs text-slate-400">Pengurus menerima bagi hasil dari laba bersih.</p>
           </div>
         )}
 
@@ -601,14 +376,14 @@ export default function TabPengurus({
                                   labelMenu={`Aksi untuk ${a.display_name}`}
                                   aksi={[
                                     {
-                                      label: "Edit Pegawai",
-                                      judul: "Edit pegawai",
+                                      label: "Edit Pengurus",
+                                      judul: "Edit pengurus",
                                       onClick: () => { setEditingActorId(a.id); setOrangForm(actorToForm(a)); setFormOpen(true); },
                                       ikon: <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
                                     },
                                     {
-                                      label: "Nonaktifkan Pegawai",
-                                      judul: "Nonaktifkan pegawai",
+                                      label: "Nonaktifkan Pengurus",
+                                      judul: "Nonaktifkan pengurus",
                                       tampil: a.is_active === 1,
                                       onClick: () => handleDeactivate(a),
                                       ikon: <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
