@@ -1003,6 +1003,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     { table: "item_produksi", column: "billed_lebar", ddl: "ALTER TABLE item_produksi ADD COLUMN billed_lebar REAL" },
     { table: "item_produksi", column: "recommended_roll_width_m", ddl: "ALTER TABLE item_produksi ADD COLUMN recommended_roll_width_m REAL" },
     { table: "item_produksi", column: "roll_inventory_status", ddl: "ALTER TABLE item_produksi ADD COLUMN roll_inventory_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED'" },
+    { table: "order_produksi", column: "status_override_manual", ddl: "ALTER TABLE order_produksi ADD COLUMN status_override_manual INTEGER NOT NULL DEFAULT 0" },
   ];
   for (const { table, column, ddl } of rollInventoryCols) {
     const exists = db
@@ -1014,6 +1015,45 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     ).map((c) => c.name);
     if (!cols.includes(column)) {
       db.exec(ddl);
+    }
+  }
+
+  // Lepas CHECK status pada item_produksi (SQLite tak bisa DROP CHECK langsung).
+  // Rebuild tabel sekali; di-skip bila CHECK sudah tidak ada. Validasi status
+  // sekarang di aplikasi (Zod) — lihat src/lib/produksi/status-produksi.ts.
+  const itemProduksiExists = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='item_produksi' LIMIT 1")
+    .get();
+  if (itemProduksiExists) {
+    const itemProduksiDDL = (
+      db
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name='item_produksi'"
+        )
+        .get() as { sql?: string } | undefined
+    )?.sql;
+    if (itemProduksiDDL && /CHECK\s*\(\s*status\s+IN/i.test(itemProduksiDDL)) {
+      const itemCols = (
+        db.prepare("PRAGMA table_info(item_produksi)").all() as Array<{ name: string }>
+      ).map((c) => c.name);
+      const colNames = itemCols.join(", ");
+      const newDDL = itemProduksiDDL
+        .replace(/CREATE TABLE\s+("?item_produksi"?)/i, "CREATE TABLE item_produksi__new")
+        .replace(
+          /status\s+TEXT\s+DEFAULT\s+'MENUNGGU'\s+CHECK\s*\(\s*status\s+IN\s*\([^)]*\)\)/i,
+          "status TEXT DEFAULT 'MENUNGGU'"
+        );
+      const rebuild = db.transaction(() => {
+        db.pragma("foreign_keys = OFF");
+        db.exec(newDDL);
+        db.exec(
+          `INSERT INTO item_produksi__new (${colNames}) SELECT ${colNames} FROM item_produksi`
+        );
+        db.exec("DROP TABLE item_produksi");
+        db.exec("ALTER TABLE item_produksi__new RENAME TO item_produksi");
+        db.pragma("foreign_keys = ON");
+      });
+      rebuild();
     }
   }
 
