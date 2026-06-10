@@ -928,7 +928,7 @@ export async function updateProductionItemStatus(
     // Guard: item produksi yang DIBATALKAN karena penjualannya VOID tidak
     // boleh dihidupkan lagi (konsisten dengan guard di order).
     const cur = await db.queryOne<any>("item_produksi", { where: { id: itemId } });
-    if (cur.data?.status === "DIBATALKAN" && data.status !== "DIBATALKAN") {
+    if (cur.data?.status === "DIBATALKAN") {
       const ord = await db.queryOne<any>("order_produksi", {
         where: { id: cur.data.order_produksi_id },
       });
