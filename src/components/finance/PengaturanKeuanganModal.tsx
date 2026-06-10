@@ -2,7 +2,7 @@
 
 /**
  * PengaturanKeuanganModal — satu modal untuk semua pengaturan keuangan.
- * Tab: Kolom | Kategori | Pegawai
+ * Tab: Kolom | Kategori | Pengurus
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -276,7 +276,7 @@ export default function PengaturanKeuanganModal({
   const TABS: Array<{ id: PengaturanTab; label: string }> = [
     { id: "kolom",    label: "Kolom" },
     { id: "kategori", label: "Kategori" },
-    { id: "pengurus", label: "Pegawai" },
+    { id: "pengurus", label: "Pengurus" },
   ];
 
   return (
@@ -322,7 +322,7 @@ export default function PengaturanKeuanganModal({
           <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
             <div className="text-xs text-slate-400">
               {tab === "kolom" && `${formulas.length} kolom`}
-              {tab === "pengurus" && `${pengurusAktif} pegawai aktif`}
+              {tab === "pengurus" && `${pengurusAktif} pengurus aktif`}
               {tab === "kategori" && `${kategoriCount} kategori`}
             </div>
             <div className="flex items-center gap-2">
