@@ -499,9 +499,12 @@ export async function getActorFinanceSummary(
     return v === undefined || v === null ? 0 : Number(v);
   };
 
-  // Bangun baris per-actor. Sel akan null kalau actor tidak punya formula
-  // untuk key itu (supaya UI bisa render "—" alih-alih 0).
+  // Bangun baris per-actor. Hanya pengurus (penerima bagi hasil,
+  // profit_share_percent !== null) yang muncul di panel ini — karyawan murni
+  // (gaji/kasbon saja) dikelola di halaman Karyawan, bukan di sini. Sel akan
+  // null kalau actor tidak punya formula untuk key itu (UI render "—").
   const actorRows: ActorFinanceSummaryRow[] = actors
+    .filter((actor) => actor.profit_share_percent !== null)
     .map((actor) => {
       const linked = formulasByActor.get(actor.id) ?? [];
       const linkedKeys = new Set(
