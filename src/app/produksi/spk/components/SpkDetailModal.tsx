@@ -57,11 +57,6 @@ export default function SpkDetailModal({
 }: SpkDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // SPK milik penjualan yang sudah di-VOID dikunci: server menolak perubahan
-  // status/pelanggan, dan SPK batal tidak perlu dicetak. Kontrol dimatikan
-  // supaya tidak menyesatkan pengguna (klik lalu kena error).
-  const terkunci = order.penjualan_dibatalkan === true;
-
   // Tutup saat klik di luar panel modal.
   useClickOutside(modalRef, () => onClose(), true);
 
@@ -111,17 +106,6 @@ export default function SpkDetailModal({
         </div>
 
         <div className="p-6 flex-1 min-h-0 overflow-y-auto">
-          {terkunci && (
-            <div className="mb-6 rounded-lg border-l-4 border-rose-500 bg-rose-50 dark:bg-rose-950/30 p-4">
-              <div className="font-semibold text-rose-800 dark:text-rose-200">
-                SPK dibatalkan
-              </div>
-              <div className="text-sm text-rose-700 dark:text-rose-300 mt-1">
-                Penjualan untuk SPK ini sudah dibatalkan (VOID), jadi status,
-                pelanggan, dan cetak SPK tidak bisa diubah lagi.
-              </div>
-            </div>
-          )}
           {/* Order Info */}
           <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg">
             <div>
@@ -135,14 +119,11 @@ export default function SpkDetailModal({
               <button
                 type="button"
                 onClick={onEditCustomer}
-                disabled={terkunci}
-                className="font-semibold text-left text-amber-700 dark:text-amber-300 hover:underline disabled:opacity-60 disabled:cursor-not-allowed disabled:no-underline disabled:hover:no-underline"
-                title={terkunci ? "Penjualan dibatalkan — tidak bisa diubah" : "Ubah nama pelanggan"}
+                className="font-semibold text-left text-amber-700 dark:text-amber-300 hover:underline"
+                title="Ubah nama pelanggan"
               >
                 {order.pelanggan_nama || "Pelanggan Umum"}
-                {!terkunci && (
-                  <span className="ml-1 text-xs text-gray-400">(ubah)</span>
-                )}
+                <span className="ml-1 text-xs text-gray-400">(ubah)</span>
               </button>
             </div>
             <div>
@@ -160,8 +141,7 @@ export default function SpkDetailModal({
               <select
                 value={order.status}
                 onChange={(e) => onUpdateOrderStatus(order.id, e.target.value)}
-                disabled={terkunci}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${getStatusColor(
+                className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                   order.status
                 )}`}
               >
@@ -215,8 +195,7 @@ export default function SpkDetailModal({
                   <select
                     value={item.status}
                     onChange={(e) => onUpdateItemStatus(item.id, e.target.value)}
-                    disabled={terkunci}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${getStatusColor(
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
                       item.status
                     )}`}
                   >
@@ -387,9 +366,7 @@ export default function SpkDetailModal({
               onPrint(order);
               onClose();
             }}
-            disabled={terkunci}
-            title={terkunci ? "Penjualan dibatalkan — SPK tidak bisa dicetak" : undefined}
-            className="px-6 py-2 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none"
+            className="px-6 py-2 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center gap-2"
           >
             <PrinterIcon size={18} />
             Cetak SPK

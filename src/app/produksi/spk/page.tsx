@@ -61,6 +61,12 @@ export default function ProductionPage() {
     return (list as ProductionOrder[]) || [];
   });
   const orders = ordersData ?? EMPTY_ORDERS;
+  // SPK milik penjualan VOID disembunyikan dari seluruh halaman (kartu statistik
+  // + tabel), konsisten dengan riwayat penjualan & buku keuangan.
+  const visibleOrders = useMemo(
+    () => orders.filter((o) => !o.penjualan_dibatalkan),
+    [orders]
+  );
   const loading = currentUser === null && ordersLoading;
   const invalidate = useInvalidate();
   const [showCustomerEditor, setShowCustomerEditor] = useState(false);
@@ -154,7 +160,8 @@ export default function ProductionPage() {
   }, [showDetailModal, selectedOrder]);
 
   const filteredOrders = useMemo(() => {
-    let filtered = [...orders];
+    // Pakai visibleOrders (sudah tanpa SPK penjualan VOID).
+    let filtered = [...visibleOrders];
 
     if (filterStatus !== "ALL") {
       filtered = filtered.filter((order) => order.status === filterStatus);
@@ -175,7 +182,7 @@ export default function ProductionPage() {
     }
 
     return filtered;
-  }, [orders, filterStatus, filterPriority, searchQuery]);
+  }, [visibleOrders, filterStatus, filterPriority, searchQuery]);
 
   const loadOrders = async () => {
     try {
@@ -396,7 +403,7 @@ export default function ProductionPage() {
             </div>
           </div>
           <p className="text-3xl font-bold">
-            {orders.filter((o) => o.status === "MENUNGGU").length}
+            {visibleOrders.filter((o) => o.status === "MENUNGGU").length}
           </p>
           <p className="text-sm mt-2 text-yellow-100">Order baru</p>
         </div>
@@ -413,7 +420,7 @@ export default function ProductionPage() {
             </div>
           </div>
           <p className="text-3xl font-bold">
-            {orders.filter((o) => o.status === "PROSES").length}
+            {visibleOrders.filter((o) => o.status === "PROSES").length}
           </p>
           <p className="text-sm mt-2 text-blue-100">Sedang dikerjakan</p>
         </div>
@@ -442,7 +449,7 @@ export default function ProductionPage() {
             </div>
           </div>
           <p className="text-3xl font-bold">
-            {orders.filter((o) => o.status === "SELESAI").length}
+            {visibleOrders.filter((o) => o.status === "SELESAI").length}
           </p>
           <p className="text-sm mt-2 text-green-100">Order selesai</p>
         </div>
@@ -471,7 +478,7 @@ export default function ProductionPage() {
             </div>
           </div>
           <p className="text-3xl font-bold">
-            {orders.filter((o) => o.prioritas === "KILAT").length}
+            {visibleOrders.filter((o) => o.prioritas === "KILAT").length}
           </p>
           <p className="text-sm mt-2 opacity-90">Prioritas tinggi</p>
         </div>
