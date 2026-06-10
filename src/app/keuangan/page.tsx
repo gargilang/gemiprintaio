@@ -13,7 +13,7 @@ import ModalEditManual from "@/components/ModalEditManual";
 import ModalTutupBuku from "@/components/ModalTutupBuku";
 import ModalPilihBulan from "@/components/ModalPilihBulan";
 import PengaturanKeuanganModal, { type PengaturanTab } from "@/components/finance/PengaturanKeuanganModal";
-import DynamicActorSummary from "@/components/finance/DynamicActorSummary";
+import RingkasanPengurus from "@/components/finance/RingkasanPengurus";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { MoneyIcon } from "@/components/icons/PageIcons";
 import { BoxIcon } from "@/components/icons/ContentIcons";
@@ -1147,12 +1147,12 @@ export default function FinancePage() {
           )}
         </div>
       </div>
-      {/* Pengurus Usaha — DynamicActorSummary + transaksi_terhitung */}
+      {/* Pengurus Usaha — RingkasanPengurus + transaksi_terhitung */}
       {currentUser &&
         (currentUser.role === "admin" ||
           currentUser.role === "manager" ||
           currentUser.role === "staff") && (
-          <DynamicActorSummary
+          <RingkasanPengurus
             formatRupiah={formatRupiah}
             month={viewingArchive ?? undefined}
             refreshKey={actorSummaryTick}

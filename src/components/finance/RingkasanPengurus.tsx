@@ -80,7 +80,7 @@ function CellValue({
   return <span className={`font-bold tabular-nums text-sm ${tone}`}>{formatRupiah(value)}</span>;
 }
 
-export default function DynamicActorSummary({
+export default function RingkasanPengurus({
   month,
   formatRupiah,
   refreshKey,
