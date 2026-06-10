@@ -810,6 +810,10 @@ export async function postProductionMaterialConsumption(input: {
   });
   if (upd.error) throw upd.error;
 
+  // Status item berubah (-> PRINTING) langsung di sini, bukan lewat
+  // updateProductionItemStatus, jadi derivasi status order harus dipicu manual.
+  await recomputeOrderStatusFromItems(item.order_produksi_id);
+
   return consumption;
 }
 
@@ -881,6 +885,14 @@ export async function voidProductionMaterialConsumption(
     status: "PRINTING",
     diperbarui_pada: getCurrentTimestamp(),
   });
+  // Status item diubah langsung di sini; picu derivasi status order.
+  const itemRow = await db.queryOne<any>("item_produksi", {
+    where: { id: row.item_produksi_id },
+  });
+  const orderId = itemRow.data?.order_produksi_id;
+  if (orderId) {
+    await recomputeOrderStatusFromItems(orderId);
+  }
   return true;
 }
 
