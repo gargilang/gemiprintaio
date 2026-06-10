@@ -9,7 +9,11 @@
  */
 
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
-import { listBusinessActors } from "@/lib/services/business-actor-service";
+import {
+  listBusinessActors,
+  createBusinessActor,
+  listActorRoles,
+} from "@/lib/services/business-actor-service";
 import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
   listKomponen,
@@ -81,6 +85,45 @@ export async function listKaryawanAction() {
     return await listBusinessActors({ includeInactive: false });
   } catch (error) {
     console.error("listKaryawanAction error:", error);
+    throw error;
+  }
+}
+
+// ── Peran untuk dropdown Tambah Karyawan (sembunyikan grup owner) ────────────
+export async function listPeranKaryawanAction() {
+  try {
+    const roles = await listActorRoles();
+    return roles.filter((r) => r.role_group !== "owner");
+  } catch (error) {
+    console.error("listPeranKaryawanAction error:", error);
+    throw error;
+  }
+}
+
+// ── Tambah karyawan baru (tanpa bagi hasil) ─────────────────────────────────
+export async function tambahKaryawanAction(input: {
+  display_name: string;
+  role_code: string;
+  notes?: string;
+}) {
+  try {
+    await requireAdminOrManager();
+    const created = await createBusinessActor({
+      display_name: input.display_name,
+      role_code: input.role_code,
+      notes: input.notes ?? null,
+      profit_share_percent: null,
+      cash_advance_categories: null,
+      keperluan_keyword: null,
+      bonus_percent: null,
+      bonus_source_formula_key: null,
+    });
+    if (created.error || !created.data) {
+      throw new Error(created.error?.message || "Gagal menambah karyawan");
+    }
+    return { success: true, actor_id: created.data.id, nama: created.data.display_name };
+  } catch (error) {
+    console.error("tambahKaryawanAction error:", error);
     throw error;
   }
 }
