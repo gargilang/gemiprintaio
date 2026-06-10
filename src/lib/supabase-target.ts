@@ -22,9 +22,9 @@ export function isLocalSupabaseUrl(url: string | undefined | null): boolean {
   }
 }
 
-/** Label sumber data Supabase aktif: "lokal" atau "cloud". */
-export function supabaseTargetLabel(): "lokal" | "cloud" {
+/** Label sumber data Supabase aktif: "local" atau "cloud". */
+export function supabaseTargetLabel(): "local" | "cloud" {
   return isLocalSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
-    ? "lokal"
+    ? "local"
     : "cloud";
 }
