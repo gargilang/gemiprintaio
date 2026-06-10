@@ -270,7 +270,7 @@ export default function PenggajianPage() {
                   <th className="text-left px-6 py-3 font-medium">Nama</th>
                   <th className="text-left px-6 py-3 font-medium">Jabatan</th>
                   <th className="text-left px-6 py-3 font-medium">
-                    Komponen Gaji
+                    Bagi Hasil &amp; Komponen
                   </th>
                   <th className="text-right px-6 py-3 font-medium">
                     Saldo Kasbon
@@ -291,15 +291,20 @@ export default function PenggajianPage() {
                       {k.nama}
                     </td>
                     <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
-                      {k.role_code}
+                      {k.role_label}
                     </td>
                     <td className="px-6 py-3">
-                      {k.tipe_komponen.length === 0 ? (
+                      {k.profit_share_percent === null && k.tipe_komponen.length === 0 ? (
                         <span className="text-slate-400 dark:text-slate-500 italic">
                           Belum diatur
                         </span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
+                          {k.profit_share_percent !== null && (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              Bagi Hasil {k.profit_share_percent}%
+                            </span>
+                          )}
                           {k.tipe_komponen.map((t) => (
                             <span
                               key={t}

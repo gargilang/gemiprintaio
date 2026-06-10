@@ -53,6 +53,7 @@ export interface RingkasanKaryawan {
   actor_id: string;
   nama: string;
   role_code: string;
+  role_label: string;
   role_group: string;
   jumlah_komponen: number;
   tipe_komponen: string[];
@@ -75,6 +76,7 @@ export async function listRingkasanKaryawanAction(
       listActorRoles(),
     ]);
     const groupByCode = new Map(roles.map((r) => [r.role_code, r.role_group]));
+    const labelByCode = new Map(roles.map((r) => [r.role_code, r.role_label]));
     const hasil: RingkasanKaryawan[] = [];
     for (const a of actors) {
       const komponen = await listKomponen(a.id);
@@ -84,6 +86,7 @@ export async function listRingkasanKaryawanAction(
         actor_id: a.id,
         nama: a.display_name,
         role_code: a.role_code,
+        role_label: labelByCode.get(a.role_code) ?? a.role_code,
         role_group: groupByCode.get(a.role_code) ?? "other",
         jumlah_komponen: aktif.length,
         tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
