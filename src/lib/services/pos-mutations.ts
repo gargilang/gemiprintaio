@@ -1194,6 +1194,37 @@ export async function voidSale(
       diperbarui_pada: getCurrentTimestamp(),
     });
     if (upd.error) throw upd.error;
+
+    // Batalkan SPK (order_produksi) yang dibuat penjualan ini beserta itemnya.
+    // Guard di atas sudah menolak void bila ada SPK PROSES/PRINTING/FINISHING/
+    // SELESAI, jadi yang tersisa di sini hanya MENUNGGU/DIBATALKAN. Soft-cancel
+    // (tandai DIBATALKAN) konsisten dengan soft-void penjualan/keuangan, bukan
+    // hard delete — penjualan tidak dihapus jadi FK CASCADE tidak jalan.
+    for (const order of prodResult.data || []) {
+      if (order.status === "DIBATALKAN" || order.status === "SELESAI") continue;
+      const orderItemsResult = await db.query<any>("item_produksi", {
+        where: { order_produksi_id: order.id },
+      });
+      if (orderItemsResult.error) throw orderItemsResult.error;
+      for (const prodItem of orderItemsResult.data || []) {
+        if (
+          prodItem.status === "DIBATALKAN" ||
+          prodItem.status === "SELESAI"
+        ) {
+          continue;
+        }
+        const itemUpd = await db.update("item_produksi", prodItem.id, {
+          status: "DIBATALKAN",
+          diperbarui_pada: getCurrentTimestamp(),
+        });
+        if (itemUpd.error) throw itemUpd.error;
+      }
+      const orderUpd = await db.update("order_produksi", order.id, {
+        status: "DIBATALKAN",
+        diperbarui_pada: getCurrentTimestamp(),
+      });
+      if (orderUpd.error) throw orderUpd.error;
+    }
   });
 
   try {
