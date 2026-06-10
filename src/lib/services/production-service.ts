@@ -584,6 +584,23 @@ export async function updateProductionOrderStatus(
   status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
 ): Promise<boolean> {
   try {
+    // Guard: SPK yang DIBATALKAN karena penjualannya VOID tidak boleh
+    // dihidupkan lagi. Void penjualan men-soft-cancel SPK; mengubah balik
+    // statusnya akan men-desinkronkan SPK dengan penjualan yang sudah batal.
+    const orderRes = await db.queryOne<any>("order_produksi", { where: { id } });
+    const order = orderRes.data;
+    if (order && order.status === "DIBATALKAN" && status !== "DIBATALKAN") {
+      const saleRes = await db.queryOne<any>("penjualan", {
+        where: { id: order.penjualan_id },
+      });
+      if (saleRes.data?.status_transaksi === "VOIDED") {
+        throw new Error(
+          "SPK ini dibatalkan karena penjualannya sudah dibatalkan (VOID). " +
+            "Status tidak bisa diubah lagi."
+        );
+      }
+    }
+
     const updateData: any = {
       status,
       status_override_manual: 1,
@@ -908,6 +925,25 @@ export async function updateProductionItemStatus(
   }
 ): Promise<boolean> {
   try {
+    // Guard: item produksi yang DIBATALKAN karena penjualannya VOID tidak
+    // boleh dihidupkan lagi (konsisten dengan guard di order).
+    const cur = await db.queryOne<any>("item_produksi", { where: { id: itemId } });
+    if (cur.data?.status === "DIBATALKAN" && data.status !== "DIBATALKAN") {
+      const ord = await db.queryOne<any>("order_produksi", {
+        where: { id: cur.data.order_produksi_id },
+      });
+      if (ord.data?.penjualan_id) {
+        const sale = await db.queryOne<any>("penjualan", {
+          where: { id: ord.data.penjualan_id },
+        });
+        if (sale.data?.status_transaksi === "VOIDED") {
+          throw new Error(
+            "Item produksi ini dibatalkan karena penjualannya sudah dibatalkan (VOID)."
+          );
+        }
+      }
+    }
+
     const updateData: any = {
       status: data.status,
     };
