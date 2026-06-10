@@ -13,8 +13,19 @@ import {
   postProductionMaterialConsumption,
   voidProductionMaterialConsumption,
   deleteProductionOrder,
+  setOrderStatusSelesaiCascade,
+  updateSaleCustomer,
 } from "@/lib/services/production-service";
-import { requireProductionInventoryRole } from "@/lib/auth-guard-server";
+import {
+  requireProductionInventoryRole,
+  requireSession,
+} from "@/lib/auth-guard-server";
+import {
+  updateItemStatusSchema,
+  updateSaleCustomerSchema,
+} from "@/lib/schemas/produksi";
+import { AuthGuardError } from "@/lib/auth-guard-error";
+import { getPelanggan } from "@/lib/services/customers-service";
 
 export async function getProductionOrdersAction() {
   try {
@@ -36,11 +47,13 @@ export async function getProductionOrderByIdAction(id: string) {
 
 export async function updateProductionStatusAction(
   orderId: string,
-  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
+  status: string
 ) {
   try {
-    return await updateProductionOrderStatus(orderId, status);
+    await requireProductionInventoryRole();
+    return await updateProductionOrderStatus(orderId, status as any);
   } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
     console.error("Error in updateProductionStatusAction:", error);
     throw error;
   }
@@ -48,15 +61,60 @@ export async function updateProductionStatusAction(
 
 export async function updateProductionItemStatusAction(
   itemId: string,
-  data: {
-    status: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI";
-    operator_id?: string;
-  }
+  data: { status: string; operator_id?: string }
 ) {
   try {
-    return await updateProductionItemStatus(itemId, data);
+    const s = await requireProductionInventoryRole();
+    const parsed = updateItemStatusSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error("Status item tidak valid");
+    }
+    return await updateProductionItemStatus(itemId, {
+      status: parsed.data.status as any,
+      operator_id: parsed.data.operator_id || s.uid,
+    });
   } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
     console.error("Error in updateProductionItemStatusAction:", error);
+    throw error;
+  }
+}
+
+export async function setOrderStatusSelesaiCascadeAction(orderId: string) {
+  try {
+    await requireProductionInventoryRole();
+    return await setOrderStatusSelesaiCascade(orderId);
+  } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
+    console.error("Error in setOrderStatusSelesaiCascadeAction:", error);
+    throw error;
+  }
+}
+
+export async function updateSaleCustomerAction(
+  penjualanId: string,
+  data: { pelanggan_id?: string | null; pelanggan_nama_snapshot?: string | null }
+) {
+  try {
+    await requireSession();
+    const parsed = updateSaleCustomerSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message || "Data nama tidak valid");
+    }
+    return await updateSaleCustomer(penjualanId, parsed.data);
+  } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
+    console.error("Error in updateSaleCustomerAction:", error);
+    throw error;
+  }
+}
+
+export async function getPelangganRingkasAction() {
+  try {
+    const list = await getPelanggan();
+    return list.map((p) => ({ id: p.id, nama: p.nama }));
+  } catch (error) {
+    console.error("Error in getPelangganRingkasAction:", error);
     throw error;
   }
 }
