@@ -14,6 +14,7 @@ import {
   createBusinessActor,
   listActorRoles,
 } from "@/lib/services/business-actor-service";
+import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
   listKomponen,
@@ -45,6 +46,7 @@ export interface RingkasanKaryawan {
   actor_id: string;
   nama: string;
   role_code: string;
+  role_group: string;
   jumlah_komponen: number;
   tipe_komponen: string[];
   saldo_pinjaman: number;
@@ -58,7 +60,11 @@ export interface RingkasanKaryawan {
  */
 export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]> {
   try {
-    const actors = await listBusinessActors({ includeInactive: false });
+    const [actors, roles] = await Promise.all([
+      listBusinessActors({ includeInactive: false }),
+      listActorRoles(),
+    ]);
+    const groupByCode = new Map(roles.map((r) => [r.role_code, r.role_group]));
     const hasil: RingkasanKaryawan[] = [];
     for (const a of actors) {
       const komponen = await listKomponen(a.id);
@@ -68,6 +74,7 @@ export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]
         actor_id: a.id,
         nama: a.display_name,
         role_code: a.role_code,
+        role_group: groupByCode.get(a.role_code) ?? "other",
         jumlah_komponen: aktif.length,
         tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
         saldo_pinjaman: saldo,
@@ -88,6 +95,28 @@ export async function listKaryawanAction() {
   } catch (error) {
     console.error("listKaryawanAction error:", error);
     throw error;
+  }
+}
+
+// ── Metrik kas buku besar (Kas, Modal Kas, Saldo Kasbon) untuk kartu ringkasan ─
+// Diambil dari AST engine (transaksi_terhitung) — sumber kebenaran kolom buku
+// kas. Saldo Kasbon di sini = kolom AST saldo_kasbon (kategori PINJAMAN_KARYAWAN),
+// identik dengan total saldo ledger pinjaman_karyawan.
+export async function getMetrikKasAction(): Promise<{
+  kas: number;
+  modal_kas: number;
+  saldo_kasbon: number;
+}> {
+  try {
+    const latestMap = await getLatestPerFormulaKey();
+    return {
+      kas: latestMap.kas ?? 0,
+      modal_kas: latestMap.modal_kas ?? 0,
+      saldo_kasbon: latestMap.saldo_kasbon ?? 0,
+    };
+  } catch (error) {
+    console.error("getMetrikKasAction error:", error);
+    return { kas: 0, modal_kas: 0, saldo_kasbon: 0 };
   }
 }
 

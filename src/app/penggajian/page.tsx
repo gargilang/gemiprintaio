@@ -6,9 +6,15 @@ import ToastNotifikasi, {
 } from "@/components/ToastNotifikasi";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import { UsersIcon } from "@/components/icons/PageIcons";
+import {
+  UsersIcon as UsersContentIcon,
+  CashIcon,
+  BriefcaseIcon,
+} from "@/components/icons/ContentIcons";
 import { formatRupiah } from "@/lib/format-id";
 import {
   listRingkasanKaryawanAction,
+  getMetrikKasAction,
   type RingkasanKaryawan,
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
@@ -60,15 +66,28 @@ export default function PenggajianPage() {
     "penggajian-ringkasan",
     () => listRingkasanKaryawanAction()
   );
+  const { data: metrik, refresh: refreshMetrik } = useCachedData(
+    "penggajian-metrik-kas",
+    () => getMetrikKasAction()
+  );
   const karyawan = useMemo(
-    () => (data ?? []).filter((k) => k.profit_share_percent === null || k.jumlah_komponen > 0),
+    () => (data ?? []).filter((k) => k.role_group !== "owner"),
     [data]
   );
 
+  // Statistik untuk kartu ringkasan di atas tabel. Kas/Modal Kas/Saldo Kasbon
+  // diambil dari AST engine (sumber kebenaran kolom buku kas).
+  const totalKaryawan = karyawan.length;
+  const kas = metrik?.kas ?? 0;
+  const modalKas = metrik?.modal_kas ?? 0;
+  const saldoKasbon = metrik?.saldo_kasbon ?? 0;
+
   const reload = useCallback(() => {
     invalidate("penggajian-ringkasan");
+    invalidate("penggajian-metrik-kas");
     void refresh();
-  }, [invalidate, refresh]);
+    void refreshMetrik();
+  }, [invalidate, refresh, refreshMetrik]);
 
   return (
     <div className="space-y-6">
@@ -108,6 +127,57 @@ export default function PenggajianPage() {
         </div>
       </div>
 
+      {/* Kartu ringkasan */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Karyawan */}
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/20 rounded-lg p-2">
+              <UsersContentIcon size={20} className="text-white" />
+            </div>
+            <h3 className="text-base font-semibold uppercase tracking-wide">
+              Total Karyawan
+            </h3>
+          </div>
+          <p className="text-3xl font-bold">{totalKaryawan}</p>
+          <p className="text-sm mt-2 text-indigo-100">Karyawan terdaftar</p>
+        </div>
+
+        {/* Saldo Kasbon */}
+        <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/20 rounded-lg p-2">
+              <CashIcon size={20} className="text-white" />
+            </div>
+            <h3 className="text-base font-semibold uppercase tracking-wide">
+              Saldo Kasbon
+            </h3>
+          </div>
+          <p className="text-3xl font-bold tabular-nums">
+            {formatRupiah(saldoKasbon)}
+          </p>
+          <p className="text-sm mt-2 text-cyan-100">
+            Total pinjaman berjalan semua karyawan
+          </p>
+        </div>
+
+        {/* Kas */}
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/20 rounded-lg p-2">
+              <BriefcaseIcon size={20} className="text-white" />
+            </div>
+            <h3 className="text-base font-semibold uppercase tracking-wide">
+              Kas
+            </h3>
+          </div>
+          <p className="text-3xl font-bold tabular-nums">{formatRupiah(kas)}</p>
+          <p className="text-sm mt-2 text-emerald-100">
+            Modal Kas: {formatRupiah(modalKas)}
+          </p>
+        </div>
+      </div>
+
       {/* Daftar karyawan + ringkasan kompensasi */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
@@ -124,15 +194,16 @@ export default function PenggajianPage() {
             Memuat data karyawan...
           </div>
         ) : karyawan.length === 0 ? (
-          <div className="p-10 text-center text-slate-500 dark:text-slate-400 space-y-3">
-            <p>Belum ada karyawan. Tekan + Tambah Karyawan untuk mulai.</p>
-            <button
-              type="button"
-              onClick={() => setShowTambah(true)}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold"
-            >
-              + Tambah Karyawan
-            </button>
+          <div className="px-4 py-12 text-center">
+            <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+              <UsersContentIcon size={48} className="mb-3 opacity-50" />
+              <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                Belum ada karyawan
+              </p>
+              <p className="text-sm mt-1">
+                Tekan &quot;+ Tambah Karyawan&quot; di atas untuk memulai
+              </p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
