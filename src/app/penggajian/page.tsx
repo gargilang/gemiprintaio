@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo } from "react";
 import ToastNotifikasi, {
   type NotificationToastProps,
 } from "@/components/ToastNotifikasi";
+import MenuAksi from "@/components/MenuAksi";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import { UsersIcon } from "@/components/icons/PageIcons";
 import {
@@ -15,6 +17,9 @@ import { formatRupiah } from "@/lib/format-id";
 import {
   listRingkasanKaryawanAction,
   getMetrikKasAction,
+  nonaktifkanKaryawanAction,
+  aktifkanKaryawanAction,
+  hapusKaryawanAction,
   type RingkasanKaryawan,
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
@@ -52,6 +57,8 @@ export default function PenggajianPage() {
   } | null>(null);
   const [showProsesGaji, setShowProsesGaji] = useState(false);
   const [showTambah, setShowTambah] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [hapusTarget, setHapusTarget] = useState<RingkasanKaryawan | null>(null);
   const invalidate = useInvalidate();
 
   const showMsg = useCallback(
@@ -63,8 +70,8 @@ export default function PenggajianPage() {
   );
 
   const { data, isLoading, refresh } = useCachedData<RingkasanKaryawan[]>(
-    "penggajian-ringkasan",
-    () => listRingkasanKaryawanAction()
+    `penggajian-ringkasan:${showInactive ? "all" : "active"}`,
+    () => listRingkasanKaryawanAction(showInactive)
   );
   const { data: metrik, refresh: refreshMetrik } = useCachedData(
     "penggajian-metrik-kas",
@@ -83,11 +90,51 @@ export default function PenggajianPage() {
   const saldoKasbon = metrik?.saldo_kasbon ?? 0;
 
   const reload = useCallback(() => {
-    invalidate("penggajian-ringkasan");
+    invalidate("penggajian-ringkasan:active");
+    invalidate("penggajian-ringkasan:all");
     invalidate("penggajian-metrik-kas");
     void refresh();
     void refreshMetrik();
   }, [invalidate, refresh, refreshMetrik]);
+
+  const handleNonaktif = useCallback(
+    async (k: RingkasanKaryawan) => {
+      try {
+        await nonaktifkanKaryawanAction(k.actor_id);
+        showMsg("success", `${k.nama} dinonaktifkan.`);
+        reload();
+      } catch (e) {
+        showMsg("error", (e as Error)?.message || "Gagal menonaktifkan.");
+      }
+    },
+    [reload, showMsg]
+  );
+
+  const handleAktif = useCallback(
+    async (k: RingkasanKaryawan) => {
+      try {
+        await aktifkanKaryawanAction(k.actor_id);
+        showMsg("success", `${k.nama} diaktifkan kembali.`);
+        reload();
+      } catch (e) {
+        showMsg("error", (e as Error)?.message || "Gagal mengaktifkan.");
+      }
+    },
+    [reload, showMsg]
+  );
+
+  const handleHapus = useCallback(async () => {
+    if (!hapusTarget) return;
+    try {
+      await hapusKaryawanAction(hapusTarget.actor_id);
+      showMsg("success", `${hapusTarget.nama} dihapus.`);
+      setHapusTarget(null);
+      reload();
+    } catch (e) {
+      showMsg("error", (e as Error)?.message || "Gagal menghapus.");
+      setHapusTarget(null);
+    }
+  }, [hapusTarget, reload, showMsg]);
 
   return (
     <div className="space-y-6">
@@ -180,13 +227,23 @@ export default function PenggajianPage() {
 
       {/* Daftar karyawan + ringkasan kompensasi */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            Daftar Karyawan
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Komponen kompensasi aktif dan saldo kasbon tiap karyawan.
-          </p>
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Daftar Karyawan
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Komponen kompensasi aktif dan saldo kasbon tiap karyawan.
+            </p>
+          </div>
+          <label className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 select-none cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            Tampilkan nonaktif
+          </label>
         </div>
 
         {isLoading ? (
@@ -218,6 +275,7 @@ export default function PenggajianPage() {
                   <th className="text-right px-6 py-3 font-medium">
                     Saldo Kasbon
                   </th>
+                  <th className="text-center px-6 py-3 font-medium">Status</th>
                   <th className="text-right px-6 py-3 font-medium">Aksi</th>
                 </tr>
               </thead>
@@ -225,7 +283,9 @@ export default function PenggajianPage() {
                 {karyawan.map((k) => (
                   <tr
                     key={k.actor_id}
-                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    className={`border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                      k.is_active === 0 ? "opacity-60" : ""
+                    }`}
                   >
                     <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">
                       {k.nama}
@@ -265,6 +325,17 @@ export default function PenggajianPage() {
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-3 text-center">
+                      {k.is_active === 1 ? (
+                        <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          Nonaktif
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -285,6 +356,38 @@ export default function PenggajianPage() {
                         >
                           Atur Kompensasi
                         </button>
+                        <MenuAksi
+                          labelMenu={`Aksi untuk ${k.nama}`}
+                          aksi={[
+                            {
+                              label: "Nonaktifkan",
+                              judul: "Nonaktifkan karyawan",
+                              tampil: k.is_active === 1,
+                              onClick: () => handleNonaktif(k),
+                              ikon: (
+                                <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                              ),
+                            },
+                            {
+                              label: "Aktifkan Kembali",
+                              judul: "Aktifkan kembali",
+                              tampil: k.is_active !== 1,
+                              onClick: () => handleAktif(k),
+                              ikon: (
+                                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              ),
+                            },
+                            {
+                              label: "Hapus Permanen",
+                              judul: "Hapus permanen",
+                              varian: "bahaya",
+                              onClick: () => setHapusTarget(k),
+                              ikon: (
+                                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              ),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -334,6 +437,16 @@ export default function PenggajianPage() {
           showNotification={showMsg}
         />
       )}
+
+      <DialogKonfirmasi
+        show={!!hapusTarget}
+        title="Hapus karyawan?"
+        message={`Hapus permanen "${hapusTarget?.nama ?? ""}"? Tindakan ini tidak bisa dibatalkan. Kalau masih ada komponen gaji aktif atau saldo kasbon, sistem akan menolak — nonaktifkan saja sebagai gantinya.`}
+        type="danger"
+        confirmText="Hapus permanen"
+        onConfirm={handleHapus}
+        onCancel={() => setHapusTarget(null)}
+      />
     </div>
   );
 }

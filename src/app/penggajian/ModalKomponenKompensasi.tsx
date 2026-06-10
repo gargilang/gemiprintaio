@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import ModalFormShell from "@/components/ModalFormShell";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
@@ -9,6 +9,8 @@ import {
   listKomponenAction,
   simpanKomponenAction,
   hapusKomponenAction,
+  getInfoBagiHasilAction,
+  setBagiHasilAction,
 } from "./actions";
 import type {
   KomponenKompensasi,
@@ -64,6 +66,50 @@ export default function ModalKomponenKompensasi({
   const [hapusTarget, setHapusTarget] = useState<KomponenKompensasi | null>(
     null
   );
+
+  // Bagi hasil (sumber kebenaran: pegawai.profit_share_percent). Diatur di sini
+  // supaya non-Pemilik bisa diberi bagi hasil tanpa bolak-balik ke tab Pengurus.
+  const [bagiHasilInput, setBagiHasilInput] = useState("");
+  const [sisaBagiHasil, setSisaBagiHasil] = useState(100);
+  const [bagiHasilSaving, setBagiHasilSaving] = useState(false);
+
+  const { data: infoBagiHasil, refresh: refreshBagiHasil } = useCachedData(
+    `bagi-hasil:${actor.id}`,
+    () => getInfoBagiHasilAction(actor.id)
+  );
+
+  useEffect(() => {
+    if (infoBagiHasil) {
+      setBagiHasilInput(
+        infoBagiHasil.persen != null ? String(infoBagiHasil.persen) : ""
+      );
+      setSisaBagiHasil(infoBagiHasil.sisa);
+    }
+  }, [infoBagiHasil]);
+
+  const handleSimpanBagiHasil = useCallback(async () => {
+    const trimmed = bagiHasilInput.trim();
+    const persen = trimmed === "" ? null : Number(trimmed);
+    if (persen !== null && (!Number.isFinite(persen) || persen < 0)) {
+      showNotification("error", "Persentase bagi hasil tidak valid.");
+      return;
+    }
+    try {
+      setBagiHasilSaving(true);
+      await setBagiHasilAction(actor.id, persen);
+      showNotification(
+        "success",
+        persen === null ? "Bagi hasil dihapus." : "Bagi hasil disimpan."
+      );
+      invalidate(`bagi-hasil:${actor.id}`);
+      void refreshBagiHasil();
+      onSuccess();
+    } catch (e: any) {
+      showNotification("error", e?.message || "Gagal menyimpan bagi hasil.");
+    } finally {
+      setBagiHasilSaving(false);
+    }
+  }, [actor.id, bagiHasilInput, invalidate, refreshBagiHasil, onSuccess, showNotification]);
 
   const resetForm = useCallback(() => {
     setTipe("GAJI_POKOK");
@@ -172,6 +218,44 @@ export default function ModalKomponenKompensasi({
         maxWidthClass="max-w-2xl"
       >
         <div className="p-6 space-y-6">
+          {/* Bagi Hasil — sumber kebenaran pegawai.profit_share_percent */}
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 p-4">
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+              Bagi Hasil
+            </h3>
+            <p className="text-xs text-amber-700 dark:text-amber-300/80 mb-3">
+              Persentase laba bersih untuk orang ini. Kosongkan bila tidak
+              menerima bagi hasil. Sisa jatah tersedia:{" "}
+              <strong>{sisaBagiHasil}%</strong> (total semua orang maksimal
+              100%).
+            </p>
+            <div className="flex items-end gap-3">
+              <div className="flex-1 max-w-[160px]">
+                <label className="block text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">
+                  Persentase (%)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={bagiHasilInput}
+                  onChange={(e) => setBagiHasilInput(e.target.value)}
+                  placeholder="Mis. 50"
+                  className="w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={bagiHasilSaving}
+                onClick={handleSimpanBagiHasil}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {bagiHasilSaving ? "Menyimpan..." : "Simpan Bagi Hasil"}
+              </button>
+            </div>
+          </div>
+
           {/* Daftar komponen yang ada */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">

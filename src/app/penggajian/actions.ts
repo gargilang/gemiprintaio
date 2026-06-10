@@ -12,8 +12,15 @@ import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import {
   listBusinessActors,
   createBusinessActor,
+  updateBusinessActor,
+  deactivateBusinessActor,
+  reactivateBusinessActor,
+  deleteBusinessActor,
+  getBusinessActor,
   listActorRoles,
 } from "@/lib/services/business-actor-service";
+import { syncFormulasForActor } from "@/lib/services/formula-service";
+import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
@@ -51,6 +58,7 @@ export interface RingkasanKaryawan {
   tipe_komponen: string[];
   saldo_pinjaman: number;
   profit_share_percent: number | null;
+  is_active: number;
 }
 
 /**
@@ -58,10 +66,12 @@ export interface RingkasanKaryawan {
  * komponen kompensasi aktif, tipe-tipe komponennya, dan saldo pinjaman.
  * Join di memori untuk menghindari N+1.
  */
-export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]> {
+export async function listRingkasanKaryawanAction(
+  includeInactive = false
+): Promise<RingkasanKaryawan[]> {
   try {
     const [actors, roles] = await Promise.all([
-      listBusinessActors({ includeInactive: false }),
+      listBusinessActors({ includeInactive }),
       listActorRoles(),
     ]);
     const groupByCode = new Map(roles.map((r) => [r.role_code, r.role_group]));
@@ -79,6 +89,7 @@ export async function listRingkasanKaryawanAction(): Promise<RingkasanKaryawan[]
         tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
         saldo_pinjaman: saldo,
         profit_share_percent: a.profit_share_percent,
+        is_active: a.is_active,
       });
     }
     return hasil;
@@ -179,6 +190,122 @@ export async function tambahKaryawanAction(input: {
     return { success: true, actor_id: created.data.id, nama: created.data.display_name };
   } catch (error) {
     console.error("tambahKaryawanAction error:", error);
+    throw error;
+  }
+}
+
+// ── Bagi hasil per orang (sumber kebenaran: pegawai.profit_share_percent) ─────
+// Bagi hasil bisa diatur dari modal Karyawan maupun tab Pengurus; keduanya
+// menulis ke kolom yang sama agar tidak ada duplikasi orang.
+
+/** Info bagi hasil satu orang + sisa jatah yang masih tersedia (hard cap 100%). */
+export async function getInfoBagiHasilAction(actorId: string): Promise<{
+  persen: number | null;
+  sisa: number;
+}> {
+  try {
+    const actors = await listBusinessActors({ includeInactive: false });
+    const self = actors.find((a) => a.id === actorId) ?? null;
+    // Sisa = 100 − Σ(bagi hasil orang aktif LAIN). Jatah orang ini sendiri
+    // tidak dihitung agar field-nya bisa menampilkan nilai saat ini + ruang sisa.
+    const terpakaiLain = actors
+      .filter((a) => a.id !== actorId)
+      .reduce((sum, a) => sum + (a.profit_share_percent ?? 0), 0);
+    return {
+      persen: self?.profit_share_percent ?? null,
+      sisa: Math.max(0, 100 - terpakaiLain),
+    };
+  } catch (error) {
+    console.error("getInfoBagiHasilAction error:", error);
+    return { persen: null, sisa: 100 };
+  }
+}
+
+/** Set/ubah bagi hasil seseorang dengan hard cap 100%. persen=null menghapus bagi hasil. */
+export async function setBagiHasilAction(
+  actorId: string,
+  persen: number | null
+): Promise<{ success: true }> {
+  try {
+    await requireAdminOrManager();
+    if (persen !== null) {
+      const actors = await listBusinessActors({ includeInactive: false });
+      const terpakaiLain = actors
+        .filter((a) => a.id !== actorId)
+        .reduce((sum, a) => sum + (a.profit_share_percent ?? 0), 0);
+      const sisa = Math.max(0, 100 - terpakaiLain);
+      if (persen > sisa) {
+        throw new Error(
+          `Bagi hasil ${persen}% melebihi sisa jatah ${sisa}%. Total semua orang maksimal 100%.`
+        );
+      }
+    }
+    const res = await updateBusinessActor(actorId, {
+      profit_share_percent: persen,
+    });
+    if (res.error) throw new Error(res.error.message);
+    // Sinkron rumus bagi hasil + recalc buku kas supaya Ringkasan Pengurus ikut.
+    await syncFormulasForActor(actorId);
+    await recalculateCashbookIfAvailable();
+    return { success: true };
+  } catch (error) {
+    console.error("setBagiHasilAction error:", error);
+    throw error;
+  }
+}
+
+// ── Nonaktif / Aktif / Hapus karyawan ────────────────────────────────────────
+export async function nonaktifkanKaryawanAction(actorId: string) {
+  try {
+    await requireAdminOrManager();
+    const res = await deactivateBusinessActor(actorId);
+    if (res.error) throw new Error(res.error.message);
+    await syncFormulasForActor(actorId);
+    await recalculateCashbookIfAvailable();
+    return { success: true };
+  } catch (error) {
+    console.error("nonaktifkanKaryawanAction error:", error);
+    throw error;
+  }
+}
+
+export async function aktifkanKaryawanAction(actorId: string) {
+  try {
+    await requireAdminOrManager();
+    const res = await reactivateBusinessActor(actorId);
+    if (res.error) throw new Error(res.error.message);
+    await syncFormulasForActor(actorId);
+    await recalculateCashbookIfAvailable();
+    return { success: true };
+  } catch (error) {
+    console.error("aktifkanKaryawanAction error:", error);
+    throw error;
+  }
+}
+
+export async function hapusKaryawanAction(actorId: string) {
+  try {
+    await requireAdminOrManager();
+    // Cegah hapus bila masih ada komponen gaji atau saldo kasbon berjalan.
+    const komponen = await listKomponen(actorId);
+    if (komponen.some((k) => Number(k.aktif_status ?? 1) === 1)) {
+      throw new Error(
+        "Tidak bisa dihapus: karyawan masih punya komponen gaji aktif. Hapus komponennya dulu atau nonaktifkan saja."
+      );
+    }
+    const saldo = await hitungSaldoPinjaman(actorId);
+    if (saldo !== 0) {
+      throw new Error(
+        "Tidak bisa dihapus: karyawan masih punya saldo kasbon berjalan. Lunasi dulu atau nonaktifkan saja."
+      );
+    }
+    const orang = await getBusinessActor(actorId);
+    const res = await deleteBusinessActor(actorId);
+    if (res.error) throw new Error(res.error.message);
+    await recalculateCashbookIfAvailable();
+    return { success: true, nama: orang?.display_name ?? "" };
+  } catch (error) {
+    console.error("hapusKaryawanAction error:", error);
     throw error;
   }
 }
