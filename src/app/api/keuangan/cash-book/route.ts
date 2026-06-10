@@ -34,8 +34,9 @@ export async function GET() {
 
     const cashBooks =
       (await db.queryRaw(
-        `SELECT * FROM keuangan 
-         WHERE diarsipkan_pada IS NULL 
+        `SELECT * FROM keuangan
+         WHERE diarsipkan_pada IS NULL
+           AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
          ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
         []
       )) || [];

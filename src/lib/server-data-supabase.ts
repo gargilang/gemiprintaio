@@ -22,6 +22,7 @@ export async function fetchKeuanganCashBookListActive(): Promise<
     .from("keuangan")
     .select("*")
     .is("diarsipkan_pada", null)
+    .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
     .order("urutan_tampilan", { ascending: false })
     .order("dibuat_pada", { ascending: false });
   if (error) throw error;
