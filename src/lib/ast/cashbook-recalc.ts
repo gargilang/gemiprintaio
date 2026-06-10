@@ -158,15 +158,22 @@ export function computeCashbookRecalculationUpdates(
         partners: partnerMap,
         groupKeys,
       };
+      let value: OutputRow[string];
       try {
-        currentOutputs[formula.column] = evaluate(formula.ast, ctx);
+        value = evaluate(formula.ast, ctx);
       } catch (err) {
         if (err instanceof SearchNotFoundError || err instanceof FormulaEvalError) {
-          currentOutputs[formula.column] = 0;
+          value = 0;
         } else {
           throw err;
         }
       }
+      currentOutputs[formula.column] = value;
+      // Indeks juga dengan semantic key supaya formula berikutnya di baris yang
+      // sama bisa membaca lewat outputRef("laba_bersih") — bukan cuma huruf
+      // kolom "K". Tanpa ini, bagi hasil/kasbon/bonus selalu membaca 0.
+      const fKey = resolveFormulaKey(formula);
+      if (fKey && fKey !== formula.column) currentOutputs[fKey] = value;
     }
 
     const updates: Record<string, number> = {};

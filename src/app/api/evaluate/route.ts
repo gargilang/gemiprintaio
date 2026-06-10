@@ -72,10 +72,21 @@ export async function POST(request: NextRequest) {
 
     const outputs = evaluateDataset(
       sanitizedRows,
-      formulas.map((f: { column: string; ast: unknown }) => ({
-        column: f.column,
-        ast: f.ast as never,
-      })),
+      formulas.map(
+        (f: {
+          column: string;
+          ast: unknown;
+          formulaKey?: string;
+          dbColumn?: string | null;
+          formulaGroup?: string;
+        }) => ({
+          column: f.column,
+          ast: f.ast as never,
+          formulaKey: f.formulaKey,
+          dbColumn: f.dbColumn,
+          formulaGroup: f.formulaGroup,
+        })
+      ),
       partners
     );
 

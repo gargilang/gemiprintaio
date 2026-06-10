@@ -26,7 +26,7 @@ export async function GET() {
         saldo: latestMap.saldo ?? 0,
         laba_bersih: latestMap.laba_bersih ?? 0,
         modal_kas: latestMap.modal_kas ?? 0,
-        piutang_kas: latestMap.piutang_kas ?? 0,
+        saldo_kasbon: latestMap.saldo_kasbon ?? 0,
         kas: latestMap.kas ?? 0,
       };
       return NextResponse.json({ cashBooks, systemMetrics });
@@ -47,7 +47,7 @@ export async function GET() {
       saldo: latestMap.saldo ?? 0,
       laba_bersih: latestMap.laba_bersih ?? 0,
       modal_kas: latestMap.modal_kas ?? 0,
-      piutang_kas: latestMap.piutang_kas ?? 0,
+      saldo_kasbon: latestMap.saldo_kasbon ?? 0,
       kas: latestMap.kas ?? 0,
     };
 

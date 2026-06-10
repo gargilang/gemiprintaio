@@ -307,10 +307,19 @@ export function collectDependencies(node: ASTNode, out = new Set<string>()): Set
  * formulas keep their original relative order and read 0 for cycle members.
  */
 export function sortFormulasByDependency<
-  T extends { column: string; ast: ASTNode }
+  T extends { column: string; ast: ASTNode; formulaKey?: string; dbColumn?: string | null }
 >(formulas: T[]): T[] {
+  // Indeks formula dengan huruf kolom DAN semantic key (formulaKey / dbColumn).
+  // Formula actor (bagi hasil/kasbon/bonus) merujuk formula lain via
+  // outputRef("laba_bersih") — sebuah formulaKey, bukan huruf kolom — jadi
+  // pemetaan dependensi harus mengenali kedua bentuk, kalau tidak laba tidak
+  // terurut sebelum bagi hasil dan bagi hasil membaca 0.
   const byColumn = new Map<string, T>();
-  for (const f of formulas) byColumn.set(f.column, f);
+  for (const f of formulas) {
+    byColumn.set(f.column, f);
+    if (f.formulaKey && !byColumn.has(f.formulaKey)) byColumn.set(f.formulaKey, f);
+    if (f.dbColumn && !byColumn.has(f.dbColumn)) byColumn.set(f.dbColumn, f);
+  }
 
   const visited = new Set<string>();
   const visiting = new Set<string>();
@@ -508,7 +517,13 @@ function computeAggregation(
  */
 export function evaluateDataset(
   rows: InputRow[],
-  formulas: Array<{ column: string; ast: ASTNode; formulaGroup?: string }>,
+  formulas: Array<{
+    column: string;
+    ast: ASTNode;
+    formulaGroup?: string;
+    formulaKey?: string;
+    dbColumn?: string | null;
+  }>,
   partners: PartnerDefinition[] = []
 ): OutputRow[] {
   const ordered = sortFormulasByDependency(formulas);
@@ -545,8 +560,9 @@ export function evaluateDataset(
     const rowNum = i + 2;
 
     for (const formula of ordered) {
+      let value: Value;
       try {
-        const value = evaluate(formula.ast, {
+        value = evaluate(formula.ast, {
           row: rowNum,
           input,
           prevOutputs,
@@ -555,17 +571,23 @@ export function evaluateDataset(
           aggregates,
           groupKeys,
         });
-        currentOutputs[formula.column] = value;
       } catch (e) {
         if (
           e instanceof SearchNotFoundError ||
           e instanceof FormulaEvalError
         ) {
-          currentOutputs[formula.column] = 0;
+          value = 0;
         } else {
           throw e;
         }
       }
+      currentOutputs[formula.column] = value;
+      // Indeks juga dengan semantic key (formulaKey / dbColumn) supaya formula
+      // lain di baris yang sama bisa membaca lewat outputRef("laba_bersih"),
+      // bukan cuma huruf kolom. Tanpa ini formula actor (bagi hasil/kasbon/
+      // bonus) yang merujuk formula sistem selalu membaca 0.
+      const fKey = formula.formulaKey || formula.dbColumn || undefined;
+      if (fKey && fKey !== formula.column) currentOutputs[fKey] = value;
     }
 
     out.push(currentOutputs);

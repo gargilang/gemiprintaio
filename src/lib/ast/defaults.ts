@@ -210,32 +210,34 @@ const astModalKas: ASTNode = iff(
 );
 
 /**
- * M: PIUTANG KAS (KASBON)
- *   Akumulasi running balance dari transaksi berkategori "KASBON".
- *   Kasbon keluar = kredit (piutang naik), kasbon dibayar = debit (piutang turun).
- *   = IF(C == "KASBON",
- *        IF(ROW() == 2, E - D, piutang_kas_prev + E - D),
- *        IF(ROW() == 2, 0, piutang_kas_prev))
+ * M: SALDO KASBON
+ *   Akumulasi running balance dari transaksi berkategori "PINJAMAN_KARYAWAN".
+ *   Kasbon keluar (TARIK) = kredit (saldo naik), kasbon dibayar/dipotong
+ *   (BAYAR_TUNAI / POTONG_GAJI) = debit (saldo turun). Cermin dari ledger
+ *   pinjaman_karyawan — AST adalah sumber kebenaran kolom buku kas.
+ *   = IF(C == "PINJAMAN_KARYAWAN",
+ *        IF(ROW() == 2, E - D, saldo_kasbon_prev + E - D),
+ *        IF(ROW() == 2, 0, saldo_kasbon_prev))
  */
-const astPiutangKas: ASTNode = iff(
-  op("=", col("C"), lit("KASBON")),
+const astSaldoKasbon: ASTNode = iff(
+  op("=", col("C"), lit("PINJAMAN_KARYAWAN")),
   iff(
     isFirstRow(),
     op("-", col("E"), col("D")),
-    op("-", op("+", prev("piutang_kas"), col("E")), col("D"))
+    op("-", op("+", prev("saldo_kasbon"), col("E")), col("D"))
   ),
-  iff(isFirstRow(), lit(0), prev("piutang_kas"))
+  iff(isFirstRow(), lit(0), prev("saldo_kasbon"))
 );
 
 /**
  * N: KAS
  *   Total kas perusahaan yang masih di tangan (belum dipinjam).
- *   = Modal Kas - Piutang Kas
+ *   = Modal Kas - Saldo Kasbon
  */
 const astKas: ASTNode = op(
   "-",
   cur("modal_kas"),
-  cur("piutang_kas")
+  cur("saldo_kasbon")
 );
 
 export const DEFAULT_FORMULAS: FormulaDefinition[] = [
@@ -325,17 +327,17 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
   },
   {
     id: "formula-piutang-kas",
-    name: "Piutang Kas",
-    column: "piutang_kas",
+    name: "Saldo Kasbon",
+    column: "saldo_kasbon",
     dbColumn: null,
-    formulaKey: "piutang_kas",
+    formulaKey: "saldo_kasbon",
     formulaGroup: "summary",
     actorId: null,
-    ast: astPiutangKas,
+    ast: astSaldoKasbon,
     enabled: true,
     isSystem: true,
     displayOrder: 70,
-    description: "Total kasbon aktif yang sedang dipinjam pegawai.",
+    description: "Total kasbon aktif yang sedang dipinjam karyawan.",
   },
   {
     id: "formula-kas",
@@ -349,7 +351,7 @@ export const DEFAULT_FORMULAS: FormulaDefinition[] = [
     enabled: true,
     isSystem: true,
     displayOrder: 80,
-    description: "Total kas perusahaan: Modal Kas + Piutang Kas.",
+    description: "Total kas perusahaan: Modal Kas − Saldo Kasbon.",
   },
 ];
 
