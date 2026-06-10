@@ -15,7 +15,7 @@ export type ColumnRuleType =
   | "profit_share";
 
 export interface KasbonConditions {
-  categories: string[]; // e.g. ["PRIBADI-A"] or ["INVESTOR","BIAYA"]
+  categories: string[]; // e.g. ["BIAYA"] or ["INVESTOR","BIAYA"]
   keperluan_contains: string | null; // substring match on keperluan (case-insensitive)
   amount: "kredit_minus_debit" | "debit_minus_kredit";
 }

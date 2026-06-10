@@ -14,7 +14,7 @@
 
 gemiprint adalah aplikasi internal percetakan (~2-5 pengguna, owner bukan programmer, komunikasi Bahasa Indonesia). Owner ingin modul ini cukup profesional untuk kelak dijual ke percetakan lain berkaryawan >10 orang.
 
-**Masalah yang dipecahkan:** Saat ini gemiprint tidak punya konsep "Gaji". Cara membayar karyawan (mis. "Cahaya") adalah lewat **kasbon**: tiap tarikan dicatat sebagai transaksi `keuangan` kategori `BIAYA` (mengurangi laba), dan kolom `kasbon_cahaya` di buku kas mengakumulasi totalnya. Saat kasbon melebihi gaji, sisanya ditulis manual sebagai "Sisa Kasbon Cahaya". Ini mencampur tiga hal yang dalam akuntansi profesional berbeda jenis akun (lihat bagian Prinsip Akuntansi).
+**Masalah yang dipecahkan:** Saat ini gemiprint tidak punya konsep "Gaji". Cara membayar karyawan (mis. seorang "Designer") adalah lewat **kasbon**: tiap tarikan dicatat sebagai transaksi `keuangan` kategori `BIAYA` (mengurangi laba), dan kolom `kasbon_<nama>` di buku kas mengakumulasi totalnya. Saat kasbon melebihi gaji, sisanya ditulis manual sebagai "Sisa Kasbon". Ini mencampur tiga hal yang dalam akuntansi profesional berbeda jenis akun (lihat bagian Prinsip Akuntansi).
 
 **Sistem pengurus yang ada sekarang** (`business_actors`): tiap orang punya tiga "rumus" opsional yang dicentang di form (`src/components/finance/pengaturan-keuangan/TabPengurus.tsx`) — Bagi Hasil (% laba), Kasbon (akumulasi dari kategori transaksi), Bonus (% dari omzet/laba). Tiap rumus aktif disinkronkan jadi satu kolom formula di buku kas via `syncFormulasForActor` (`src/lib/services/formula-service.ts`). Form-nya memaparkan mekanisme rumus, bukan konsep bisnis — owner merasa ini "terlalu eksplisit" dan tidak ramah untuk pengguna non-teknis / pembeli profesional.
 
@@ -27,7 +27,7 @@ Tiga lapisan baru, semua additive (tidak menghapus tabel lama):
 
 **1. Komponen Kompensasi** — definisi *berulang* per karyawan (apa yang membentuk gajinya). Tabel baru `komponen_kompensasi`:
 - `id`, `actor_id` (FK `business_actors`), `tipe` (`GAJI_POKOK` | `TUNJANGAN` | `KOMISI` | `BONUS`), `nama` (mis. "Gaji Pokok", "Tunjangan Transport", "Komisi Penjualan"), `metode` (`TETAP` = nominal tetap per periode | `PERSEN` = % dari sumber), `nominal` (untuk TETAP), `persen` + `sumber_formula_key` (untuk PERSEN, mis. 5% dari `omzet`), `aktif_status`, sync columns.
-- Contoh: marketing = `GAJI_POKOK` TETAP Rp X + `KOMISI` PERSEN 5% omzet. Designer = `GAJI_POKOK` TETAP + `BONUS` PERSEN dari output. Cahaya = `GAJI_POKOK` TETAP saja.
+- Contoh: marketing = `GAJI_POKOK` TETAP Rp X + `KOMISI` PERSEN 5% omzet. Designer = `GAJI_POKOK` TETAP + `BONUS` PERSEN dari output. Operator = `GAJI_POKOK` TETAP saja.
 
 **2. Payroll Run + Slip** — proses penggajian berkala.
 - `payroll_run`: `id`, `periode` (mis. "2026-06"), `tanggal_bayar`, `status` (`DRAFT` | `DIBAYAR` | `VOIDED`), `total_bruto`, `total_potongan_kasbon`, `total_neto`, `catatan`, `dibuat_oleh`, sync columns.
@@ -399,7 +399,7 @@ Agen baru: tanyakan ini ke owner di titik yang relevan (jangan asal pilih untuk 
 
 1. **Periode penggajian:** bulanan (default, sesuai pola sheet "2026-06") atau ada mingguan/harian untuk pekerja borongan? Default: bulanan.
 2. **Beban gaji vs kas:** apakah owner mau beban gaji penuh (bruto) diakui mengurangi laba saat run dibayar, ATAU cukup yang cair (neto)? Plan ini mengasumsikan **bruto sebagai beban** (akuntansi benar), tapi konfirmasi karena ini mengubah angka laba.
-3. **Migrasi data lama:** karyawan/kasbon yang sudah ada di sistem `business_actors` lama (Cahaya/Suri) — apakah dimigrasikan ke model baru, atau mulai bersih? Rekomendasi: sediakan tombol "konversi" opsional, jangan otomatis.
+3. **Migrasi data lama:** karyawan/kasbon yang sudah ada di sistem `business_actors` lama — apakah dimigrasikan ke model baru, atau mulai bersih? Rekomendasi: sediakan tombol "konversi" opsional, jangan otomatis.
 4. **Nasib sistem lama:** form "centang Bagi Hasil/Kasbon/Bonus" — setelah payroll jalan, apakah Bagi Hasil (pemilik) tetap di sistem lama (disarankan: ya, itu beda domain dari gaji karyawan) dan hanya Kasbon+Gaji yang pindah ke payroll? Plan ini mengasumsikan Bagi Hasil tetap di `business_actors`, payroll fokus ke karyawan.
 5. **Pajak/BPJS/PPh21:** di luar lingkup plan ini (fase lanjut). Konfirmasi tidak dibutuhkan untuk v1.
 

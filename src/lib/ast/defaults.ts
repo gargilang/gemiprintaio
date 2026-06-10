@@ -17,10 +17,10 @@
  *   J → saldo              → saldo
  *   K → laba_bersih        → laba_bersih
  *
- * Formula legacy spesifik-orang (Kasbon Suri, Bagi Hasil Suri, Bagi
- * Hasil Gemi, Kasbon Cahaya) dulu juga di-seed di sini. Mereka sudah
- * dihapus sebagai bagian dari refactor skalabilitas keuangan — bentuk
- * yang sama sekarang di-generate on-demand oleh `formula-service.ts`
+ * Formula legacy spesifik-orang (kasbon dan bagi hasil per individu)
+ * dulu juga di-seed di sini. Mereka sudah dihapus sebagai bagian dari
+ * refactor skalabilitas keuangan — bentuk yang sama sekarang
+ * di-generate on-demand oleh `formula-service.ts`
  * saat pengguna menambah business_actor dengan peran terkait.
  */
 

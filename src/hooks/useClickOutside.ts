@@ -44,6 +44,14 @@ export function useClickOutside<T extends HTMLElement = HTMLElement>(
       const target = event.target as Node | null;
       if (!target) return;
 
+      // Klik di dalam menu mengambang (portal MenuAksi, dropdown, dsb.) yang
+      // dirender lewat portal ke document.body BUKAN "klik di luar". Tanpa ini,
+      // mengeklik item menu kebab akan menutup modal di event mousedown sebelum
+      // onClick item sempat berjalan (membuat tombol aksi seolah tidak berfungsi).
+      if (target instanceof Element && target.closest("[data-floating-menu]")) {
+        return;
+      }
+
       // Click inside this modal — ignore.
       if (el.contains(target)) return;
 

@@ -235,6 +235,7 @@ function MenuKebab({
           <div
             ref={menuRef}
             role="menu"
+            data-floating-menu
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "fixed",

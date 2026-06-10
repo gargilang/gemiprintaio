@@ -13,8 +13,8 @@ function slugifyCode(name: string, maxLen = 24): string {
     .replace(/[\[\]"']/g, "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .toUpperCase()
     .slice(0, maxLen);
   return base || `KAT${Date.now().toString(36).toUpperCase().slice(-6)}`;

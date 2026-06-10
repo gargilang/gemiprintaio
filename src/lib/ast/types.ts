@@ -116,7 +116,7 @@ export function resolveFormulaKey(f: Pick<FormulaDefinition, "formulaKey" | "dbC
 export interface PartnerDefinition {
   id: string;
   name: string;
-  /** Optional category code linked to this partner (e.g. "PRIBADI-S"). */
+  /** Optional category code linked to this partner (e.g. "INVESTOR"). */
   category?: string | null;
   displayOrder: number;
 }

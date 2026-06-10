@@ -275,7 +275,7 @@ async function step2_linkFormulaActors(migratedActors) {
   let linked = 0;
   for (const f of formulas) {
     const key = f.formula_key || f.db_column || "";
-    // Extract actor slug from formula_key, e.g. "bagi_hasil_suri" → "suri"
+    // Extract actor slug from formula_key, e.g. "bagi_hasil_andi" → "andi"
     let actorSlug = null;
     if (key.startsWith("bagi_hasil_")) actorSlug = key.replace("bagi_hasil_", "");
     else if (key.startsWith("kasbon_")) actorSlug = key.replace("kasbon_", "");

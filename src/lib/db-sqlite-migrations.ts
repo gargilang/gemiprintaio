@@ -501,15 +501,6 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         AND COALESCE(is_system, 0) = 0
         AND formula_group IN ('profit_share', 'cash_advance', 'bonus')
     `);
-
-    // Hardcoded "PRIBADI-A" / "PRIBADI-S" categories were seeded for the
-    // original kasbon split. Remove them from new installs and existing
-    // databases — users can recreate categories with their own names via
-    // tab Kategori.
-    db.exec(`
-      DELETE FROM finance_category_definitions
-      WHERE category_code IN ('PRIBADI-A', 'PRIBADI-S')
-    `);
   }
 
   // Default formula + partner seeding happens lazily from

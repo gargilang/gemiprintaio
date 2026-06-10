@@ -22,8 +22,6 @@ export type KategoriTransaksi =
   | "TABUNGAN" // Savings
   | "HUTANG" // Debt (payable)
   | "PIUTANG" // Receivable
-  | "PRIBADI-A" // Personal Add
-  | "PRIBADI-S"
   | "MAKLON" // Subcontract printing payout (outbound subcontracted job)
   | "RETUR_PENJUALAN"
   | "RETUR_PENJUALAN_NONCASH"

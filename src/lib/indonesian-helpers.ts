@@ -33,8 +33,6 @@ export const kategoriTransaksiLabels: Partial<Record<KategoriTransaksi, string>>
   TABUNGAN: "Tabungan",
   HUTANG: "Hutang",
   PIUTANG: "Piutang",
-  "PRIBADI-A": "Pribadi (Tambah)",
-  "PRIBADI-S": "Pribadi (Kurang)",
   MAKLON: "Maklon",
 };
 
@@ -51,8 +49,6 @@ export const kategoriTransaksiIcons: Partial<Record<KategoriTransaksi, string>> 
   TABUNGAN: "🏦",
   HUTANG: "🔴",
   PIUTANG: "🟡",
-  "PRIBADI-A": "👤",
-  "PRIBADI-S": "👤",
   MAKLON: "🖨️",
 };
 
@@ -69,8 +65,6 @@ export const kategoriTransaksiColors: Partial<Record<KategoriTransaksi, string>>
   TABUNGAN: "blue",
   HUTANG: "red",
   PIUTANG: "yellow",
-  "PRIBADI-A": "gray",
-  "PRIBADI-S": "gray",
   MAKLON: "purple",
 };
 
@@ -166,20 +160,6 @@ export const kategoriTransaksiOptions = [
     color: "blue",
     group: "Lainnya",
   },
-  {
-    value: "PRIBADI-A" as KategoriTransaksi,
-    label: "Pribadi (Tambah)",
-    icon: "👤",
-    color: "gray",
-    group: "Pribadi",
-  },
-  {
-    value: "PRIBADI-S" as KategoriTransaksi,
-    label: "Pribadi (Kurang)",
-    icon: "👤",
-    color: "gray",
-    group: "Pribadi",
-  },
 ];
 
 // ============================================
@@ -212,7 +192,6 @@ export const kategoriTransaksiGroups = {
   Pengeluaran: ["BIAYA", "SUPPLY", "MAKLON"],
   Keuangan: ["HUTANG", "PIUTANG", "LUNAS"],
   Lainnya: ["INVESTOR", "SUBSIDI", "LABA", "KOMISI", "TABUNGAN"],
-  Pribadi: ["PRIBADI-A", "PRIBADI-S"],
 };
 
 // ============================================
@@ -227,12 +206,11 @@ export function isIncome(kategori: KategoriTransaksi): boolean {
     "LABA",
     "KOMISI",
     "PIUTANG",
-    "PRIBADI-A",
   ].includes(kategori);
 }
 
 export function isExpense(kategori: KategoriTransaksi): boolean {
-  return ["BIAYA", "SUPPLY", "HUTANG", "PRIBADI-S", "MAKLON"].includes(
+  return ["BIAYA", "SUPPLY", "HUTANG", "MAKLON"].includes(
     kategori
   );
 }

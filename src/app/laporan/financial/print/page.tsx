@@ -136,8 +136,6 @@ export default function PrintFinancialReport() {
       TABUNGAN: "#6366f1", // indigo-500
       HUTANG: "#f43f5e", // rose-500
       PIUTANG: "#84cc16", // lime-500
-      "PRIBADI-A": "#0ea5e9", // sky-500
-      "PRIBADI-S": "#ec4899", // pink-500
     };
     return colors[category] || "#6b7280"; // gray-500 sebagai default
   };

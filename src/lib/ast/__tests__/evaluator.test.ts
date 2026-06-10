@@ -11,11 +11,12 @@ import {
 } from "../types";
 
 // ── Legacy person formula fixtures ──────────────────────────────────────────
-// These reproduce the original Google Sheets behaviour for columns L (Kasbon
-// Suri), M (Bagi Hasil Suri), N (Bagi Hasil Gemi), O (Kasbon Cahaya). They
-// are NOT seeded in production any more — the same shapes are now generated
-// dynamically from `pegawai` via `formula-service.ts`. They live
-// here purely so the engine's behaviour stays verifiable end-to-end.
+// These reproduce the original Google Sheets behaviour for the per-person
+// columns L (Kasbon mitra), M (Bagi Hasil mitra), N (Bagi Hasil pemilik),
+// O (Kasbon karyawan). They are NOT seeded in production any more — the same
+// shapes are now generated dynamically from `pegawai` via
+// `formula-service.ts`. They live here purely so the engine's behaviour stays
+// verifiable end-to-end.
 
 const lit = (value: string | number | boolean): ASTNode => ({
   type: "literal",
@@ -64,8 +65,8 @@ const opFn = (
 
 const isFirstRow = (): ASTNode => opFn("=", rowFn(), lit(2));
 
-const astKasbonSuri: ASTNode = ifFn(
-  opFn("=", colRef("C"), lit("PRIBADI-S")),
+const astKasbonMitra: ASTNode = ifFn(
+  opFn("=", colRef("C"), lit("KASBON_MITRA")),
   ifFn(
     isFirstRow(),
     ifFn(colRef("D"), negFn(colRef("D")), colRef("E")),
@@ -78,13 +79,13 @@ const astKasbonSuri: ASTNode = ifFn(
   ifFn(isFirstRow(), lit(0), prevOut("L"))
 );
 
-const astBagiHasilSuri: ASTNode = opFn(
+const astBagiHasilMitra: ASTNode = opFn(
   "-",
   opFn("/", curOut("K"), lit(2)),
   curOut("L")
 );
 
-const astBagiHasilGemi: ASTNode = opFn(
+const astBagiHasilPemilik: ASTNode = opFn(
   "-",
   opFn(
     "+",
@@ -102,9 +103,9 @@ const astBagiHasilGemi: ASTNode = opFn(
   ifFn(opFn("=", colRef("C"), lit("INVESTOR")), colRef("E"), lit(0))
 );
 
-const astKasbonCahaya: ASTNode = ifFn(
+const astKasbonKaryawan: ASTNode = ifFn(
   andFn(
-    notFn(isErrFn(srch(partnerRef("partner-cahaya"), colRef("F")))),
+    notFn(isErrFn(srch(partnerRef("partner-karyawan"), colRef("F")))),
     orFn(
       opFn("=", colRef("C"), lit("INVESTOR")),
       opFn("=", colRef("C"), lit("BIAYA"))
@@ -123,14 +124,14 @@ const astKasbonCahaya: ASTNode = ifFn(
 );
 
 const LEGACY_PERSON_FORMULAS = [
-  { column: "L", ast: astKasbonSuri },
-  { column: "M", ast: astBagiHasilSuri },
-  { column: "N", ast: astBagiHasilGemi },
-  { column: "O", ast: astKasbonCahaya },
+  { column: "L", ast: astKasbonMitra },
+  { column: "M", ast: astBagiHasilMitra },
+  { column: "N", ast: astBagiHasilPemilik },
+  { column: "O", ast: astKasbonKaryawan },
 ] as const;
 
 const LEGACY_TEST_PARTNERS: PartnerDefinition[] = [
-  { id: "partner-cahaya", name: "Cahaya", category: null, displayOrder: 10 },
+  { id: "partner-karyawan", name: "Karyawan", category: null, displayOrder: 10 },
 ];
 
 function emptyCtx(input: Partial<InputRow> = {}) {
@@ -173,10 +174,10 @@ describe("AST evaluator — atomic nodes", () => {
 
   test("partnerRef returns partner name", () => {
     const ctx = emptyCtx();
-    ctx.partners = { p1: { id: "p1", name: "Cahaya", displayOrder: 1 } };
+    ctx.partners = { p1: { id: "p1", name: "Karyawan", displayOrder: 1 } };
     expect(
       evaluate({ type: "partnerRef", partnerId: "p1" }, ctx)
-    ).toBe("Cahaya");
+    ).toBe("Karyawan");
   });
 });
 
@@ -303,10 +304,10 @@ describe("Default formula dataset — reproduces current cashbook logic", () => 
     { C: "BIAYA", D: 0, E: 150_000, F: "Listrik" },
     { C: "SUPPLY", D: 0, E: 200_000, F: "Tinta" },
     { C: "HPP", D: 0, E: 120_000, F: "HPP INV-001" },
-    { C: "INVESTOR", D: 500_000, E: 0, F: "Setoran Cahaya" },
-    { C: "PRIBADI-S", D: 0, E: 50_000, F: "Kasbon Suri" },
+    { C: "INVESTOR", D: 500_000, E: 0, F: "Setoran modal" },
+    { C: "KASBON_MITRA", D: 0, E: 50_000, F: "Kasbon mitra" },
     { C: "PIUTANG", D: 250_000, E: 0, F: "Pelunasan Andi" },
-    { C: "BIAYA", D: 0, E: 75_000, F: "Pembelian Cahaya" },
+    { C: "BIAYA", D: 0, E: 75_000, F: "Pembelian karyawan" },
   ];
 
   // Reference (hand-rolled) computation — translates the current cashbook
@@ -361,7 +362,7 @@ describe("Default formula dataset — reproduces current cashbook logic", () => 
       const K = G - (H + I);
 
       // L
-      if (C === "PRIBADI-S") {
+      if (C === "KASBON_MITRA") {
         if (isFirst) {
           L = D ? -D : E;
         } else {
@@ -381,9 +382,9 @@ describe("Default formula dataset — reproduces current cashbook logic", () => 
       if (C === "INVESTOR") N += D - E;
 
       // O
-      const hasCahaya = F.includes("cahaya");
+      const hasKaryawan = F.includes("karyawan");
       const catMatch = C === "INVESTOR" || C === "BIAYA";
-      if (hasCahaya && catMatch) {
+      if (hasKaryawan && catMatch) {
         if (isFirst) {
           O = D ? -D : E;
         } else {

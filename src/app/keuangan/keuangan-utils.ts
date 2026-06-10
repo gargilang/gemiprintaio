@@ -40,8 +40,6 @@ const FALLBACK_KATEGORI_COLORS: Record<string, KategoriColor> = {
   TABUNGAN: { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-800", border: "border-indigo-300" },
   HUTANG: { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-300" },
   PIUTANG: { bg: "bg-lime-100", text: "text-lime-800", border: "border-lime-300" },
-  "PRIBADI-A": { bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-300" },
-  "PRIBADI-S": { bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-800", border: "border-pink-300" },
 };
 
 const DEFAULT_KATEGORI_COLOR: KategoriColor = {

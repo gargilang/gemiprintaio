@@ -500,8 +500,6 @@ const ALLOWED_CATEGORIES = new Set([
   "TABUNGAN",
   "HUTANG",
   "PIUTANG",
-  "PRIBADI-A",
-  "PRIBADI-S",
   "MAKLON",
 ]);
 
@@ -510,8 +508,6 @@ function normalizeCategory(raw: any): string | null {
   let v = String(raw).trim();
   if (!v) return null;
   v = v.toUpperCase().replace(/\s+/g, "-").replace(/[–—]/g, "-");
-  if (v === "PRIBADI-A" || v === "PRIBADI-ANWAR") v = "PRIBADI-A";
-  if (v === "PRIBADI-S" || v === "PRIBADI-SURI") v = "PRIBADI-S";
   return ALLOWED_CATEGORIES.has(v) ? v : null;
 }
 
