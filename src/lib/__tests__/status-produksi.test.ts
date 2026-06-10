@@ -6,6 +6,7 @@ import {
   deriveOrderStatus,
   adalahStatusTerminal,
 } from "@/lib/produksi/status-produksi";
+import { itemStatusSchema, orderStatusSchema } from "@/lib/schemas/produksi";
 
 describe("status-produksi konstanta", () => {
   it("urutan cetak: MENUNGGU pertama, DIBATALKAN terakhir", () => {
@@ -74,5 +75,19 @@ describe("deriveOrderStatus", () => {
   });
   it("daftar kosong -> MENUNGGU", () => {
     expect(deriveOrderStatus([])).toBe("MENUNGGU");
+  });
+});
+
+describe("schema produksi", () => {
+  it("itemStatusSchema menerima nilai valid", () => {
+    expect(itemStatusSchema.safeParse("PESAN_KURIR").success).toBe(true);
+    expect(itemStatusSchema.safeParse("PRINTING").success).toBe(true);
+  });
+  it("itemStatusSchema menolak nilai ngawur", () => {
+    expect(itemStatusSchema.safeParse("NGAWUR").success).toBe(false);
+  });
+  it("orderStatusSchema valid/invalid", () => {
+    expect(orderStatusSchema.safeParse("PROSES").success).toBe(true);
+    expect(orderStatusSchema.safeParse("PRINTING").success).toBe(false);
   });
 });
