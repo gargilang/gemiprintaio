@@ -31,6 +31,12 @@ export interface ProductionOrder {
   diperbarui_pada?: string;
   diselesaikan_pada?: string | null;
   status_override_manual?: boolean;
+  /**
+   * True bila penjualan induk sudah dibatalkan (status_transaksi = 'VOIDED').
+   * Dipakai UI untuk mengunci kontrol (ubah status/pelanggan/cetak) karena
+   * server menolak perubahan pada SPK milik penjualan VOID.
+   */
+  penjualan_dibatalkan?: boolean;
   items?: ProductionItem[];
 }
 
@@ -241,6 +247,8 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
           ...order,
           nomor_faktur: penjualan?.nomor_faktur || undefined,
           pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
+          penjualan_dibatalkan:
+            (penjualan as any)?.status_transaksi === "VOIDED",
           items: itemsWithFinishing,
         };
       });
@@ -373,6 +381,7 @@ export async function getProductionOrderById(
       ...order,
       nomor_faktur: penjualan?.nomor_faktur || undefined,
       pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
+      penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
       items: itemsWithFinishing,
     };
   } catch (error) {
