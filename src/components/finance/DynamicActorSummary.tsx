@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Per-person finance summary panel — fixed 3-column layout.
+ * Panel ringkasan keuangan per orang — tata letak 3 kolom tetap.
  *
- * Uses SWR with the persistent cache provider so data is shown instantly
- * on revisit (no spinner after first load). Revalidates in background.
+ * Memakai SWR dengan penyedia cache persisten sehingga data langsung tampil
+ * saat dikunjungi ulang (tanpa spinner setelah muat pertama). Revalidasi di latar.
  */
 
 import { useMemo, useState } from "react";
@@ -47,6 +47,7 @@ interface Props {
 }
 
 async function fetchSummary(url: string): Promise<SummaryV2Response> {
+  // Ambil ringkasan dari API summary-v2 dan lempar pesan ramah bila gagal.
   const r = await fetch(url);
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body?.error || "Gagal memuat ringkasan");
@@ -54,6 +55,7 @@ async function fetchSummary(url: string): Promise<SummaryV2Response> {
 }
 
 function sumGroup(
+  // Jumlahkan semua kolom rumus dalam satu grup; null bila grup tak punya nilai.
   metrics: Record<string, number | null>,
   columns: SummaryColumn[],
   group: FormulaGroup
@@ -87,11 +89,11 @@ export default function DynamicActorSummary({
   const [collapsed, setCollapsed] = useState(true);
 
   const url = `/api/keuangan/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
-  // Use a stable SWR key based only on the URL + explicit refresh tick.
-  // Avoid embedding lastCashBookLoadAt here — that changes on every cashbook
-  // reload and would bust the cache unnecessarily, causing a visible spinner
-  // on every transaction add/edit. refreshKey (actorSummaryTick) only
-  // increments when actor/formula settings actually change.
+  // Pakai SWR key stabil berdasarkan URL + tick refresh eksplisit saja.
+  // Jangan sematkan lastCashBookLoadAt di sini — itu berubah tiap kali buku kas
+  // dimuat ulang dan akan membusukkan cache tanpa perlu, memunculkan spinner
+  // di setiap tambah/edit transaksi. refreshKey (actorSummaryTick) hanya
+  // bertambah saat pengaturan pengurus/rumus benar-benar berubah.
   const swrKey = refreshKey != null && refreshKey !== "" && refreshKey !== 0
     ? `${url}__r${refreshKey}`
     : url;
@@ -114,7 +116,7 @@ export default function DynamicActorSummary({
   if (isLoading && !data) {
     return (
       <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
-        Memuat ringkasan pegawai…
+        Memuat ringkasan pengurus…
       </div>
     );
   }
@@ -137,9 +139,9 @@ export default function DynamicActorSummary({
       <div className="mb-6 space-y-2">
         <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
           <span>
-            Belum ada pegawai terdaftar. Tambah di{" "}
-            <strong>Pengaturan → Pegawai</strong>, lalu centang bagi hasil, kasbon,
-            atau bonus agar angka muncul di kolom di bawah.
+            Belum ada pengurus terdaftar. Tambah di{" "}
+            <strong>Pengaturan → Pengurus</strong>, lalu atur bagi hasil agar
+            angka muncul di kolom di bawah.
           </span>
           {onOpenPeopleSettings && (
             <button
@@ -147,7 +149,7 @@ export default function DynamicActorSummary({
               onClick={onOpenPeopleSettings}
               className="text-blue-700 dark:text-blue-300 hover:text-blue-900 font-semibold underline whitespace-nowrap"
             >
-              Buka Pengaturan → Pegawai
+              Buka Pengaturan → Pengurus
             </button>
           )}
         </div>
@@ -172,9 +174,9 @@ export default function DynamicActorSummary({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-            Pegawai Usaha
+            Pengurus Usaha
             <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-              ({actorRows.length} pegawai)
+              ({actorRows.length} pengurus)
             </span>
           </button>
           {onOpenPeopleSettings && (
@@ -182,8 +184,8 @@ export default function DynamicActorSummary({
               type="button"
               onClick={onOpenPeopleSettings}
               className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-              title="Pengaturan → Pegawai"
-              aria-label="Pengaturan Pegawai"
+              title="Pengaturan → Pengurus"
+              aria-label="Pengaturan Pengurus"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -232,7 +234,7 @@ export default function DynamicActorSummary({
                         <div className="font-semibold text-gray-900 dark:text-slate-100 truncate">{row.displayName}</div>
                         {noMetrics && (
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            Belum ada rumus — edit di Pengaturan → Pegawai
+                            Belum ada rumus — edit di Pengaturan → Pengurus
                           </p>
                         )}
                       </td>
@@ -265,13 +267,13 @@ export default function DynamicActorSummary({
 
       {legacyCount > 0 && (
         <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
-          {legacyCount} rumus lama masih aktif di belakang layar. Kelola pegawai di{" "}
+          {legacyCount} rumus lama masih aktif di belakang layar. Kelola pengurus di{" "}
           {onOpenPeopleSettings ? (
             <button type="button" onClick={onOpenPeopleSettings} className="underline font-semibold">
-              Pengaturan → Pegawai
+              Pengaturan → Pengurus
             </button>
           ) : (
-            <strong>Pengaturan → Pegawai</strong>
+            <strong>Pengaturan → Pengurus</strong>
           )}
           , lalu nonaktifkan sisa rumus lama di Pengaturan → Kolom bila sudah tidak dipakai.
         </p>
