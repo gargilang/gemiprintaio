@@ -85,6 +85,21 @@ export default function POSPage() {
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
   const customers = safePos.customers ?? [];
+
+  // Status PKP toko — menentukan apakah tombol Faktur Pajak (PPN) boleh muncul.
+  // Penjual non-PKP secara aturan tidak boleh menerbitkan faktur pajak, jadi
+  // tombolnya disembunyikan sampai toko diaktifkan PKP di Pengaturan → PPN.
+  const { data: statusPkpData } = useCachedData<number>(
+    "pos-status-pkp",
+    async () => {
+      const { getShopSettingsAction } = await import(
+        "@/app/pengaturan/actions"
+      );
+      const s = await getShopSettingsAction();
+      return Number(s?.status_pkp) === 1 ? 1 : 0;
+    }
+  );
+  const tokoPkp = statusPkpData === 1;
   // Stabilkan referensi array yang dipakai di useMemo (hindari dep berubah tiap render).
   const materials = useMemo(() => safePos.materials ?? [], [safePos.materials]);
   const sales = safePos.sales ?? [];
@@ -1724,25 +1739,27 @@ export default function POSPage() {
 
           {/* Right: Cart */}
           <div className="lg:col-span-1 space-y-3">
-            <button
-              type="button"
-              onClick={() => setShowPpnModal(true)}
-              className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
-                ppnFaktur
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
-                  : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
-              }`}
-            >
-              {ppnFaktur ? (
-                <>
-                  ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
-                  {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
-                  {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
-                </>
-              ) : (
-                <>+ Tambah Faktur Pajak (PPN)</>
-              )}
-            </button>
+            {tokoPkp && (
+              <button
+                type="button"
+                onClick={() => setShowPpnModal(true)}
+                className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                  ppnFaktur
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
+                    : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
+                }`}
+              >
+                {ppnFaktur ? (
+                  <>
+                    ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
+                    {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
+                    {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
+                  </>
+                ) : (
+                  <>+ Tambah Faktur Pajak (PPN)</>
+                )}
+              </button>
+            )}
             <KeranjangPOS
               cart={cart}
               roundCartPrices={roundCartPrices}
