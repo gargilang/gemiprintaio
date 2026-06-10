@@ -102,6 +102,30 @@ export async function listPeranKaryawanAction() {
   }
 }
 
+// ── Pengurus yang belum punya komponen gaji (kandidat untuk juga digaji) ──────
+// Dipakai modal Tambah Karyawan agar orang lama (mis. manager penerima bagi
+// hasil) bisa langsung diberi komponen gaji tanpa membuat data orang baru.
+export async function listPengurusBelumDigajiAction(): Promise<
+  { actor_id: string; nama: string; role_code: string }[]
+> {
+  try {
+    const actors = await listBusinessActors({ includeInactive: false });
+    const hasil: { actor_id: string; nama: string; role_code: string }[] = [];
+    for (const a of actors) {
+      // Hanya pengurus (punya bagi hasil) yang BELUM punya komponen gaji aktif.
+      if (a.profit_share_percent === null) continue;
+      const komponen = await listKomponen(a.id);
+      const adaKomponen = komponen.some((k) => Number(k.aktif_status ?? 1) === 1);
+      if (adaKomponen) continue;
+      hasil.push({ actor_id: a.id, nama: a.display_name, role_code: a.role_code });
+    }
+    return hasil;
+  } catch (error) {
+    console.error("listPengurusBelumDigajiAction error:", error);
+    throw error;
+  }
+}
+
 // ── Tambah karyawan baru (tanpa bagi hasil) ─────────────────────────────────
 export async function tambahKaryawanAction(input: {
   display_name: string;
