@@ -17,12 +17,15 @@ import {
   getRollVariantsForProductionItemAction,
   postProductionMaterialConsumptionAction,
   voidProductionMaterialConsumptionAction,
+  setOrderStatusSelesaiCascadeAction,
+  updateSaleCustomerAction,
+  getPelangganRingkasAction,
 } from "./actions";
 import {
   fetchSessionUser,
   getCachedSessionUser,
 } from "@/lib/client-session";
-import { useCachedData } from "@/lib/use-cached-data";
+import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import SpkDetailModal from "./components/SpkDetailModal";
 import { generateSPKHTML } from "./components/spk-print";
 import { getStatusColor, getPriorityColor } from "./components/spk-status";
@@ -59,6 +62,12 @@ export default function ProductionPage() {
   });
   const orders = ordersData ?? EMPTY_ORDERS;
   const loading = currentUser === null && ordersLoading;
+  const invalidate = useInvalidate();
+  const [showCustomerEditor, setShowCustomerEditor] = useState(false);
+  const [customerOptions, setCustomerOptions] = useState<
+    { id: string; nama: string }[]
+  >([]);
+  const [customerNameInput, setCustomerNameInput] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterPriority, setFilterPriority] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -193,13 +202,27 @@ export default function ProductionPage() {
     if (next) setSelectedOrder(next);
   };
 
-  const handleUpdateStatus = async (
-    orderId: string,
-    newStatus: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
-  ) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateProductionStatusAction(orderId, newStatus);
-      showMsg("success", "Status berhasil diperbarui");
+      if (newStatus === "SELESAI") {
+        const ok = window.confirm(
+          "Tandai semua item produksi sebagai Selesai?"
+        );
+        if (!ok) return;
+        const hasil = await setOrderStatusSelesaiCascadeAction(orderId);
+        if (hasil.terhalang.length > 0) {
+          const nama = hasil.terhalang.map((t) => t.nama).join(", ");
+          showMsg(
+            "error",
+            `Item berikut belum bisa diselesaikan karena bahan roll belum dikonfirmasi: ${nama}. Konfirmasi bahannya dulu di item tersebut.`
+          );
+        } else {
+          showMsg("success", "Semua item ditandai selesai");
+        }
+      } else {
+        await updateProductionStatusAction(orderId, newStatus);
+        showMsg("success", "Status berhasil diperbarui");
+      }
       await loadOrders();
       await refreshSelectedOrder();
     } catch (error) {
@@ -208,10 +231,7 @@ export default function ProductionPage() {
     }
   };
 
-  const handleUpdateItemStatus = async (
-    itemId: string,
-    newStatus: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI"
-  ) => {
+  const handleUpdateItemStatus = async (itemId: string, newStatus: string) => {
     try {
       await updateProductionItemStatusAction(itemId, { status: newStatus });
       showMsg("success", "Status item berhasil diperbarui");
@@ -220,6 +240,40 @@ export default function ProductionPage() {
     } catch (error) {
       console.error("Error updating item status:", error);
       showMsg("error", "Gagal memperbarui status item");
+    }
+  };
+
+  const handleOpenCustomerEditor = async () => {
+    if (!selectedOrder) return;
+    setCustomerNameInput(selectedOrder.pelanggan_nama || "");
+    if (customerOptions.length === 0) {
+      try {
+        const list = await getPelangganRingkasAction();
+        setCustomerOptions(list);
+      } catch {
+        // biarkan kosong; operator masih bisa ketik nama bebas
+      }
+    }
+    setShowCustomerEditor(true);
+  };
+
+  const handleSaveCustomerName = async (payload: {
+    pelanggan_id?: string | null;
+    pelanggan_nama_snapshot?: string | null;
+  }) => {
+    if (!selectedOrder) return;
+    try {
+      await updateSaleCustomerAction(selectedOrder.penjualan_id, payload);
+      showMsg("success", "Nama pelanggan disimpan");
+      setShowCustomerEditor(false);
+      // Sinkron dua arah: bust cache SPK + Riwayat Penjualan (sales ada di pos-init).
+      invalidate("production-orders");
+      invalidate("pos-init");
+      await loadOrders();
+      await refreshSelectedOrder();
+    } catch (error) {
+      console.error("Error saving customer name:", error);
+      showMsg("error", "Gagal menyimpan nama pelanggan");
     }
   };
 
@@ -653,8 +707,64 @@ export default function ProductionPage() {
           onPostConsumption={handlePostConsumption}
           onVoidConsumption={handleVoidConsumption}
           onUpdateOrderStatus={handleUpdateStatus}
+          onEditCustomer={handleOpenCustomerEditor}
           onPrint={handlePrintSPK}
         />
+      )}
+      {showCustomerEditor && selectedOrder && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCustomerEditor(false);
+          }}
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3">
+              Ubah Nama Pelanggan
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mb-2">
+              Ketik nama bebas, atau pilih pelanggan terdaftar dari daftar.
+            </p>
+            <input
+              list="spk-pelanggan-list"
+              value={customerNameInput}
+              onChange={(e) => setCustomerNameInput(e.target.value)}
+              placeholder="Nama pelanggan"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 mb-4"
+              autoFocus
+            />
+            <datalist id="spk-pelanggan-list">
+              {customerOptions.map((c) => (
+                <option key={c.id} value={c.nama} />
+              ))}
+            </datalist>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCustomerEditor(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nama = customerNameInput.trim();
+                  const match = customerOptions.find((c) => c.nama === nama);
+                  if (match) {
+                    handleSaveCustomerName({ pelanggan_id: match.id });
+                  } else {
+                    handleSaveCustomerName({ pelanggan_nama_snapshot: nama });
+                  }
+                }}
+                disabled={!customerNameInput.trim()}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold disabled:opacity-50"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
