@@ -8,8 +8,16 @@
 --   • penjualan.nomor_invoice -> nomor_faktur
 
 -- ── 1. Rename kolom utama di tabel penjualan ───────────────────────────────
-ALTER TABLE penjualan
-  RENAME COLUMN nomor_invoice TO nomor_faktur;
+-- Dibungkus DO block agar idempoten: cloud mungkin sudah memakai nomor_faktur.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'penjualan' AND column_name = 'nomor_invoice'
+  ) THEN
+    ALTER TABLE penjualan RENAME COLUMN nomor_invoice TO nomor_faktur;
+  END IF;
+END $$;
 
 -- ── 2. Rename constraint UNIQUE dan indeks supaya konsisten ────────────────
 DO $$

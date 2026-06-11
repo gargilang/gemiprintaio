@@ -218,7 +218,7 @@ BEGIN
   END IF;
 
   INSERT INTO penjualan (
-    id, nomor_invoice, pelanggan_id, pelanggan_nama_snapshot, pelanggan_kota,
+    id, nomor_faktur, pelanggan_id, pelanggan_nama_snapshot, pelanggan_kota,
     total_jumlah, jumlah_dibayar, jumlah_kembalian, metode_pembayaran,
     kasir_id, catatan, status_transaksi,
     kena_ppn, ppn_persen, ppn_metode, dpp_total, ppn_total,
@@ -226,7 +226,7 @@ BEGIN
     pelanggan_npwp_snapshot, pelanggan_alamat_npwp_snapshot,
     pelanggan_nama_npwp_snapshot
   ) VALUES (
-    sale_id, s->>'nomor_invoice', NULLIF(s->>'pelanggan_id', ''),
+    sale_id, s->>'nomor_faktur', NULLIF(s->>'pelanggan_id', ''),
     NULLIF(s->>'pelanggan_nama_snapshot', ''), NULLIF(s->>'pelanggan_kota', ''),
     v_total, COALESCE((s->>'jumlah_dibayar')::REAL, 0),
     COALESCE((s->>'jumlah_kembalian')::REAL, 0), s->>'metode_pembayaran',
@@ -303,7 +303,7 @@ BEGIN
         sale_id,
         item_id,
         NULL,
-        'Penjualan ' || COALESCE(s->>'nomor_invoice', sale_id),
+        'Penjualan ' || COALESCE(s->>'nomor_faktur', sale_id),
         NULLIF(s->>'kasir_id', '')
       );
     END IF;
@@ -397,7 +397,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'id', sale_id,
-    'nomor_invoice', s->>'nomor_invoice',
+    'nomor_faktur', s->>'nomor_faktur',
     'spk_number', COALESCE(prod->>'nomor_spk', ''),
     'dpp_total', v_dpp_total,
     'ppn_total', v_ppn_total,

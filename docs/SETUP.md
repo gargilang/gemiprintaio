@@ -1,270 +1,401 @@
 # Developer Setup Guide
 
-This guide helps you (or your AI agent) set up a fresh development machine for gemiprint. It covers both **Windows** and **macOS**, and is ordered from easiest to hardest.
+This guide helps you (or an AI agent) set up a fresh development machine for gemiprint.
+Primary platform is **Linux** (Ubuntu/Debian or Fedora/Arch). Windows and macOS notes are kept for reference.
 
-> **Tip for AI agents:** Run the commands in each section sequentially. If a step fails, report it to the user — they may need to install that dependency manually.
+> **Panduan untuk AI agent:** Jalankan perintah di setiap langkah secara berurutan. Jika
+> Cursor sudah login ke GitHub, Supabase, dan Vercel di browser-nya, agent bisa membuka
+> halaman kredensial secara langsung (URL tersedia di setiap langkah). Jangan berhenti
+> dan tanya kecuali ada error yang tidak bisa di-resolve sendiri.
+
+---
+
+## PENTING — Sebelum Menghapus Mesin Lama
+
+Jalankan checklist ini dari mesin lama sebelum menghapus OS:
+
+```bash
+# 1. Pastikan semua kode sudah di-push ke GitHub
+git status           # harus bersih atau semua sudah di-commit
+git push             # pastikan tidak ada yang tertinggal
+
+# 2. Cek apakah ada migration Supabase yang belum di-apply ke cloud
+#    (jalankan dari folder repo)
+npm run supabase:db:push
+# Atau jika Supabase CLI ada di PATH:
+# supabase db push --linked
+
+# 3. Simpan file kunci ini di luar repo (Google Drive / USB):
+#    - .env.local  (berisi semua secret)
+#    - ~/.tauri/gemiprint.key  (signing key untuk desktop release)
+#    - Backup akun: GitHub, Supabase, Vercel, GoDaddy login credentials
+```
 
 ---
 
 ## Quick Overview
 
-| Dependency | Required For | Install Method |
-|-----------|-------------|----------------|
-| Git | Everything | CLI / manual |
-| Node.js v22+ | Web app, Tauri | CLI / manual |
-| Rust + Cargo | Tauri desktop app | CLI |
-| Flutter SDK | Mobile + mobile web | CLI / manual |
-| Android Studio | Flutter Android builds | Manual |
-| Supabase CLI | Database migrations | CLI |
-| GitHub CLI | Releases, PR management | CLI |
+| Dependency | Diperlukan Untuk | Cara Install |
+|---|---|---|
+| Git | Semua | CLI |
+| Node.js v22+ | Web app, Tauri | nvm (direkomendasikan) |
+| Rust + Cargo | Tauri desktop app | rustup |
+| Flutter SDK | Mobile + mobile web | snap / manual |
+| Android Studio | Flutter Android builds | Manual (GUI) |
+| Supabase CLI | DB migrations | npm |
+| GitHub CLI | Release, PR management | apt / dnf |
+| Cursor IDE | Editor + AI agent | .deb / AppImage |
 
 ---
 
-## Step 1: Git
+## Langkah 1: Update Sistem & Install Git
 
-Git is likely already installed. Verify:
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl wget build-essential
 
+# Fedora / RHEL
+sudo dnf update -y
+sudo dnf install -y git curl wget
+
+# Arch / Manjaro
+sudo pacman -Syu git curl wget base-devel
+```
+
+Verifikasi:
 ```bash
 git --version
 ```
 
-**If not installed:**
-
-- **Windows:** Download from https://git-scm.com/download/win
-- **macOS:** Install via Xcode command line tools:
-  ```bash
-  xcode-select --install
-  ```
-
----
-
-## Step 2: Node.js (v22+)
-
+Konfigurasi Git (ganti dengan nama/email kamu):
 ```bash
-node --version
+git config --global user.name "gargilang"
+git config --global user.email "your@email.com"
 ```
 
-**If not installed or version < 22:**
+---
 
-- **Windows & macOS:** Download the LTS installer from https://nodejs.org/
-- **Alternative (both OS):** Use [nvm](https://github.com/nvm-sh/nvm) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows):
-  ```bash
-  # macOS/Linux
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-  nvm install 22
-  nvm use 22
+## Langkah 2: Node.js v22+ via nvm
 
-  # Windows (after installing nvm-windows)
-  nvm install 22
-  nvm use 22
-  ```
+nvm adalah cara terbaik di Linux — tidak perlu `sudo`, bisa switch versi kapan saja.
+
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Muat nvm ke shell saat ini (atau buka terminal baru)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install dan aktifkan Node.js 22
+nvm install 22
+nvm use 22
+nvm alias default 22
+
+# Verifikasi
+node --version   # harus v22.x.x
+npm --version
+```
 
 ---
 
-## Step 3: Rust + Cargo (for desktop app only)
+## Langkah 3: Rust + Cargo (untuk desktop app Tauri)
 
 ```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Pilih opsi default (tekan Enter)
+
+# Muat ke shell saat ini
+source "$HOME/.cargo/env"
+
+# Verifikasi
 rustc --version
 cargo --version
 ```
 
-**If not installed:**
-
-Works the same on both Windows and macOS:
+Tauri di Linux juga butuh library sistem:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Ubuntu / Debian
+sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+# Fedora
+sudo dnf install -y webkit2gtk4.1-devel openssl-devel librsvg2-devel
 ```
-
-On **Windows**, if `curl` doesn't work in your shell, download and run the installer from https://rustup.rs/
-
-After installation, restart your terminal and verify with `rustc --version`.
 
 ---
 
-## Step 4: Flutter SDK (for mobile app)
+## Langkah 4: Flutter SDK (untuk mobile app)
 
 ```bash
-flutter --version
+# Opsi A: via snap (paling mudah di Ubuntu)
+sudo snap install flutter --classic
+flutter sdk-path
+
+# Opsi B: manual (jika snap tidak tersedia)
+cd ~
+curl -O https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.x.x-stable.tar.xz
+# Cek versi terbaru di https://docs.flutter.dev/get-started/install/linux
+tar xf flutter_linux_*.tar.xz
+echo 'export PATH="$PATH:$HOME/flutter/bin"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-**If not installed:**
-
-- **Windows:**
-  ```bash
-  # Option A: Using Chocolatey (if installed)
-  choco install flutter
-
-  # Option B: Manual
-  # Download from https://docs.flutter.dev/get-started/install/windows
-  # Extract to C:\flutter
-  # Add C:\flutter\bin to your PATH
-  ```
-
-- **macOS:**
-  ```bash
-  # Option A: Using Homebrew
-  brew install --cask flutter
-
-  # Option B: Manual
-  # Download from https://docs.flutter.dev/get-started/install/macos
-  # Extract to ~/flutter
-  # Add ~/flutter/bin to your PATH
-  ```
-
-After installation, run the doctor to check for issues:
-
+Verifikasi:
 ```bash
+flutter --version
 flutter doctor
 ```
 
 ---
 
-## Step 5: Android Studio (for Flutter Android — manual install)
+## Langkah 5: Android Studio (untuk Flutter Android — manual)
 
-> **This step requires manual installation.** AI agents cannot install Android Studio via CLI.
+> **Memerlukan interaksi manual.** AI agent perlu bantuan manusia di langkah ini
+> karena melibatkan instalasi GUI.
 
-1. Download from https://developer.android.com/studio
-2. Install and launch Android Studio
-3. Go to **SDK Manager** → install the latest Android SDK
-4. Go to **Virtual Device Manager** → create an Android emulator
-5. Accept Android licenses:
+1. Download dari https://developer.android.com/studio
+2. Ekstrak dan jalankan installer
+3. Buka Android Studio → SDK Manager → install Android SDK
+4. Virtual Device Manager → buat emulator Android
+5. Terima lisensi:
    ```bash
    flutter doctor --android-licenses
    ```
 
-Verify:
-
-```bash
-flutter doctor
-```
-
-All checkmarks should be green for Android.
+Verifikasi: `flutter doctor` — semua Android checklist harus hijau.
 
 ---
 
-## Step 6: Supabase CLI
+## Langkah 6: Supabase CLI
 
 ```bash
+npm install -g supabase
 supabase --version
 ```
 
-**If not installed:**
-
-- **Windows:**
-  ```bash
-  npm install -g supabase
-  ```
-
-- **macOS:**
-  ```bash
-  brew install supabase/tap/supabase
-  ```
-
 ---
 
-## Step 7: GitHub CLI
+## Langkah 7: GitHub CLI
 
 ```bash
-gh --version
+# Ubuntu / Debian
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update && sudo apt install -y gh
+
+# Fedora / RHEL
+sudo dnf install -y gh
+
+# Arch
+sudo pacman -S github-cli
 ```
 
-**If not installed:**
-
-- **Windows:**
-  ```bash
-  # Using winget
-  winget install --id GitHub.cli
-
-  # Or using Chocolatey
-  choco install gh
-  ```
-
-- **macOS:**
-  ```bash
-  brew install gh
-  ```
-
-After installing, authenticate:
-
+Autentikasi (browser akan terbuka otomatis):
 ```bash
 gh auth login
+# Pilih: GitHub.com → HTTPS → Login with a web browser
 ```
 
 ---
 
-## Step 7b: Desktop Updater Signing Key (release maintainers only)
+## Langkah 7b: Cursor IDE (Linux)
 
-The desktop auto-updater requires a private signing key to sign new releases. This key is **not** stored in the repository and must be placed manually on each machine that runs `npm run release:desktop`.
+> **Untuk AI agent:** Cursor bisa di-install tanpa interaksi manual via `.deb` atau AppImage.
 
-You do **not** need this for normal development (web, desktop dev, mobile) — only for cutting a signed desktop release.
+```bash
+# Opsi A: Download .deb (Ubuntu/Debian) — cek versi terbaru di https://cursor.com/download
+wget -O cursor.deb "https://downloader.cursor.sh/linux/appImage/x64"
+# atau cari .deb di https://cursor.com/download
 
-1. Obtain `gemiprint.key` from the project owner (kept in a private, access-restricted location — ask the owner directly; it is intentionally not linked here).
-2. Place it at:
-   - **Windows:** `%APPDATA%\.tauri\gemiprint.key` (e.g. `C:\Users\<you>\AppData\Roaming\.tauri\gemiprint.key`)
-   - **macOS/Linux:** `~/.tauri/gemiprint.key`
-3. Verify the file exists, then you can build and release.
+# Opsi B: AppImage (semua distro)
+wget -O cursor.AppImage "https://downloader.cursor.sh/linux/appImage/x64"
+chmod +x cursor.AppImage
+./cursor.AppImage --appimage-extract-and-run
+```
 
-> **Security:** This key signs the updates that every desktop install trusts. Never commit it, never paste it into chat/issues/README, and never store it in a publicly linkable location.
+Setelah Cursor terpasang dan kamu login, semua MCP server (Supabase, Vercel, GitHub)
+akan tersedia untuk AI agent karena konfigurasi MCP tersimpan di akun Cursor kamu.
 
 ---
 
-## Step 8: Clone and Install Project Dependencies
+## Langkah 7c: Desktop Updater Signing Key (hanya untuk rilis)
+
+Kunci ini TIDAK ada di repo. Harus dipindah secara manual.
+
+1. Ambil file `gemiprint.key` dari lokasi backup kamu (Google Drive / USB)
+2. Taruh di:
+   ```bash
+   mkdir -p ~/.tauri
+   cp /path/ke/gemiprint.key ~/.tauri/gemiprint.key
+   ```
+
+> **Keamanan:** Jangan pernah commit, paste ke chat, atau simpan di lokasi publik.
+
+---
+
+## Langkah 8: Clone dan Install Dependensi
 
 ```bash
-# Clone the repo
+# Clone repo
 git clone https://github.com/gargilang/gemiprintaio.git
 cd gemiprintaio
 
-# Install Node.js dependencies (web + desktop)
+# Install dependensi Node.js
 npm install
 
-# Install Flutter dependencies (mobile + mobile web)
+# Install dependensi Flutter
 cd flutter && flutter pub get && cd ..
-
-# Create environment file
-cp .env.example .env.local
-# Then fill in the values (ask the project owner for credentials)
 ```
 
 ---
 
-## Step 9: Verify Everything Works
+## Langkah 9: Konfigurasi .env.local
 
 ```bash
-# Web app
-npm run dev
-# Open http://localhost:3000
+cp .env.example .env.local
+```
 
-# Desktop app (requires Rust)
+Edit `.env.local` dengan nilai-nilai berikut. AI agent bisa mengambil nilai-nilai ini
+dari browser yang sudah login:
+
+| Variable | Cara Mendapatkan |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | [Supabase Dashboard → Settings → API](https://supabase.com/dashboard/project/_/settings/api) → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Halaman yang sama → Project API Keys → `anon public` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Halaman yang sama → Project API Keys → `service_role secret` |
+| `SESSION_SECRET` | Generate dengan: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `DATABASE_URL` | [Supabase → Settings → Database](https://supabase.com/dashboard/project/_/settings/database) → Connection string (URI mode, tambah `?sslmode=require`) |
+| `DIRECT_URL` | Halaman yang sama → Direct connection string |
+| `PASSWORD_ENC_SECRET` | String random ≥ 32 karakter: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+Contoh `.env.local` yang minimal untuk development:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SESSION_SECRET=<64-char hex string>
+PASSWORD_ENC_SECRET=<32-char hex string>
+NEXT_PUBLIC_DB_MODE=hybrid
+SYNC_ENGINE_V2=1
+REALTIME_PULL_ENABLED=1
+WEB_SERVER_MEDIATED_ONLY=1
+SYNC_WAVE=1
+```
+
+---
+
+## Langkah 10: Autentikasi Supabase CLI & Link Project
+
+```bash
+# Login ke Supabase (browser akan terbuka)
+supabase login
+
+# Cari project ID kamu di https://supabase.com/dashboard
+# URL dashboard: https://supabase.com/dashboard/project/<PROJECT_ID>
+supabase link --project-ref <PROJECT_ID>
+```
+
+---
+
+## Langkah 11: Apply Migrasi Database ke Cloud
+
+> **Penting:** Jalankan ini setelah `.env.local` dan Supabase CLI terkonfigurasi.
+> Migrations di folder `supabase/migrations/` harus sinkron dengan cloud.
+
+```bash
+npm run supabase:db:push
+```
+
+Atau via Supabase CLI langsung:
+```bash
+supabase db push --linked
+```
+
+---
+
+## Langkah 12: Verifikasi Semua Berjalan
+
+```bash
+# Type-check (harus 0 error)
+npm run type-check
+
+# Build production
+npm run build
+
+# Jalankan web app dev
+npm run dev
+# Buka http://localhost:3000
+
+# (Opsional) Desktop app
 npm run tauri:dev
 
-# Flutter mobile (requires Android emulator running)
+# (Opsional) Flutter mobile
 cd flutter && flutter run
-
-# Flutter mobile pointed at production
-cd flutter && flutter run --dart-define=API_BASE_URL=https://app.gemiprint.com
 ```
+
+---
+
+## Langkah 13: Setup Vercel CLI (untuk deploy)
+
+```bash
+npm install -g vercel
+vercel login    # pilih login dengan browser
+vercel link     # link ke project gemiprint di Vercel
+```
+
+Atau AI agent bisa navigasi ke [Vercel Dashboard](https://vercel.com/dashboard) untuk
+melihat environment variables yang sudah tersimpan di sana.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| `flutter doctor` shows issues | Follow the doctor's suggestions for each issue |
-| Android emulator won't start | Enable hardware virtualization (VT-x) in BIOS |
-| `npm install` fails on Windows | Run terminal as Administrator |
-| Rust build fails | Make sure Visual Studio C++ Build Tools are installed (Windows) |
-| `SESSION_SECRET is not set` | Fill in `.env.local` with the correct values |
+| Problem | Solusi |
+|---|---|
+| `nvm: command not found` | Jalankan `source ~/.bashrc` atau buka terminal baru |
+| `LIBSSL error` saat build Tauri | `sudo apt install libssl-dev pkg-config` |
+| `flutter doctor` ada issues | Ikuti saran doctor untuk setiap issue |
+| `npm install` gagal | Pastikan Node.js v22+ aktif: `node --version` |
+| `SESSION_SECRET is not set` | Isi `.env.local` dengan nilai yang benar |
+| `supabase: command not found` | `npm install -g supabase` lalu restart terminal |
+| WebKit error saat Tauri | Install: `sudo apt install libwebkit2gtk-4.1-dev` |
 
 ---
 
-## What Each Platform Needs
+## Matriks: Apa yang Perlu Di-install
 
-| If you only need... | Install steps |
-|--------------------|---------------|
-| Web app development | Steps 1, 2, 8 |
-| Desktop app development | Steps 1, 2, 3, 8 |
-| Mobile app development | Steps 1, 2, 4, 5, 8 |
-| Everything | All steps |
+| Kalau kamu hanya perlu... | Langkah wajib |
+|---|---|
+| Web app development | 1, 2, 8, 9, 10, 11, 12 |
+| Desktop app development | 1, 2, 3, 7c, 8, 9, 10, 11, 12 |
+| Mobile app development | 1, 2, 4, 5, 8, 9, 10, 11, 12 |
+| Semua | Semua langkah |
+
+---
+
+## Untuk AI Agent: Alur Otomatis (Minimal Interaksi Manusia)
+
+Urutan yang bisa dikerjakan agent tanpa bantuan manusia (asumsi Cursor sudah login):
+
+```
+1. Apt/dnf install system deps
+2. Install nvm → Node 22
+3. Install Rust via rustup
+4. npm install -g supabase gh
+5. git clone repo → npm install
+6. cp .env.example .env.local
+7. Buka browser Cursor → navigasi ke Supabase Dashboard → ambil Project URL + anon key + service role key
+8. Generate SESSION_SECRET dan PASSWORD_ENC_SECRET via node -e
+9. Tulis nilai ke .env.local
+10. supabase login (via browser) → supabase link
+11. npm run supabase:db:push
+12. npm run type-check && npm run build
+```
+
+**Langkah yang memerlukan interaksi manusia:**
+- Android Studio (GUI installer) — langkah 5
+- Memasukkan password sudo (jika diminta)
+- Menyetujui lisensi Android (`flutter doctor --android-licenses`)
+- Memindahkan `gemiprint.key` dari backup — langkah 7c

@@ -233,7 +233,7 @@ GRANT EXECUTE ON FUNCTION public.hitung_ppn(REAL, REAL, TEXT) TO service_role;
 CREATE OR REPLACE VIEW v_ppn_keluaran AS
 SELECT
   p.id AS penjualan_id,
-  p.nomor_invoice,
+  p.nomor_faktur,
   p.tanggal_faktur_pajak,
   p.dibuat_pada::DATE AS tanggal_transaksi,
   p.nsfp_kode_transaksi,

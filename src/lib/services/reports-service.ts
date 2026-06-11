@@ -185,6 +185,40 @@ function marginPercent(profit: number, revenue: number): number {
 }
 
 /**
+ * Urutkan baris buku kas sesuai kaskade engine AST: `urutan_tampilan` dulu,
+ * lalu `dibuat_pada` sebagai pemecah seri. Ini urutan yang sama dipakai
+ * `cashbook-recalc` untuk menghitung running total, jadi nilai kumulatif
+ * kolom (omzet, biaya, laba) konsisten dengan halaman Keuangan.
+ */
+function sortByCascade<T extends Record<string, unknown>>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const orderCmp = num(a.urutan_tampilan) - num(b.urutan_tampilan);
+    if (orderCmp !== 0) return orderCmp;
+    return String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""));
+  });
+}
+
+/**
+ * Nilai kumulatif sebuah kolom AST (mis. "omzet") pada baris aktif TERAKHIR
+ * yang tanggalnya memenuhi `predicate`. Kolom-kolom ini adalah running total
+ * sepanjang seluruh buku kas, jadi nilai baris terakhir = akumulasi sejak awal.
+ *
+ * Angka periode dihitung sebagai selisih dua titik kumulatif:
+ *   periode = cumulativeColumn(... ≤ endDate) − cumulativeColumn(... < startDate)
+ */
+function cumulativeColumn(
+  sortedRows: any[],
+  column: string,
+  predicate: (dateKey: string) => boolean,
+): number {
+  for (let i = sortedRows.length - 1; i >= 0; i--) {
+    const key = toDateKey(sortedRows[i].tanggal);
+    if (key && predicate(key)) return num(sortedRows[i][column]);
+  }
+  return 0;
+}
+
+/**
  * Get all archived periods
  */
 export async function getArchivedPeriods(): Promise<Archive[]> {
@@ -508,20 +542,24 @@ export async function getFormalAccountingReport(data: {
     cogs += num(item.hpp_total) || fallbackHpp;
   }
 
-  const operationalCategories = new Set(["BIAYA", "TABUNGAN", "KOMISI"]);
   const activeCashbookRows = (cashbookRes.data || []).filter(isPosted);
 
-  const operationalExpenses = activeCashbookRows
-    .filter((row: any) =>
-      inDateRange(row.tanggal, data.startDate, data.endDate),
-    )
-    .filter((row: any) =>
-      operationalCategories.has(String(row.kategori_transaksi)),
-    )
-    .reduce((sum: number, row: any) => sum + num(row.kredit), 0);
+  // Angka kartu uang dibaca dari kolom hasil engine AST (buku besar = sumber
+  // kebenaran), bukan dihitung ulang dari tabel POS. Kolom-kolom ini running
+  // total kumulatif, jadi nilai periode = selisih dua titik kumulatif.
+  const sortedActiveRows = sortByCascade(activeCashbookRows);
+  const beforeStart = (key: string) => key < data.startDate;
+  const onOrBeforeEnd = (key: string) => key <= data.endDate;
+  const periodColumn = (column: string) =>
+    cumulativeColumn(sortedActiveRows, column, onOrBeforeEnd) -
+    cumulativeColumn(sortedActiveRows, column, beforeStart);
 
-  const grossProfit = revenue - cogs;
-  const netProfit = grossProfit - operationalExpenses;
+  const omzetPeriode = periodColumn("omzet");
+  const operationalExpenses = periodColumn("biaya_operasional");
+  const cogsPeriode = periodColumn("biaya_bahan");
+  const totalBiaya = operationalExpenses + cogsPeriode;
+  const grossProfit = omzetPeriode - cogsPeriode;
+  const netProfit = omzetPeriode - totalBiaya;
   const cashbookRows = activeCashbookRows
     .filter((row: any) =>
       inDateRange(row.tanggal, data.startDate, data.endDate),
