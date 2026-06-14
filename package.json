@@ -35,7 +35,7 @@
     "supabase:local:status": "npx supabase status",
     "supabase:local:reset": "npx supabase db reset",
     "supabase:login": "npx supabase login",
-    "supabase:link": "npx supabase link --project-ref fufrztzerditoctgzbcn",
+    "supabase:link": "npx supabase link --project-ref fugdoghnorlkfrpadfdl",
     "supabase:db:push": "npx supabase db push",
     "supabase:db:reset": "npx supabase db reset",
     "supabase:migration:new": "npx supabase migration new",

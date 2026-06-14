@@ -27,7 +27,7 @@ export function getHost(target) {
  * Cocok dengan host Postgres (db.<ref>.supabase.co) maupun URL REST
  * (<ref>.supabase.co).
  */
-const PROD_PROJECT_REFS = ["fufrztzerditoctgzbcn"];
+const PROD_PROJECT_REFS = ["fugdoghnorlkfrpadfdl"];
 
 export function isProdHost(target) {
   const host = getHost(target);
