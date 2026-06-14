@@ -1,3 +1,9 @@
+-- Baseline checkpoint — 2026-06-15
+-- Single source of truth, regenerated from the live Singapore database.
+-- Collapses 50 legacy migrations (2026-04-25 .. 2026-06-14) that had
+-- forward-reference drift and could not rebuild from scratch.
+-- Regenerate after schema changes; do not hand-edit older migrations.
+
 
 
 

@@ -1,15 +1,16 @@
 /**
  * Cashbook AST formula tests for retur-related categories.
  *
- * The migration `20260525054928_commercial_workflows_v1.sql` ships AST blobs
- * that adjust the omzet (G), biaya_bahan (I), and saldo (J) columns whenever
- * a row's kategori_transaksi is RETUR_PENJUALAN, RETUR_HPP, or
- * RETUR_PEMBELIAN. The follow-up migration
- * `20260525130000_return_non_cash_revenue.sql` extends omzet/saldo to also
- * recognise RETUR_PENJUALAN_NONCASH (no cash impact, only omzet reversal).
+ * The cashbook formulas adjust the omzet (G), biaya_bahan (I), and saldo (J)
+ * columns whenever a row's kategori_transaksi is RETUR_PENJUALAN, RETUR_HPP,
+ * RETUR_PEMBELIAN, or RETUR_PENJUALAN_NONCASH (the last one reverses omzet
+ * only, with no cash impact on saldo).
  *
- * These tests load the same JSON blobs straight from the migration file so
- * we never drift out of sync with what the database actually runs.
+ * These tests load the same JSON blobs straight from the canonical seed file
+ * (`supabase/seed-default-values.sql`, table `rumus_buku_kas`) so we never
+ * drift out of sync with what the database actually runs. The seed is now the
+ * single source of truth after the migrations were collapsed into one baseline
+ * checkpoint.
  */
 
 import fs from "node:fs";
@@ -17,42 +18,30 @@ import path from "node:path";
 import { evaluateDataset } from "../ast/evaluator";
 import type { ASTNode, InputRow } from "../ast/types";
 
-function loadAst(filePath: string, columnKey: "G" | "I" | "J"): ASTNode {
-  const sql = fs.readFileSync(filePath, "utf8");
-  // Find every block of the shape:
-  //   SET ast = '<json>'::jsonb,
-  //       description = ...
-  //   WHERE column_key = '<column>' OR ...
-  // and pick the one whose WHERE matches the requested column_key.
-  // NB: parses immutable historical migration files, which still use the
-  // pre-rename table name `cashbook_formula` — do NOT change to rumus_buku_kas.
-  const updateRegex =
-    /UPDATE\s+cashbook_formula\s*SET\s+ast\s*=\s*'([\s\S]*?)'::jsonb,?[\s\S]*?WHERE\s+column_key\s*=\s*'([A-Z])'/g;
-  let match: RegExpExecArray | null;
-  let result: string | null = null;
-  while ((match = updateRegex.exec(sql)) !== null) {
-    if (match[2] === columnKey) {
-      // Repeating pattern: blocks later in the file override earlier ones,
-      // mimicking the order the SQL would execute.
-      result = match[1];
-    }
+const SEED_PATH = path.resolve(
+  __dirname,
+  "../../../supabase/seed-default-values.sql"
+);
+
+function loadAst(columnKey: "G" | "I" | "J"): ASTNode {
+  const sql = fs.readFileSync(SEED_PATH, "utf8");
+  // Each rumus_buku_kas row is inserted as:
+  //   ('<id>', '<name>', '<column_key>', '<db_column>', '<ast-json>', true|false, ...)
+  // The AST is the 5th single-quoted field. Match by column_key and capture
+  // the JSON blob (JSON uses double quotes, so the closing }' is unambiguous).
+  const re = new RegExp(
+    `'[^']*',\\s*'[^']*',\\s*'${columnKey}',\\s*'[^']*',\\s*'(\\{[\\s\\S]*?\\})',\\s*(?:true|false)`
+  );
+  const match = sql.match(re);
+  if (!match) {
+    throw new Error(`No AST found for column ${columnKey} in ${SEED_PATH}`);
   }
-  if (!result) throw new Error(`No AST update found for column ${columnKey} in ${filePath}`);
-  return JSON.parse(result) as ASTNode;
+  return JSON.parse(match[1]) as ASTNode;
 }
 
-const v1 = path.resolve(
-  __dirname,
-  "../../../supabase/migrations/20260525054928_commercial_workflows_v1.sql"
-);
-const v2 = path.resolve(
-  __dirname,
-  "../../../supabase/migrations/20260525130000_return_non_cash_revenue.sql"
-);
-
-const omzetAst = loadAst(v2, "G");
-const biayaBahanAst = loadAst(v1, "I");
-const saldoAst = loadAst(v2, "J");
+const omzetAst = loadAst("G");
+const biayaBahanAst = loadAst("I");
+const saldoAst = loadAst("J");
 
 const formulas = [
   { column: "G", ast: omzetAst },
