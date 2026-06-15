@@ -12,6 +12,7 @@ import {
   positiveNumber,
   todayJakarta,
 } from "./document-number-service";
+import { buildLookupMap } from "./enrich-utils";
 
 async function nextCashbookOrder() {
   const result = await db.query<any>("keuangan", {
@@ -52,14 +53,8 @@ async function insertCashbookEntry(input: {
 async function enrichReturns(table: "retur_penjualan" | "retur_pembelian", rows: any[]) {
   const sourceTable = table === "retur_penjualan" ? "penjualan" : "pembelian";
   const sourceKey = table === "retur_penjualan" ? "penjualan_id" : "pembelian_id";
-  const ids = [...new Set(rows.map((row) => row[sourceKey]).filter(Boolean))];
-  const sourceMap = new Map<string, any>();
-  await Promise.all(
-    ids.map(async (id) => {
-      const res = await db.queryOne<any>(sourceTable, { where: { id } });
-      if (res.data) sourceMap.set(id, res.data);
-    })
-  );
+  const ids = rows.map((row) => row[sourceKey]).filter(Boolean);
+  const sourceMap = await buildLookupMap<any>(sourceTable, ids);
   return rows.map((row) => ({
     ...row,
     source: sourceMap.get(row[sourceKey]) || null,

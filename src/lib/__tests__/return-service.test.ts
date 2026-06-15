@@ -16,7 +16,7 @@
  *     kelebihan → refund), fully paid (semua → refund)
  */
 
-import { resetMockDb, mockTable } from "./helpers/mock-db";
+import { resetMockDb, mockTable, __mock } from "./helpers/mock-db";
 
 jest.mock("@/lib/db-unified", () => {
   const real = jest.requireActual("./helpers/mock-db") as typeof import("./helpers/mock-db");
@@ -56,6 +56,7 @@ jest.mock("@/lib/services/purchases-service", () => ({
 import {
   createPurchaseReturn,
   createSalesReturn,
+  getSalesReturns,
 } from "../services/return-service";
 
 function seedSale(opts: {
@@ -364,5 +365,23 @@ describe("createPurchaseReturn", () => {
       qty_delta: -2,
       source_type: "PURCHASE_RETURN",
     });
+  });
+});
+
+describe("getSalesReturns enrichment (no N+1)", () => {
+  it("attaches the source sale in batch", async () => {
+    mockTable("penjualan").set("s1", { id: "s1", nomor_faktur: "INV-1" });
+    mockTable("penjualan").set("s2", { id: "s2", nomor_faktur: "INV-2" });
+    mockTable("retur_penjualan").set("r1", { id: "r1", penjualan_id: "s1", dibuat_pada: "2026-05-25" });
+    mockTable("retur_penjualan").set("r2", { id: "r2", penjualan_id: "s2", dibuat_pada: "2026-05-26" });
+
+    __mock.db.query.mockClear();
+    __mock.db.queryOne.mockClear();
+
+    const returns = await getSalesReturns();
+    const byId = Object.fromEntries(returns.map((r: any) => [r.id, r]));
+    expect(byId["r1"].source.nomor_faktur).toBe("INV-1");
+    expect(byId["r2"].source.nomor_faktur).toBe("INV-2");
+    expect(__mock.db.queryOne).not.toHaveBeenCalled();
   });
 });
