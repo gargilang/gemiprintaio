@@ -828,6 +828,8 @@ class UnifiedDatabase {
         }
         if (Array.isArray(value)) {
           // Batch lookup: WHERE key IN (?, ?, ...). Empty array → 0=1 (no rows).
+          // Catatan: SQLite membatasi jumlah bind variable (SQLITE_MAX_VARIABLE_NUMBER,
+          // ~999). Pemanggil yang membatch >999 id perlu memecah (chunk) lebih dulu.
           if (value.length === 0) return "0 = 1";
           const placeholders = value.map(() => "?").join(", ");
           for (const v of value) params.push(v);

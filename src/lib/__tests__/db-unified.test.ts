@@ -6,8 +6,26 @@ import {
   normalizeRecord,
   generateId,
   getCurrentTimestamp,
+  db,
 } from "../db-unified";
 import { resetMockDb, mockTable, __mock } from "./helpers/mock-db";
+
+// Real-path coverage: mock handle better-sqlite3 (getServerSQLite di ./db-sqlite)
+// supaya kita bisa menangkap SQL + params yang dibangun queryServerSQLite —
+// bukan sekadar paritas mock matchesWhere.
+const mockSqlCalls: { sql: string; params: any[] }[] = [];
+jest.mock("../db-sqlite", () => ({
+  getServerSQLite: jest.fn(async () => ({
+    prepare: (sql: string) => ({
+      all: (...params: any[]) => {
+        mockSqlCalls.push({ sql, params });
+        return [];
+      },
+    }),
+  })),
+  serverSqliteColumnsCache: new Map(),
+  SYNC_V2_TABLES: [],
+}));
 
 describe("normalizeRecord", () => {
   describe("konversi toSupabase", () => {
@@ -274,5 +292,52 @@ describe("array where → IN (batch lookups)", () => {
     mockTable("barang").set("b1", { id: "b1", nama: "A" });
     const res = await __mock.db.query("barang", { where: { id: [] } });
     expect(res.data).toEqual([]);
+  });
+});
+
+describe("queryServerSQLite array where → real SQL builder", () => {
+  const SUPABASE_ENV_KEYS = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ];
+  const savedEnv: Record<string, string | undefined> = {};
+
+  beforeAll(() => {
+    // Paksa jalur server SQLite: aktifkan mirror + matikan Supabase (client null).
+    savedEnv.GEMIPRINT_ENABLE_SERVER_SQLITE_MIRROR =
+      process.env.GEMIPRINT_ENABLE_SERVER_SQLITE_MIRROR;
+    process.env.GEMIPRINT_ENABLE_SERVER_SQLITE_MIRROR = "1";
+    for (const k of SUPABASE_ENV_KEYS) {
+      savedEnv[k] = process.env[k];
+      delete process.env[k];
+    }
+  });
+
+  afterAll(() => {
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  beforeEach(() => {
+    mockSqlCalls.length = 0;
+  });
+
+  it("non-empty array → WHERE id IN (?, ?) dengan params sesuai urutan", async () => {
+    const res = await db.query("barang", { where: { id: ["b1", "b3"] } });
+    expect(res.error).toBeNull();
+    expect(mockSqlCalls).toHaveLength(1);
+    expect(mockSqlCalls[0].sql).toContain("WHERE id IN (?, ?)");
+    expect(mockSqlCalls[0].params).toEqual(["b1", "b3"]);
+  });
+
+  it("empty array → 0 = 1 (bukan IN ())", async () => {
+    const res = await db.query("barang", { where: { id: [] } });
+    expect(res.error).toBeNull();
+    expect(mockSqlCalls).toHaveLength(1);
+    expect(mockSqlCalls[0].sql).toContain("0 = 1");
+    expect(mockSqlCalls[0].sql).not.toContain("IN ()");
   });
 });
