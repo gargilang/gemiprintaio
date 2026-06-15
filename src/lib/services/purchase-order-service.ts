@@ -9,6 +9,7 @@ import {
   positiveNumber,
   todayJakarta,
 } from "./document-number-service";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 export type PurchaseOrderStatus =
   | "DRAFT"
@@ -71,46 +72,37 @@ function normalizeItems(input: UpsertPurchaseOrderInput) {
 }
 
 async function enrichPurchaseOrders(rows: any[]) {
-  const ids = new Set(rows.map((row) => row.id));
-  const itemsRes = await db.query<any>("purchase_order_items", {});
-  if (itemsRes.error) throw itemsRes.error;
-  const items = (itemsRes.data || []).filter((item) => ids.has(item.purchase_order_id));
-
-  const barangIds = [...new Set(items.map((item) => item.barang_id).filter(Boolean))];
-  const barangMap = new Map<string, string>();
-  await Promise.all(
-    barangIds.map(async (id) => {
-      const res = await db.queryOne<{ nama: string }>("barang", {
-        where: { id },
-        select: "nama",
-      });
-      if (res.data?.nama) barangMap.set(id, res.data.nama);
-    })
+  const poIds = rows.map((row) => row.id);
+  const itemsByPo = await fetchChildrenByForeignKey<any>(
+    "purchase_order_items",
+    "purchase_order_id",
+    poIds
   );
 
-  const vendorIds = [...new Set(rows.map((row) => row.vendor_id).filter(Boolean))];
-  const vendorMap = new Map<string, string>();
-  await Promise.all(
-    vendorIds.map(async (id) => {
-      const res = await db.queryOne<{ nama_perusahaan: string }>("vendor", {
-        where: { id },
-        select: "nama_perusahaan",
-      });
-      if (res.data?.nama_perusahaan) vendorMap.set(id, res.data.nama_perusahaan);
-    })
-  );
+  const barangIds = [...itemsByPo.values()]
+    .flat()
+    .map((item) => item.barang_id)
+    .filter(Boolean);
+  const vendorIds = rows.map((row) => row.vendor_id).filter(Boolean);
 
-  const byPo = new Map<string, any[]>();
-  for (const item of items) {
-    const list = byPo.get(item.purchase_order_id) || [];
-    list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
-    byPo.set(item.purchase_order_id, list);
-  }
+  const [barangMap, vendorMap] = await Promise.all([
+    buildLookupMap<{ id: string; nama: string }>("barang", barangIds, "nama"),
+    buildLookupMap<{ id: string; nama_perusahaan: string }>(
+      "vendor",
+      vendorIds,
+      "nama_perusahaan"
+    ),
+  ]);
 
   return rows.map((row) => ({
     ...row,
-    vendor_name: row.vendor_id ? vendorMap.get(row.vendor_id) : null,
-    items: byPo.get(row.id) || [],
+    vendor_name: row.vendor_id
+      ? vendorMap.get(row.vendor_id)?.nama_perusahaan || null
+      : null,
+    items: (itemsByPo.get(row.id) || []).map((item) => ({
+      ...item,
+      barang_nama: barangMap.get(item.barang_id)?.nama || "",
+    })),
   }));
 }
 

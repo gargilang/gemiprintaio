@@ -8,7 +8,7 @@
  *   - status transitions block CANCELLED PO
  */
 
-import { resetMockDb, mockTable } from "./helpers/mock-db";
+import { resetMockDb, mockTable, __mock } from "./helpers/mock-db";
 
 jest.mock("@/lib/db-unified", () => {
   const real = jest.requireActual("./helpers/mock-db") as typeof import("./helpers/mock-db");
@@ -29,6 +29,7 @@ jest.mock("@/lib/services/purchases-service", () => ({
 
 import {
   createPurchaseOrder,
+  getPurchaseOrders,
   receivePurchaseOrder,
   updatePurchaseOrderStatus,
 } from "../services/purchase-order-service";
@@ -196,5 +197,24 @@ describe("purchase-order-service", () => {
     });
 
     expect(payDebtMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("getPurchaseOrders enrichment (no N+1)", () => {
+  beforeEach(() => resetMockDb());
+
+  it("attaches vendor_name and item barang_nama without per-id queries", async () => {
+    mockTable("vendor").set("vendor-1", { id: "vendor-1", nama_perusahaan: "PT Vendor" });
+    mockTable("barang").set("barang-1", { id: "barang-1", nama: "Tinta Hitam" });
+    mockTable("purchase_orders").set("po-1", { id: "po-1", vendor_id: "vendor-1", dibuat_pada: "2026-05-25" });
+    mockTable("purchase_order_items").set("poi-1", { id: "poi-1", purchase_order_id: "po-1", barang_id: "barang-1" });
+
+    __mock.db.query.mockClear();
+    __mock.db.queryOne.mockClear();
+
+    const orders = await getPurchaseOrders();
+    expect(orders[0].vendor_name).toBe("PT Vendor");
+    expect(orders[0].items[0].barang_nama).toBe("Tinta Hitam");
+    expect(__mock.db.queryOne).not.toHaveBeenCalled();
   });
 });
