@@ -81,6 +81,34 @@ export async function hitungSaldoPinjaman(actorId: string): Promise<number> {
   return saldo;
 }
 
+/**
+ * Versi batch dari hitungSaldoPinjaman untuk banyak karyawan sekaligus.
+ * Ambil seluruh ledger sekali lalu agregasi per actor di memori — hindari
+ * N+1 (dulu 1 query per actor di /api/keuangan/summary-v2). actorIds yang
+ * diminta tapi tak punya baris dikembalikan saldo 0.
+ */
+export async function hitungSaldoPinjamanBatch(
+  actorIds: string[]
+): Promise<Map<string, number>> {
+  const saldoByActor = new Map<string, number>();
+  for (const id of actorIds) saldoByActor.set(id, 0);
+  if (actorIds.length === 0) return saldoByActor;
+
+  const wanted = new Set(actorIds);
+  const result = await db.query<PinjamanKaryawan>("pinjaman_karyawan", {});
+  for (const r of result.data || []) {
+    if (Number(r.is_deleted ?? 0) !== 0) continue;
+    if (!wanted.has(r.actor_id)) continue;
+    const jumlah = Number(r.jumlah) || 0;
+    const prev = saldoByActor.get(r.actor_id) || 0;
+    saldoByActor.set(
+      r.actor_id,
+      r.jenis === "TARIK" ? prev + jumlah : prev - jumlah
+    );
+  }
+  return saldoByActor;
+}
+
 /** Daftar ledger pinjaman; bila actorId diisi, hanya karyawan itu. */
 export async function listPinjaman(
   actorId?: string

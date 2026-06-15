@@ -24,6 +24,7 @@ jest.mock("@/lib/db-unified", () => {
 
 import {
   listKomponen,
+  listKomponenBatch,
   createKomponen,
   updateKomponen,
   deleteKomponen,
@@ -187,5 +188,44 @@ describe("updateKomponen + deleteKomponen", () => {
     expect(mockTable("komponen_kompensasi").get(created.id)!.is_deleted).toBe(1);
     const list = await listKomponen("a1");
     expect(list).toHaveLength(0);
+  });
+});
+
+describe("listKomponenBatch", () => {
+  it("mengelompokkan komponen aktif per actor (hindari N+1)", async () => {
+    await createKomponen({
+      actor_id: "a1",
+      tipe: "GAJI_POKOK",
+      nama: "Pokok A1",
+      metode: "TETAP",
+      nominal: 3000000,
+    });
+    await createKomponen({
+      actor_id: "a1",
+      tipe: "TUNJANGAN",
+      nama: "Transport A1",
+      metode: "TETAP",
+      nominal: 500000,
+    });
+    const k2 = await createKomponen({
+      actor_id: "a2",
+      tipe: "GAJI_POKOK",
+      nama: "Pokok A2",
+      metode: "TETAP",
+      nominal: 2000000,
+    });
+    // Komponen terhapus tidak ikut.
+    await deleteKomponen(k2.id);
+
+    const map = await listKomponenBatch(["a1", "a2"]);
+    expect(map.get("a1")).toHaveLength(2);
+    expect(map.get("a2")).toHaveLength(0);
+  });
+
+  it("actor tanpa komponen → array kosong; array kosong → map kosong", async () => {
+    const map = await listKomponenBatch(["a1"]);
+    expect(map.get("a1")).toEqual([]);
+    const kosong = await listKomponenBatch([]);
+    expect(kosong.size).toBe(0);
   });
 });

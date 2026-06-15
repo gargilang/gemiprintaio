@@ -391,29 +391,35 @@ export async function getPOSInitData(): Promise<POSInitData> {
     const subcategories = subcategoriesResult.data || [];
     const materials = materialsResult.data || [];
 
-    // Lengkapi barang dengan harga satuan dan nama kategori
-    const materialsWithPrices = await Promise.all(
-      materials.map(async (material: any) => {
-        const unitPricesResult = await db.query("harga_barang_satuan", {
-          where: { barang_id: material.id },
-          orderBy: { column: "urutan_tampilan", ascending: true },
-        });
+    // Ambil SEMUA harga satuan sekali lalu kelompokkan per barang_id di memori.
+    // Hindari N+1: dulu 1 query harga_barang_satuan per produk. orderBy global
+    // urutan_tampilan menjaga urutan tiap kelompok karena push berurutan.
+    const allPricesResult = await db.query<any>("harga_barang_satuan", {
+      orderBy: { column: "urutan_tampilan", ascending: true },
+    });
+    const pricesByBarang = new Map<string, any[]>();
+    for (const price of allPricesResult.data || []) {
+      const list = pricesByBarang.get(price.barang_id) || [];
+      list.push(price);
+      pricesByBarang.set(price.barang_id, list);
+    }
 
-        const category = categories.find(
-          (c: any) => c.id === material.kategori_id
-        );
-        const subcategory = subcategories.find(
-          (sc: any) => sc.id === material.subkategori_id
-        );
-
-        return {
-          ...material,
-          kategori_nama: category?.nama || null,
-          subkategori_nama: subcategory?.nama || null,
-          unit_prices: unitPricesResult.data || [],
-        };
-      })
+    // Indeks kategori/subkategori sekali (hindari .find berulang per produk).
+    const categoryById = new Map<string, any>(
+      categories.map((c: any) => [c.id, c])
     );
+    const subcategoryById = new Map<string, any>(
+      subcategories.map((sc: any) => [sc.id, sc])
+    );
+
+    // Lengkapi barang dengan harga satuan dan nama kategori
+    const materialsWithPrices = materials.map((material: any) => ({
+      ...material,
+      kategori_nama: categoryById.get(material.kategori_id)?.nama || null,
+      subkategori_nama:
+        subcategoryById.get(material.subkategori_id)?.nama || null,
+      unit_prices: pricesByBarang.get(material.id) || [],
+    }));
 
     // Ambil penjualan terkini (limit 100)
     const sales = await getSales(100);

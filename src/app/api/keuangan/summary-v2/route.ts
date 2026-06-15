@@ -28,8 +28,8 @@ import {
   listActorRoles,
 } from "@/lib/services/business-actor-service";
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
-import { hitungSaldoPinjaman } from "@/lib/services/pinjaman-karyawan-service";
-import { listKomponen } from "@/lib/services/komponen-kompensasi-service";
+import { hitungSaldoPinjamanBatch } from "@/lib/services/pinjaman-karyawan-service";
+import { listKomponenBatch } from "@/lib/services/komponen-kompensasi-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,10 +86,18 @@ export async function GET(request: NextRequest) {
     // karena form Pengurus tidak lagi membuat rumus kasbon/bonus per orang.
     let adaKasbon = false;
     let adaBonus = false;
+    // Batch dua tabel sekali untuk semua actor (hindari N+1 berurutan:
+    // dulu hitungSaldoPinjaman + listKomponen dipanggil per baris).
+    const actorRows = summary.rows.filter((r) => !r.isGlobal && r.actorId);
+    const actorIds = actorRows.map((r) => r.actorId as string);
+    const [saldoKasbonMap, komponenMap] = await Promise.all([
+      hitungSaldoPinjamanBatch(actorIds),
+      listKomponenBatch(actorIds),
+    ]);
     for (const row of summary.rows) {
       if (row.isGlobal || !row.actorId) continue;
-      const saldoKasbon = await hitungSaldoPinjaman(row.actorId);
-      const komponen = await listKomponen(row.actorId);
+      const saldoKasbon = saldoKasbonMap.get(row.actorId) || 0;
+      const komponen = komponenMap.get(row.actorId) || [];
       const bonusKomisi = komponen
         .filter((k) => Number(k.aktif_status ?? 1) === 1 && (k.tipe === "BONUS" || k.tipe === "KOMISI"))
         .reduce((sum, k) => sum + (k.metode === "TETAP" ? Number(k.nominal) || 0 : 0), 0);

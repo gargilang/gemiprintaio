@@ -40,6 +40,7 @@ import {
   catatTarikPinjaman,
   bayarPinjamanTunai,
   hitungSaldoPinjaman,
+  hitungSaldoPinjamanBatch,
   listPinjaman,
   revertPinjaman,
 } from "../services/pinjaman-karyawan-service";
@@ -117,6 +118,54 @@ describe("hitungSaldoPinjaman", () => {
   it("mengembalikan 0 saat tidak ada pinjaman", async () => {
     seedActor("a1");
     expect(await hitungSaldoPinjaman("a1")).toBe(0);
+  });
+});
+
+describe("hitungSaldoPinjamanBatch", () => {
+  it("mengagregasi saldo per actor dalam satu pass (hindari N+1)", async () => {
+    seedActor("a1");
+    seedActor("a2");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "a1",
+      jenis: "TARIK",
+      jumlah: 500000,
+      is_deleted: 0,
+    });
+    mockTable("pinjaman_karyawan").set("p2", {
+      id: "p2",
+      actor_id: "a1",
+      jenis: "BAYAR_TUNAI",
+      jumlah: 200000,
+      is_deleted: 0,
+    });
+    mockTable("pinjaman_karyawan").set("p3", {
+      id: "p3",
+      actor_id: "a2",
+      jenis: "TARIK",
+      jumlah: 100000,
+      is_deleted: 0,
+    });
+    // Baris is_deleted diabaikan.
+    mockTable("pinjaman_karyawan").set("p4", {
+      id: "p4",
+      actor_id: "a2",
+      jenis: "TARIK",
+      jumlah: 999999,
+      is_deleted: 1,
+    });
+
+    const map = await hitungSaldoPinjamanBatch(["a1", "a2"]);
+    expect(map.get("a1")).toBe(300000);
+    expect(map.get("a2")).toBe(100000);
+  });
+
+  it("actor tanpa baris dikembalikan saldo 0; array kosong → map kosong", async () => {
+    seedActor("a1");
+    const map = await hitungSaldoPinjamanBatch(["a1"]);
+    expect(map.get("a1")).toBe(0);
+    const kosong = await hitungSaldoPinjamanBatch([]);
+    expect(kosong.size).toBe(0);
   });
 });
 

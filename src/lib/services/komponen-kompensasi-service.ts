@@ -81,6 +81,31 @@ export async function listKomponen(
   return (result.data || []).filter((r) => Number(r.is_deleted ?? 0) === 0);
 }
 
+/**
+ * Versi batch dari listKomponen untuk banyak karyawan sekaligus.
+ * Ambil seluruh komponen sekali lalu kelompokkan per actor di memori —
+ * hindari N+1 (dulu 1 query per actor di /api/keuangan/summary-v2). Urutan
+ * urutan_tampilan dijaga karena fetch global sudah di-order.
+ */
+export async function listKomponenBatch(
+  actorIds: string[]
+): Promise<Map<string, KomponenKompensasi[]>> {
+  const byActor = new Map<string, KomponenKompensasi[]>();
+  for (const id of actorIds) byActor.set(id, []);
+  if (actorIds.length === 0) return byActor;
+
+  const wanted = new Set(actorIds);
+  const result = await db.query<KomponenKompensasi>("komponen_kompensasi", {
+    orderBy: { column: "urutan_tampilan", ascending: true },
+  });
+  for (const r of result.data || []) {
+    if (Number(r.is_deleted ?? 0) !== 0) continue;
+    if (!wanted.has(r.actor_id)) continue;
+    byActor.get(r.actor_id)!.push(r);
+  }
+  return byActor;
+}
+
 /** Buat komponen baru setelah validasi. */
 export async function createKomponen(
   input: KomponenInput

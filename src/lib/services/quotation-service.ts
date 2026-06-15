@@ -85,17 +85,20 @@ async function enrichQuotations(rows: any[]) {
   if (itemsRes.error) throw itemsRes.error;
   const items = (itemsRes.data || []).filter((item) => ids.has(item.penawaran_id));
 
-  const barangIds = [...new Set(items.map((item) => item.barang_id).filter(Boolean))];
-  const barangMap = new Map<string, string>();
-  await Promise.all(
-    barangIds.map(async (id) => {
-      const res = await db.queryOne<{ nama: string }>("barang", {
-        where: { id },
-        select: "nama",
-      });
-      if (res.data?.nama) barangMap.set(id, res.data.nama);
-    })
+  const barangIds = new Set(
+    items.map((item) => item.barang_id).filter(Boolean)
   );
+  const barangMap = new Map<string, string>();
+  if (barangIds.size > 0) {
+    // Tabel master bounded: ambil sekali lalu join di memori (hindari N+1 —
+    // dulu 1 query barang per barang_id).
+    const barangRes = await db.query<{ id: string; nama: string }>("barang", {
+      select: "id, nama",
+    });
+    for (const b of barangRes.data || []) {
+      if (barangIds.has(b.id) && b.nama) barangMap.set(b.id, b.nama);
+    }
+  }
 
   const itemsByQuote = new Map<string, any[]>();
   for (const item of items) {
