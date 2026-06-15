@@ -8,32 +8,32 @@ import {
   numeric,
   todayJakarta,
 } from "./document-number-service";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 async function enrichSessions(rows: any[]) {
-  const ids = new Set(rows.map((row) => row.id));
-  const itemRes = await db.query<any>("stock_opname_items", {});
-  if (itemRes.error) throw itemRes.error;
-  const items = (itemRes.data || []).filter((item) => ids.has(item.stock_opname_id));
-  const barangIds = [...new Set(items.map((item) => item.barang_id).filter(Boolean))];
-  const barangMap = new Map<string, string>();
-  await Promise.all(
-    barangIds.map(async (id) => {
-      const res = await db.queryOne<{ nama: string; satuan_dasar?: string }>("barang", {
-        where: { id },
-        select: "nama,satuan_dasar",
-      });
-      if (res.data) barangMap.set(id, res.data.nama);
-    })
+  const sessionIds = rows.map((row) => row.id);
+  const itemsBySession = await fetchChildrenByForeignKey<any>(
+    "stock_opname_items",
+    "stock_opname_id",
+    sessionIds
   );
-  const bySession = new Map<string, any[]>();
-  for (const item of items) {
-    const list = bySession.get(item.stock_opname_id) || [];
-    list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
-    bySession.set(item.stock_opname_id, list);
-  }
+
+  const barangIds = [...itemsBySession.values()]
+    .flat()
+    .map((item) => item.barang_id)
+    .filter(Boolean);
+  const barangMap = await buildLookupMap<{ id: string; nama: string }>(
+    "barang",
+    barangIds,
+    "nama,satuan_dasar"
+  );
+
   return rows.map((row) => ({
     ...row,
-    items: bySession.get(row.id) || [],
+    items: (itemsBySession.get(row.id) || []).map((item) => ({
+      ...item,
+      barang_nama: barangMap.get(item.barang_id)?.nama || "",
+    })),
   }));
 }
 

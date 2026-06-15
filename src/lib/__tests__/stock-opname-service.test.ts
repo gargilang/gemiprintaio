@@ -8,7 +8,7 @@
  *   - cancel only allowed in DRAFT
  */
 
-import { resetMockDb, mockTable } from "./helpers/mock-db";
+import { resetMockDb, mockTable, __mock } from "./helpers/mock-db";
 
 jest.mock("@/lib/db-unified", () => {
   const real = jest.requireActual("./helpers/mock-db") as typeof import("./helpers/mock-db");
@@ -37,6 +37,7 @@ import {
   postStockOpname,
   updateStockOpnameCounts,
 } from "../services/stock-opname-service";
+import { getStockOpnames } from "../services/stock-opname-service";
 
 beforeEach(() => {
   resetMockDb();
@@ -122,5 +123,23 @@ describe("stock-opname-service", () => {
     await cancelStockOpname(session.id);
     expect(mockTable("stock_opnames").get(session.id)!.status).toBe("CANCELLED");
     await expect(cancelStockOpname(session.id)).rejects.toThrow(/DRAF/);
+  });
+});
+
+describe("getStockOpnames enrichment (no N+1)", () => {
+  it("attaches barang_nama to items without per-id queries", async () => {
+    mockTable("barang").set("barang-1", { id: "barang-1", nama: "Tinta", satuan_dasar: "L" });
+    mockTable("barang").set("barang-2", { id: "barang-2", nama: "Kertas", satuan_dasar: "rim" });
+    mockTable("stock_opnames").set("so-1", { id: "so-1", dibuat_pada: "2026-05-25" });
+    mockTable("stock_opname_items").set("soi-1", { id: "soi-1", stock_opname_id: "so-1", barang_id: "barang-1" });
+    mockTable("stock_opname_items").set("soi-2", { id: "soi-2", stock_opname_id: "so-1", barang_id: "barang-2" });
+
+    __mock.db.query.mockClear();
+    __mock.db.queryOne.mockClear();
+
+    const sessions = await getStockOpnames();
+
+    expect(sessions[0].items.map((i: any) => i.barang_nama).sort()).toEqual(["Kertas", "Tinta"]);
+    expect(__mock.db.queryOne).not.toHaveBeenCalled();
   });
 });
