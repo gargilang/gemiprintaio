@@ -26,6 +26,7 @@ jest.mock("@/lib/services/pos-service", () => ({
 import {
   convertQuotationToSale,
   createQuotation,
+  getQuotations,
   updateQuotation,
   updateQuotationStatus,
 } from "../services/quotation-service";
@@ -130,5 +131,22 @@ describe("quotation-service", () => {
         jumlah_kembalian: 0,
       })
     ).rejects.toThrow("sudah batal");
+  });
+});
+
+describe("getQuotations enrichment uses bounded queries (no N+1)", () => {
+  beforeEach(() => resetMockDb());
+
+  it("does not call queryOne for barang lookups", async () => {
+    mockTable("barang").set("b1", { id: "b1", nama: "Tinta" });
+    mockTable("penawaran").set("q1", { id: "q1", dibuat_pada: "2026-05-25" });
+    mockTable("item_penawaran").set("iq1", { id: "iq1", penawaran_id: "q1", barang_id: "b1" });
+
+    __mock.db.query.mockClear();
+    __mock.db.queryOne.mockClear();
+
+    const quotes = await getQuotations();
+    expect(quotes[0].items[0].barang_nama).toBe("Tinta");
+    expect(__mock.db.queryOne).not.toHaveBeenCalled();
   });
 });

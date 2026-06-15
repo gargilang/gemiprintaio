@@ -9,6 +9,7 @@ import {
   positiveNumber,
   todayJakarta,
 } from "./document-number-service";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 export type QuotationStatus =
   | "DRAFT"
@@ -80,36 +81,29 @@ function normalizeItems(input: UpsertQuotationInput) {
 }
 
 async function enrichQuotations(rows: any[]) {
-  const ids = new Set(rows.map((row) => row.id));
-  const itemsRes = await db.query<any>("item_penawaran", {});
-  if (itemsRes.error) throw itemsRes.error;
-  const items = (itemsRes.data || []).filter((item) => ids.has(item.penawaran_id));
-
-  const barangIds = new Set(
-    items.map((item) => item.barang_id).filter(Boolean)
+  const quoteIds = rows.map((row) => row.id);
+  const itemsByQuote = await fetchChildrenByForeignKey<any>(
+    "item_penawaran",
+    "penawaran_id",
+    quoteIds
   );
-  const barangMap = new Map<string, string>();
-  if (barangIds.size > 0) {
-    // Tabel master bounded: ambil sekali lalu join di memori (hindari N+1 —
-    // dulu 1 query barang per barang_id).
-    const barangRes = await db.query<{ id: string; nama: string }>("barang", {
-      select: "id, nama",
-    });
-    for (const b of barangRes.data || []) {
-      if (barangIds.has(b.id) && b.nama) barangMap.set(b.id, b.nama);
-    }
-  }
 
-  const itemsByQuote = new Map<string, any[]>();
-  for (const item of items) {
-    const list = itemsByQuote.get(item.penawaran_id) || [];
-    list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
-    itemsByQuote.set(item.penawaran_id, list);
-  }
+  const barangIds = [...itemsByQuote.values()]
+    .flat()
+    .map((item) => item.barang_id)
+    .filter(Boolean);
+  const barangMap = await buildLookupMap<{ id: string; nama: string }>(
+    "barang",
+    barangIds,
+    "nama"
+  );
 
   return rows.map((row) => ({
     ...row,
-    items: itemsByQuote.get(row.id) || [],
+    items: (itemsByQuote.get(row.id) || []).map((item) => ({
+      ...item,
+      barang_nama: barangMap.get(item.barang_id)?.nama || "",
+    })),
   }));
 }
 
