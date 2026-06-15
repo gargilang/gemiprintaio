@@ -6,6 +6,7 @@
 // `npm run lint` jadi gate berguna, bukan banjir warning legacy.
 
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
   {
@@ -28,6 +29,9 @@ export default [
   },
   ...nextCoreWebVitals,
   {
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
       // React 19 + Next 16 tidak butuh import React eksplisit, dan banyak
       // legacy file dengan apostrof bahasa Indonesia di JSX. Off-kan supaya
