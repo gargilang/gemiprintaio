@@ -18,6 +18,7 @@ import {
   postInventoryMovement,
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 /**
  * Bangun DTO pembelian dari baris pembelian via db-unified (Supabase / SQLite).
@@ -25,76 +26,36 @@ import { hitungPpn } from "../ppn-helpers";
 
 export async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase[]> {
   if (pembelianRows.length === 0) return [];
-  const idSet = new Set(pembelianRows.map((p) => p.id));
 
-  const itemsRes = await db.query<any>("item_pembelian", {});
-  if (itemsRes.error) throw itemsRes.error;
-  const allItems = (itemsRes.data || []).filter((i) =>
-    idSet.has(i.pembelian_id)
+  const purchaseIds = pembelianRows.map((p) => p.id);
+  const itemsByPurchase = await fetchChildrenByForeignKey<any>(
+    "item_pembelian",
+    "pembelian_id",
+    purchaseIds
   );
 
-  const vendorIds = [
-    ...new Set(pembelianRows.map((p) => p.vendor_id).filter(Boolean)),
-  ] as string[];
-  const vendorMap = new Map<
-    string,
-    {
+  const barangIds = [...itemsByPurchase.values()]
+    .flat()
+    .map((i) => i.barang_id)
+    .filter(Boolean);
+  const vendorIds = pembelianRows.map((p) => p.vendor_id).filter(Boolean);
+  const creatorIds = pembelianRows.map((p) => p.dibuat_oleh).filter(Boolean);
+
+  const [vendorMap, creatorMap, barangMap] = await Promise.all([
+    buildLookupMap<{
       nama_perusahaan: string;
       alamat?: string;
       telepon?: string;
       kontak_person?: string;
+    }>("vendor", vendorIds),
+    buildLookupMap<{ nama_lengkap: string }>("profil", creatorIds, "nama_lengkap"),
+    buildLookupMap<{ nama: string }>("barang", barangIds, "nama"),
+  ]);
+
+  for (const [, items] of itemsByPurchase) {
+    for (const item of items) {
+      item.nama_barang = barangMap.get(item.barang_id)?.nama;
     }
-  >();
-  await Promise.all(
-    vendorIds.map(async (vid) => {
-      const v = await db.queryOne<{
-        nama_perusahaan: string;
-        alamat?: string;
-        telepon?: string;
-        kontak_person?: string;
-      }>("vendor", {
-        where: { id: vid },
-      });
-      if (v.data?.nama_perusahaan) vendorMap.set(vid, v.data);
-    })
-  );
-
-  const creatorIds = [
-    ...new Set(pembelianRows.map((p) => p.dibuat_oleh).filter(Boolean)),
-  ] as string[];
-  const creatorMap = new Map<string, string>();
-  await Promise.all(
-    creatorIds.map(async (cid) => {
-      const u = await db.queryOne<{ nama_lengkap: string }>("profil", {
-        where: { id: cid },
-        select: "nama_lengkap",
-      });
-      if (u.data?.nama_lengkap) creatorMap.set(cid, u.data.nama_lengkap);
-    })
-  );
-
-  const barangIds = [
-    ...new Set(allItems.map((i) => i.barang_id).filter(Boolean)),
-  ] as string[];
-  const barangMap = new Map<string, string>();
-  await Promise.all(
-    barangIds.map(async (bid) => {
-      const b = await db.queryOne<{ nama: string }>("barang", {
-        where: { id: bid },
-        select: "nama",
-      });
-      if (b.data?.nama) barangMap.set(bid, b.data.nama);
-    })
-  );
-
-  const itemsByPurchase = new Map<string, any[]>();
-  for (const item of allItems) {
-    const pid = item.pembelian_id;
-    if (!itemsByPurchase.has(pid)) itemsByPurchase.set(pid, []);
-    itemsByPurchase.get(pid)!.push({
-      ...item,
-      nama_barang: barangMap.get(item.barang_id),
-    });
   }
 
   return pembelianRows.map((purchase) => {
@@ -111,9 +72,7 @@ export async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase
     const total_harga =
       calculatedTotal > 0 ? calculatedTotal : Number(purchase.total_jumlah || 0);
 
-    const vid = purchase.vendor_id;
-    const cid = purchase.dibuat_oleh;
-    const vendor = vid ? vendorMap.get(vid) : undefined;
+    const vendor = purchase.vendor_id ? vendorMap.get(purchase.vendor_id) : undefined;
 
     return {
       ...purchase,
@@ -121,7 +80,9 @@ export async function enrichPurchaseRows(pembelianRows: any[]): Promise<Purchase
       vendor_alamat: vendor?.alamat,
       vendor_telepon: vendor?.telepon,
       vendor_kontak_person: vendor?.kontak_person,
-      created_by_name: cid ? creatorMap.get(cid) : undefined,
+      created_by_name: purchase.dibuat_oleh
+        ? creatorMap.get(purchase.dibuat_oleh)?.nama_lengkap
+        : undefined,
       items,
       total_harga,
     } as Purchase;
@@ -601,17 +562,11 @@ export async function getDebts(): Promise<any[]> {
       );
     });
 
-    const vendorIds = [...new Set(rows.map((r: any) => r.vendor_id).filter(Boolean))];
-    const vendorMap = new Map<string, string>();
-    await Promise.all(
-      vendorIds.map(async (vid: string) => {
-        const v = await db.queryOne<{ nama_perusahaan: string }>("vendor", {
-          where: { id: vid },
-          select: "nama_perusahaan",
-        });
-        if (v.data?.nama_perusahaan)
-          vendorMap.set(vid, v.data.nama_perusahaan);
-      })
+    const vendorIds = rows.map((r: any) => r.vendor_id).filter(Boolean);
+    const vendorMap = await buildLookupMap<{ nama_perusahaan: string }>(
+      "vendor",
+      vendorIds,
+      "nama_perusahaan"
     );
 
     return rows.map((p: any) => ({
@@ -624,7 +579,7 @@ export async function getDebts(): Promise<any[]> {
       status_pembayaran: p.status_pembayaran,
       sisa_hutang:
         Number(p.total_jumlah || 0) - Number(p.jumlah_dibayar || 0),
-      vendor_name: p.vendor_id ? vendorMap.get(p.vendor_id) ?? null : null,
+      vendor_name: p.vendor_id ? vendorMap.get(p.vendor_id)?.nama_perusahaan ?? null : null,
     }));
   } catch (error) {
     console.error("Error fetching debts:", error);
