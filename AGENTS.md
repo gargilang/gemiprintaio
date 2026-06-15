@@ -1,15 +1,14 @@
 # gemiprint — Agent Rules
 
-> Working guide for all AI coding agents (OpenCode, Codex, Kiro, Cursor, Claude, etc.).
+> Working guide for all AI coding agents (Zed, OpenCode, Codex, Kiro, Cursor, Claude, etc.).
 > This file is tool-neutral: use whatever tools you have (file editing, terminal, search,
 > browser) to reach the goals below. It is a generic conversion of
 > `.cursor/rules/project-context.mdc`.
 
 ## Owner context
 
-- The owner is **not a programmer**. Trust technical decisions to the agent; explain changes briefly in plain Bahasa Indonesia.
+- The owner is **not a programmer**. Trust technical decisions to the agent.
 - Internal app, ~2-5 users. Priorities: fast, stable, fits business needs, reasonable security (not enterprise hardening).
-- **Communicate with the owner in Bahasa Indonesia** (even though this rules file is in English).
 
 ## Workflow
 
@@ -33,22 +32,26 @@ Some agents have extra skills/workflows (brainstorming, planning, structured exe
 
 **Subagents (important cost guard):** if you use subagents, run them **one at a time — never run more than one subagent concurrently**. Parallel subagents explode token usage and often fail to finish. Complete/verify one before starting the next.
 
+## Agent skills (`.agents/skills/`)
+
+Reusable skills live in `.agents/skills/` (project-local, committed to git) and are picked up by any agent that supports the `SKILL.md` format — Zed, Kiro, OpenCode, Claude, etc. Each skill is a folder with a `SKILL.md` (frontmatter `name` + `description`) plus optional `references/` and `scripts/`.
+
+**How skills get triggered:** a skill is NOT a slash command. The agent reads each skill's `description` and invokes the matching skill via its skill tool when a request fits. So you trigger brainstorming by saying "help me brainstorm feature X" — not by typing `/brainstorming`. (Exception: `graphify` also honors an explicit `/graphify` typed by the user.)
+
+Installed skills:
+
+- **superpowers** (from github.com/obra/superpowers) — workflow skills: `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `test-driven-development`, `systematic-debugging`, `requesting-code-review`, `receiving-code-review`, `verification-before-completion`, `using-git-worktrees`, `finishing-a-development-branch`, `writing-skills`, `using-superpowers`. These are the structured workflows referenced in "Scale effort to task size" above. Scale them to task size — skip them for trivial tasks.
+- **graphify** (from github.com/safishamsi/graphify) — knowledge-graph query/build over the codebase. See the `## graphify` section below.
+- **rtk** (from github.com/rtk-ai/rtk) — token-saving CLI proxy. See the `## rtk` section below.
+- **supabase**, **supabase-postgres-best-practices** — Supabase + Postgres guidance.
+
+These skills are meant to be used **by default** to keep agents efficient: prefer `graphify`/`rtk` for codebase questions and noisy commands, and reach for the superpowers workflow skills on non-trivial work. They cost tokens, so match them to task size per the rules above.
+
 ## Tools and access (use without asking)
 
 - Browser (GitHub, Supabase, Vercel, GoDaddy — assume already logged in if available).
 - Terminal / CLI: Next.js, Flutter, `gh`, Supabase CLI, Vercel CLI, SQLite.
 - Read code, run commands, check deploys/logs, test in the browser.
-
-## Editing large / special-character files
-
-Edit/write tools sometimes fail when content is large AND contains tricky characters: backticks, `${...}` template literals, `$$` dollar-quoted SQL, backslash escapes (`\s`, `\d`), or large JSX blocks. This is a serialization limit, not a file problem. Workarounds (in order of preference):
-
-- **Small, focused edits win.** Prefer many small edits over one large block. For a big new file, write a small stub first, then grow it with successive small edits.
-- **Marker-splice via Node `fs`** for large block moves/replacements: write a one-off `node` script that reads the file, finds start/end via `indexOf`/regex on stable anchor lines, splices the array, then writes it back.
-- **Avoid backslash regex in tool arguments.** If you need `\s`/`\d`, build it via Node, or rewrite to a character class without escapes (e.g. split on `[,+ ]+` instead of `[,+\s]+`) when behavior is equivalent.
-- **Long `.md` files:** if a write fails, create the file with a header + a `<!-- MARKER -->`, then append section by section. Keep code fences containing backticks short per edit.
-- **Never** paste secrets or `$$ ... $$` SQL blobs into chat to "work around" the limit — fix it via a Node script on disk.
-- After editing via a script/`fs`, re-read the touched region and run `npm run type-check` (or `node --check` for scripts) to confirm nothing broke. Delete one-off scripts when done.
 
 ## Git and deploy
 
@@ -168,3 +171,30 @@ Pick the option that: matches existing patterns (search first), minimizes new in
 - `docs/SETUP.md` — fresh-machine developer setup.
 - `docs/supabase-local-development.md` — local Supabase workflow.
 - `docs/migrasi-singapura-dan-perbaikan.md` — DB migration to Singapore, migration collapse, Vercel configuration, and improvement candidates (SQLite/N+1).
+
+## rtk (token-saving CLI proxy)
+
+`rtk` filters/compresses noisy command output before it reaches the model (60-90% fewer tokens), with a `tee` fallback that saves full output on failure so nothing is lost.
+
+**Automation differs per tool.** In OpenCode it runs via a plugin (`~/.config/opencode/plugins/rtk.ts`) and in Cursor via a `preToolUse` hook (`.cursor/hooks.json`) that rewrite every command **automatically**. **Zed has no equivalent pre-tool hook**, and `rtk init` has no Zed target — so in Zed nothing rewrites commands for you. There, you must type `rtk` yourself in front of noisy commands (build, test, lint, type-check, install, git, large listings). The `rtk` skill in `.agents/skills/rtk/` documents this.
+
+Rules:
+- In Zed, manually prefix noisy commands: `rtk npm run build`, `rtk npm run type-check`, `rtk jest <path>`, `rtk lint`, `rtk git status`, `rtk tree`, etc. Skip rtk for trivially short output.
+- Don't fight the rewrite/compact output. If a command comes back as `rtk <cmd>` (auto-rewrite tools) or looks intentionally terse, that's expected.
+- When a command fails, rtk prints a `[full output: …/tee/…log]` path. Read that log for the unfiltered detail instead of re-running the raw command.
+- For the few cases where you need raw, unfiltered output (debugging the tool itself, exact byte-for-byte output), run `rtk proxy <cmd>` (tracked) or `rtk run <cmd>` (raw, untracked).
+- Analytics are on-demand: `rtk gain` (savings summary), `rtk gain --history`, `rtk discover` (missed opportunities).
+- rtk no-ops safely if the binary isn't found, so commands still run without it.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

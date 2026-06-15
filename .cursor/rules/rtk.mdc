@@ -1,0 +1,12 @@
+---
+description: rtk token-saving CLI proxy
+alwaysApply: true
+---
+
+`rtk` filters/compresses noisy command output before it reaches the model (60-90% fewer tokens), with a `tee` fallback that saves full output on failure so nothing is lost. In Cursor it runs via a `preToolUse` hook (`.cursor/hooks.json`, command `rtk hook cursor`) that rewrites Shell commands to their `rtk` equivalent **automatically** — you don't need to type `rtk` yourself.
+
+- Don't fight the rewrite. If a command comes back as `rtk <cmd>`, that's expected — the output is intentionally compact.
+- When a command fails, rtk prints a `[full output: …/tee/…log]` path. Read that log for the unfiltered detail instead of re-running the raw command.
+- For the few cases where you genuinely need raw, byte-for-byte output (debugging the tool itself), run `rtk proxy <cmd>`.
+- Analytics are on-demand: `rtk gain` (savings summary), `rtk gain --history`, `rtk discover` (missed opportunities).
+- The hook no-ops safely if the `rtk` binary isn't found, so commands still run without it.

@@ -2,7 +2,7 @@
   "mcpServers": {
     "graphify": {
       "type": "stdio",
-      "command": "C:\\Users\\gargi\\AppData\\Roaming\\uv\\tools\\graphifyy\\Scripts\\python.exe",
+      "command": "/home/gemi/.local/share/uv/tools/graphifyy/bin/python",
       "args": ["-m", "graphify.serve", "graphify-out/graph.json"]
     }
   }

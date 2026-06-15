@@ -7,9 +7,8 @@ alwaysApply: true
 
 ## Owner context
 
-- The owner is **not a programmer**. Trust technical decisions to the agent; explain changes briefly in plain Bahasa Indonesia.
+- The owner is **not a programmer**. Trust technical decisions to the agent.
 - Internal app, ~2-5 users. Priorities: fast, stable, fits business needs, reasonable security (not enterprise hardening).
-- Communicate with the owner in **Bahasa Indonesia**.
 
 ## Workflow
 
