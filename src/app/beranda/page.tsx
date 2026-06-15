@@ -12,12 +12,20 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
+import { hitungPersenDonut } from "@/lib/dashboard-donut";
+import {
+  CartIcon,
+  PurchaseOrderIcon,
+  MoneyIcon,
+  UsersIcon,
+} from "@/components/icons/PageIcons";
+import { canAccessPath } from "@/components/menuConfig";
 import {
   generateDraftPurchaseOrdersAction,
   getDashboardStatsAction,
@@ -58,12 +66,16 @@ const fmtTime = (iso: string) => {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    LUNAS: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
-    AKTIF: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
-    SEBAGIAN: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    LUNAS:
+      "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    AKTIF:
+      "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+    SEBAGIAN:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
     MENUNGGU: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700",
     PROSES: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
-    SELESAI: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    SELESAI:
+      "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
     KILAT: "bg-red-100 dark:bg-red-900/30 text-red-700",
     NORMAL: "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300",
   };
@@ -73,6 +85,93 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </span>
+  );
+}
+
+function DashboardHeader({ user }: { user: User | null }) {
+  return (
+    <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg px-6 py-4 text-white flex items-center justify-between">
+      <div className="min-w-0">
+        <h2 className="text-xl sm:text-2xl font-bold font-twcenmt truncate">
+          Selamat Datang,{" "}
+          {user?.nama_lengkap || user?.nama_pengguna || "Pengguna"}!
+        </h2>
+        <p className="text-white/90 text-sm">
+          <span className="font-bauhaus italic">
+            <span className="text-white">gemi</span>
+            <span className="text-white/80">print</span>
+          </span>{" "}
+          — Sistem Manajemen Percetakan
+        </p>
+      </div>
+      <div className="hidden md:block shrink-0">
+        <Image
+          src="/assets/images/logo-gemiprint-white.svg"
+          alt="gemiprint"
+          width={56}
+          height={56}
+          className="opacity-40"
+        />
+      </div>
+    </div>
+  );
+}
+
+function QuickActions({ user }: { user: User | null }) {
+  const actions: Array<{
+    label: string;
+    href: string;
+    Icon: (p: { size?: number; className?: string }) => React.ReactNode;
+    gradient: string;
+  }> = [
+    {
+      label: "Kasir",
+      href: "/pos",
+      Icon: CartIcon,
+      gradient: "from-[#00afef] to-[#2266ff]",
+    },
+    {
+      label: "Pembelian",
+      href: "/pembelian",
+      Icon: PurchaseOrderIcon,
+      gradient: "from-[#6366f1] to-[#8b5cf6]",
+    },
+    {
+      label: "Keuangan",
+      href: "/keuangan",
+      Icon: MoneyIcon,
+      gradient: "from-[#ff2f91] to-orange-500",
+    },
+    {
+      label: "Pelanggan",
+      href: "/pelanggan",
+      Icon: UsersIcon,
+      gradient: "from-[#14b8a6] to-[#06b6d4]",
+    },
+  ];
+
+  const visible = actions.filter((a) => canAccessPath(user?.role, a.href));
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {visible.map((a) => (
+        <Link
+          key={a.href}
+          href={a.href}
+          className="flex items-center gap-3 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+        >
+          <span
+            className={`bg-gradient-to-br ${a.gradient} p-2.5 rounded-xl text-white shrink-0`}
+          >
+            <a.Icon size={20} className="text-white" />
+          </span>
+          <span className="font-semibold text-gray-800 dark:text-slate-100 font-twcenmt">
+            {a.label}
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -97,45 +196,22 @@ export default function DashboardPage() {
 
   const { data: stats, isLoading } = useCachedData<DashboardStats>(
     "dashboard-stats-v2",
-    getDashboardStatsAction
+    getDashboardStatsAction,
   );
 
-  const {
-    data: reorderData,
-    mutate: mutateReorder,
-  } = useCachedData<ReorderSuggestionsResponse>(
-    "dashboard-reorder-v1",
-    getReorderSuggestionsAction
-  );
+  const { data: reorderData, mutate: mutateReorder } =
+    useCachedData<ReorderSuggestionsResponse>(
+      "dashboard-reorder-v1",
+      getReorderSuggestionsAction,
+    );
 
   return (
     <div className="space-y-6">
-      {/* Welcome Card */}
-      <div className="bg-gradient-to-br from-[#00afef] to-[#2266ff] rounded-2xl shadow-lg p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold mb-2 font-twcenmt">
-              Selamat Datang, {user?.nama_lengkap || user?.nama_pengguna}!
-            </h2>
-            <p className="text-white/90">
-              <span className="font-bauhaus italic text-lg">
-                <span className="text-white">gemi</span>
-                <span className="text-white/80">print</span>
-              </span>{" "}
-              — Sistem Manajemen Percetakan
-            </p>
-          </div>
-          <div className="hidden md:block">
-            <Image
-              src="/assets/images/logo-gemiprint-white.svg"
-              alt="gemiprint"
-              width={80}
-              height={80}
-              className="opacity-40"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Header strip */}
+      <DashboardHeader user={user} />
+
+      {/* Quick Actions */}
+      <QuickActions user={user} />
 
       {isLoading && !stats ? (
         <div className="flex items-center justify-center py-16">
@@ -143,98 +219,68 @@ export default function DashboardPage() {
         </div>
       ) : stats ? (
         <>
-          {/* Stats row: today */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-3 font-twcenmt">
-              Hari Ini
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard
-                title="Transaksi"
-                value={String(stats.todaySalesCount)}
-                subtitle="penjualan"
-                icon="receipt"
-                color="cyan"
-              />
-              <StatCard
-                title="Omzet"
-                value={fmtCurrency(stats.todayRevenue)}
-                color="emerald"
-                icon="trending"
-              />
-              <StatCard
-                title="Total Penjualan"
-                value={String(stats.totalSalesCount)}
-                subtitle="sepanjang waktu"
-                icon="chart"
-                color="blue"
-              />
-              <StatCard
-                title="Piutang Aktif"
-                value={fmtCurrency(stats.totalPiutang)}
-                subtitle={`${stats.activePiutang} transaksi`}
-                icon="warning"
-                color="amber"
-              />
-            </div>
-          </div>
-
-          {/* Sales Trend Chart */}
-          <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
-                Tren Penjualan
-              </h3>
-              <div className="flex gap-1">
-                {([7, 14, 30] as const).map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setTrendDays(d)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      trendDays === d
-                        ? "bg-[#00afef] text-white shadow"
-                        : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
-                    }`}
-                  >
-                    {d} hari
-                  </button>
-                ))}
-              </div>
-            </div>
-            <SalesTrendChart
-              data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
-              days={trendDays}
+          {/* Stat cards utama */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Omzet Hari Ini"
+              value={fmtCurrency(stats.todayRevenue)}
+              icon="trending"
+              gradient="from-[#00afef] to-[#2266ff]"
+            />
+            <StatCard
+              title="Transaksi Hari Ini"
+              value={String(stats.todaySalesCount)}
+              subtitle="penjualan"
+              icon="receipt"
+              gradient="from-emerald-500 to-teal-600"
+            />
+            <StatCard
+              title="Saldo Kas"
+              value={fmtCurrency(stats.saldo)}
+              icon="wallet"
+              gradient="from-amber-500 to-orange-500"
+            />
+            <StatCard
+              title="Piutang Aktif"
+              value={fmtCurrency(stats.totalPiutang)}
+              subtitle={`${stats.activePiutang} transaksi`}
+              icon="warning"
+              gradient="from-[#ff2f91] to-[#0a1b3d]"
             />
           </div>
 
-          {/* Stats Row: Produksi */}
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-3 font-twcenmt">
-              Produksi
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard
-                title="Antrian Aktif"
-                value={String(stats.activeOrders)}
-                subtitle="order"
-                icon="print"
-                color="amber"
+          {/* Analitik + Donut */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Tren Penjualan (kiri, lebih lebar) */}
+            <div className="lg:col-span-2 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
+                  Tren Penjualan
+                </h3>
+                <div className="flex gap-1">
+                  {([7, 14, 30] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setTrendDays(d)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        trendDays === d
+                          ? "bg-[#00afef] text-white shadow"
+                          : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
+                      }`}
+                    >
+                      {d} hari
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <SalesTrendChart
+                data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
+                days={trendDays}
               />
-              <StatCard
-                title="Kilat / Mendesak"
-                value={String(stats.kilat)}
-                subtitle="order"
-                icon="bolt"
-                color="red"
-              />
-              <StatCard
-                title="Saldo Kas"
-                value={fmtCurrency(stats.saldo)}
-                icon="wallet"
-                color="cyan"
-              />
-              <div />
             </div>
+
+            {/* Donut omzet (kanan) */}
+            <RevenueDonut trend={stats.dailySalesTrend ?? []} />
           </div>
 
           {/* Tables Row */}
@@ -286,9 +332,14 @@ export default function DashboardPage() {
             {/* Active Production */}
             <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
-                  Produksi Aktif
-                </h3>
+                <div>
+                  <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
+                    Produksi Aktif
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    Antrian: {stats.activeOrders} · Kilat: {stats.kilat}
+                  </p>
+                </div>
                 <Link
                   href="/produksi"
                   className="text-sm text-[#00afef] hover:underline font-semibold"
@@ -335,7 +386,6 @@ export default function DashboardPage() {
               void mutateReorder();
             }}
           />
-
         </>
       ) : null}
 
@@ -359,11 +409,16 @@ const fmtCurrencyShort = (n: number) => {
   return String(n);
 };
 
-function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14 | 30 }) {
-  // Show every 2nd label for 7d, every 3rd for 14d, every 5th for 30d
+function SalesTrendChart({
+  data,
+  days,
+}: {
+  data: DailySalesTrend[];
+  days: 7 | 14 | 30;
+}) {
   const step = days === 7 ? 2 : days === 14 ? 3 : 5;
   const tickFormatter = (_: string, index: number) =>
-    index % step === 0 ? data[index]?.date ?? "" : "";
+    index % step === 0 ? (data[index]?.date ?? "") : "";
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -391,17 +446,19 @@ function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14
           width={48}
         />
         <Tooltip
-          formatter={((value: number | string) => {
-            const n = Number(value);
-            return [
-              new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                minimumFractionDigits: 0,
-              }).format(n),
-              "Omzet",
-            ];
-          }) as any}
+          formatter={
+            ((value: number | string) => {
+              const n = Number(value);
+              return [
+                new Intl.NumberFormat("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                  minimumFractionDigits: 0,
+                }).format(n),
+                "Omzet",
+              ];
+            }) as any
+          }
           labelStyle={{ fontWeight: 600, color: "#111827" }}
           contentStyle={{
             borderRadius: 10,
@@ -420,6 +477,66 @@ function SalesTrendChart({ data, days }: { data: DailySalesTrend[]; days: 7 | 14
         />
       </AreaChart>
     </ResponsiveContainer>
+  );
+}
+
+function RevenueDonut({ trend }: { trend: DailySalesTrend[] }) {
+  const n = trend.length;
+  const hariIni = n > 0 ? trend[n - 1].omzet : 0;
+  const kemarin = n > 1 ? trend[n - 2].omzet : 0;
+  const persen = hitungPersenDonut(hariIni, kemarin);
+  const terisi = Math.min(persen, 100);
+  const data = [
+    { name: "terisi", value: terisi },
+    { name: "sisa", value: Math.max(100 - terisi, 0) },
+  ];
+
+  return (
+    <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-5 flex flex-col">
+      <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt mb-2">
+        Omzet Hari Ini
+      </h3>
+      <div className="relative flex-1 min-h-[160px]">
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              innerRadius={55}
+              outerRadius={75}
+              startAngle={90}
+              endAngle={-270}
+              stroke="none"
+            >
+              <Cell fill="#00afef" />
+              <Cell className="fill-gray-200 dark:fill-slate-700" />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-2xl font-bold text-[#00afef] font-twcenmt">
+            {persen}%
+          </span>
+          <span className="text-xs text-gray-500 dark:text-slate-400">
+            vs kemarin
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500 dark:text-slate-400">Hari ini</span>
+          <span className="font-semibold text-gray-800 dark:text-slate-100">
+            {fmtCurrency(hariIni)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500 dark:text-slate-400">Kemarin</span>
+          <span className="font-semibold text-gray-800 dark:text-slate-100">
+            {fmtCurrency(kemarin)}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -444,17 +561,21 @@ function ReorderWidget({
     setGenerating(vendorIds === null ? "all" : vendorIds.join(","));
     try {
       const result = await generateDraftPurchaseOrdersAction(
-        vendorIds ?? undefined
+        vendorIds ?? undefined,
       );
       onChanged();
       if (result.created.length > 0) {
         router.push("/pesanan-pembelian");
       } else {
-        setError("Tidak ada draf pesanan pembelian yang dibuat. Pastikan vendor sudah aktif.");
+        setError(
+          "Tidak ada draf pesanan pembelian yang dibuat. Pastikan vendor sudah aktif.",
+        );
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Gagal membuat draf pesanan pembelian"
+        err instanceof Error
+          ? err.message
+          : "Gagal membuat draf pesanan pembelian",
       );
     } finally {
       setGenerating(null);
@@ -494,7 +615,9 @@ function ReorderWidget({
             disabled={generating !== null}
             className="px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all whitespace-nowrap"
           >
-            {generating === "all" ? "Membuat..." : `Buat Semua (${vendorGroups.length})`}
+            {generating === "all"
+              ? "Membuat..."
+              : `Buat Semua (${vendorGroups.length})`}
           </button>
         )}
       </div>
@@ -614,7 +737,8 @@ function ReorderWidget({
                       Tanpa Saran Vendor ({unassignedGroup.items.length})
                     </p>
                     <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-                      Belum ada riwayat pembelian. Buat pesanan pembelian manual.
+                      Belum ada riwayat pembelian. Buat pesanan pembelian
+                      manual.
                     </p>
                   </div>
                 </div>
@@ -656,64 +780,58 @@ function ReorderWidget({
   );
 }
 
+type StatIconName = "receipt" | "trending" | "wallet" | "warning";
+
 function StatCard({
   title,
   value,
   subtitle,
   icon,
-  color,
+  gradient,
 }: {
   title: string;
   value: string;
   subtitle?: string;
-  icon: string;
-  color: string;
+  icon: StatIconName;
+  gradient: string;
 }) {
-  const iconMap: Record<string, string> = {
-    receipt: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+  const iconMap: Record<StatIconName, string> = {
+    receipt:
+      "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
     trending: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
-    chart: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
-    warning: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
-    print: "M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z",
-    bolt: "M13 10V3L4 14h7v7l9-11h-7z",
-    wallet: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+    wallet:
+      "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+    warning:
+      "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
   };
-
-  const colorClasses: Record<string, { bg: string; text: string; icon: string }> = {
-    cyan: { bg: "bg-cyan-50 dark:bg-slate-800", text: "text-[#00afef]", icon: "text-[#00afef]" },
-    emerald: { bg: "bg-emerald-50 dark:bg-slate-800", text: "text-emerald-600 dark:text-emerald-300", icon: "text-emerald-500" },
-    blue: { bg: "bg-blue-50 dark:bg-slate-800", text: "text-blue-600 dark:text-blue-300", icon: "text-blue-500" },
-    amber: { bg: "bg-amber-50 dark:bg-slate-800", text: "text-amber-600 dark:text-amber-300", icon: "text-amber-500" },
-    red: { bg: "bg-red-50 dark:bg-red-950/40", text: "text-red-600", icon: "text-red-500" },
-  };
-
-  const c = colorClasses[color] ?? colorClasses.cyan;
 
   return (
-    <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 rounded-2xl shadow p-5 flex items-start gap-4">
-      <div className={`${c.bg} p-3 rounded-xl shrink-0`}>
-        <svg
-          className={`w-6 h-6 ${c.icon}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          strokeWidth={1.8}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d={iconMap[icon] || iconMap.chart}
-          />
-        </svg>
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm text-gray-500 dark:text-slate-400 font-twcenmt">{title}</p>
-        <p className={`text-xl font-bold ${c.text} font-twcenmt truncate`}>
-          {value}
-        </p>
-        {subtitle && (
-          <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
-        )}
+    <div
+      className={`bg-gradient-to-br ${gradient} rounded-2xl shadow-lg p-5 text-white`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-white/80 font-twcenmt">{title}</p>
+          <p className="text-2xl font-bold font-twcenmt truncate">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-white/70 mt-0.5">{subtitle}</p>
+          )}
+        </div>
+        <span className="bg-white/20 rounded-lg p-2 shrink-0">
+          <svg
+            className="w-6 h-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d={iconMap[icon]}
+            />
+          </svg>
+        </span>
       </div>
     </div>
   );
