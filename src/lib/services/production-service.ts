@@ -14,6 +14,7 @@ import {
 } from "./inventory-service";
 import { getShopSettings } from "./shop-settings-service";
 import { deriveOrderStatus } from "@/lib/produksi/status-produksi";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 export interface ProductionOrder {
   id: string;
@@ -308,74 +309,65 @@ export async function getProductionOrderById(
 
     const items = itemsResult.data || [];
 
-    // Ambil finishing dan nama operator
-    const itemsWithFinishing = await Promise.all(
-      items.map(async (item) => {
-        const finishingResult = await db.query<FinishingItem>(
-          "item_finishing",
-          {
-            where: { item_produksi_id: item.id },
-            orderBy: { column: "dibuat_pada", ascending: true },
-          }
-        );
+    // Ambil finishing + konsumsi material secara batch (hindari N+1 per item)
+    const itemIds = items.map((item) => item.id);
+    const [finishingByItem, consumptionsByItem] = await Promise.all([
+      fetchChildrenByForeignKey<FinishingItem>("item_finishing", "item_produksi_id", itemIds),
+      fetchChildrenByForeignKey<any>("production_material_consumptions", "item_produksi_id", itemIds),
+    ]);
 
-        const finishing = finishingResult.data || [];
+    const finishingRows = [...finishingByItem.values()].flat();
+    const operatorIds = [
+      ...items.map((item) => item.operator_id),
+      ...finishingRows.map((fin) => fin.operator_id),
+    ].filter(Boolean) as string[];
+    const saleItemIds = items.map((item) => item.item_penjualan_id).filter(Boolean) as string[];
 
-        // Lengkapi finishing dengan nama operator
-        const finishingWithOperator = await Promise.all(
-          finishing.map(async (fin) => {
-            if (fin.operator_id) {
-              const operatorResult = await db.queryOne("profil", {
-                where: { id: fin.operator_id },
-              });
-              return {
-                ...fin,
-                operator_nama: operatorResult.data?.nama_pengguna || undefined,
-              };
-            }
-            return fin;
-          })
-        );
+    const [operatorMap, saleItemMap] = await Promise.all([
+      buildLookupMap<{ nama_pengguna: string }>("profil", operatorIds, "nama_pengguna"),
+      buildLookupMap<any>("item_penjualan", saleItemIds),
+    ]);
 
-        // Lengkapi item dengan nama operator
-        let operator_nama = undefined;
-        if (item.operator_id) {
-          const operatorResult = await db.queryOne("profil", {
-            where: { id: item.operator_id },
-          });
-          operator_nama = operatorResult.data?.nama_pengguna || undefined;
-        }
-        const saleItemResult = await db.queryOne<any>("item_penjualan", {
-          where: { id: item.item_penjualan_id },
-        });
-        const saleItem = saleItemResult.data;
-        const consumptionResult = await db.query<any>(
-          "production_material_consumptions",
-          { where: { item_produksi_id: item.id } }
-        );
-        const consumption =
-          (consumptionResult.data || []).find((row: any) => row.status === "POSTED") ||
-          null;
+    const itemsWithFinishing = items.map((item) => {
+      const finishing = (finishingByItem.get(item.id) || [])
+        .slice()
+        .sort((a, b) =>
+          String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+        )
+        .map((fin) => ({
+          ...fin,
+          operator_nama: fin.operator_id
+            ? operatorMap.get(fin.operator_id)?.nama_pengguna || undefined
+            : undefined,
+        }));
 
-        return {
-          ...item,
-          is_maklon: saleItem?.tipe_item === "MAKLON",
-          barang_id: (item as any).barang_id || saleItem?.barang_id || null,
-          billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
-          billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
-          recommended_roll_width_m:
-            (item as any).recommended_roll_width_m ??
-            saleItem?.recommended_roll_width_m ??
-            null,
-          roll_inventory_status:
-            (item as any).roll_inventory_status ||
-            (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),
-          operator_nama,
-          finishing: finishingWithOperator,
-          consumption,
-        };
-      })
-    );
+      const saleItem = item.item_penjualan_id
+        ? saleItemMap.get(item.item_penjualan_id) || null
+        : null;
+      const consumption =
+        (consumptionsByItem.get(item.id) || []).find((row: any) => row.status === "POSTED") ||
+        null;
+
+      return {
+        ...item,
+        is_maklon: saleItem?.tipe_item === "MAKLON",
+        barang_id: (item as any).barang_id || saleItem?.barang_id || null,
+        billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
+        billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
+        recommended_roll_width_m:
+          (item as any).recommended_roll_width_m ??
+          saleItem?.recommended_roll_width_m ??
+          null,
+        roll_inventory_status:
+          (item as any).roll_inventory_status ||
+          (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),
+        operator_nama: item.operator_id
+          ? operatorMap.get(item.operator_id)?.nama_pengguna || undefined
+          : undefined,
+        finishing,
+        consumption,
+      };
+    });
 
     return {
       ...order,

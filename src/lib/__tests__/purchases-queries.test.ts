@@ -49,9 +49,9 @@ describe("enrichPurchaseRows (no N+1)", () => {
     const rows = [{ id: "p1", vendor_id: "v1", dibuat_oleh: "u1", total_jumlah: 2000 }];
     const result = await enrichPurchaseRows(rows);
 
-    expect(result[0].vendor_name).toBe("PT V");
-    expect(result[0].created_by_name).toBe("Budi");
-    expect(result[0].items[0].nama_barang).toBe("Tinta");
+    expect(result[0]!.vendor_name).toBe("PT V");
+    expect(result[0]!.created_by_name).toBe("Budi");
+    expect(result[0]!.items![0]!.nama_barang).toBe("Tinta");
     expect(__mock.db.queryOne).not.toHaveBeenCalled();
   });
 });
