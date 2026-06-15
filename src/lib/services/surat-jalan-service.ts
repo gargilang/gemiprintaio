@@ -16,6 +16,7 @@ import {
   getCurrentTimestamp,
   getServerSupabaseClient,
 } from "../db-unified";
+import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 
 // ============================================================================
 // TYPES
@@ -199,35 +200,35 @@ export async function getSuratJalan(limit: number = 200): Promise<SuratJalan[]> 
       limit,
     });
     const sjs = sjsRes.data || [];
+    if (sjs.length === 0) return [];
 
-    return await Promise.all(
-      sjs.map(async (sj) => {
-        const itemsRes = await db.query<SuratJalanItem>("item_surat_jalan", {
-          where: { surat_jalan_id: sj.id },
-        });
-        const items = (itemsRes.data || []).sort(
-          (a, b) => (a.urutan ?? 0) - (b.urutan ?? 0)
-        );
+    const sjIds = sjs.map((s) => s.id);
+    const penjualanIds = sjs.map((s) => s.penjualan_id).filter(Boolean) as string[];
+    const userIds = sjs.map((s) => s.dibuat_oleh).filter(Boolean) as string[];
 
-        let nomor_faktur: string | null = null;
-        if (sj.penjualan_id) {
-          const p = await db.queryOne<{ nomor_faktur: string }>("penjualan", {
-            where: { id: sj.penjualan_id },
-          });
-          nomor_faktur = p.data?.nomor_faktur || null;
-        }
-        let dibuat_oleh_nama: string | null = null;
-        if (sj.dibuat_oleh) {
-          const u = await db.queryOne<{ nama_lengkap?: string; nama_pengguna?: string }>(
-            "profil",
-            { where: { id: sj.dibuat_oleh } }
-          );
-          dibuat_oleh_nama = u.data?.nama_lengkap || u.data?.nama_pengguna || null;
-        }
+    const [itemsBySj, penjualanMap, userMap] = await Promise.all([
+      fetchChildrenByForeignKey<SuratJalanItem>("item_surat_jalan", "surat_jalan_id", sjIds),
+      buildLookupMap<{ nomor_faktur: string }>("penjualan", penjualanIds, "nomor_faktur"),
+      buildLookupMap<{ nama_lengkap?: string; nama_pengguna?: string }>(
+        "profil",
+        userIds,
+        "nama_lengkap,nama_pengguna"
+      ),
+    ]);
 
-        return { ...sj, items, nomor_faktur, dibuat_oleh_nama };
-      })
-    );
+    return sjs.map((sj) => {
+      const items = (itemsBySj.get(sj.id) || []).sort(
+        (a, b) => (a.urutan ?? 0) - (b.urutan ?? 0)
+      );
+      const penjualan = sj.penjualan_id ? penjualanMap.get(sj.penjualan_id) : null;
+      const user = sj.dibuat_oleh ? userMap.get(sj.dibuat_oleh) : null;
+      return {
+        ...sj,
+        items,
+        nomor_faktur: penjualan?.nomor_faktur || null,
+        dibuat_oleh_nama: user?.nama_lengkap || user?.nama_pengguna || null,
+      };
+    });
   } catch (error) {
     console.error("Error fetching surat jalan:", error);
     throw error;
