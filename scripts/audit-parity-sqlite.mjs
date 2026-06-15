@@ -28,61 +28,21 @@ const runtimeTs = readFileSync(
   "utf8",
 );
 
-// Daftar tabel yang DI-PULL dari Supabase ke SQLite — disalin dari
-// src/lib/db-sqlite.ts SYNC_V2_TABLES (jalur pull syncFromCloud + Rust engine).
-// Inilah daftar yang relevan untuk risiko silent-drop saat pull.
-const SYNC_TABLES = [
-  "kategori_barang",
-  "subkategori_barang",
-  "satuan_barang",
-  "spesifikasi_cepat_barang",
-  "barang",
-  "barang_roll_variants",
-  "harga_barang_satuan",
-  "inventory_movements",
-  "production_material_consumptions",
-  "opsi_finishing",
-  "pelanggan",
-  "vendor",
-  "profil",
-  "kredensial",
-  "peran_pegawai",
-  "pegawai",
-  "penjualan",
-  "item_penjualan",
-  "penawaran",
-  "item_penawaran",
-  "pembelian",
-  "item_pembelian",
-  "purchase_orders",
-  "purchase_order_items",
-  "retur_penjualan",
-  "item_retur_penjualan",
-  "retur_pembelian",
-  "item_retur_pembelian",
-  "stock_opnames",
-  "stock_opname_items",
-  "piutang_penjualan",
-  "pelunasan_piutang",
-  "hutang_pembelian",
-  "pelunasan_hutang",
-  "order_produksi",
-  "item_produksi",
-  "item_finishing",
-  "keuangan",
-  "finance_category_definitions",
-  "finance_metric_mappings",
-  "pengaturan_toko",
-  "nsfp_pool",
-  "lokasi",
-  "accounting_periods",
-  "surat_jalan",
-  "item_surat_jalan",
-  "komponen_kompensasi",
-  "proses_gaji",
-  "slip_gaji",
-  "pinjaman_karyawan",
-];
+// Daftar tabel pull diparse langsung dari src/lib/db-sqlite.ts (SYNC_V2_TABLES)
+// agar tidak rot saat daftar sumber berubah.
+const dbSqliteTs = readFileSync(join(root, "src/lib/db-sqlite.ts"), "utf8");
+const syncBlockMatch = dbSqliteTs.match(
+  /export const SYNC_V2_TABLES\s*=\s*\[([\s\S]*?)\]/
+);
+if (!syncBlockMatch) {
+  throw new Error("Tidak bisa menemukan SYNC_V2_TABLES di src/lib/db-sqlite.ts");
+}
+const SYNC_TABLES = [...syncBlockMatch[1].matchAll(/["']([a-z_][a-z0-9_]*)["']/gi)].map(
+  (m) => m[1]
+);
+if (SYNC_TABLES.length === 0) {
+  throw new Error("SYNC_V2_TABLES terparse kosong — cek format db-sqlite.ts");
+}
 
 // Ekstrak isi dalam tanda kurung dari CREATE TABLE, dengan menyeimbangkan paren.
 function extractBody(sql, startIdx) {
@@ -162,16 +122,42 @@ function parseCols(body) {
   return cols;
 }
 
-// Apakah runtime migrations menambah kolom ini (ALTER TABLE ... ADD COLUMN)
-// atau membuat tabelnya? Heuristik: cari nama tabel + nama kolom di file TS.
-function runtimeHasColumn(table, col) {
-  // ADD COLUMN <col> di sekitar penyebutan tabel — pendekatan kasar:
-  const addRe = new RegExp(`ADD COLUMN[^\\n]*\\b${col}\\b`, "i");
-  const createRe = new RegExp(
-    `CREATE TABLE[^;]*\\b${table}\\b[^;]*\\b${col}\\b`,
-    "is",
+// 6 kolom sync V2 ditambahkan ke SEMUA tabel di SYNC_V2_TABLES oleh loop generik
+// di db-sqlite-migrations.ts (ensureServerSQLiteSyncV2Schema).
+const V2_SYNC_COLUMNS = new Set([
+  "updated_at_server",
+  "updated_by_device",
+  "change_version",
+  "is_deleted",
+  "deleted_at",
+  "client_mutation_id",
+]);
+
+// Ambil isi blok CREATE TABLE <table> ( ... ) dari teks runtime (bila ada).
+function runtimeCreateBlock(table) {
+  const re = new RegExp(
+    `CREATE TABLE(?: IF NOT EXISTS)?\\s+"?${table}"?\\s*\\(`,
+    "i"
   );
-  return addRe.test(runtimeTs) || createRe.test(runtimeTs);
+  const m = re.exec(runtimeTs);
+  if (!m) return null;
+  return extractBody(runtimeTs, m.index);
+}
+
+// Apakah runtime menambah `col` ke `table` secara spesifik (bukan grep global)?
+function runtimeHasColumn(table, col) {
+  // (1) Kolom V2 generik untuk tabel yang ikut SYNC_V2_TABLES.
+  if (V2_SYNC_COLUMNS.has(col) && SYNC_TABLES.includes(table)) return true;
+  // (2) ALTER TABLE <table> ADD COLUMN <col> — di-scope ke nama tabel.
+  const alterRe = new RegExp(
+    `ALTER TABLE\\s+"?${table}"?\\s+ADD COLUMN[^\\n;]*\\b${col}\\b`,
+    "i"
+  );
+  if (alterRe.test(runtimeTs)) return true;
+  // (3) Kolom ada di blok CREATE TABLE <table> runtime.
+  const block = runtimeCreateBlock(table);
+  if (block && parseCols(block).has(col)) return true;
+  return false;
 }
 function runtimeCreatesTable(table) {
   const re = new RegExp(
@@ -196,12 +182,28 @@ for (const t of SYNC_TABLES) {
     continue;
   }
   if (!lite) {
-    const compensated = runtimeCreatesTable(t);
+    const created = runtimeCreatesTable(t);
     missingTables.push(t);
-    if (!compensated) dangerous.push(`tabel ${t}`);
-    console.log(
-      `[TABEL HILANG di sqlite-schema] ${t} (runtime creates? ${compensated})`,
-    );
+    if (!created) {
+      dangerous.push(`tabel ${t}`);
+      console.log(`[TABEL HILANG di sqlite-schema] ${t} (runtime creates? false)`);
+      continue;
+    }
+    // Tabel dibuat runtime — periksa kolomnya juga (jangan buta).
+    const block = runtimeCreateBlock(t);
+    const runtimeCols = block ? parseCols(block) : new Set();
+    if (SYNC_TABLES.includes(t)) {
+      for (const c of V2_SYNC_COLUMNS) runtimeCols.add(c);
+    }
+    const missingInRuntime = [...pg].filter((c) => !runtimeCols.has(c));
+    if (missingInRuntime.length) {
+      for (const c of missingInRuntime) dangerous.push(`${t}.${c}`);
+      console.log(
+        `[TABEL HILANG di sqlite-schema] ${t} (runtime creates? true) — kolom tak terbangun: ${missingInRuntime.join(", ")}`
+      );
+    } else {
+      console.log(`[TABEL HILANG di sqlite-schema] ${t} (runtime creates? true, kolom lengkap)`);
+    }
     continue;
   }
   const missingCols = [...pg].filter((c) => !lite.has(c));
