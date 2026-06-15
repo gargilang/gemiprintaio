@@ -42,10 +42,9 @@ Installed skills:
 
 - **superpowers** (from github.com/obra/superpowers) — workflow skills: `brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `test-driven-development`, `systematic-debugging`, `requesting-code-review`, `receiving-code-review`, `verification-before-completion`, `using-git-worktrees`, `finishing-a-development-branch`, `writing-skills`, `using-superpowers`. These are the structured workflows referenced in "Scale effort to task size" above. Scale them to task size — skip them for trivial tasks.
 - **graphify** (from github.com/safishamsi/graphify) — knowledge-graph query/build over the codebase. See the `## graphify` section below.
-- **rtk** (from github.com/rtk-ai/rtk) — token-saving CLI proxy. See the `## rtk` section below.
 - **supabase**, **supabase-postgres-best-practices** — Supabase + Postgres guidance.
 
-These skills are meant to be used **by default** to keep agents efficient: prefer `graphify`/`rtk` for codebase questions and noisy commands, and reach for the superpowers workflow skills on non-trivial work. They cost tokens, so match them to task size per the rules above.
+These skills are meant to be used **by default** to keep agents efficient: prefer `graphify` for codebase questions, and reach for the superpowers workflow skills on non-trivial work. They cost tokens, so match them to task size per the rules above.
 
 ## Tools and access (use without asking)
 
@@ -171,20 +170,6 @@ Pick the option that: matches existing patterns (search first), minimizes new in
 - `docs/SETUP.md` — fresh-machine developer setup.
 - `docs/supabase-local-development.md` — local Supabase workflow.
 - `docs/migrasi-singapura-dan-perbaikan.md` — DB migration to Singapore, migration collapse, Vercel configuration, and improvement candidates (SQLite/N+1).
-
-## rtk (token-saving CLI proxy)
-
-`rtk` filters/compresses noisy command output before it reaches the model (60-90% fewer tokens), with a `tee` fallback that saves full output on failure so nothing is lost.
-
-**Automation differs per tool.** In OpenCode it runs via a plugin (`~/.config/opencode/plugins/rtk.ts`) and in Cursor via a `preToolUse` hook (`.cursor/hooks.json`) that rewrite every command **automatically**. **Zed has no equivalent pre-tool hook**, and `rtk init` has no Zed target — so in Zed nothing rewrites commands for you. There, you must type `rtk` yourself in front of noisy commands (build, test, lint, type-check, install, git, large listings). The `rtk` skill in `.agents/skills/rtk/` documents this.
-
-Rules:
-- In Zed, manually prefix noisy commands: `rtk npm run build`, `rtk npm run type-check`, `rtk jest <path>`, `rtk lint`, `rtk git status`, `rtk tree`, etc. Skip rtk for trivially short output.
-- Don't fight the rewrite/compact output. If a command comes back as `rtk <cmd>` (auto-rewrite tools) or looks intentionally terse, that's expected.
-- When a command fails, rtk prints a `[full output: …/tee/…log]` path. Read that log for the unfiltered detail instead of re-running the raw command.
-- For the few cases where you need raw, unfiltered output (debugging the tool itself, exact byte-for-byte output), run `rtk proxy <cmd>` (tracked) or `rtk run <cmd>` (raw, untracked).
-- Analytics are on-demand: `rtk gain` (savings summary), `rtk gain --history`, `rtk discover` (missed opportunities).
-- rtk no-ops safely if the binary isn't found, so commands still run without it.
 
 ## graphify
 

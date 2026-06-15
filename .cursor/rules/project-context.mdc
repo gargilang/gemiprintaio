@@ -38,17 +38,6 @@ The Superpowers plugin provides skills (brainstorming, writing-plans, executing-
 - Terminal / CLI: Next.js, Flutter, `gh`, Supabase CLI, Vercel CLI, SQLite.
 - Read code, run commands, check deploy/logs, test in the browser.
 
-## Editing large / special-character files (avoid the "Unterminated string in JSON" trap)
-
-The `Write` / `StrReplace` tools sometimes fail with a JSON-parse error when the content is large AND contains tricky characters: backticks, `${...}` template literals, `$$` dollar-quoted SQL, backslash escapes (`\s`, `\d`), or big JSX blocks. It's a serialization limit, not a file problem. Proven workarounds (in order of preference):
-
-- **Small, focused edits win.** Prefer many small `StrReplace` edits over one huge block. For a new big file, write a tiny stub first (e.g. just `"use client";` + a marker comment), then grow it with successive `StrReplace` calls of a few dozen lines each.
-- **Marker-splice with Node `fs`** for big block moves/replacements (extracting a function/JSX range): write a throwaway `node -e` / heredoc script that reads the file, finds start/end by `indexOf`/regex on stable anchor lines, splices the array, and writes back. Reference: how `deleteSale` dead-block and the `pengaturan/setup/` extractions were done in Fase 6.
-- **Avoid backslash regex in tool args.** If a string needs `\s`/`\d`, either build it via Node, or rewrite to a character class without escapes (e.g. split on `[,+ ]+` instead of `[,+\s]+`) when behavior is equivalent for the real input.
-- **Generated `.md` plans/specs:** if a long markdown write fails, create the file with a header + `<!-- MARKER -->`, then append section-by-section with `StrReplace` on the marker. Keep code fences containing backticks short per edit.
-- **Never** paste secrets or `$$ ... $$` SQL blobs into chat to "work around" it — fix via Node script on disk instead.
-- After any scripted/`fs` edit, re-read the touched region and run `npm run type-check` (or `node --check` for scripts) to confirm nothing was mangled. Delete throwaway scripts when done.
-
 ## Git and deploy
 
 - Commit verified changes. Push to `main` → Vercel auto-deploys.
