@@ -6,7 +6,8 @@ import { db } from "@/lib/db-unified";
  * Ambil baris dari `table` yang `id`-nya ada di `ids`, kembalikan Map id→baris.
  * Satu query batch via `where { id: [...] }` (IN) — menghapus N+1 (dulu 1
  * queryOne per id). `ids` di-dedupe; set kosong men-skip query. Bila `select`
- * diberikan, kolom `id` otomatis ikut agar Map bisa dibangun.
+ * diberikan, kolom `id` otomatis ikut agar Map bisa dibangun. Pemanggil yang
+ * membatch >999 id harus chunk dulu (batas variabel SQLite).
  */
 export async function buildLookupMap<T = any>(
   table: string,
@@ -39,6 +40,7 @@ export async function buildLookupMap<T = any>(
  * lalu kelompokkan jadi Map parentId→baris[]. Satu query batch via
  * `where { [fkColumn]: [...] }` (IN) — menggantikan full-table scan + filter.
  * Tidak memakai `select` karena pemanggil butuh seluruh kolom baris anak.
+ * Pemanggil yang membatch >999 id harus chunk dulu (batas variabel SQLite).
  */
 export async function fetchChildrenByForeignKey<T = any>(
   table: string,
