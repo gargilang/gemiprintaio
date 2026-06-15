@@ -7,6 +7,7 @@ import {
   generateId,
   getCurrentTimestamp,
 } from "../db-unified";
+import { resetMockDb, mockTable, __mock } from "./helpers/mock-db";
 
 describe("normalizeRecord", () => {
   describe("konversi toSupabase", () => {
@@ -251,5 +252,27 @@ describe("Edge Case", () => {
     expect(output.aktif).toBe(true);
     expect(output.dibuat_pada).toBe("2025-11-14T10:00:00Z");
     expect(output.metadata).toEqual({ key: "value" });
+  });
+});
+
+describe("array where → IN (batch lookups)", () => {
+  beforeEach(() => resetMockDb());
+
+  it("db.query with where: { id: [...] } returns only matching rows", async () => {
+    mockTable("barang").set("b1", { id: "b1", nama: "A" });
+    mockTable("barang").set("b2", { id: "b2", nama: "B" });
+    mockTable("barang").set("b3", { id: "b3", nama: "C" });
+
+    const res = await __mock.db.query("barang", {
+      where: { id: ["b1", "b3"] },
+    });
+    const ids = (res.data || []).map((r: any) => r.id).sort();
+    expect(ids).toEqual(["b1", "b3"]);
+  });
+
+  it("empty array matches nothing", async () => {
+    mockTable("barang").set("b1", { id: "b1", nama: "A" });
+    const res = await __mock.db.query("barang", { where: { id: [] } });
+    expect(res.data).toEqual([]);
   });
 });

@@ -826,6 +826,13 @@ class UnifiedDatabase {
         if (value === null) {
           return `${key} IS NULL`;
         }
+        if (Array.isArray(value)) {
+          // Batch lookup: WHERE key IN (?, ?, ...). Empty array → 0=1 (no rows).
+          if (value.length === 0) return "0 = 1";
+          const placeholders = value.map(() => "?").join(", ");
+          for (const v of value) params.push(v);
+          return `${key} IN (${placeholders})`;
+        }
         params.push(value);
         return `${key} = ?`;
       });
@@ -1004,6 +1011,9 @@ class UnifiedDatabase {
       Object.entries(options.where).forEach(([key, value]) => {
         if (value === null) {
           query = query.is(key, null);
+        } else if (Array.isArray(value)) {
+          // Batch lookup: WHERE key IN (...). Empty array → matches nothing.
+          query = query.in(key, value);
         } else {
           query = query.eq(key, value);
         }
