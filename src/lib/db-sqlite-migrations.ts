@@ -1673,6 +1673,30 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         sql: "catatan_struk TEXT",
         defaultValue: "Barang yang sudah dibeli tidak dapat dikembalikan",
       },
+      // Penomoran faktur/SPK — paritas dengan Postgres (pengaturan_toko).
+      // NOT NULL DEFAULT mengisi baris lama; tanpa defaultValue karena terisi.
+      { name: "inv_prefix", sql: "inv_prefix TEXT NOT NULL DEFAULT 'INV'" },
+      {
+        name: "inv_format",
+        sql: "inv_format TEXT NOT NULL DEFAULT 'PREFIX-DATE-SEQ' CHECK(inv_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ'))",
+      },
+      {
+        name: "inv_reset",
+        sql: "inv_reset TEXT NOT NULL DEFAULT 'daily' CHECK(inv_reset IN ('daily', 'monthly', 'yearly', 'never'))",
+      },
+      { name: "inv_padding", sql: "inv_padding INTEGER NOT NULL DEFAULT 3" },
+      { name: "inv_start_seq", sql: "inv_start_seq INTEGER NOT NULL DEFAULT 1" },
+      { name: "spk_prefix", sql: "spk_prefix TEXT NOT NULL DEFAULT 'SPK'" },
+      {
+        name: "spk_format",
+        sql: "spk_format TEXT NOT NULL DEFAULT 'PREFIX-SEQ' CHECK(spk_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ'))",
+      },
+      {
+        name: "spk_reset",
+        sql: "spk_reset TEXT NOT NULL DEFAULT 'never' CHECK(spk_reset IN ('daily', 'monthly', 'yearly', 'never'))",
+      },
+      { name: "spk_padding", sql: "spk_padding INTEGER NOT NULL DEFAULT 4" },
+      { name: "spk_start_seq", sql: "spk_start_seq INTEGER NOT NULL DEFAULT 1" },
     ];
     for (const column of pengaturanTokoExtraColumns) {
       if (!pengaturanTokoCols.includes(column.name)) {

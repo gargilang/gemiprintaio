@@ -748,6 +748,7 @@ CREATE TABLE finance_category_definitions (
       direction TEXT NOT NULL DEFAULT 'both' CHECK(direction IN ('debit', 'kredit', 'both')),
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
+      metric_contributions TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     , sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
@@ -897,7 +898,7 @@ CREATE TABLE pembelian (
       dibuat_oleh TEXT,
       diterima_oleh TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')),
-      diperbarui_pada TEXT DEFAULT (datetime('now')), tanggal TEXT DEFAULT (date('now')), nomor_faktur TEXT, status_pembayaran TEXT DEFAULT 'LUNAS' 
+      diperbarui_pada TEXT DEFAULT (datetime('now')), tanggal TEXT DEFAULT (date('now')), nomor_faktur TEXT, status_pembayaran TEXT DEFAULT 'LUNAS'
       CHECK(status_pembayaran IN ('LUNAS', 'HUTANG', 'SEBAGIAN')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       tipe_pembelian TEXT NOT NULL DEFAULT 'BARANG' CHECK(tipe_pembelian IN ('BARANG','MAKLON')),
       penjualan_id_sumber TEXT,
@@ -997,6 +998,16 @@ CREATE TABLE pengaturan_toko (
       nsfp_kode_transaksi_default TEXT NOT NULL DEFAULT '01',
       nsfp_tahun_aktif TEXT,
       nsfp_seri_terakhir TEXT,
+      inv_prefix TEXT NOT NULL DEFAULT 'INV',
+      inv_format TEXT NOT NULL DEFAULT 'PREFIX-DATE-SEQ' CHECK(inv_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ')),
+      inv_reset TEXT NOT NULL DEFAULT 'daily' CHECK(inv_reset IN ('daily', 'monthly', 'yearly', 'never')),
+      inv_padding INTEGER NOT NULL DEFAULT 3,
+      inv_start_seq INTEGER NOT NULL DEFAULT 1,
+      spk_prefix TEXT NOT NULL DEFAULT 'SPK',
+      spk_format TEXT NOT NULL DEFAULT 'PREFIX-SEQ' CHECK(spk_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ')),
+      spk_reset TEXT NOT NULL DEFAULT 'never' CHECK(spk_reset IN ('daily', 'monthly', 'yearly', 'never')),
+      spk_padding INTEGER NOT NULL DEFAULT 4,
+      spk_start_seq INTEGER NOT NULL DEFAULT 1,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')),
       sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
@@ -1320,4 +1331,3 @@ CREATE TABLE biaya_tambahan_penjualan (
 
 CREATE INDEX idx_biaya_tambahan_penjualan_sale ON biaya_tambahan_penjualan(penjualan_id);
 CREATE INDEX idx_biaya_tambahan_sync_status ON biaya_tambahan_penjualan(sync_status);
-
