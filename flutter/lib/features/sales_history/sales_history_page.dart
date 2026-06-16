@@ -105,11 +105,6 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
     return Column(children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Row(children: [
-        const Text('Riwayat Penjualan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-        const SizedBox(width: 8),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Text('${_sales.length}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13))),
-      ])),
       Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: TextField(
         decoration: InputDecoration(hintText: 'Cari faktur atau pelanggan...', prefixIcon: const Icon(Icons.search, size: 20),
           suffixIcon: _search.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() => _search = '')) : null,

@@ -126,11 +126,6 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
                       onChanged: (v) => setState(() => _search = v),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${filtered.length} data',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                  ),
                 ],
               ),
             ),
