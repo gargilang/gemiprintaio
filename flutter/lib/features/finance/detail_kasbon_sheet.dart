@@ -84,6 +84,7 @@ class _DetailKasbonSheetState extends ConsumerState<DetailKasbonSheet> {
     );
 
     if (result == true) {
+      if (!mounted) return;
       showSuccessSnackbar(context, isTarik ? 'Kasbon berhasil dicatat' : 'Pembayaran berhasil dicatat');
       widget.onSuccess();
       _loadRiwayat();

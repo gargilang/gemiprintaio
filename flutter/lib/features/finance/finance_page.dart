@@ -32,8 +32,8 @@ class _FinancePageState extends ConsumerState<FinancePage>
   String _search = '';
   String _filterKategori = 'SEMUA';
 
-  RingkasanKasbon? _ringkasanKasbon;
-  RingkasanHutangPiutang? _ringkasanHutangPiutang;
+  RingkasanKasbon _ringkasanKasbon = RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0);
+  RingkasanHutangPiutang _ringkasanHutangPiutang = RingkasanHutangPiutang(hutang: HutangPiutangInfo(total: 0, jumlah: 0), piutang: HutangPiutangInfo(total: 0, jumlah: 0));
 
   final _fmt = NumberFormat.currency(
     locale: 'id_ID',
@@ -68,14 +68,14 @@ class _FinancePageState extends ConsumerState<FinancePage>
       final results = await Future.wait([
         service.getCashBook(forceRefresh: forceRefresh),
         service.getConfig().catchError((_) => <String, dynamic>{}),
-        service.getRingkasanKasbon().catchError((_) => null),
-        service.getRingkasanHutangPiutang().catchError((_) => null),
+        service.getRingkasanKasbon().catchError((_) => RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0)),
+        service.getRingkasanHutangPiutang().catchError((_) => RingkasanHutangPiutang(hutang: HutangPiutangInfo(total: 0, jumlah: 0), piutang: HutangPiutangInfo(total: 0, jumlah: 0))),
       ]);
 
       final data = results[0] as Map<String, dynamic>;
       final config = results[1] as Map<String, dynamic>;
-      final kasbon = results[2] as RingkasanKasbon?;
-      final hp = results[3] as RingkasanHutangPiutang?;
+      final kasbon = results[2] as RingkasanKasbon;
+      final hp = results[3] as RingkasanHutangPiutang;
 
       final list = data['cashBooks'] as List? ?? [];
       final categories = config['categories'] as List? ?? [];
@@ -157,8 +157,8 @@ class _FinancePageState extends ConsumerState<FinancePage>
     final kas = _metric('kas');
     final modalKas = _metric('modal_kas');
     final saldoKasbon = _metric('saldo_kasbon');
-    final hutang = _ringkasanHutangPiutang?.hutang;
-    final piutang = _ringkasanHutangPiutang?.piutang;
+    final hutang = _ringkasanHutangPiutang.hutang;
+    final piutang = _ringkasanHutangPiutang.piutang;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -192,18 +192,18 @@ class _FinancePageState extends ConsumerState<FinancePage>
               Expanded(
                 child: _miniSummaryCard(
                   'Hutang',
-                  hutang?.total ?? 0,
+                  hutang.total,
                   AppColors.error,
-                  subtitle: '${hutang?.jumlah ?? 0} tagihan',
+                  subtitle: '${hutang.jumlah} tagihan',
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: _miniSummaryCard(
                   'Piutang',
-                  piutang?.total ?? 0,
+                  piutang.total,
                   AppColors.success,
-                  subtitle: '${piutang?.jumlah ?? 0} tagihan',
+                  subtitle: '${piutang.jumlah} tagihan',
                 ),
               ),
             ],
@@ -231,7 +231,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
                   saldoKasbon,
                   AppColors.error,
                   subtitle:
-                      '${_ringkasanKasbon?.jumlahKaryawan ?? 0} karyawan',
+                      '${_ringkasanKasbon.jumlahKaryawan} karyawan',
                 ),
               ),
             ],
@@ -746,7 +746,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
   Widget _buildKasbonTab() {
     final kasbon = _ringkasanKasbon;
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (kasbon == null || kasbon.karyawan.isEmpty)
+    if (kasbon.karyawan.isEmpty)
       return const EmptyState(
         icon: Icons.people_outline_rounded,
         title: 'Belum ada data kasbon',
