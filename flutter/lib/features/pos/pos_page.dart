@@ -67,8 +67,9 @@ class _PosPageState extends ConsumerState<PosPage> {
     });
     try {
       final api = ref.read(apiClientProvider);
-      final data = await api.get('/api/pos/init-data', forceRefresh: force)
-          as Map<String, dynamic>;
+      final data =
+          await api.get('/api/pos/init-data', forceRefresh: force)
+              as Map<String, dynamic>;
       setState(() {
         _materials = ((data['materials'] as List?) ?? [])
             .map((j) => MaterialItem.fromJson(j as Map<String, dynamic>))
@@ -78,8 +79,7 @@ class _PosPageState extends ConsumerState<PosPage> {
             .map((j) => Customer.fromJson(j as Map<String, dynamic>))
             .toList();
         _subkontraktor = ((data['subkontraktor'] as List?) ?? [])
-            .map((j) =>
-                SubkontraktorOption.fromJson(j as Map<String, dynamic>))
+            .map((j) => SubkontraktorOption.fromJson(j as Map<String, dynamic>))
             .toList();
         _loading = false;
       });
@@ -133,7 +133,9 @@ class _PosPageState extends ConsumerState<PosPage> {
 
   double get _cartTotal =>
       getCartChargeTotal(
-          _cart.map((c) => c.subtotalRaw).toList(), _roundCartPrices) +
+        _cart.map((c) => c.subtotalRaw).toList(),
+        _roundCartPrices,
+      ) +
       _biayaTambahan.fold<double>(0, (s, b) => s + b.nominal);
 
   Future<void> _addMaterial(MaterialItem m) async {
@@ -224,7 +226,9 @@ class _PosPageState extends ConsumerState<PosPage> {
               controller: nominalCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                  labelText: 'Nominal', prefixText: 'Rp '),
+                labelText: 'Nominal',
+                prefixText: 'Rp ',
+              ),
             ),
           ],
         ),
@@ -243,8 +247,11 @@ class _PosPageState extends ConsumerState<PosPage> {
     if (ok == true) {
       final nominal = double.tryParse(nominalCtrl.text) ?? 0;
       if (labelCtrl.text.trim().isNotEmpty && nominal > 0) {
-        setState(() => _biayaTambahan.add(
-            BiayaTambahan(label: labelCtrl.text.trim(), nominal: nominal)));
+        setState(
+          () => _biayaTambahan.add(
+            BiayaTambahan(label: labelCtrl.text.trim(), nominal: nominal),
+          ),
+        );
       }
     }
   }
@@ -257,7 +264,9 @@ class _PosPageState extends ConsumerState<PosPage> {
     );
     setState(() {
       _selectedCustomer = picked;
-      if (picked != null && !_customers.any((c) => c.id == picked.id)) {
+      if (picked != null &&
+          picked.id.isNotEmpty &&
+          !_customers.any((c) => c.id == picked.id)) {
         _customers = [picked, ..._customers];
       }
     });
@@ -268,8 +277,10 @@ class _PosPageState extends ConsumerState<PosPage> {
       context,
       cart: _cart,
       roundCartPrices: _roundCartPrices,
-      biayaTambahanTotal:
-          _biayaTambahan.fold<double>(0, (s, b) => s + b.nominal),
+      biayaTambahanTotal: _biayaTambahan.fold<double>(
+        0,
+        (s, b) => s + b.nominal,
+      ),
       customerName: _selectedCustomer?.nama,
       customerKota: _selectedCustomer?.alamat,
     );
@@ -283,7 +294,9 @@ class _PosPageState extends ConsumerState<PosPage> {
 
   Future<void> _checkout(PaymentResult payment) async {
     final charges = allocateCartLineCharges(
-        _cart.map((c) => c.subtotalRaw).toList(), _roundCartPrices);
+      _cart.map((c) => c.subtotalRaw).toList(),
+      _roundCartPrices,
+    );
     final items = <Map<String, dynamic>>[];
     for (var i = 0; i < _cart.length; i++) {
       items.add(_cart[i].toSalePayload(charges[i]));
@@ -291,7 +304,8 @@ class _PosPageState extends ConsumerState<PosPage> {
     final user = ref.read(authStateProvider).valueOrNull;
     try {
       final result = await ref.read(posServiceProvider).createSale({
-        if (_selectedCustomer != null) 'pelanggan_id': _selectedCustomer!.id,
+        if (_selectedCustomer != null && _selectedCustomer!.id.isNotEmpty)
+          'pelanggan_id': _selectedCustomer!.id,
         if (_selectedCustomer != null)
           'pelanggan_nama_snapshot': _selectedCustomer!.nama,
         if (_selectedCustomer?.alamat != null)
@@ -304,8 +318,7 @@ class _PosPageState extends ConsumerState<PosPage> {
         'kasir_id': user?.id,
         'prioritas': 'NORMAL',
         if (_biayaTambahan.isNotEmpty)
-          'biaya_tambahan':
-              _biayaTambahan.map((b) => b.toJson()).toList(),
+          'biaya_tambahan': _biayaTambahan.map((b) => b.toJson()).toList(),
       });
       if (!mounted) return;
       final invoice =

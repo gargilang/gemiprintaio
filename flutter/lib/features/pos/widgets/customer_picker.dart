@@ -114,7 +114,9 @@ class _CustomerPickerBodyState extends State<_CustomerPickerBody> {
                   child: Text(
                     _creating ? 'Pelanggan Baru' : 'Pilih Pelanggan',
                     style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.bold),
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -137,6 +139,12 @@ class _CustomerPickerBodyState extends State<_CustomerPickerBody> {
   }
 
   Widget _buildSearch(ScrollController scroll) {
+    final q = _query.trim();
+    final adaSamaPersis = _filtered.any(
+      (c) => c.nama.toLowerCase() == q.toLowerCase(),
+    );
+    final showNew = q.isNotEmpty && !adaSamaPersis;
+
     return Column(
       children: [
         Padding(
@@ -159,8 +167,29 @@ class _CustomerPickerBodyState extends State<_CustomerPickerBody> {
         Expanded(
           child: ListView.builder(
             controller: scroll,
-            itemCount: _filtered.length,
+            itemCount: _filtered.length + (showNew ? 1 : 0),
             itemBuilder: (_, i) {
+              if (showNew && i == _filtered.length) {
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    child: const Icon(Icons.edit),
+                  ),
+                  title: Text(
+                    q,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: const Text('Pelanggan baru (tidak disimpan)'),
+                  onTap: () => Navigator.pop(
+                    context,
+                    Customer(id: '', tipePelanggan: 'perorangan', nama: q),
+                  ),
+                );
+              }
               final c = _filtered[i];
               return ListTile(
                 title: Text(c.nama),
@@ -168,14 +197,20 @@ class _CustomerPickerBodyState extends State<_CustomerPickerBody> {
                 trailing: c.isMember
                     ? Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.success.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('Member',
-                            style: TextStyle(
-                                fontSize: 10, color: AppColors.success)),
+                        child: const Text(
+                          'Member',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.success,
+                          ),
+                        ),
                       )
                     : null,
                 onTap: () => Navigator.pop(context, c),
@@ -195,26 +230,31 @@ class _CustomerPickerBodyState extends State<_CustomerPickerBody> {
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text(_error!,
-                style: const TextStyle(color: AppColors.error, fontSize: 13)),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: AppColors.error, fontSize: 13),
+            ),
           ),
         TextField(
           controller: _namaCtrl,
-          decoration: const InputDecoration(
-              labelText: 'Nama *', isDense: true),
+          decoration: const InputDecoration(labelText: 'Nama *', isDense: true),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _teleponCtrl,
           keyboardType: TextInputType.phone,
-          decoration:
-              const InputDecoration(labelText: 'Telepon', isDense: true),
+          decoration: const InputDecoration(
+            labelText: 'Telepon',
+            isDense: true,
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _alamatCtrl,
-          decoration:
-              const InputDecoration(labelText: 'Alamat / Kota', isDense: true),
+          decoration: const InputDecoration(
+            labelText: 'Alamat / Kota',
+            isDense: true,
+          ),
         ),
         const SizedBox(height: 8),
         SwitchListTile(
