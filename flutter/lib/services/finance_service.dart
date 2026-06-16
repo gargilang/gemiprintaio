@@ -34,19 +34,23 @@ class FinanceService {
     return await _api.get('/api/keuangan/config') as Map<String, dynamic>;
   }
 
-  Future<RingkasanKasbon> getRingkasanKasbon() async {
-    final json = await _api.get('/api/penggajian/ringkasan-kasbon');
+  Future<RingkasanKasbon> getRingkasanKasbon({bool forceRefresh = false}) async {
+    final json = await _api.get('/api/penggajian/ringkasan-kasbon',
+        forceRefresh: forceRefresh);
     return RingkasanKasbon.fromJson(json as Map<String, dynamic>);
   }
 
-  Future<RingkasanHutangPiutang> getRingkasanHutangPiutang() async {
-    final json = await _api.get('/api/keuangan/ringkasan-hutang-piutang');
+  Future<RingkasanHutangPiutang> getRingkasanHutangPiutang(
+      {bool forceRefresh = false}) async {
+    final json = await _api.get('/api/keuangan/ringkasan-hutang-piutang',
+        forceRefresh: forceRefresh);
     return RingkasanHutangPiutang.fromJson(json as Map<String, dynamic>);
   }
 
-  Future<Map<String, dynamic>> getKasbonRiwayat(String actorId) async {
+  Future<Map<String, dynamic>> getKasbonRiwayat(String actorId,
+      {bool forceRefresh = false}) async {
     final json = await _api.get('/api/penggajian/pinjaman',
-        queryParams: {'actor_id': actorId});
+        queryParams: {'actor_id': actorId}, forceRefresh: forceRefresh);
     return json as Map<String, dynamic>;
   }
 

@@ -30,7 +30,9 @@ class _DetailKasbonSheetState extends ConsumerState<DetailKasbonSheet> {
 
   Future<void> _loadRiwayat() async {
     try {
-      final data = await ref.read(financeServiceProvider).getKasbonRiwayat(widget.karyawan.actorId);
+      final data = await ref
+          .read(financeServiceProvider)
+          .getKasbonRiwayat(widget.karyawan.actorId, forceRefresh: true);
       if (mounted) {
         setState(() {
           _riwayat = (data['pinjaman'] as List<dynamic>?)?.map((j) => j as Map<String, dynamic>).toList() ?? [];

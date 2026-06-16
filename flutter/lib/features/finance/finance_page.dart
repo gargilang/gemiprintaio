@@ -78,11 +78,11 @@ class _FinancePageState extends ConsumerState<FinancePage>
       final results = await Future.wait([
         service.getCashBook(forceRefresh: forceRefresh),
         service.getConfig().catchError((_) => <String, dynamic>{}),
-        service.getRingkasanKasbon().catchError(
+        service.getRingkasanKasbon(forceRefresh: forceRefresh).catchError(
           (_) =>
               RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0),
         ),
-        service.getRingkasanHutangPiutang().catchError(
+        service.getRingkasanHutangPiutang(forceRefresh: forceRefresh).catchError(
           (_) => RingkasanHutangPiutang(
             hutang: HutangPiutangInfo(total: 0, jumlah: 0),
             piutang: HutangPiutangInfo(total: 0, jumlah: 0),

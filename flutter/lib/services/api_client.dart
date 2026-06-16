@@ -114,6 +114,9 @@ class ApiClient {
     } else if (path.contains('/pelanggan')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/pelanggan'));
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
+    } else if (path.contains('/penggajian') || path.contains('/pinjaman')) {
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/penggajian'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/keuangan/'));
     } else if (path.contains('/pengguna')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/pengguna'));
     } else if (path.contains('/pembelian')) {
