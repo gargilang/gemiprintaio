@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
+import 'package:gemiprint/features/finance/kategori_utils.dart';
 import 'package:gemiprint/models/cashbook.dart';
 import 'package:gemiprint/models/ringkasan_hutang_piutang.dart';
 import 'package:gemiprint/models/ringkasan_kasbon.dart';
@@ -396,13 +397,11 @@ class _FinancePageState extends ConsumerState<FinancePage>
     final refLabel = _referensiLabel(e);
     final isDeletable = e.dapatDihapus && _canMutate;
     final kat = e.kategoriTransaksi.toUpperCase();
-    final katColor = _kategoriColor(kat);
-    final katBg = _kategoriBgColor(kat);
-    final isCredit = e.kredit > 0;
-    final text = (e.keperluan ?? 'TR').replaceAll(RegExp(r'[^a-zA-Z]'), '');
-    final displayInitials = text.isEmpty
-        ? 'TR'
-        : text.substring(0, text.length < 2 ? text.length : 2).toUpperCase();
+    final w = kategoriWarna(kat);
+    final isDebit = e.debit > 0; // debit = masuk = hijau +
+    final keperluanText = stripReferenceId(e.keperluan).isEmpty
+        ? 'Transaksi'
+        : stripReferenceId(e.keperluan);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
@@ -413,26 +412,6 @@ class _FinancePageState extends ConsumerState<FinancePage>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  displayInitials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +420,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
                       children: [
                         Expanded(
                           child: Text(
-                            e.keperluan ?? 'Transaksi',
+                            keperluanText,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
@@ -489,15 +468,15 @@ class _FinancePageState extends ConsumerState<FinancePage>
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: katBg,
+                            color: w.bg,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            kat,
+                            _kategoriLabel(e.kategoriTransaksi),
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
-                              color: katColor,
+                              color: w.text,
                             ),
                           ),
                         ),
@@ -510,13 +489,13 @@ class _FinancePageState extends ConsumerState<FinancePage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isCredit
-                        ? '+${_formatShort(e.kredit)}'
-                        : '-${_formatShort(e.debit)}',
+                    isDebit
+                        ? '+${_formatShort(e.debit)}'
+                        : '-${_formatShort(e.kredit)}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: isCredit
+                      color: isDebit
                           ? Colors.green.shade600
                           : Colors.red.shade600,
                     ),
@@ -538,46 +517,14 @@ class _FinancePageState extends ConsumerState<FinancePage>
     );
   }
 
-  Color _kategoriColor(String kat) {
-    switch (kat.toUpperCase()) {
-      case 'KAS':
-      case 'MODAL_KAS':
-        return const Color(0xFF2563EB);
-      case 'BIAYA':
-      case 'BIAYA_OPERASIONAL':
-      case 'BIAYA_BAHAN':
-      case 'SUPPLY':
-        return const Color(0xFFD97706);
-      case 'OMZET':
-      case 'LABA':
-      case 'LABA_BERSIH':
-        return const Color(0xFF059669);
-      case 'PINJAMAN_KARYAWAN':
-        return const Color(0xFFDC2626);
-      default:
-        return const Color(0xFF64748B);
+  String _kategoriLabel(String code) {
+    for (final k in _kategoriOptions) {
+      if ((k['category_code'] as String?) == code) {
+        final name = (k['display_name'] as String?) ?? '';
+        if (name.isNotEmpty) return name;
+      }
     }
-  }
-
-  Color _kategoriBgColor(String kat) {
-    switch (kat.toUpperCase()) {
-      case 'KAS':
-      case 'MODAL_KAS':
-        return const Color(0xFFDBEAFE);
-      case 'BIAYA':
-      case 'BIAYA_OPERASIONAL':
-      case 'BIAYA_BAHAN':
-      case 'SUPPLY':
-        return const Color(0xFFFEF3C7);
-      case 'OMZET':
-      case 'LABA':
-      case 'LABA_BERSIH':
-        return const Color(0xFFD1FAE5);
-      case 'PINJAMAN_KARYAWAN':
-        return const Color(0xFFFEE2E2);
-      default:
-        return const Color(0xFFF1F5F9);
-    }
+    return humanizeKategoriKode(code);
   }
 
   String _referensiLabel(CashBookEntry e) {
