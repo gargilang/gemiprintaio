@@ -1,11 +1,11 @@
 {
-  "version": "0.1.0",
-  "notes": "Versi awal.",
-  "pub_date": "2026-05-14T00:00:00Z",
+  "version": "0.2.0",
+  "notes": "Rilis v0.2.0",
+  "pub_date": "2026-06-16T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "",
-      "url": ""
+      "url": "https://github.com/gargilang/gemiprintaio/releases/download/v0.2.0/gemiprint_0.2.0_x64_en-US.msi"
     }
   }
 }

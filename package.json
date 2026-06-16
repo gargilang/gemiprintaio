@@ -1,6 +1,6 @@
 {
   "name": "gemiprint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "overridesComment": "baseline-browser-mapping & postcss dipin demi kompat build Tailwind/Next; jangan hapus tanpa cek build.",
   "overrides": {
