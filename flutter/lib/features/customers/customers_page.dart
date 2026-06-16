@@ -132,7 +132,6 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
       children: [
         Column(
           children: [
-            // Header
             // Stat chips
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
