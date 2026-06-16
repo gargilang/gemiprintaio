@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
-import 'package:gemiprint/widgets/invoice_preview.dart';
+import 'package:gemiprint/widgets/faktur_preview_page.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
 import 'package:intl/intl.dart';
 
-/// Tampilkan pratinjau penawaran menggunakan widget InvoicePreview bersama.
+/// Tampilkan pratinjau penawaran sebagai halaman Dart (portrait, scrollable).
 Future<void> showPenawaranPreview(
   BuildContext context, {
   required List<CartItem> cart,
@@ -18,38 +18,40 @@ Future<void> showPenawaranPreview(
   final charges = allocateCartLineCharges(raws, roundCartPrices);
   final subtotal = charges.fold<double>(0, (s, n) => s + n);
   final total = subtotal + biayaTambahanTotal;
-
   final date = DateFormat('d MMM yyyy', 'id_ID').format(DateTime.now());
 
-  final lines = <InvoiceLine>[];
+  final lines = <FakturLine>[];
   for (var i = 0; i < cart.length; i++) {
     final item = cart[i];
-    lines.add(InvoiceLine(
+    lines.add(FakturLine(
       name: item.barangNama,
+      satuan: item.namaSatuan,
       qty: item.jumlah,
-      price: item.hargaSatuan,
-      subtotal: charges[i],
+      harga: item.hargaSatuan,
+      jumlah: charges[i],
     ));
   }
 
-  final additionalCharges = <InvoiceCharge>[];
+  final additionalCharges = <FakturCharge>[];
   if (biayaTambahanTotal > 0) {
-    additionalCharges.add(InvoiceCharge(
-      label: 'Biaya tambahan',
-      amount: biayaTambahanTotal,
-    ));
+    additionalCharges.add(
+      FakturCharge(label: 'Biaya tambahan', amount: biayaTambahanTotal),
+    );
   }
 
   try {
-    await InvoicePreview.show(
-      context,
-      lines: lines,
-      title: 'PENAWARAN',
-      customerName: customerName,
-      customerAddress: customerKota,
-      date: date,
-      total: total,
-      additionalCharges: additionalCharges,
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FakturPreviewPage(
+          title: 'PENAWARAN',
+          customerName: customerName,
+          customerDetail: customerKota != null ? [customerKota] : const [],
+          date: date,
+          total: total,
+          lines: lines,
+          additionalCharges: additionalCharges,
+        ),
+      ),
     );
   } catch (e) {
     if (context.mounted) showErrorSnackbar(context, 'Gagal membuat pratinjau');
