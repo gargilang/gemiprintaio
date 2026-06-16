@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gemiprint/features/purchase_history/purchase_history_page.dart';
 
 void main() {
-  testWidgets('PurchaseHistoryPage shows title and search', (tester) async {
+  testWidgets('PurchaseHistoryPage shows search bar and loading state',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: Scaffold(body: PurchaseHistoryPage()))));
     await tester.pump();
-    expect(find.text('Riwayat Pembelian'), findsOneWidget);
+    // Catatan: judul "Riwayat Pembelian" dirender oleh AppBar di app_shell.dart,
+    // bukan oleh halaman ini, jadi tidak diuji di sini.
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });

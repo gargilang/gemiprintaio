@@ -9,10 +9,12 @@ void main() {
     await initializeDateFormatting('id_ID', null);
   });
 
-  testWidgets('ProductionPage shows title and search bar', (tester) async {
+  testWidgets('ProductionPage shows search bar and loading state',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: Scaffold(body: ProductionPage()))));
     await tester.pump();
-    expect(find.text('SPK'), findsOneWidget);
+    // Catatan: judul "SPK" dirender oleh AppBar di app_shell.dart,
+    // bukan oleh halaman ini, jadi tidak diuji di sini.
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });

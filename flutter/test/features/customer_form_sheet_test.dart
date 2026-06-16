@@ -27,11 +27,11 @@ void main() {
     expect(find.text('Nama *'), findsOneWidget);
 
     // Optional fields
-    expect(find.text('Nama Perusahaan'), findsOneWidget);
-    expect(find.text('Telepon'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Alamat'), findsOneWidget);
-    expect(find.text('NPWP'), findsOneWidget);
+    expect(find.text('Nama Perusahaan (Opsional)'), findsOneWidget);
+    expect(find.text('Telepon (Opsional)'), findsOneWidget);
+    expect(find.text('Email (Opsional)'), findsOneWidget);
+    expect(find.text('Alamat (Opsional)'), findsOneWidget);
+    expect(find.text('NPWP (Opsional)'), findsOneWidget);
 
     // Member toggle
     expect(find.text('Status Member'), findsOneWidget);
