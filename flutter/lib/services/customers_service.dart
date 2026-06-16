@@ -5,8 +5,8 @@ class CustomersService {
   final ApiClient _api;
   CustomersService(this._api);
 
-  Future<List<Customer>> getAll() async {
-    final data = await _api.get('/api/pelanggan');
+  Future<List<Customer>> getAll({bool forceRefresh = false}) async {
+    final data = await _api.get('/api/pelanggan', forceRefresh: forceRefresh);
     final list = data['pelanggan'] as List? ?? [];
     return list.map((j) => Customer.fromJson(j as Map<String, dynamic>)).toList();
   }

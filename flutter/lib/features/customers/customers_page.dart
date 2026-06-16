@@ -29,10 +29,12 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceRefresh = false}) async {
     setState(() => _isLoading = true);
     try {
-      final data = await ref.read(customersServiceProvider).getAll();
+      final data = await ref
+          .read(customersServiceProvider)
+          .getAll(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _customers = data;
@@ -286,7 +288,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
         itemCount: filtered.length,

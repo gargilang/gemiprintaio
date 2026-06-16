@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
 export const SESSION_COOKIE = "gp_session";
@@ -46,7 +46,7 @@ export async function createSession(userId: string, role: string) {
  */
 export async function createSessionWithUser(
   user: SessionUserClaims,
-  options?: { skipCookie?: boolean }
+  options?: { skipCookie?: boolean },
 ): Promise<string> {
   const jwt = await new SignJWT({
     uid: user.uid,
@@ -82,9 +82,21 @@ export type SessionPayload = {
   nama_lengkap?: string | null;
 };
 
+function extractBearerToken(header: string | null): string | undefined {
+  if (!header) return undefined;
+  const match = header.match(/^Bearer\s+(\S+)$/i);
+  return match?.[1];
+}
+
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  // Web mengirim JWT lewat cookie httpOnly; klien non-browser (Flutter)
+  // mengirimnya lewat header Authorization: Bearer. Terima keduanya.
+  let token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    const headerStore = await headers();
+    token = extractBearerToken(headerStore.get("authorization"));
+  }
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getEncodedSecret());

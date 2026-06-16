@@ -95,25 +95,31 @@ class ApiClient {
   }
 
   /// After mutations, invalidate related GET caches so next fetch is fresh.
+  ///
+  /// Prefix dibangun lewat AppConfig.apiUrl agar sama persis dengan key cache
+  /// GET (mis. "http://host/api/vendors"). Jangan rangkai base manual: apiUrl('')
+  /// mengembalikan base ber-slash akhir sehingga menghasilkan "//" ganda dan
+  /// invalidasi tidak pernah cocok.
   void _invalidateRelated(String path) {
-    final base = AppConfig.apiUrl('');
     if (path.contains('/pos/')) {
-      _cache.invalidatePrefix('$base/api/pos/');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/produksi')) {
-      _cache.invalidatePrefix('$base/api/produksi');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/produksi'));
     } else if (path.contains('/keuangan/')) {
-      _cache.invalidatePrefix('$base/api/keuangan/');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/keuangan/'));
     } else if (path.contains('/barang') || path.contains('/master/')) {
-      _cache.invalidatePrefix('$base/api/barang');
-      _cache.invalidatePrefix('$base/api/master/');
-      _cache.invalidatePrefix('$base/api/pos/');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/barang'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/master/'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/pelanggan')) {
-      _cache.invalidatePrefix('$base/api/pelanggan');
-      _cache.invalidatePrefix('$base/api/pos/');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pelanggan'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/pengguna')) {
-      _cache.invalidatePrefix('$base/api/pengguna');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pengguna'));
+    } else if (path.contains('/pembelian')) {
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pembelian'));
     } else if (path.contains('/vendors')) {
-      _cache.invalidatePrefix('$base/api/vendors');
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/vendors'));
     }
   }
 

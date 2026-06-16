@@ -1,3 +1,4 @@
+import 'package:gemiprint/core/constants/barang_placeholder.dart';
 import 'package:gemiprint/models/material_item.dart';
 import 'package:gemiprint/services/api_client.dart';
 
@@ -8,7 +9,11 @@ class MaterialsService {
   Future<List<MaterialItem>> getAll({bool forceRefresh = false}) async {
     final data = await _api.get('/api/barang', forceRefresh: forceRefresh);
     final list = data['barang'] as List? ?? [];
-    return list.map((j) => MaterialItem.fromJson(j as Map<String, dynamic>)).toList();
+    final items = list
+        .map((j) => MaterialItem.fromJson(j as Map<String, dynamic>))
+        .toList();
+    // Sembunyikan placeholder maklon dari katalog (sama seperti web).
+    return sembunyikanPlaceholderBarang(items);
   }
 
   Future<MaterialItem> create(Map<String, dynamic> body) async {

@@ -150,7 +150,7 @@ class _CustomerFormSheetState extends ConsumerState<CustomerFormSheet> {
                       TextFormField(
                         controller: _namaPerusahaan,
                         decoration: const InputDecoration(
-                          labelText: 'Nama Perusahaan',
+                          labelText: 'Nama Perusahaan (Opsional)',
                           hintText: 'PT/CV/UD ...',
                         ),
                         textInputAction: TextInputAction.next,
@@ -162,7 +162,7 @@ class _CustomerFormSheetState extends ConsumerState<CustomerFormSheet> {
                             child: TextFormField(
                               controller: _telepon,
                               decoration: const InputDecoration(
-                                labelText: 'Telepon',
+                                labelText: 'Telepon (Opsional)',
                                 hintText: '08xx-xxxx',
                               ),
                               keyboardType: TextInputType.phone,
@@ -174,7 +174,7 @@ class _CustomerFormSheetState extends ConsumerState<CustomerFormSheet> {
                             child: TextFormField(
                               controller: _email,
                               decoration: const InputDecoration(
-                                labelText: 'Email',
+                                labelText: 'Email (Opsional)',
                                 hintText: 'email@contoh.com',
                               ),
                               keyboardType: TextInputType.emailAddress,
@@ -187,7 +187,7 @@ class _CustomerFormSheetState extends ConsumerState<CustomerFormSheet> {
                       TextFormField(
                         controller: _alamat,
                         decoration: const InputDecoration(
-                          labelText: 'Alamat',
+                          labelText: 'Alamat (Opsional)',
                           hintText: 'Alamat lengkap',
                         ),
                         maxLines: 2,
@@ -197,7 +197,7 @@ class _CustomerFormSheetState extends ConsumerState<CustomerFormSheet> {
                       TextFormField(
                         controller: _npwp,
                         decoration: const InputDecoration(
-                          labelText: 'NPWP',
+                          labelText: 'NPWP (Opsional)',
                           hintText: '00.000.000.0-000.000',
                         ),
                         textInputAction: TextInputAction.done,

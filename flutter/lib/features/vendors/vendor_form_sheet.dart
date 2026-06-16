@@ -158,7 +158,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                       TextFormField(
                         controller: _kontakPerson,
                         decoration: const InputDecoration(
-                          labelText: 'Kontak Person',
+                          labelText: 'Kontak Person (Opsional)',
                           hintText: 'Nama kontak',
                         ),
                         textInputAction: TextInputAction.next,
@@ -170,7 +170,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                             child: TextFormField(
                               controller: _telepon,
                               decoration: const InputDecoration(
-                                labelText: 'Telepon',
+                                labelText: 'Telepon (Opsional)',
                                 hintText: '08xx-xxxx',
                               ),
                               keyboardType: TextInputType.phone,
@@ -182,7 +182,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                             child: TextFormField(
                               controller: _email,
                               decoration: const InputDecoration(
-                                labelText: 'Email',
+                                labelText: 'Email (Opsional)',
                                 hintText: 'email@contoh.com',
                               ),
                               keyboardType: TextInputType.emailAddress,
@@ -195,7 +195,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                       TextFormField(
                         controller: _alamat,
                         decoration: const InputDecoration(
-                          labelText: 'Alamat',
+                          labelText: 'Alamat (Opsional)',
                           hintText: 'Alamat lengkap',
                         ),
                         maxLines: 2,
@@ -220,7 +220,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                       TextFormField(
                         controller: _ketentuanBayar,
                         decoration: const InputDecoration(
-                          labelText: 'Ketentuan Bayar',
+                          labelText: 'Ketentuan Bayar (Opsional)',
                           hintText: 'NET30 / COD / ...',
                         ),
                         textInputAction: TextInputAction.next,
@@ -229,7 +229,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
                       TextFormField(
                         controller: _catatan,
                         decoration: const InputDecoration(
-                          labelText: 'Catatan',
+                          labelText: 'Catatan (Opsional)',
                           hintText: 'Catatan tambahan...',
                         ),
                         maxLines: 3,
