@@ -74,17 +74,20 @@ class _AddItemBodyState extends State<_AddItemBody> {
   bool get _dim => widget.material.dimensiRequired;
   double get _hargaSatuan => _price.hargaUntuk(isMember: widget.isMember);
 
-  /// Sinkronkan [_selectedRollSize] berdasarkan input dimensi saat ini.
-  /// Auto-suggest bila null atau ukuran saat ini tidak muat lagi.
+  /// Sinkronkan [_selectedRollSize] dari input dimensi saat ini.
+  ///
+  /// Selalu hitung ulang roll TERMURAH setiap dimensi berubah. Jangan
+  /// "sticky" pada pilihan lama: saat mengetik panjang digit demi digit
+  /// (mis. 1.3×2.0 → 1.3×2.4) roll 2 m sempat terpilih dan tetap muat di
+  /// 2.4, sehingga pilihan basi tidak pernah dihitung ulang ke 2.5 m yang
+  /// sebenarnya lebih murah. Tap chip manual tetap menimpa nilai ini dan
+  /// bertahan sampai dimensi diubah lagi (mirror efek recompute web).
   void _syncRollSuggestion() {
     if (!_dim) return;
     final lebar = double.tryParse(_lebarCtrl.text.replaceAll(',', '.'));
     final panjang = double.tryParse(_panjangCtrl.text.replaceAll(',', '.'));
     if (lebar != null && panjang != null && lebar > 0 && panjang > 0) {
-      if (_selectedRollSize == null ||
-          !isRollSizeValidForDimensions(panjang, lebar, _selectedRollSize!)) {
-        _selectedRollSize = suggestCheapestRollSize(panjang, lebar);
-      }
+      _selectedRollSize = suggestCheapestRollSize(panjang, lebar);
     } else {
       _selectedRollSize = null;
     }
