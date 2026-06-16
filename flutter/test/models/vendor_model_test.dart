@@ -72,6 +72,43 @@ void main() {
       expect(both.tipeVendor, 'KEDUANYA');
     });
 
+    test('_parseTipeVendor normalizes lowercase input', () {
+      final v = Vendor.fromJson({
+        'id': 'v5',
+        'nama_perusahaan': 'Z',
+        'email': '',
+        'telepon': '',
+        'alamat': '',
+        'aktif_status': 1,
+        'tipe_vendor': 'supplier'
+      });
+      expect(v.tipeVendor, 'SUPPLIER');
+
+      final sub = Vendor.fromJson({
+        'id': 'v6',
+        'nama_perusahaan': 'W',
+        'email': '',
+        'telepon': '',
+        'alamat': '',
+        'aktif_status': 1,
+        'tipe_vendor': 'subkontraktor'
+      });
+      expect(sub.tipeVendor, 'SUBKONTRAKTOR');
+    });
+
+    test('_parseTipeVendor rejects unknown value', () {
+      final v = Vendor.fromJson({
+        'id': 'v7',
+        'nama_perusahaan': 'Q',
+        'email': '',
+        'telepon': '',
+        'alamat': '',
+        'aktif_status': 1,
+        'tipe_vendor': 'BUKAN_VENDOR'
+      });
+      expect(v.tipeVendor, 'SUPPLIER');
+    });
+
     test('toJson includes tipe_vendor', () {
       final v = Vendor(
         id: 'v1',
