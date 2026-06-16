@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/features/finance/kategori_utils.dart';
 import 'package:gemiprint/providers/providers.dart';
 import 'package:gemiprint/services/api_client.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
@@ -90,54 +91,12 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
     }
   }
 
-  Color _kategoriColor(String kat) {
-    switch (kat.toUpperCase()) {
-      case 'KAS':
-      case 'MODAL_KAS':
-        return const Color(0xFF2563EB);
-      case 'BIAYA':
-      case 'BIAYA_OPERASIONAL':
-      case 'BIAYA_BAHAN':
-      case 'SUPPLY':
-        return const Color(0xFFD97706);
-      case 'OMZET':
-      case 'LABA':
-      case 'LABA_BERSIH':
-        return const Color(0xFF059669);
-      case 'PINJAMAN_KARYAWAN':
-        return const Color(0xFFDC2626);
-      default:
-        return const Color(0xFF64748B);
-    }
-  }
-
-  Color _kategoriBgColor(String kat) {
-    switch (kat.toUpperCase()) {
-      case 'KAS':
-      case 'MODAL_KAS':
-        return const Color(0xFFDBEAFE);
-      case 'BIAYA':
-      case 'BIAYA_OPERASIONAL':
-      case 'BIAYA_BAHAN':
-      case 'SUPPLY':
-        return const Color(0xFFFEF3C7);
-      case 'OMZET':
-      case 'LABA':
-      case 'LABA_BERSIH':
-        return const Color(0xFFD1FAE5);
-      case 'PINJAMAN_KARYAWAN':
-        return const Color(0xFFFEE2E2);
-      default:
-        return const Color(0xFFF1F5F9);
-    }
-  }
-
   Widget _buildKategoriBadge(String code, String name) {
-    final color = _kategoriColor(code);
+    final w = kategoriWarna(code);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _kategoriBgColor(code),
+        color: w.bg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -146,7 +105,7 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: color,
+          color: w.text,
         ),
       ),
     );
@@ -188,11 +147,11 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
     required IconData icon,
   }) {
     final selected = _isDebit == isDebit;
-    final color = isDebit ? Colors.red.shade600 : Colors.green.shade600;
+    final color = isDebit ? Colors.green.shade600 : Colors.red.shade600;
     return Semantics(
       button: true,
       selected: selected,
-      label: isDebit ? 'Pilih Debit, uang keluar' : 'Pilih Kredit, uang masuk',
+      label: isDebit ? 'Pilih Debit, uang masuk' : 'Pilih Kredit, uang keluar',
       onTap: () => setState(() => _isDebit = isDebit),
       child: GestureDetector(
         onTap: () => setState(() => _isDebit = isDebit),
@@ -239,7 +198,7 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
       return const SizedBox.shrink();
     }
 
-    final color = _isDebit ? Colors.red.shade700 : Colors.green.shade700;
+    final color = _isDebit ? Colors.green.shade700 : Colors.red.shade700;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(
