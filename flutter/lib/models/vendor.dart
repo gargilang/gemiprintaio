@@ -1,6 +1,7 @@
 class Vendor {
   final String id;
   final String namaPerusahaan;
+  final String tipeVendor;
   final String? email;
   final String? telepon;
   final String? alamat;
@@ -14,6 +15,7 @@ class Vendor {
   const Vendor({
     required this.id,
     required this.namaPerusahaan,
+    this.tipeVendor = 'SUPPLIER',
     this.email,
     this.telepon,
     this.alamat,
@@ -29,6 +31,7 @@ class Vendor {
     return Vendor(
       id: json['id'] as String,
       namaPerusahaan: (json['nama_perusahaan'] ?? '') as String,
+      tipeVendor: _parseTipeVendor(json['tipe_vendor']),
       email: json['email'] as String?,
       telepon: json['telepon'] as String?,
       alamat: json['alamat'] as String?,
@@ -41,8 +44,16 @@ class Vendor {
     );
   }
 
+  static String _parseTipeVendor(dynamic value) {
+    if (value == null) return 'SUPPLIER';
+    final s = value.toString().toUpperCase();
+    if (s == 'SUBKONTRAKTOR' || s == 'KEDUANYA') return s;
+    return 'SUPPLIER';
+  }
+
   Map<String, dynamic> toJson() => {
     'nama_perusahaan': namaPerusahaan,
+    'tipe_vendor': tipeVendor,
     'email': email ?? '',
     'telepon': telepon ?? '',
     'alamat': alamat ?? '',
