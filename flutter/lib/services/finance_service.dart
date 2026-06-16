@@ -1,3 +1,5 @@
+import 'package:gemiprint/models/ringkasan_hutang_piutang.dart';
+import 'package:gemiprint/models/ringkasan_kasbon.dart';
 import 'package:gemiprint/services/api_client.dart';
 
 class FinanceService {
@@ -30,5 +32,26 @@ class FinanceService {
 
   Future<Map<String, dynamic>> getConfig() async {
     return await _api.get('/api/keuangan/config') as Map<String, dynamic>;
+  }
+
+  Future<RingkasanKasbon> getRingkasanKasbon() async {
+    final json = await _api.get('/api/penggajian/ringkasan-kasbon');
+    return RingkasanKasbon.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<RingkasanHutangPiutang> getRingkasanHutangPiutang() async {
+    final json = await _api.get('/api/keuangan/ringkasan-hutang-piutang');
+    return RingkasanHutangPiutang.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<Map<String, dynamic>> getKasbonRiwayat(String actorId) async {
+    final json = await _api.get('/api/penggajian/pinjaman',
+        queryParams: {'actor_id': actorId});
+    return json as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> kasbonAction(Map<String, dynamic> body) async {
+    final json = await _api.post('/api/penggajian/pinjaman', body: body);
+    return json as Map<String, dynamic>;
   }
 }
