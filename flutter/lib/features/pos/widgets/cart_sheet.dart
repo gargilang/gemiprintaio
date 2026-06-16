@@ -49,19 +49,23 @@ class CartSheet extends StatefulWidget {
 }
 
 class _CartSheetState extends State<CartSheet> {
+  late bool _round = widget.roundCartPrices;
+
   double get _biayaTotal =>
       widget.biayaTambahan.fold<double>(0, (s, b) => s + b.nominal);
 
   double get _total =>
       getCartChargeTotal(
-          widget.cart.map((c) => c.subtotalRaw).toList(),
-          widget.roundCartPrices) +
+        widget.cart.map((c) => c.subtotalRaw).toList(),
+        _round,
+      ) +
       _biayaTotal;
 
   Future<void> _editPrice(int index) async {
     final item = widget.cart[index];
-    final ctrl =
-        TextEditingController(text: item.hargaSatuan.toStringAsFixed(0));
+    final ctrl = TextEditingController(
+      text: item.hargaSatuan.toStringAsFixed(0),
+    );
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -82,8 +86,10 @@ class _CartSheetState extends State<CartSheet> {
               child: const Text('Reset'),
             ),
           ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(ctx, double.tryParse(ctrl.text) ?? item.hargaSatuan),
+            onPressed: () => Navigator.pop(
+              ctx,
+              double.tryParse(ctrl.text) ?? item.hargaSatuan,
+            ),
             child: const Text('Simpan'),
           ),
         ],
@@ -118,12 +124,15 @@ class _CartSheetState extends State<CartSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Text('Keranjang',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Keranjang',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
                 const Spacer(),
-                Text('${widget.cart.length} item',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                Text(
+                  '${widget.cart.length} item',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -139,35 +148,39 @@ class _CartSheetState extends State<CartSheet> {
                 Row(
                   children: [
                     Checkbox(
-                      value: widget.roundCartPrices,
+                      value: _round,
                       activeColor: AppColors.primary,
                       onChanged: (v) {
-                        widget.onToggleRounding(v ?? true);
-                        setState(() {});
+                        setState(() => _round = v ?? true);
+                        widget.onToggleRounding(_round);
                       },
                     ),
                     const Expanded(
-                      child: Text('Bulatkan total (Rp 1.000)',
-                          style: TextStyle(fontSize: 13)),
+                      child: Text(
+                        'Bulatkan total (Rp 1.000)',
+                        style: TextStyle(fontSize: 13),
+                      ),
                     ),
                   ],
                 ),
-                ...widget.biayaTambahan.asMap().entries.map((e) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(e.value.label)),
-                          Text('Rp ${formatPosUnitPrice(e.value.nominal)}'),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: () {
-                              widget.onRemoveBiaya(e.key);
-                              setState(() {});
-                            },
-                          ),
-                        ],
-                      ),
-                    )),
+                ...widget.biayaTambahan.asMap().entries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(e.value.label)),
+                        Text('Rp ${formatPosUnitPrice(e.value.nominal)}'),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () {
+                            widget.onRemoveBiaya(e.key);
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Biaya tambahan (ongkir…)'),
@@ -192,14 +205,21 @@ class _CartSheetState extends State<CartSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('TOTAL',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('Rp ${formatPosUnitPrice(_total)}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.primary)),
+                      const Text(
+                        'TOTAL',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Rp ${formatPosUnitPrice(_total)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -217,8 +237,9 @@ class _CartSheetState extends State<CartSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed:
-                              widget.cart.isEmpty ? null : widget.onBayar,
+                          onPressed: widget.cart.isEmpty
+                              ? null
+                              : widget.onBayar,
                           child: const Text('Bayar'),
                         ),
                       ),
@@ -238,14 +259,14 @@ class _CartSheetState extends State<CartSheet> {
     final detail = item.isMaklon
         ? 'Subkontrak${item.vendorSubkontrakNama != null ? ' · ${item.vendorSubkontrakNama}' : ''}'
         : (item.billedPanjang != null
-            ? formatRollCartDetailLine(
-                billedPanjang: item.billedPanjang,
-                billedLebar: item.billedLebar,
-                selectedRollSize: item.selectedRollSize,
-                jumlah: item.jumlah,
-                hargaSatuan: item.hargaSatuan,
-              )
-            : '${item.jumlah.toStringAsFixed(item.butuhDimensi ? 2 : 0)} ${item.namaSatuan} @ Rp ${formatPosUnitPrice(item.hargaSatuan)}');
+              ? formatRollCartDetailLine(
+                  billedPanjang: item.billedPanjang,
+                  billedLebar: item.billedLebar,
+                  selectedRollSize: item.selectedRollSize,
+                  jumlah: item.jumlah,
+                  hargaSatuan: item.hargaSatuan,
+                )
+              : '${item.jumlah.toStringAsFixed(item.butuhDimensi ? 2 : 0)} ${item.namaSatuan} @ Rp ${formatPosUnitPrice(item.hargaSatuan)}');
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
       child: Padding(
@@ -256,13 +277,21 @@ class _CartSheetState extends State<CartSheet> {
             Row(
               children: [
                 Expanded(
-                  child: Text(item.barangNama,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
-                ),
-                Text('Rp ${formatPosUnitPrice(item.subtotalRaw)}',
+                  child: Text(
+                    item.barangNama,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Rp ${formatPosUnitPrice(item.subtotalRaw)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
                 GestureDetector(
                   onTap: () {
                     widget.onRemoveLine(i);
@@ -276,16 +305,20 @@ class _CartSheetState extends State<CartSheet> {
               ],
             ),
             if (detail.isNotEmpty)
-              Text(detail,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              Text(
+                detail,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              ),
             if (item.isOverride)
-              Text('Override dari Rp ${formatPosUnitPrice(item.originalHargaSatuan)}',
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.success)),
+              Text(
+                'Override dari Rp ${formatPosUnitPrice(item.originalHargaSatuan)}',
+                style: const TextStyle(fontSize: 10, color: AppColors.success),
+              ),
             if (item.finishing.isNotEmpty)
-              Text('Finishing: ${item.finishing.map((f) => f.jenisFinishing).join(', ')}',
-                  style: TextStyle(
-                      fontSize: 10, color: Colors.purple.shade400)),
+              Text(
+                'Finishing: ${item.finishing.map((f) => f.jenisFinishing).join(', ')}',
+                style: TextStyle(fontSize: 10, color: Colors.purple.shade400),
+              ),
             const SizedBox(height: 4),
             Row(
               children: [
