@@ -30,6 +30,15 @@ Some agents have extra skills/workflows (brainstorming, planning, structured exe
 
 **Small / clear tasks** (rename, swap a logo/asset, edit text, change one file, simple question): just do it. Don't run brainstorm/plan/review for trivial tasks — that wastes tokens.
 
+## Execution preferences
+
+When executing a `writing-plans` plan:
+- **Use subagent-driven development** (`subagent-driven-development` skill) — fresh subagent per task, review between tasks.
+- **Create an isolated git worktree first** — use `using-git-worktrees` skill before executing any plan. Never work directly on `main`.
+- **Run parallel agents** when tasks have no shared state or sequential dependencies. Sequential tasks run one by one.
+- **Code review after every task** — use `requesting-code-review` and `receiving-code-review` skills so each task meets superpowers quality standards before committing.
+- Subagents should also invoke relevant skills (`test-driven-development` for new code, `systematic-debugging` for bugs, `verification-before-completion` before claiming done).
+
 ## Agent skills (`.agents/skills/`)
 
 Reusable skills live in `.agents/skills/` (project-local, committed to git) and are picked up by any agent that supports the `SKILL.md` format — Zed, Kiro, OpenCode, Claude, etc. Each skill is a folder with a `SKILL.md` (frontmatter `name` + `description`) plus optional `references/` and `scripts/`.
@@ -79,6 +88,23 @@ These skills are meant to be used **by default** to keep agents efficient: prefe
 - PPN helpers: `src/lib/ppn-helpers.ts`; roll billing: `src/lib/roll-size-utils.ts`
 - Cache hook: `src/lib/use-cached-data.ts`; sync table list: `src/lib/sync-config.ts`
 - Menu + breadcrumb: `src/components/menuConfig.tsx`
+
+## Mobile / Flutter philosophy
+
+- Mobile (Flutter, served as mobile-web on Vercel too) is a **lite companion**, not a full replacement for the web app.
+  Users reach for it when away from the PC — quick lookups, fast data entry, on-the-go tasks.
+- **Keep it simple.** Essential features only: list with search, CRUD via bottom sheets, delete confirmation,
+  proper loading/empty/error states, pull-to-refresh. Skip decorative web-app patterns (gradient title cards,
+  complex tables, virtual scrolling).
+- **Stat counters and filter chips are okay** when they're cheap to add with built-in Material widgets
+  (`FilterChip`, `Wrap`), but don't over-engineer.
+- Flutter talks **exclusively** to the Next.js API routes (`/api/...`) using JWT Bearer tokens.
+  Never call Supabase directly from Flutter.
+- **Auth:** every API request must carry a valid JWT via `Authorization: Bearer <token>`.
+  The `ApiClient` already does this — don't bypass it. The `requireSession()` guard on mutating endpoints
+  must succeed; if Flutter gets 401, the token is missing/expired.
+- **UI style:** Material 3 with rounded cards, subtle elevation, chip badges, squircle avatars in brand
+  colors. Use domain colors: indigo/purple for Pelanggan, deep-purple for Vendor, emerald for Barang, etc.
 
 ## Language standard (Indonesia-first)
 
