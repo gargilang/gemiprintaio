@@ -1,0 +1,272 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/constants/roles.dart';
+import 'package:gemiprint/core/theme/app_theme.dart';
+import 'package:gemiprint/providers/providers.dart';
+import 'package:gemiprint/services/api_client.dart';
+import 'package:gemiprint/widgets/confirm_dialog.dart';
+import 'package:gemiprint/widgets/empty_state.dart';
+import 'package:gemiprint/widgets/invoice_preview.dart';
+import 'package:gemiprint/widgets/snackbar_helper.dart';
+import 'package:intl/intl.dart';
+
+class SalesHistoryPage extends ConsumerStatefulWidget {
+  const SalesHistoryPage({super.key});
+  @override
+  ConsumerState<SalesHistoryPage> createState() => _SalesHistoryPageState();
+}
+
+class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
+  List<Map<String, dynamic>> _sales = [];
+  bool _isLoading = true;
+  String _search = '';
+  String _activeFilter = 'Semua';
+  final _currencyFmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final _dateFmt = DateFormat('dd/MM/yy HH:mm', 'id_ID');
+
+  @override
+  void initState() { super.initState(); _loadData(); }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await ref.read(posServiceProvider).getSales();
+      if (mounted) setState(() { _sales = data; _isLoading = false; });
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (e.isUnauthorized) { ref.read(authStateProvider.notifier).logout(); return; }
+        showErrorSnackbar(context, e.message);
+      }
+    } catch (_) {
+      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat riwayat penjualan'); }
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    var result = _sales;
+    if (_activeFilter == 'Lunas') {
+      result = result.where((s) => s['status_transaksi'] != 'VOIDED').toList();
+    } else if (_activeFilter == 'Void') {
+      result = result.where((s) => s['status_transaksi'] == 'VOIDED').toList();
+    }
+    if (_search.isNotEmpty) {
+      final q = _search.toLowerCase();
+      result = result.where((s) {
+        final faktur = (s['nomor_faktur'] ?? '').toString().toLowerCase();
+        final nama = (s['pelanggan_nama'] ?? '').toString().toLowerCase();
+        return faktur.contains(q) || nama.contains(q);
+      }).toList();
+    }
+    return result;
+  }
+
+  Future<void> _handleVoid(Map<String, dynamic> sale) async {
+    if (!_canUseRiskyActions) return;
+    final faktur = sale['nomor_faktur'] ?? sale['id'];
+    final ok = await showConfirmDialog(context, title: 'Batalkan Penjualan', message: 'Yakin ingin membatalkan penjualan "$faktur"?\n\nTindakan ini akan mengembalikan stok dan menandai transaksi sebagai VOID.', isDangerous: true);
+    if (!ok) return;
+    try {
+      await ref.read(posServiceProvider).voidSale(sale['id'], 'Dibatalkan dari mobile');
+      if (mounted) { showSuccessSnackbar(context, 'Penjualan berhasil dibatalkan'); _loadData(); }
+    } on ApiException catch (e) { if (mounted) showErrorSnackbar(context, e.message); }
+    catch (_) { if (mounted) showErrorSnackbar(context, 'Gagal membatalkan penjualan'); }
+  }
+
+  bool get _canUseRiskyActions {
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    return role != null && RoleGroups.adminOnly.contains(role);
+  }
+
+  void _showDetail(Map<String, dynamic> sale) {
+    showModalBottomSheet(context: context, isScrollControlled: true, useSafeArea: true, backgroundColor: Colors.transparent,
+      builder: (_) => _DetailSheet(sale: sale, currencyFmt: _currencyFmt, dateFmt: _dateFmt, onVoid: () => _handleVoid(sale), canVoid: _canUseRiskyActions));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filtered;
+    return Column(children: [
+      Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Row(children: [
+        const Text('Riwayat Penjualan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+        const SizedBox(width: 8),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Text('${_sales.length}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13))),
+      ])),
+      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: TextField(
+        decoration: InputDecoration(hintText: 'Cari faktur atau pelanggan...', prefixIcon: const Icon(Icons.search, size: 20),
+          suffixIcon: _search.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() => _search = '')) : null,
+          filled: true, fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+        onChanged: (v) => setState(() => _search = v),
+      )),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(
+        children: ['Semua', 'Lunas', 'Void'].map((label) {
+          final isSelected = _activeFilter == label;
+          return Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(
+            label: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+            selected: isSelected, onSelected: (_) => setState(() => _activeFilter = label),
+            selectedColor: AppColors.primary.withValues(alpha: 0.15), checkmarkColor: AppColors.primary, visualDensity: VisualDensity.compact,
+          ));
+        }).toList(),
+      ))),
+      Expanded(child: _buildBody(filtered)),
+    ]);
+  }
+
+  Widget _buildBody(List<Map<String, dynamic>> filtered) {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_sales.isEmpty) return EmptyState(icon: Icons.receipt_long_rounded, title: 'Belum ada riwayat penjualan');
+    if (filtered.isEmpty) return EmptyState(icon: Icons.search_off_rounded, title: 'Tidak ditemukan', subtitle: 'Coba kata kunci lain atau ubah filter');
+    return RefreshIndicator(onRefresh: _loadData, child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 4, 16, 80), itemCount: filtered.length, itemBuilder: (_, i) => _buildCard(filtered[i])));
+  }
+
+  Widget _buildCard(Map<String, dynamic> s) {
+    final isVoid = s['status_transaksi'] == 'VOIDED';
+    final faktur = s['nomor_faktur'] ?? s['id'] ?? '-';
+    final nama = s['pelanggan_nama'] ?? 'Pelanggan Umum';
+    final total = (s['total_jumlah'] as num?)?.toDouble() ?? 0;
+    final metode = s['metode_pembayaran'] ?? '-';
+    final tgl = s['dibuat_pada'] ?? s['created_at'];
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showDetail(s),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            faktur,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isVoid ? AppColors.error.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isVoid ? 'Void' : 'Lunas',
+                            style: TextStyle(
+                              color: isVoid ? AppColors.error : AppColors.success,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$nama · ${_currencyFmt.format(total)}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 1),
+                    Row(
+                      children: [
+                        if (tgl != null)
+                          Text(
+                            _dateFmt.format(DateTime.parse(tgl.toString())),
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                          ),
+                        const SizedBox(width: 8),
+                        Text(metode, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (!isVoid && _canUseRiskyActions)
+                IconButton(
+                  icon: const Icon(Icons.cancel_outlined, size: 20),
+                  color: AppColors.error.withValues(alpha: 0.6),
+                  onPressed: () => _handleVoid(s),
+                  visualDensity: VisualDensity.compact,
+                ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailSheet extends StatelessWidget {
+  final Map<String, dynamic> sale;
+  final NumberFormat currencyFmt;
+  final DateFormat dateFmt;
+  final VoidCallback onVoid;
+  final bool canVoid;
+  const _DetailSheet({required this.sale, required this.currencyFmt, required this.dateFmt, required this.onVoid, required this.canVoid});
+
+  @override
+  Widget build(BuildContext context) {
+    final isVoid = sale['status_transaksi'] == 'VOIDED';
+    final faktur = sale['nomor_faktur'] ?? sale['id'] ?? '-';
+    final nama = sale['pelanggan_nama'] ?? 'Pelanggan Umum';
+    final total = (sale['total_jumlah'] as num?)?.toDouble() ?? 0;
+    final dibayar = (sale['jumlah_dibayar'] as num?)?.toDouble() ?? 0;
+    final kembalian = (sale['jumlah_kembalian'] as num?)?.toDouble() ?? 0;
+    final metode = sale['metode_pembayaran'] ?? '-';
+    final tgl = sale['dibuat_pada'] ?? sale['created_at'];
+    final items = (sale['items'] as List?) ?? [];
+
+    return DraggableScrollableSheet(initialChildSize: 0.85, minChildSize: 0.5, maxChildSize: 0.95, expand: false, builder: (_, scrollCtrl) => Container(
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      child: Column(children: [
+        Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200))), child: Row(children: [
+          Expanded(child: Text(faktur, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+          IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close)),
+        ])),
+        Expanded(child: ListView(controller: scrollCtrl, padding: const EdgeInsets.all(20), children: [
+          _infoRow('Pelanggan', nama),
+          if (tgl != null) _infoRow('Tanggal', dateFmt.format(DateTime.parse(tgl.toString()))),
+          _infoRow('Metode', metode),
+          _infoRow('Status', isVoid ? 'VOID' : 'Lunas'),
+          const SizedBox(height: 12),
+          const Text('Item', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 8),
+          ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
+            Expanded(child: Text(item['barang_nama'] ?? item['nama_barang'] ?? '-', style: const TextStyle(fontSize: 13))),
+            Text('${item['quantity'] ?? item['jumlah'] ?? 0} × ${currencyFmt.format((item['harga_satuan'] as num?)?.toDouble() ?? 0)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          ]))),
+          const Divider(),
+          _totalRow('Total', currencyFmt.format(total)),
+          _totalRow('Dibayar', currencyFmt.format(dibayar)),
+          _totalRow('Kembalian', currencyFmt.format(kembalian)),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(onPressed: () {
+              Navigator.of(context).pop();
+              try {
+                InvoicePreview.show(context, title: 'Invoice $faktur', invoiceNumber: faktur, customerName: nama, date: tgl != null ? dateFmt.format(DateTime.parse(tgl.toString())) : null, total: total,
+                  lines: items.map((item) => InvoiceLine(name: item['barang_nama'] ?? item['nama_barang'] ?? '-', qty: (item['quantity'] ?? item['jumlah'] ?? 0).toDouble(), price: (item['harga_satuan'] as num?)?.toDouble() ?? 0, subtotal: ((item['quantity'] ?? item['jumlah'] ?? 0).toDouble() * ((item['harga_satuan'] as num?)?.toDouble() ?? 0)))).toList());
+              } catch (e) { if (context.mounted) showErrorSnackbar(context, 'Gagal membuat pratinjau'); }
+            }, icon: const Icon(Icons.share, size: 16), label: const Text('Bagikan Invoice'))),
+            if (!isVoid && canVoid) ...[const SizedBox(width: 12), Expanded(child: OutlinedButton.icon(onPressed: () { Navigator.of(context).pop(); onVoid(); }, icon: const Icon(Icons.cancel_outlined, size: 16), label: const Text('Batalkan'), style: OutlinedButton.styleFrom(foregroundColor: AppColors.error)))],
+          ]),
+        ])),
+      ]),
+    ));
+  }
+
+  Widget _infoRow(String label, String value) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Row(children: [
+    SizedBox(width: 80, child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600))),
+    Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+  ]));
+  Widget _totalRow(String label, String value) => Padding(padding: const EdgeInsets.only(bottom: 2), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    Text(label, style: const TextStyle(fontSize: 13)), Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+  ]));
+}
