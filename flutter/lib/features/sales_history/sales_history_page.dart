@@ -12,12 +12,14 @@ import 'package:intl/intl.dart';
 
 class SalesHistoryPage extends ConsumerStatefulWidget {
   const SalesHistoryPage({super.key});
+  static const List<String> filters = ['Semua', 'Lunas', 'Void', 'Piutang'];
   @override
   ConsumerState<SalesHistoryPage> createState() => _SalesHistoryPageState();
 }
 
 class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
   List<Map<String, dynamic>> _sales = [];
+  List<Map<String, dynamic>> _receivables = [];
   bool _isLoading = true;
   String _search = '';
   String _activeFilter = 'Semua';
@@ -40,6 +42,22 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
       }
     } catch (_) {
       if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat riwayat penjualan'); }
+    }
+  }
+
+  Future<void> _loadReceivables() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await ref.read(posServiceProvider).getReceivables();
+      if (mounted) setState(() { _receivables = (data['receivables'] as List?)?.cast<Map<String, dynamic>>() ?? []; _isLoading = false; });
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (e.isUnauthorized) { ref.read(authStateProvider.notifier).logout(); return; }
+        showErrorSnackbar(context, e.message);
+      }
+    } catch (_) {
+      if (mounted) { setState(() => _isLoading = false); showErrorSnackbar(context, 'Gagal memuat data piutang'); }
     }
   }
 
@@ -100,11 +118,14 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
         onChanged: (v) => setState(() => _search = v),
       )),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(
-        children: ['Semua', 'Lunas', 'Void'].map((label) {
+        children: SalesHistoryPage.filters.map((label) {
           final isSelected = _activeFilter == label;
           return Padding(padding: const EdgeInsets.only(right: 6), child: FilterChip(
             label: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
-            selected: isSelected, onSelected: (_) => setState(() => _activeFilter = label),
+            selected: isSelected, onSelected: (_) {
+              setState(() => _activeFilter = label);
+              if (label == 'Piutang') _loadReceivables();
+            },
             selectedColor: AppColors.primary.withValues(alpha: 0.15), checkmarkColor: AppColors.primary, visualDensity: VisualDensity.compact,
           ));
         }).toList(),
@@ -115,6 +136,10 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
 
   Widget _buildBody(List<Map<String, dynamic>> filtered) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_activeFilter == 'Piutang') {
+      if (_receivables.isEmpty) return EmptyState(icon: Icons.account_balance_wallet_rounded, title: 'Belum ada piutang');
+      return RefreshIndicator(onRefresh: _loadReceivables, child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 4, 16, 80), itemCount: _receivables.length, itemBuilder: (_, i) => _buildReceivableCard(_receivables[i])));
+    }
     if (_sales.isEmpty) return EmptyState(icon: Icons.receipt_long_rounded, title: 'Belum ada riwayat penjualan');
     if (filtered.isEmpty) return EmptyState(icon: Icons.search_off_rounded, title: 'Tidak ditemukan', subtitle: 'Coba kata kunci lain atau ubah filter');
     return RefreshIndicator(onRefresh: _loadData, child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 4, 16, 80), itemCount: filtered.length, itemBuilder: (_, i) => _buildCard(filtered[i])));
@@ -197,6 +222,86 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
               Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _payReceivable(Map<String, dynamic> receivable) async {
+    final controller = TextEditingController();
+    final sisa = (receivable['sisa_piutang'] as num?)?.toDouble() ?? 0;
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Bayar Piutang'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('Pelanggan: ${receivable['pelanggan_nama'] ?? '-'}\nFaktur: ${receivable['nomor_faktur'] ?? receivable['id']}\nSisa: ${_currencyFmt.format(sisa)}'),
+        const SizedBox(height: 12),
+        TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Jumlah Bayar', hintText: 'Masukkan jumlah', border: OutlineInputBorder())),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Bayar')),
+      ],
+    ));
+    if (ok != true) return;
+    final jumlahText = controller.text.trim();
+    if (jumlahText.isEmpty) { if (mounted) showErrorSnackbar(context, 'Jumlah bayar harus diisi'); return; }
+    final jumlahBayar = double.tryParse(jumlahText);
+    if (jumlahBayar == null || jumlahBayar <= 0) { if (mounted) showErrorSnackbar(context, 'Jumlah bayar tidak valid'); return; }
+    try {
+      await ref.read(posServiceProvider).payReceivable({ 'piutang_id': receivable['id'], 'jumlah_bayar': jumlahBayar });
+      if (mounted) { showSuccessSnackbar(context, 'Pembayaran berhasil dicatat'); _loadReceivables(); }
+    } on ApiException catch (e) { if (mounted) showErrorSnackbar(context, e.message); }
+    catch (_) { if (mounted) showErrorSnackbar(context, 'Gagal mencatat pembayaran'); }
+  }
+
+  Future<void> _revertPayment(Map<String, dynamic> receivable) async {
+    final ok = await showConfirmDialog(context, title: 'Batal Bayar', message: 'Yakin ingin membatalkan pembayaran untuk faktur "${receivable['nomor_faktur'] ?? receivable['id']}"?', isDangerous: true);
+    if (!ok) return;
+    try {
+      await ref.read(posServiceProvider).revertPayment({ 'sale_id': receivable['penjualan_id'] });
+      if (mounted) { showSuccessSnackbar(context, 'Pembayaran berhasil dibatalkan'); _loadReceivables(); }
+    } on ApiException catch (e) { if (mounted) showErrorSnackbar(context, e.message); }
+    catch (_) { if (mounted) showErrorSnackbar(context, 'Gagal membatalkan pembayaran'); }
+  }
+
+  Widget _buildReceivableCard(Map<String, dynamic> r) {
+    final faktur = r['nomor_faktur'] ?? r['id'] ?? '-';
+    final nama = r['pelanggan_nama'] ?? 'Pelanggan Umum';
+    final sisa = (r['sisa_piutang'] as num?)?.toDouble() ?? 0;
+    final total = (r['total_piutang'] as num?)?.toDouble() ?? 0;
+    final status = r['status_piutang'] ?? 'Belum Lunas';
+    final sudahDibayar = total - sisa;
+    final isPartial = sudahDibayar > 0 && sisa > 0;
+    final isLunas = sisa <= 0;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Expanded(child: Text(faktur, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isLunas ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(status, style: TextStyle(color: isLunas ? AppColors.success : AppColors.warning, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ]),
+            const SizedBox(height: 4),
+            Text('$nama · Sisa: ${_currencyFmt.format(sisa)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            if (isPartial) ...[const SizedBox(height: 2), Text('Sudah dibayar: ${_currencyFmt.format(sudahDibayar)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))],
+            if (!isLunas) ...[const SizedBox(height: 8), Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              if (isPartial)
+                TextButton.icon(onPressed: () => _revertPayment(r), icon: const Icon(Icons.undo, size: 16), label: const Text('Batal Bayar'), style: TextButton.styleFrom(foregroundColor: AppColors.error)),
+              const SizedBox(width: 8),
+              FilledButton.icon(onPressed: () => _payReceivable(r), icon: const Icon(Icons.payment, size: 16), label: const Text('Bayar'), style: FilledButton.styleFrom(backgroundColor: AppColors.primary)),
+            ])],
+          ],
         ),
       ),
     );
