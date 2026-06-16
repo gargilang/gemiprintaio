@@ -77,6 +77,12 @@ final List<dynamic> _menuEntries = [
         label: 'Pembelian',
         allowedRoles: RoleGroups.fullStaff,
       ),
+      _MenuItemData(
+        path: '/purchase-history',
+        icon: Icons.receipt_long_rounded,
+        label: 'Riwayat Pembelian',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
     ],
   ),
   const _MenuGroupData(
@@ -304,6 +310,7 @@ class AppShell extends ConsumerWidget {
       '/customers': 'Pelanggan',
       '/vendors': 'Vendor',
       '/sales-history': 'Riwayat Penjualan',
+      '/purchase-history': 'Riwayat Pembelian',
       '/finance': 'Keuangan',
     };
     return titles[path] ?? 'gemiprint';

@@ -11,6 +11,7 @@ import 'package:gemiprint/features/customers/customers_page.dart';
 import 'package:gemiprint/features/vendors/vendors_page.dart';
 import 'package:gemiprint/features/finance/finance_page.dart';
 import 'package:gemiprint/features/sales_history/sales_history_page.dart';
+import 'package:gemiprint/features/purchase_history/purchase_history_page.dart';
 import 'package:gemiprint/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -65,6 +66,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/sales-history',
             builder: (context, state) => const SalesHistoryPage(),
+          ),
+          GoRoute(
+            path: '/purchase-history',
+            builder: (context, state) => const PurchaseHistoryPage(),
           ),
           GoRoute(
             path: '/finance',
