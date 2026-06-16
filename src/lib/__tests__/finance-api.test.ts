@@ -13,17 +13,22 @@ describe("canDeleteCashBookEntry", () => {
   });
   it("reference_type PINJAMAN_KARYAWAN → false", () => {
     expect(
-      canDeleteCashBookEntry({ reference_type: "PINJAMAN_KARYAWAN" })
+      canDeleteCashBookEntry({ reference_type: "PINJAMAN_KARYAWAN" }),
     ).toBe(false);
   });
   it("fallback: keperluan mengandung [REF:purchase- → false", () => {
     expect(
-      canDeleteCashBookEntry({ keperluan: "Bayar [REF:purchase-abc123]" })
+      canDeleteCashBookEntry({ keperluan: "Bayar [REF:purchase-abc123]" }),
     ).toBe(false);
   });
   it("fallback: keperluan mengandung [REF:pinjaman- → false", () => {
     expect(
-      canDeleteCashBookEntry({ keperluan: "Tarik [REF:pinjaman-xyz]" })
+      canDeleteCashBookEntry({ keperluan: "Tarik [REF:pinjaman-xyz]" }),
+    ).toBe(false);
+  });
+  it("fallback: keperluan mengandung [REF:sale- → false", () => {
+    expect(
+      canDeleteCashBookEntry({ keperluan: "Penjualan [REF:sale-inv042]" }),
     ).toBe(false);
   });
 });
