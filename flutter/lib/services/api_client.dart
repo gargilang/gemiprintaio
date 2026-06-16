@@ -112,6 +112,8 @@ class ApiClient {
       _cache.invalidatePrefix('$base/api/pos/');
     } else if (path.contains('/pengguna')) {
       _cache.invalidatePrefix('$base/api/pengguna');
+    } else if (path.contains('/vendors')) {
+      _cache.invalidatePrefix('$base/api/vendors');
     }
   }
 
