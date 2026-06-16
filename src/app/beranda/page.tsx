@@ -159,7 +159,7 @@ function QuickActions({ user }: { user: User | null }) {
         <Link
           key={a.href}
           href={a.href}
-          className="flex items-center gap-3 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+          className="flex items-center gap-3 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl shadow p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
         >
           <span
             className={`bg-gradient-to-br ${a.gradient} p-2.5 rounded-xl text-white shrink-0`}
@@ -192,6 +192,19 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => obs.disconnect();
   }, []);
 
   const { data: stats, isLoading } = useCachedData<DashboardStats>(
@@ -276,11 +289,12 @@ export default function DashboardPage() {
               <SalesTrendChart
                 data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
                 days={trendDays}
+                isDark={isDark}
               />
             </div>
 
             {/* Donut omzet (kanan) */}
-            <RevenueDonut trend={stats.dailySalesTrend ?? []} />
+            <RevenueDonut trend={stats.dailySalesTrend ?? []} isDark={isDark} />
           </div>
 
           {/* Tables Row */}
@@ -412,13 +426,20 @@ const fmtCurrencyShort = (n: number) => {
 function SalesTrendChart({
   data,
   days,
+  isDark,
 }: {
   data: DailySalesTrend[];
   days: 7 | 14 | 30;
+  isDark: boolean;
 }) {
   const step = days === 7 ? 2 : days === 14 ? 3 : 5;
   const tickFormatter = (_: string, index: number) =>
     index % step === 0 ? (data[index]?.date ?? "") : "";
+
+  const gridColor = isDark ? "#334155" : "#e5e7eb";
+  const tickColor = isDark ? "#94a3b8" : "#6b7280";
+  const labelColor = isDark ? "#e2e8f0" : "#111827";
+  const tooltipBorder = isDark ? "#475569" : "#e5e7eb";
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -429,10 +450,10 @@ function SalesTrendChart({
             <stop offset="95%" stopColor="#00afef" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tick={{ fontSize: 11, fill: tickColor }}
           tickFormatter={tickFormatter}
           interval={0}
           axisLine={false}
@@ -440,7 +461,7 @@ function SalesTrendChart({
         />
         <YAxis
           tickFormatter={fmtCurrencyShort}
-          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tick={{ fontSize: 11, fill: tickColor }}
           axisLine={false}
           tickLine={false}
           width={48}
@@ -459,10 +480,10 @@ function SalesTrendChart({
               ];
             }) as any
           }
-          labelStyle={{ fontWeight: 600, color: "#111827" }}
+          labelStyle={{ fontWeight: 600, color: labelColor }}
           contentStyle={{
             borderRadius: 10,
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${tooltipBorder}`,
             fontSize: 12,
           }}
         />
@@ -480,7 +501,13 @@ function SalesTrendChart({
   );
 }
 
-function RevenueDonut({ trend }: { trend: DailySalesTrend[] }) {
+function RevenueDonut({
+  trend,
+  isDark,
+}: {
+  trend: DailySalesTrend[];
+  isDark: boolean;
+}) {
   const n = trend.length;
   const hariIni = n > 0 ? trend[n - 1].omzet : 0;
   const kemarin = n > 1 ? trend[n - 2].omzet : 0;
@@ -509,7 +536,7 @@ function RevenueDonut({ trend }: { trend: DailySalesTrend[] }) {
               stroke="none"
             >
               <Cell fill="#00afef" />
-              <Cell className="fill-gray-200 dark:fill-slate-700" />
+              <Cell fill={isDark ? "#1e293b" : "#e5e7eb"} />
             </Pie>
           </PieChart>
         </ResponsiveContainer>

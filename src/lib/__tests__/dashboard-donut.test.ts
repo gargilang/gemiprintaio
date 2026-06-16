@@ -18,5 +18,7 @@ describe("hitungPersenDonut", () => {
   it("nilai negatif/NaN diperlakukan sebagai 0", () => {
     expect(hitungPersenDonut(Number.NaN, 100)).toBe(0);
     expect(hitungPersenDonut(-50, 100)).toBe(0);
+    expect(hitungPersenDonut(100, Number.NaN)).toBe(100);
+    expect(hitungPersenDonut(100, -50)).toBe(100);
   });
 });
