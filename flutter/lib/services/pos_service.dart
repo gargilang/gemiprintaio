@@ -1,4 +1,5 @@
 import 'package:gemiprint/services/api_client.dart';
+import 'package:gemiprint/features/pos/models/finishing_option.dart';
 
 class PosService {
   final ApiClient _api;
@@ -10,6 +11,15 @@ class PosService {
 
   Future<Map<String, dynamic>> createSale(Map<String, dynamic> body) async {
     return await _api.post('/api/pos/sales', body: body) as Map<String, dynamic>;
+  }
+
+  Future<List<FinishingOption>> getFinishingOptions() async {
+    final data =
+        await _api.get('/api/finishing-options') as Map<String, dynamic>;
+    final list = (data['options'] as List?) ?? [];
+    return list
+        .map((j) => FinishingOption.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> deleteSale(String id) async {
