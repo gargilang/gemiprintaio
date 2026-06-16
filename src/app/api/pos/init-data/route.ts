@@ -12,12 +12,13 @@ export async function GET() {
       customers: data.customers,
       materials: data.materials,
       sales: data.sales,
+      subkontraktor: data.subkontraktor,
     });
   } catch (error: any) {
     console.error("Error fetching POS init data:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Failed to fetch POS data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
