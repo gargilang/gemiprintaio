@@ -30,8 +30,6 @@ The Superpowers plugin provides skills (brainstorming, writing-plans, executing-
 
 **Small / clear task** (rename, swap a logo/asset, copy edit, one-file tweak, simple question): do NOT engage these skills. Just do the work. Running brainstorm/plan/review on trivial tasks wastes tokens — that is the opposite of what the owner wants.
 
-**Subagents (important cost guard):** when using `subagent-driven-development` or dispatching subagents, run them **one at a time — never spawn more than one subagent concurrently**. Parallel subagents blow up token usage and often fail to finish. Finish/verify one before starting the next.
-
 ## Tools and access (use without asking)
 
 - Cursor built-in browser (GitHub, Supabase, Vercel, GoDaddy — already logged in).

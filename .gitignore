@@ -95,6 +95,9 @@ scripts/uji/run-*.json
 # Git worktrees
 .worktrees/
 
+# Superpowers plugin
+.superpowers/
+
 # Flutter
 flutter/.dart_tool/
 flutter/.flutter-plugins

@@ -30,8 +30,6 @@ Some agents have extra skills/workflows (brainstorming, planning, structured exe
 
 **Small / clear tasks** (rename, swap a logo/asset, edit text, change one file, simple question): just do it. Don't run brainstorm/plan/review for trivial tasks — that wastes tokens.
 
-**Subagents (important cost guard):** if you use subagents, run them **one at a time — never run more than one subagent concurrently**. Parallel subagents explode token usage and often fail to finish. Complete/verify one before starting the next.
-
 ## Agent skills (`.agents/skills/`)
 
 Reusable skills live in `.agents/skills/` (project-local, committed to git) and are picked up by any agent that supports the `SKILL.md` format — Zed, Kiro, OpenCode, Claude, etc. Each skill is a folder with a `SKILL.md` (frontmatter `name` + `description`) plus optional `references/` and `scripts/`.
