@@ -6,7 +6,7 @@ import 'package:gemiprint/providers/providers.dart';
 import 'package:gemiprint/services/api_client.dart';
 import 'package:gemiprint/widgets/confirm_dialog.dart';
 import 'package:gemiprint/widgets/empty_state.dart';
-import 'package:gemiprint/widgets/invoice_preview.dart';
+import 'package:gemiprint/widgets/faktur_preview_page.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
 import 'package:intl/intl.dart';
 
@@ -349,12 +349,36 @@ class _DetailSheet extends StatelessWidget {
           const SizedBox(height: 16),
           Row(children: [
             Expanded(child: OutlinedButton.icon(onPressed: () {
-              Navigator.of(context).pop();
-              try {
-                InvoicePreview.show(context, title: 'Invoice $faktur', invoiceNumber: faktur, customerName: nama, date: tgl != null ? dateFmt.format(DateTime.parse(tgl.toString())) : null, total: total,
-                  lines: items.map((item) => InvoiceLine(name: item['barang_nama'] ?? item['nama_barang'] ?? '-', qty: (item['quantity'] ?? item['jumlah'] ?? 0).toDouble(), price: (item['harga_satuan'] as num?)?.toDouble() ?? 0, subtotal: ((item['quantity'] ?? item['jumlah'] ?? 0).toDouble() * ((item['harga_satuan'] as num?)?.toDouble() ?? 0)))).toList());
-              } catch (e) { if (context.mounted) showErrorSnackbar(context, 'Gagal membuat pratinjau'); }
-            }, icon: const Icon(Icons.share, size: 16), label: const Text('Bagikan Invoice'))),
+              final navigator = Navigator.of(context);
+              navigator.pop();
+              navigator.push(MaterialPageRoute(
+                builder: (_) => FakturPreviewPage(
+                  title: 'FAKTUR',
+                  invoiceNumber: faktur.toString(),
+                  customerName: nama,
+                  date: tgl != null
+                      ? dateFmt.format(DateTime.parse(tgl.toString()))
+                      : null,
+                  total: total,
+                  bayar: dibayar,
+                  sisa: (total - dibayar) > 0 ? (total - dibayar) : 0,
+                  lines: items.map((item) {
+                    final qty = (item['quantity'] ?? item['jumlah'] ?? 0)
+                        .toDouble() as double;
+                    final harga =
+                        (item['harga_satuan'] as num?)?.toDouble() ?? 0;
+                    return FakturLine(
+                      name: item['barang_nama'] ?? item['nama_barang'] ?? '-',
+                      satuan: item['nama_satuan'] as String?,
+                      qty: qty,
+                      harga: harga,
+                      jumlah: (item['subtotal'] as num?)?.toDouble() ??
+                          (qty * harga),
+                    );
+                  }).toList(),
+                ),
+              ));
+            }, icon: const Icon(Icons.visibility_outlined, size: 16), label: const Text('Lihat Faktur'))),
             if (!isVoid && canVoid) ...[const SizedBox(width: 12), Expanded(child: OutlinedButton.icon(onPressed: () { Navigator.of(context).pop(); onVoid(); }, icon: const Icon(Icons.cancel_outlined, size: 16), label: const Text('Batalkan'), style: OutlinedButton.styleFrom(foregroundColor: AppColors.error)))],
           ]),
         ])),
