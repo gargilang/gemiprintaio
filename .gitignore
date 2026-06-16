@@ -92,6 +92,9 @@ nul
 # Run-log generator data uji (artefak per-run, jangan di-commit)
 scripts/uji/run-*.json
 
+# Git worktrees
+.worktrees/
+
 # Flutter
 flutter/.dart_tool/
 flutter/.flutter-plugins
