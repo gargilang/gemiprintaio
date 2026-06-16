@@ -15,14 +15,20 @@ export async function POST(request: Request) {
     const parsed = createSaleSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "Data penjualan tidak valid", issues: parsed.error.issues },
-        { status: 422 }
+        {
+          success: false,
+          error: "Data penjualan tidak valid",
+          issues: parsed.error.issues,
+        },
+        { status: 422 },
       );
     }
     const data = parsed.data;
 
     const result = await createSale({
       pelanggan_id: data.pelanggan_id,
+      pelanggan_nama_snapshot: data.pelanggan_nama_snapshot,
+      pelanggan_kota: data.pelanggan_kota,
       items: data.items,
       total_jumlah: data.total_jumlah,
       jumlah_dibayar: data.jumlah_dibayar,
@@ -32,6 +38,7 @@ export async function POST(request: Request) {
       kasir_id: data.kasir_id,
       tanggal: data.tanggal,
       prioritas: data.prioritas,
+      biaya_tambahan: data.biaya_tambahan,
     });
 
     return NextResponse.json({
@@ -44,7 +51,10 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status },
+      );
     }
     const msg = error?.message || "Failed to create sale";
     if (
