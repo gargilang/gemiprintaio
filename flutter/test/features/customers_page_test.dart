@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gemiprint/features/customers/customers_page.dart';
 
 void main() {
-  testWidgets('CustomersPage shows title and search bar', (tester) async {
+  testWidgets('CustomersPage shows search bar and loading state',
+      (tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(home: Scaffold(body: CustomersPage())),
@@ -12,8 +13,8 @@ void main() {
     );
     await tester.pump();
 
-    // Title
-    expect(find.text('Pelanggan'), findsOneWidget);
+    // Catatan: judul "Pelanggan" dirender oleh AppBar di app_shell.dart,
+    // bukan oleh halaman ini, jadi tidak diuji di sini.
 
     // Search field hint
     expect(find.byType(TextField), findsOneWidget);

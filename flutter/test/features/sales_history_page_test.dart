@@ -9,10 +9,12 @@ void main() {
     await initializeDateFormatting('id_ID', null);
   });
 
-  testWidgets('SalesHistoryPage shows title and search bar', (tester) async {
+  testWidgets('SalesHistoryPage shows search bar and loading state',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: Scaffold(body: SalesHistoryPage()))));
     await tester.pump();
-    expect(find.text('Riwayat Penjualan'), findsOneWidget);
+    // Catatan: judul "Riwayat Penjualan" dirender oleh AppBar di app_shell.dart,
+    // bukan oleh halaman ini, jadi tidak diuji di sini.
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });

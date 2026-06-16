@@ -27,10 +27,10 @@ void main() {
     expect(find.text('Nama Perusahaan *'), findsOneWidget);
 
     // Optional fields
-    expect(find.text('Kontak Person'), findsOneWidget);
-    expect(find.text('Telepon'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Alamat'), findsOneWidget);
+    expect(find.text('Kontak Person (Opsional)'), findsOneWidget);
+    expect(find.text('Telepon (Opsional)'), findsOneWidget);
+    expect(find.text('Email (Opsional)'), findsOneWidget);
+    expect(find.text('Alamat (Opsional)'), findsOneWidget);
 
     // Tipe Vendor segmented buttons
     expect(find.text('Supplier'), findsOneWidget);
@@ -38,8 +38,8 @@ void main() {
     expect(find.text('Keduanya'), findsOneWidget);
 
     // Other fields
-    expect(find.text('Ketentuan Bayar'), findsOneWidget);
-    expect(find.text('Catatan'), findsOneWidget);
+    expect(find.text('Ketentuan Bayar (Opsional)'), findsOneWidget);
+    expect(find.text('Catatan (Opsional)'), findsOneWidget);
 
     // Buttons
     expect(find.text('Batal'), findsOneWidget);
