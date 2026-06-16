@@ -26,6 +26,17 @@ class PosService {
     await _api.delete('/api/pos/sales/$id');
   }
 
+  Future<List<Map<String, dynamic>>> getSales({int limit = 100}) async {
+    final data = await _api.get('/api/pos/sales',
+        queryParams: {'limit': limit.toString()}, forceRefresh: true);
+    final list = data['sales'] as List? ?? [];
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> voidSale(String id, String reason) async {
+    await _api.delete('/api/pos/sales/$id', body: {'reason': reason});
+  }
+
   Future<Map<String, dynamic>> getReceivables() async {
     return await _api.get('/api/pos/receivables') as Map<String, dynamic>;
   }
