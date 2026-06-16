@@ -188,38 +188,46 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
     required IconData icon,
   }) {
     final selected = _isDebit == isDebit;
-    final color = isDebit ? Colors.green.shade600 : Colors.red.shade600;
-    return GestureDetector(
+    final color = isDebit ? Colors.red.shade600 : Colors.green.shade600;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: isDebit ? 'Pilih Debit, uang keluar' : 'Pilih Kredit, uang masuk',
       onTap: () => setState(() => _isDebit = isDebit),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
-          border: Border.all(
+      child: GestureDetector(
+        onTap: () => setState(() => _isDebit = isDebit),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
             color: selected
-                ? color.withValues(alpha: 0.45)
+                ? color.withValues(alpha: 0.12)
                 : Colors.transparent,
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.45)
+                  : Colors.transparent,
+            ),
+            borderRadius: BorderRadius.circular(10),
           ),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: selected ? color : Colors.grey.shade500,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected ? color : Colors.grey.shade600,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? color : Colors.grey.shade500,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? color : Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -231,7 +239,7 @@ class _FormTransaksiSheetState extends ConsumerState<FormTransaksiSheet> {
       return const SizedBox.shrink();
     }
 
-    final color = _isDebit ? Colors.green.shade700 : Colors.red.shade700;
+    final color = _isDebit ? Colors.red.shade700 : Colors.green.shade700;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(
