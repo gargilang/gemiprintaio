@@ -1,11 +1,24 @@
 import { NextResponse } from "next/server";
 import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
-import { createSale } from "@/lib/services/pos-service";
+import { createSale, getSales } from "@/lib/services/pos-service";
 import { createSaleSchema } from "@/lib/schemas/pos";
 import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const sales = await getSales(200);
+    return NextResponse.json({ sales });
+  } catch (error: any) {
+    console.error("Gagal mengambil daftar penjualan:", error);
+    return NextResponse.json(
+      { error: error.message || "Gagal mengambil daftar penjualan" },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
