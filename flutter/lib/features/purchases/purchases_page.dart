@@ -176,13 +176,6 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage>
                       title: _search.isEmpty
                           ? 'Belum ada pembelian'
                           : 'Tidak ditemukan',
-                      action: _search.isEmpty
-                          ? ElevatedButton.icon(
-                              onPressed: _openPurchaseForm,
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Tambah Pembelian'),
-                            )
-                          : null,
                     )
                   : RefreshIndicator(
                       onRefresh: _loadData,
@@ -252,10 +245,10 @@ class _PurchasesPageState extends ConsumerState<PurchasesPage>
         Positioned(
           right: 16,
           bottom: 16,
-          child: FloatingActionButton.extended(
+          child: FloatingActionButton(
+            backgroundColor: const Color(0xFF00AFEF),
             onPressed: _openPurchaseForm,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Beli'),
+            child: const Icon(Icons.add_rounded),
           ),
         ),
       ],

@@ -237,8 +237,8 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
           right: 16,
           bottom: 16,
           child: FloatingActionButton(
+            backgroundColor: const Color(0xFF00AFEF),
             onPressed: () => _showForm(),
-            backgroundColor: AppColors.accent,
             child: const Icon(Icons.add_rounded),
           ),
         ),
@@ -277,14 +277,9 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
     }
 
     if (_vendors.isEmpty) {
-      return EmptyState(
+      return const EmptyState(
         icon: Icons.business_rounded,
         title: 'Belum ada vendor',
-        action: ElevatedButton.icon(
-          onPressed: () => _showForm(),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Tambah Vendor'),
-        ),
       );
     }
 

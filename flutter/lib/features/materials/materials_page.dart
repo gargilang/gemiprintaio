@@ -143,13 +143,6 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
                       title: _search.isEmpty
                           ? 'Belum ada barang'
                           : 'Tidak ditemukan',
-                      action: _search.isEmpty
-                          ? ElevatedButton.icon(
-                              onPressed: () => _showForm(),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Tambah Barang'),
-                            )
-                          : null,
                     )
                   : RefreshIndicator(
                       onRefresh: () => _loadData(forceRefresh: true),
@@ -167,6 +160,7 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
           right: 16,
           bottom: 16,
           child: FloatingActionButton(
+            backgroundColor: const Color(0xFF00AFEF),
             onPressed: () => _showForm(),
             child: const Icon(Icons.add_rounded),
           ),

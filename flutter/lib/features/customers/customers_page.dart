@@ -229,6 +229,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
           right: 16,
           bottom: 16,
           child: FloatingActionButton(
+            backgroundColor: const Color(0xFF00AFEF),
             onPressed: () => _showForm(),
             child: const Icon(Icons.add_rounded),
           ),
@@ -268,14 +269,9 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     }
 
     if (_customers.isEmpty) {
-      return EmptyState(
+      return const EmptyState(
         icon: Icons.groups_rounded,
         title: 'Belum ada pelanggan',
-        action: ElevatedButton.icon(
-          onPressed: () => _showForm(),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Tambah Pelanggan'),
-        ),
       );
     }
 
