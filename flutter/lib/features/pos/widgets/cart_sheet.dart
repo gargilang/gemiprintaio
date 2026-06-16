@@ -10,10 +10,9 @@ class BiayaTambahan {
   Map<String, dynamic> toJson() => {'label': label, 'nominal': nominal};
 }
 
-/// Sheet keranjang. Semua mutasi state dilakukan lewat callback ke halaman,
-/// dan halaman memanggil setState lalu sheet (StatefulBuilder di pemanggil)
-/// rebuild. Untuk kesederhanaan, sheet ini menerima snapshot + callback dan
-/// menutup dirinya saat Penawaran/Bayar ditekan.
+/// Sheet keranjang menerima snapshot dan callback dari halaman pemanggil.
+/// Pilihan pembulatan disimpan sebagai state lokal agar tampilan sheet langsung
+/// berubah, lalu callback dipanggil untuk menyinkronkan nilai ke halaman.
 class CartSheet extends StatefulWidget {
   final List<CartItem> cart;
   final bool roundCartPrices;
