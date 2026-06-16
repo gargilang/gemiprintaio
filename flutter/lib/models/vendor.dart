@@ -8,6 +8,7 @@ class Vendor {
   final String? ketentuanBayar;
   final bool aktifStatus;
   final String? catatan;
+  final String tipeVendor; // "SUPPLIER" | "SUBKONTRAKTOR" | "KEDUANYA"
   final String? createdAt;
   final String? updatedAt;
 
@@ -21,6 +22,7 @@ class Vendor {
     this.ketentuanBayar,
     this.aktifStatus = true,
     this.catatan,
+    this.tipeVendor = 'SUPPLIER',
     this.createdAt,
     this.updatedAt,
   });
@@ -36,9 +38,17 @@ class Vendor {
       ketentuanBayar: json['ketentuan_bayar'] as String?,
       aktifStatus: (json['aktif_status'] == 1 || json['aktif_status'] == true),
       catatan: json['catatan'] as String?,
+      tipeVendor: _parseTipeVendor(json['tipe_vendor']),
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
     );
+  }
+
+  static String _parseTipeVendor(dynamic value) {
+    if (value == null) return 'SUPPLIER';
+    final s = value.toString().toUpperCase();
+    if (s == 'SUBKONTRAKTOR' || s == 'KEDUANYA') return s;
+    return 'SUPPLIER';
   }
 
   Map<String, dynamic> toJson() => {
@@ -50,5 +60,6 @@ class Vendor {
     'ketentuan_bayar': ketentuanBayar,
     'aktif_status': aktifStatus,
     'catatan': catatan,
+    'tipe_vendor': tipeVendor,
   };
 }
