@@ -26,14 +26,21 @@ class _FinancePageState extends ConsumerState<FinancePage>
   late final TabController _tabController;
 
   List<CashBookEntry> _entries = [];
-  List<String> _kategoriOptions = [];
+  List<Map<String, dynamic>> _kategoriOptions = [];
   Map<String, dynamic> _systemMetrics = {};
   bool _isLoading = true;
   String _search = '';
   String _filterKategori = 'SEMUA';
 
-  RingkasanKasbon _ringkasanKasbon = RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0);
-  RingkasanHutangPiutang _ringkasanHutangPiutang = RingkasanHutangPiutang(hutang: HutangPiutangInfo(total: 0, jumlah: 0), piutang: HutangPiutangInfo(total: 0, jumlah: 0));
+  RingkasanKasbon _ringkasanKasbon = RingkasanKasbon(
+    karyawan: [],
+    totalKasbon: 0,
+    jumlahKaryawan: 0,
+  );
+  RingkasanHutangPiutang _ringkasanHutangPiutang = RingkasanHutangPiutang(
+    hutang: HutangPiutangInfo(total: 0, jumlah: 0),
+    piutang: HutangPiutangInfo(total: 0, jumlah: 0),
+  );
 
   final _fmt = NumberFormat.currency(
     locale: 'id_ID',
@@ -62,14 +69,24 @@ class _FinancePageState extends ConsumerState<FinancePage>
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
-    if (_entries.isEmpty) setState(() => _isLoading = true);
+    if (_entries.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final service = ref.read(financeServiceProvider);
       final results = await Future.wait([
         service.getCashBook(forceRefresh: forceRefresh),
         service.getConfig().catchError((_) => <String, dynamic>{}),
-        service.getRingkasanKasbon().catchError((_) => RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0)),
-        service.getRingkasanHutangPiutang().catchError((_) => RingkasanHutangPiutang(hutang: HutangPiutangInfo(total: 0, jumlah: 0), piutang: HutangPiutangInfo(total: 0, jumlah: 0))),
+        service.getRingkasanKasbon().catchError(
+          (_) =>
+              RingkasanKasbon(karyawan: [], totalKasbon: 0, jumlahKaryawan: 0),
+        ),
+        service.getRingkasanHutangPiutang().catchError(
+          (_) => RingkasanHutangPiutang(
+            hutang: HutangPiutangInfo(total: 0, jumlah: 0),
+            piutang: HutangPiutangInfo(total: 0, jumlah: 0),
+          ),
+        ),
       ]);
 
       final data = results[0] as Map<String, dynamic>;
@@ -85,17 +102,25 @@ class _FinancePageState extends ConsumerState<FinancePage>
           _entries = list
               .map((j) => CashBookEntry.fromJson(j as Map<String, dynamic>))
               .toList();
-          _systemMetrics =
-              data['systemMetrics'] is Map<String, dynamic>
-                  ? data['systemMetrics'] as Map<String, dynamic>
-                  : {};
-          _kategoriOptions = categories.isEmpty
-              ? []
-              : categories
-                  .map((c) => (c['category_code'] ?? '').toString())
-                  .where((c) => c.isNotEmpty)
-                  .toSet()
-                  .toList();
+          _systemMetrics = data['systemMetrics'] is Map<String, dynamic>
+              ? data['systemMetrics'] as Map<String, dynamic>
+              : {};
+          final seenKategori = <String>{};
+          _kategoriOptions = categories
+              .whereType<Map>()
+              .map<Map<String, dynamic>>(
+                (c) => {
+                  'category_code': (c['category_code'] ?? '').toString(),
+                  'display_name':
+                      (c['display_name'] ?? c['category_code'] ?? '')
+                          .toString(),
+                },
+              )
+              .where((c) {
+                final code = c['category_code'] as String;
+                return code.isNotEmpty && seenKategori.add(code);
+              })
+              .toList();
           _ringkasanKasbon = kasbon;
           _ringkasanHutangPiutang = hp;
           _isLoading = false;
@@ -121,8 +146,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
   List<CashBookEntry> get _filtered {
     var list = _entries;
     if (_filterKategori != 'SEMUA') {
-      list =
-          list.where((e) => e.kategoriTransaksi == _filterKategori).toList();
+      list = list.where((e) => e.kategoriTransaksi == _filterKategori).toList();
     }
     if (_search.isNotEmpty) {
       final q = _search.toLowerCase();
@@ -143,8 +167,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
     return role != null && RoleGroups.adminOnly.contains(role);
   }
 
-  double _metric(String key) =>
-      (_systemMetrics[key] as num?)?.toDouble() ?? 0;
+  double _metric(String key) => (_systemMetrics[key] as num?)?.toDouble() ?? 0;
 
   // ============ KARTU RINGKASAN (gaya gradient existing) ============
   static const Color _indigoColor = Color(0xFF4F46E5);
@@ -230,8 +253,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
                   'Saldo Kasbon',
                   saldoKasbon,
                   AppColors.error,
-                  subtitle:
-                      '${_ringkasanKasbon.jumlahKaryawan} karyawan',
+                  subtitle: '${_ringkasanKasbon.jumlahKaryawan} karyawan',
                 ),
               ),
             ],
@@ -301,10 +323,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              color: color.withValues(alpha: 0.8),
-            ),
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 2),
           Text(
@@ -340,23 +359,29 @@ class _FinancePageState extends ConsumerState<FinancePage>
       backgroundColor: Colors.transparent,
       builder: (_) => FormTransaksiSheet(kategoriOptions: _kategoriOptions),
     );
-    if (result == true) _loadData();
+    if (result == true) {
+      _loadData();
+    }
   }
 
   Widget _buildBukuKasList() {
     final filtered = _filtered;
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_entries.isEmpty)
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_entries.isEmpty) {
       return const EmptyState(
         icon: Icons.account_balance_wallet_rounded,
         title: 'Belum ada entri keuangan',
       );
-    if (filtered.isEmpty)
+    }
+    if (filtered.isEmpty) {
       return const EmptyState(
         icon: Icons.search_off_rounded,
         title: 'Tidak ditemukan',
         subtitle: 'Coba kata kunci lain atau ubah filter',
       );
+    }
     return RefreshIndicator(
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
@@ -377,9 +402,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
     final text = (e.keperluan ?? 'TR').replaceAll(RegExp(r'[^a-zA-Z]'), '');
     final displayInitials = text.isEmpty
         ? 'TR'
-        : text
-            .substring(0, text.length < 2 ? text.length : 2)
-            .toUpperCase();
+        : text.substring(0, text.length < 2 ? text.length : 2).toUpperCase();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
@@ -559,9 +582,15 @@ class _FinancePageState extends ConsumerState<FinancePage>
 
   String _referensiLabel(CashBookEntry e) {
     final k = e.keperluan ?? '';
-    if (k.contains('[REF:purchase-')) return 'Pembelian';
-    if (k.contains('[REF:sale-')) return 'POS';
-    if (k.contains('[REF:pinjaman-')) return 'Kasbon';
+    if (k.contains('[REF:purchase-')) {
+      return 'Pembelian';
+    }
+    if (k.contains('[REF:sale-')) {
+      return 'POS';
+    }
+    if (k.contains('[REF:pinjaman-')) {
+      return 'Kasbon';
+    }
     return '';
   }
 
@@ -594,14 +623,18 @@ class _FinancePageState extends ConsumerState<FinancePage>
   }
 
   Future<void> _handleDelete(CashBookEntry entry) async {
-    if (!entry.dapatDihapus) return;
+    if (!entry.dapatDihapus) {
+      return;
+    }
     final ok = await showConfirmDialog(
       context,
       title: 'Hapus Transaksi',
       message: 'Yakin ingin menghapus "${entry.keperluan ?? 'transaksi'}"?',
       isDangerous: true,
     );
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
     try {
       await ref.read(financeServiceProvider).deleteEntry(entry.id);
       if (mounted) {
@@ -609,9 +642,13 @@ class _FinancePageState extends ConsumerState<FinancePage>
         _loadData();
       }
     } on ApiException catch (e) {
-      if (mounted) showErrorSnackbar(context, e.message);
+      if (mounted) {
+        showErrorSnackbar(context, e.message);
+      }
     } catch (_) {
-      if (mounted) showErrorSnackbar(context, 'Gagal menghapus transaksi');
+      if (mounted) {
+        showErrorSnackbar(context, 'Gagal menghapus transaksi');
+      }
     }
   }
 
@@ -624,13 +661,10 @@ class _FinancePageState extends ConsumerState<FinancePage>
         children: [
           Expanded(
             child: NestedScrollView(
-              headerSliverBuilder: (_, __) => [
+              headerSliverBuilder: (_, _) => [
                 SliverToBoxAdapter(
                   child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _buildSummaryCards(),
-                    ],
+                    children: [const SizedBox(height: 8), _buildSummaryCards()],
                   ),
                 ),
                 SliverPersistentHeader(
@@ -702,21 +736,23 @@ class _FinancePageState extends ConsumerState<FinancePage>
                                 visualDensity: VisualDensity.compact,
                               ),
                               const SizedBox(width: 4),
-                              ..._kategoriOptions.map(
-                                (kat) => Padding(
+                              ..._kategoriOptions.map((kat) {
+                                final code = kat['category_code'] as String;
+                                final name = kat['display_name'] as String;
+                                return Padding(
                                   padding: const EdgeInsets.only(right: 4),
                                   child: FilterChip(
                                     label: Text(
-                                      kat,
+                                      name,
                                       style: const TextStyle(fontSize: 11),
                                     ),
-                                    selected: _filterKategori == kat,
+                                    selected: _filterKategori == code,
                                     onSelected: (_) =>
-                                        setState(() => _filterKategori = kat),
+                                        setState(() => _filterKategori = code),
                                     visualDensity: VisualDensity.compact,
                                   ),
-                                ),
-                              ),
+                                );
+                              }),
                             ],
                           ),
                         ),
@@ -745,18 +781,23 @@ class _FinancePageState extends ConsumerState<FinancePage>
 
   Widget _buildKasbonTab() {
     final kasbon = _ringkasanKasbon;
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (kasbon.karyawan.isEmpty)
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (kasbon.karyawan.isEmpty) {
       return const EmptyState(
         icon: Icons.people_outline_rounded,
         title: 'Belum ada data kasbon',
       );
+    }
 
     final filtered = _search.isEmpty
         ? kasbon.karyawan
         : kasbon.karyawan
-            .where((k) => k.nama.toLowerCase().contains(_search.toLowerCase()))
-            .toList();
+              .where(
+                (k) => k.nama.toLowerCase().contains(_search.toLowerCase()),
+              )
+              .toList();
 
     return Column(
       children: [
@@ -784,10 +825,9 @@ class _FinancePageState extends ConsumerState<FinancePage>
               prefixIcon: const Icon(Icons.search, size: 20),
               isDense: true,
               filled: true,
-              fillColor: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.3),
+              fillColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(22),
                 borderSide: BorderSide.none,
@@ -833,10 +873,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
           const SizedBox(width: 6),
           Text(
@@ -855,10 +892,10 @@ class _FinancePageState extends ConsumerState<FinancePage>
   Widget _buildKasbonCard(KaryawanKasbon k) {
     final initials = k.nama.isNotEmpty
         ? k.nama
-            .split(' ')
-            .take(2)
-            .map((s) => s.isNotEmpty ? s[0].toUpperCase() : '')
-            .join()
+              .split(' ')
+              .take(2)
+              .map((s) => s.isNotEmpty ? s[0].toUpperCase() : '')
+              .join()
         : '?';
     final lunas = k.saldoPinjaman <= 0;
     return Card(
@@ -951,11 +988,10 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
     BuildContext context,
     double shrinkOffset,
     bool overlapsContent,
-  ) =>
-      Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: tabBar,
-      );
+  ) => Container(
+    color: Theme.of(context).scaffoldBackgroundColor,
+    child: tabBar,
+  );
 
   @override
   double get maxExtent => tabBar.preferredSize.height;
