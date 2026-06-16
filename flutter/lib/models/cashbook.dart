@@ -15,6 +15,7 @@ class CashBookEntry {
   final int? urutanTampilan;
   final String? createdAt;
   final String? updatedAt;
+  final bool dapatDihapus;
 
   const CashBookEntry({
     required this.id,
@@ -33,6 +34,7 @@ class CashBookEntry {
     this.urutanTampilan,
     this.createdAt,
     this.updatedAt,
+    this.dapatDihapus = true,
   });
 
   factory CashBookEntry.fromJson(Map<String, dynamic> json) {
@@ -53,6 +55,7 @@ class CashBookEntry {
       urutanTampilan: json['urutan_tampilan'] as int?,
       createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
       updatedAt: (json['updated_at'] ?? json['diperbarui_pada']) as String?,
+      dapatDihapus: json['dapat_dihapus'] as bool? ?? true,
     );
   }
 }
