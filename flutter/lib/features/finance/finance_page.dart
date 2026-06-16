@@ -791,9 +791,14 @@ class _FinancePageState extends ConsumerState<FinancePage>
       );
     }
 
+    const excludedRoles = ['PEMILIK', 'DIREKTUR', 'KOMISARIS'];
+    final filteredKaryawan = kasbon.karyawan
+        .where((k) => !excludedRoles.contains(k.role.toUpperCase()))
+        .toList();
+
     final filtered = _search.isEmpty
-        ? kasbon.karyawan
-        : kasbon.karyawan
+        ? filteredKaryawan
+        : filteredKaryawan
               .where(
                 (k) => k.nama.toLowerCase().contains(_search.toLowerCase()),
               )
@@ -801,22 +806,6 @@ class _FinancePageState extends ConsumerState<FinancePage>
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Wrap(
-            spacing: 6,
-            children: [
-              _buildStatChip(
-                'Total Kasbon: ${_formatShort(kasbon.totalKasbon)}',
-                Colors.amber.shade600,
-              ),
-              _buildStatChip(
-                '${kasbon.jumlahKaryawan} Karyawan',
-                Colors.red.shade400,
-              ),
-            ],
-          ),
-        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
           child: TextField(
@@ -857,35 +846,6 @@ class _FinancePageState extends ConsumerState<FinancePage>
                 ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: color,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -961,14 +921,15 @@ class _FinancePageState extends ConsumerState<FinancePage>
                   ],
                 ),
               ),
-              Text(
-                lunas ? 'Lunas' : '-${_formatShort(k.saldoPinjaman)}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: lunas ? Colors.green.shade600 : Colors.red.shade600,
+              if (k.saldoPinjaman > 0)
+                Text(
+                  '-${_formatShort(k.saldoPinjaman)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red.shade600,
+                  ),
                 ),
-              ),
               const SizedBox(width: 4),
               Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
             ],
