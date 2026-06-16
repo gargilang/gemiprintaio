@@ -43,6 +43,7 @@ export interface CashBookEntry {
   dibuat_oleh?: string;
   diarsipkan_pada?: string;
   status_transaksi?: "POSTED" | "VOIDED";
+  reference_type?: string | null;
   dibuat_pada?: string;
   diperbarui_pada?: string;
 }
@@ -343,9 +344,17 @@ export async function deleteManualCashBookEntry(
 ): Promise<"deleted" | "not_found" | "purchase_linked"> {
   const entry = await getCashBookEntry(id);
   if (!entry) return "not_found";
-  if (entry.keperluan?.includes("[REF:purchase-")) {
+
+  // Cek via reference_type + fallback ke keperluan
+  if (
+    !canDeleteCashBookEntry({
+      reference_type: entry.reference_type,
+      keperluan: entry.keperluan,
+    })
+  ) {
     return "purchase_linked";
   }
+
   const del = await db.delete("keuangan", id);
   if (del.error) throw del.error;
   await recalculateCashbookIfAvailable();

@@ -10,28 +10,27 @@ export const dynamic = "force-dynamic";
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireAdminOrManager();
     const { id } = await params;
 
-    const outcome = await deleteManualCashBookEntry(id);
+    const result = await deleteManualCashBookEntry(id);
 
-    if (outcome === "not_found") {
+    if (result === "not_found") {
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
-    if (outcome === "purchase_linked") {
+    if (result === "purchase_linked") {
       return NextResponse.json(
         {
           error:
-            "Transaksi pembelian harus dibatalkan melalui Halaman Pembelian",
-          isPurchaseTransaction: true,
+            "Transaksi ini tidak dapat dihapus dari Buku Kas. Batalkan dari sumber transaksinya (POS/Pembelian/Kasbon).",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -39,23 +38,26 @@ export async function DELETE(
       {
         message: "Transaksi berhasil dihapus dan data telah direcalculate",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("DELETE /api/finance/cash-book/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal menghapus transaksi" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireAdminOrManager();
@@ -74,17 +76,16 @@ export async function PUT(
     if (outcome === "not_found") {
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     if (outcome === "purchase_linked") {
       return NextResponse.json(
         {
-          error:
-            "Transaksi pembelian harus diubah melalui Halaman Pembelian",
+          error: "Transaksi pembelian harus diubah melalui Halaman Pembelian",
           isPurchaseTransaction: true,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
     if (outcome === "invalid") {
@@ -93,7 +94,7 @@ export async function PUT(
           error:
             "Tanggal dan kategori wajib diisi; debit/kredit tidak boleh bersamaan atau keduanya nol",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -101,16 +102,19 @@ export async function PUT(
       {
         message: "Transaksi berhasil diupdate dan data telah direcalculate",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("PUT /api/finance/cash-book/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal mengupdate transaksi" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
