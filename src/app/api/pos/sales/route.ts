@@ -12,9 +12,9 @@ export async function GET() {
     const sales = await getSales(200);
     return NextResponse.json({ sales });
   } catch (error: any) {
-    console.error("Gagal mengambil daftar penjualan:", error);
+    log.error("get_sales_failed", { error: String(error?.message || error) });
     return NextResponse.json(
-      { error: error.message || "Gagal mengambil daftar penjualan" },
+      { error: "Gagal mengambil daftar penjualan" },
       { status: 500 },
     );
   }

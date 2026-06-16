@@ -1,5 +1,9 @@
 import { GET } from "../route";
 
+jest.mock("@/lib/log", () => ({
+  log: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+}));
+
 jest.mock("@/lib/auth-guard-server", () => ({
   __esModule: true,
   requireSession: jest.fn().mockResolvedValue({ uid: "u1", role: "MANAGER" }),
