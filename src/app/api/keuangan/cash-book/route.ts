@@ -3,7 +3,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import { db, getServerSupabaseClient } from "@/lib/db-unified";
-import { createCashBookEntry } from "@/lib/services/finance-service";
+import {
+  createCashBookEntry,
+  canDeleteCashBookEntry,
+} from "@/lib/services/finance-service";
 import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
@@ -29,7 +32,19 @@ export async function GET() {
         saldo_kasbon: latestMap.saldo_kasbon ?? 0,
         kas: latestMap.kas ?? 0,
       };
-      return NextResponse.json({ cashBooks, systemMetrics });
+      const cashBooksWithDeletable = cashBooks.map(
+        (row: Record<string, unknown>) => ({
+          ...row,
+          dapat_dihapus: canDeleteCashBookEntry({
+            reference_type: (row.reference_type as string) ?? null,
+            keperluan: (row.keperluan as string) ?? null,
+          }),
+        }),
+      );
+      return NextResponse.json({
+        cashBooks: cashBooksWithDeletable,
+        systemMetrics,
+      });
     }
 
     const cashBooks =
@@ -38,7 +53,7 @@ export async function GET() {
          WHERE diarsipkan_pada IS NULL
            AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
          ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
-        []
+        [],
       )) || [];
     const latestMap = await getLatestPerFormulaKey();
     const systemMetrics = {
@@ -52,12 +67,25 @@ export async function GET() {
       kas: latestMap.kas ?? 0,
     };
 
-    return NextResponse.json({ cashBooks, systemMetrics });
+    const cashBooksWithDeletable = (cashBooks as Record<string, unknown>[]).map(
+      (row) => ({
+        ...row,
+        dapat_dihapus: canDeleteCashBookEntry({
+          reference_type: (row.reference_type as string) ?? null,
+          keperluan: (row.keperluan as string) ?? null,
+        }),
+      }),
+    );
+
+    return NextResponse.json({
+      cashBooks: cashBooksWithDeletable,
+      systemMetrics,
+    });
   } catch (error) {
     console.error("GET /api/finance/cash-book error:", error);
     return NextResponse.json(
       { error: "Gagal memuat data keuangan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -96,11 +124,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { message: "Transaksi berhasil ditambahkan", cashBook },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("POST /api/finance/cash-book error:", error);
     const msg = error instanceof Error ? error.message : "";
@@ -109,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(
       { error: "Gagal menambahkan transaksi" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

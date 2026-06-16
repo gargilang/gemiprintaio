@@ -59,7 +59,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
 
     if (result.error) throw result.error;
     return (result.data || []).filter(
-      (row) => row.status_transaksi !== "VOIDED"
+      (row) => row.status_transaksi !== "VOIDED",
     );
   } catch (error) {
     console.error("Error fetching cash book entries:", error);
@@ -71,7 +71,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
  * Ambil satu entri buku kas
  */
 export async function getCashBookEntry(
-  id: string
+  id: string,
 ): Promise<CashBookEntry | null> {
   try {
     const result = await db.queryOne<CashBookEntry>("keuangan", {
@@ -151,7 +151,7 @@ export async function createCashBookEntry(data: {
  */
 export async function updateCashBookEntry(
   id: string,
-  data: Partial<CashBookEntry>
+  data: Partial<CashBookEntry>,
 ): Promise<void> {
   try {
     const result = await db.update("keuangan", id, data);
@@ -229,7 +229,7 @@ async function nextUrutanTampilanKeuangan(): Promise<number> {
   }
   const maxOrderResult = await db.queryRaw<{ max_order: number }>(
     "SELECT MAX(urutan_tampilan) as max_order FROM keuangan",
-    []
+    [],
   );
   return (maxOrderResult[0]?.max_order ?? 0) + 1;
 }
@@ -252,8 +252,8 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
 
   const sorted = sortCashbookRowsForRecalc(
     ((rows || []) as CashbookRecalcInputRow[]).filter(
-      (row) => row.status_transaksi !== "VOIDED"
-    )
+      (row) => row.status_transaksi !== "VOIDED",
+    ),
   );
   const [formulas, partners] = await Promise.all([
     listActiveFormulas(),
@@ -339,7 +339,7 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
  * Hapus baris buku kas manual (blokir baris yang terkait pembelian via [REF:purchase-).
  */
 export async function deleteManualCashBookEntry(
-  id: string
+  id: string,
 ): Promise<"deleted" | "not_found" | "purchase_linked"> {
   const entry = await getCashBookEntry(id);
   if (!entry) return "not_found";
@@ -350,6 +350,34 @@ export async function deleteManualCashBookEntry(
   if (del.error) throw del.error;
   await recalculateCashbookIfAvailable();
   return "deleted";
+}
+
+/**
+ * Tentukan apakah baris keuangan dapat dihapus dari Buku Kas.
+ * Manual = reference_type NULL atau bukan dari POS/pembelian/kasbon.
+ */
+export function canDeleteCashBookEntry(entry: {
+  reference_type?: string | null;
+  keperluan?: string | null;
+}): boolean {
+  // Baris dari POS, pembelian, atau kasbon TIDAK bisa dihapus dari Buku Kas
+  if (
+    entry.reference_type === "SALE" ||
+    entry.reference_type === "PURCHASE" ||
+    entry.reference_type === "PINJAMAN_KARYAWAN"
+  ) {
+    return false;
+  }
+  // Fallback: cek token [REF: di keperluan (data sebelum migration)
+  const k = entry.keperluan ?? "";
+  if (
+    k.includes("[REF:purchase-") ||
+    k.includes("[REF:pinjaman-") ||
+    k.includes("[REF:sale-")
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -364,7 +392,7 @@ export async function updateManualCashBookEntry(
     kredit?: number;
     keperluan?: string;
     catatan?: string;
-  }
+  },
 ): Promise<"updated" | "not_found" | "purchase_linked" | "invalid"> {
   const existingEntry = await getCashBookEntry(id);
   if (!existingEntry) return "not_found";
@@ -412,7 +440,7 @@ export type CashbookManualOverrideField =
   (typeof CASHBOOK_MANUAL_OVERRIDE_FIELDS)[number];
 
 function isCashbookManualOverrideField(
-  f: string
+  f: string,
 ): f is CashbookManualOverrideField {
   return (CASHBOOK_MANUAL_OVERRIDE_FIELDS as readonly string[]).includes(f);
 }
@@ -422,7 +450,7 @@ function isCashbookManualOverrideField(
  */
 export async function patchCashBookManualOverrides(
   id: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): Promise<"updated" | "no_fields" | "not_found"> {
   const existing = await getCashBookEntry(id);
   if (!existing) return "not_found";
@@ -449,7 +477,7 @@ export async function patchCashBookManualOverrides(
  */
 export async function clearCashBookManualOverride(
   id: string,
-  field: string
+  field: string,
 ): Promise<"cleared" | "not_found" | "invalid_field"> {
   if (!isCashbookManualOverrideField(field)) return "invalid_field";
 
@@ -613,7 +641,7 @@ function parseDate(raw: any): string | null {
  */
 export async function importCashbookFromCSV(
   csvText: string,
-  append: boolean = false
+  append: boolean = false,
 ): Promise<{
   success: boolean;
   imported: number;
@@ -642,7 +670,7 @@ export async function importCashbookFromCSV(
     // Cek kolom yang wajib ada
     const requiredColumns = ["TANGGAL", "KATEGORI", "DEBIT", "KREDIT"];
     const missingColumns = requiredColumns.filter(
-      (col) => !headers.includes(col)
+      (col) => !headers.includes(col),
     );
 
     if (missingColumns.length > 0) {
@@ -744,7 +772,7 @@ export async function importCashbookFromCSV(
         errors.push(
           `Baris ${i + 1}: ${
             error instanceof Error ? error.message : "Gagal menyisipkan"
-          }`
+          }`,
         );
       }
     }
