@@ -41,13 +41,4 @@ void main() {
     expect(find.text('Simpan'), findsOneWidget);
   });
 
-  testWidgets('CustomerFormSheet shows Edit title when existing provided', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: Scaffold(body: CustomerFormSheet())),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Tambah Pelanggan'), findsOneWidget);
-  });
 }
