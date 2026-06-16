@@ -11,6 +11,7 @@ import 'package:gemiprint/widgets/confirm_dialog.dart';
 import 'package:gemiprint/widgets/empty_state.dart';
 import 'package:gemiprint/widgets/snackbar_helper.dart';
 import 'package:intl/intl.dart';
+import 'detail_kasbon_sheet.dart';
 import 'form_transaksi_sheet.dart';
 
 class FinancePage extends ConsumerStatefulWidget {
@@ -361,30 +362,257 @@ class _FinancePageState extends ConsumerState<FinancePage>
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
         itemCount: filtered.length,
-        itemBuilder: (_, i) {
-          final e = filtered[i];
-          // Kartu sederhana dulu — Task 8 menambahkan styling lengkap
-          return Card(
-            margin: const EdgeInsets.only(bottom: 6),
-            child: ListTile(
-              title: Text(
-                e.keperluan ?? 'Transaksi',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              subtitle: Text(e.tanggal, style: const TextStyle(fontSize: 11)),
-              trailing: Text(
-                e.debit > 0
-                    ? '-${_fmt.format(e.debit)}'
-                    : '+${_fmt.format(e.kredit)}',
-              ),
-            ),
-          );
-        },
+        itemBuilder: (_, i) => _buildBukuKasCard(filtered[i]),
       ),
     );
+  }
+
+  Widget _buildBukuKasCard(CashBookEntry e) {
+    final refLabel = _referensiLabel(e);
+    final isDeletable = e.dapatDihapus && _canMutate;
+    final kat = e.kategoriTransaksi.toUpperCase();
+    final katColor = _kategoriColor(kat);
+    final katBg = _kategoriBgColor(kat);
+    final isCredit = e.kredit > 0;
+    final text = (e.keperluan ?? 'TR').replaceAll(RegExp(r'[^a-zA-Z]'), '');
+    final displayInitials = text.isEmpty
+        ? 'TR'
+        : text
+            .substring(0, text.length < 2 ? text.length : 2)
+            .toUpperCase();
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: isDeletable ? () => _handleDelete(e) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  displayInitials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            e.keperluan ?? 'Transaksi',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (refLabel.isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              refLabel,
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          _formatTanggal(e.tanggal),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: katBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            kat,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: katColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isCredit
+                        ? '+${_formatShort(e.kredit)}'
+                        : '-${_formatShort(e.debit)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: isCredit
+                          ? Colors.green.shade600
+                          : Colors.red.shade600,
+                    ),
+                  ),
+                  if (!e.dapatDihapus) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: Colors.grey.shade300,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _kategoriColor(String kat) {
+    switch (kat.toUpperCase()) {
+      case 'KAS':
+      case 'MODAL_KAS':
+        return const Color(0xFF2563EB);
+      case 'BIAYA':
+      case 'BIAYA_OPERASIONAL':
+      case 'BIAYA_BAHAN':
+      case 'SUPPLY':
+        return const Color(0xFFD97706);
+      case 'OMZET':
+      case 'LABA':
+      case 'LABA_BERSIH':
+        return const Color(0xFF059669);
+      case 'PINJAMAN_KARYAWAN':
+        return const Color(0xFFDC2626);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _kategoriBgColor(String kat) {
+    switch (kat.toUpperCase()) {
+      case 'KAS':
+      case 'MODAL_KAS':
+        return const Color(0xFFDBEAFE);
+      case 'BIAYA':
+      case 'BIAYA_OPERASIONAL':
+      case 'BIAYA_BAHAN':
+      case 'SUPPLY':
+        return const Color(0xFFFEF3C7);
+      case 'OMZET':
+      case 'LABA':
+      case 'LABA_BERSIH':
+        return const Color(0xFFD1FAE5);
+      case 'PINJAMAN_KARYAWAN':
+        return const Color(0xFFFEE2E2);
+      default:
+        return const Color(0xFFF1F5F9);
+    }
+  }
+
+  String _referensiLabel(CashBookEntry e) {
+    final k = e.keperluan ?? '';
+    if (k.contains('[REF:purchase-')) return 'Pembelian';
+    if (k.contains('[REF:sale-')) return 'POS';
+    if (k.contains('[REF:pinjaman-')) return 'Kasbon';
+    return '';
+  }
+
+  String _formatTanggal(String tgl) {
+    try {
+      final d = DateTime.parse(tgl);
+      return '${d.day} ${_bulanPendek(d.month)} ${d.year}';
+    } catch (_) {
+      return tgl;
+    }
+  }
+
+  String _bulanPendek(int m) {
+    const bulan = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return bulan[m];
+  }
+
+  Future<void> _handleDelete(CashBookEntry entry) async {
+    if (!entry.dapatDihapus) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Hapus Transaksi',
+      message: 'Yakin ingin menghapus "${entry.keperluan ?? 'transaksi'}"?',
+      isDangerous: true,
+    );
+    if (!ok) return;
+    try {
+      await ref.read(financeServiceProvider).deleteEntry(entry.id);
+      if (mounted) {
+        showSuccessSnackbar(context, 'Transaksi berhasil dihapus');
+        _loadData();
+      }
+    } on ApiException catch (e) {
+      if (mounted) showErrorSnackbar(context, e.message);
+    } catch (_) {
+      if (mounted) showErrorSnackbar(context, 'Gagal menghapus transaksi');
+    }
   }
 
   // ============ BUILD ============
@@ -495,8 +723,8 @@ class _FinancePageState extends ConsumerState<FinancePage>
                       Expanded(child: _buildBukuKasList()),
                     ],
                   ),
-                  // Tab Kasbon (placeholder — Task 10 mengisinya)
-                  const Center(child: Text('Kasbon')),
+                  // Tab Kasbon
+                  _buildKasbonTab(),
                 ],
               ),
             ),
@@ -510,6 +738,206 @@ class _FinancePageState extends ConsumerState<FinancePage>
               child: const Icon(Icons.add_rounded),
             )
           : null,
+    );
+  }
+
+  // ============ TAB KASBON ============
+
+  Widget _buildKasbonTab() {
+    final kasbon = _ringkasanKasbon;
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (kasbon == null || kasbon.karyawan.isEmpty)
+      return const EmptyState(
+        icon: Icons.people_outline_rounded,
+        title: 'Belum ada data kasbon',
+      );
+
+    final filtered = _search.isEmpty
+        ? kasbon.karyawan
+        : kasbon.karyawan
+            .where((k) => k.nama.toLowerCase().contains(_search.toLowerCase()))
+            .toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Wrap(
+            spacing: 6,
+            children: [
+              _buildStatChip(
+                'Total Kasbon: ${_formatShort(kasbon.totalKasbon)}',
+                Colors.amber.shade600,
+              ),
+              _buildStatChip(
+                '${kasbon.jumlahKaryawan} Karyawan',
+                Colors.red.shade400,
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Cari karyawan...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              filled: true,
+              fillColor: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 8,
+              ),
+            ),
+            onChanged: (v) => setState(() => _search = v),
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? const EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'Tidak ditemukan',
+                  subtitle: 'Coba kata kunci lain',
+                )
+              : RefreshIndicator(
+                  onRefresh: () => _loadData(forceRefresh: true),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) => _buildKasbonCard(filtered[i]),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKasbonCard(KaryawanKasbon k) {
+    final initials = k.nama.isNotEmpty
+        ? k.nama
+            .split(' ')
+            .take(2)
+            .map((s) => s.isNotEmpty ? s[0].toUpperCase() : '')
+            .join()
+        : '?';
+    final lunas = k.saldoPinjaman <= 0;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => DetailKasbonSheet(
+              karyawan: k,
+              onSuccess: () => _loadData(forceRefresh: true),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    colors: lunas
+                        ? [Colors.green.shade400, Colors.green.shade600]
+                        : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      k.nama,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      k.roleLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                lunas ? 'Lunas' : '-${_formatShort(k.saldoPinjaman)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: lunas ? Colors.green.shade600 : Colors.red.shade600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
