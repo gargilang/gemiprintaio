@@ -108,6 +108,8 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
       }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
+    } catch (_) {
+      if (mounted) showErrorSnackbar(context, 'Gagal menghapus vendor');
     }
   }
 
@@ -171,9 +173,9 @@ class _VendorsPageState extends ConsumerState<VendorsPage> {
               child: Wrap(
                 spacing: 8,
                 children: [
-                  _buildStatChip('Supplier', _tipeCount('SUPPLIER'), const Color(0xFF7B1FA2)),
-                  _buildStatChip('Subkontraktor', _tipeCount('SUBKONTRAKTOR'), const Color(0xFFE65100)),
-                  _buildStatChip('Keduanya', _tipeCount('KEDUANYA'), const Color(0xFF00695C)),
+                  _buildStatChip('Supplier', _tipeCount('SUPPLIER'), _tipeVendorColor('SUPPLIER')),
+                  _buildStatChip('Subkontraktor', _tipeCount('SUBKONTRAKTOR'), _tipeVendorColor('SUBKONTRAKTOR')),
+                  _buildStatChip('Keduanya', _tipeCount('KEDUANYA'), _tipeVendorColor('KEDUANYA')),
                 ],
               ),
             ),

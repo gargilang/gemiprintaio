@@ -112,6 +112,8 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
       }
     } on ApiException catch (e) {
       if (mounted) showErrorSnackbar(context, e.message);
+    } catch (_) {
+      if (mounted) showErrorSnackbar(context, 'Gagal menghapus pelanggan');
     }
   }
 
