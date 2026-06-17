@@ -49,13 +49,6 @@ class _FinancePageState extends ConsumerState<FinancePage>
     decimalDigits: 0,
   );
 
-  String _formatShort(double value) {
-    if (value.abs() >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}jt';
-    }
-    return _fmt.format(value);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -490,8 +483,8 @@ class _FinancePageState extends ConsumerState<FinancePage>
                 children: [
                   Text(
                     isDebit
-                        ? '+${_formatShort(e.debit)}'
-                        : '-${_formatShort(e.kredit)}',
+                        ? '+${_fmt.format(e.debit)}'
+                        : '-${_fmt.format(e.kredit)}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -870,7 +863,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
               ),
               if (k.saldoPinjaman > 0)
                 Text(
-                  '-${_formatShort(k.saldoPinjaman)}',
+                  '-${_fmt.format(k.saldoPinjaman)}',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
