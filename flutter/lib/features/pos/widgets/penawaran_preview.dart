@@ -13,6 +13,7 @@ Future<void> showPenawaranPreview(
   required double biayaTambahanTotal,
   String? customerName,
   String? customerKota,
+  FakturShopInfo? shop,
 }) async {
   final raws = cart.map((c) => c.subtotalRaw).toList();
   final charges = allocateCartLineCharges(raws, roundCartPrices);
@@ -50,6 +51,7 @@ Future<void> showPenawaranPreview(
           total: total,
           lines: lines,
           additionalCharges: additionalCharges,
+          shop: shop,
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 /// Satu baris item faktur/penawaran.
@@ -26,16 +27,60 @@ class FakturCharge {
   const FakturCharge({required this.label, required this.amount});
 }
 
-/// Info toko bawaan (mirror SHOP_INFO web `src/lib/faktur-print.ts`).
-class _ShopInfo {
-  static const namaToko = 'gemiprint';
-  static const slogan = 'Digital Printing & Advertising';
-  static const alamat =
-      'Cifest Walk, Ruko Pasadena Blok RA No. 18A,\nKel. Ciantra, Cikarang Selatan - Bekasi, 17531';
-  static const telepon = '0812 3456 0525';
-  static const email = 'cs@gemiprint.com';
-  static const catatanFaktur =
-      'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.';
+/// Info toko untuk header/footer faktur. Diambil dari `/api/pengaturan/toko`
+/// (mirror `pengaturan_toko` di web), dengan fallback bawaan bila offline.
+class FakturShopInfo {
+  final String namaToko;
+  final String? slogan;
+  final String? alamat;
+  final String? telepon;
+  final String? email;
+  final String? website;
+  final String? bankNama;
+  final String? bankNomor;
+  final String? bankAtasNama;
+  final String? catatanFaktur;
+
+  const FakturShopInfo({
+    required this.namaToko,
+    this.slogan,
+    this.alamat,
+    this.telepon,
+    this.email,
+    this.website,
+    this.bankNama,
+    this.bankNomor,
+    this.bankAtasNama,
+    this.catatanFaktur,
+  });
+
+  factory FakturShopInfo.fromJson(Map<String, dynamic> j) {
+    String? s(dynamic v) {
+      final t = (v as String?)?.trim();
+      return (t == null || t.isEmpty) ? null : t;
+    }
+
+    return FakturShopInfo(
+      namaToko: s(j['nama_toko']) ?? 'gemiprint',
+      slogan: s(j['slogan']),
+      alamat: s(j['alamat']),
+      telepon: s(j['telepon']),
+      email: s(j['email']),
+      website: s(j['website']),
+      bankNama: s(j['bank_nama']),
+      bankNomor: s(j['bank_nomor']),
+      bankAtasNama: s(j['bank_atas_nama']),
+      catatanFaktur: s(j['catatan_faktur']),
+    );
+  }
+
+  /// Default dipakai bila endpoint gagal / data toko belum ada.
+  static const fallback = FakturShopInfo(
+    namaToko: 'gemiprint',
+    slogan: 'Digital Printing & Advertising',
+    catatanFaktur:
+        'Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.',
+  );
 }
 
 /// Halaman pratinjau faktur/penawaran berbentuk portrait, dirender penuh
@@ -52,6 +97,8 @@ class FakturPreviewPage extends StatelessWidget {
   final double? bayar;
   final double? sisa;
   final String? catatan;
+  final String? paymentMethod; // mis. 'CASH', 'TRANSFER' (FAKTUR saja)
+  final FakturShopInfo? shop;
 
   const FakturPreviewPage({
     super.key,
@@ -66,7 +113,11 @@ class FakturPreviewPage extends StatelessWidget {
     this.bayar,
     this.sisa,
     this.catatan,
+    this.paymentMethod,
+    this.shop,
   });
+
+  FakturShopInfo get _shop => shop ?? FakturShopInfo.fallback;
 
   static final _rupiah = NumberFormat.currency(
     locale: 'id_ID',
@@ -108,9 +159,32 @@ class FakturPreviewPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _titleBlock(),
                 const SizedBox(height: 12),
-                _itemsTable(),
-                const SizedBox(height: 12),
-                _totalsBlock(),
+                // Watermark logo kecil transparan, hanya di belakang
+                // tabel item + total (antara judul dan catatan footer).
+                Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Center(
+                        child: Opacity(
+                          opacity: 0.06,
+                          child: SvgPicture.asset(
+                            'assets/logo-gemiprint-default.svg',
+                            width: 120,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _itemsTable(),
+                        const SizedBox(height: 12),
+                        _totalsBlock(),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 _footer(),
               ],
@@ -121,35 +195,85 @@ class FakturPreviewPage extends StatelessWidget {
     );
   }
 
+  /// Wordmark "gemiprint" bergaya brand (gemi biru + print gelap).
+  /// Untuk nama toko lain, tampilkan teks biasa.
+  Widget _wordmark() {
+    final nama = _shop.namaToko;
+    if (nama.toLowerCase() == 'gemiprint') {
+      return RichText(
+        text: const TextSpan(
+          style: TextStyle(
+            fontFamily: 'Bauhaus93',
+            fontSize: 26,
+            fontStyle: FontStyle.italic,
+            height: 1,
+          ),
+          children: [
+            TextSpan(text: 'gemi', style: TextStyle(color: Color(0xFF00AFEF))),
+            TextSpan(text: 'print', style: TextStyle(color: Color(0xFF0A1B3D))),
+          ],
+        ),
+      );
+    }
+    return Text(
+      nama,
+      style: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF0A1B3D),
+      ),
+    );
+  }
+
   Widget _header() {
+    final kontak = [
+      if (_shop.telepon != null) 'Telp ${_shop.telepon}',
+      if (_shop.email != null) _shop.email!,
+      if (_shop.website != null) _shop.website!,
+    ].join(' · ');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _ShopInfo.namaToko,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0A1B3D),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/logo-gemiprint-default.svg',
+              height: 40,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _wordmark(),
+                  if (_shop.slogan != null)
+                    Text(
+                      _shop.slogan!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF00AFEF),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (_shop.alamat != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _shop.alamat!,
+            style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
           ),
-        ),
-        Text(
-          _ShopInfo.slogan,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF00AFEF),
-            fontWeight: FontWeight.w600,
+        ],
+        if (kontak.isNotEmpty)
+          Text(
+            kontak,
+            style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _ShopInfo.alamat,
-          style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
-        ),
-        Text(
-          'Telp ${_ShopInfo.telepon} · ${_ShopInfo.email}',
-          style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
-        ),
         const SizedBox(height: 8),
         const Divider(height: 1, thickness: 2, color: Color(0xFF0A1B3D)),
       ],
@@ -288,14 +412,67 @@ class FakturPreviewPage extends StatelessWidget {
     );
   }
 
+  /// Label ramah untuk metode pembayaran.
+  String _metodeLabel(String kode) {
+    switch (kode.toUpperCase()) {
+      case 'CASH':
+        return 'Tunai';
+      case 'TRANSFER':
+        return 'Transfer';
+      case 'QRIS':
+        return 'QRIS';
+      case 'DEBIT':
+        return 'Kartu Debit';
+      case 'DOWN_PAYMENT':
+        return 'Uang Muka (DP)';
+      case 'NET30':
+        return 'Tempo (NET30)';
+      default:
+        return kode;
+    }
+  }
+
   Widget _footer() {
     final note = (catatan != null && catatan!.trim().isNotEmpty)
         ? catatan!.trim()
-        : _ShopInfo.catatanFaktur;
+        : (_shop.catatanFaktur ?? FakturShopInfo.fallback.catatanFaktur!);
+    final adaBank = _shop.bankNomor != null && _shop.bankNomor!.isNotEmpty;
+    final adaMetode =
+        paymentMethod != null && paymentMethod!.trim().isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(),
+        if (adaMetode)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                const Text(
+                  'Metode Pembayaran: ',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                ),
+                Text(
+                  _metodeLabel(paymentMethod!),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0A1B3D),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (adaBank)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Pembayaran transfer ke ${_shop.bankNama ?? ''} ${_shop.bankNomor}'
+              '${_shop.bankAtasNama != null ? ' a.n. ${_shop.bankAtasNama}' : ''}',
+              style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
+            ),
+          ),
         Text(
           note,
           style: const TextStyle(

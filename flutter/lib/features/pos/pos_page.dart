@@ -273,6 +273,8 @@ class _PosPageState extends ConsumerState<PosPage> {
   }
 
   Future<void> _openPenawaran() async {
+    final shop = await ref.read(settingsServiceProvider).getShopInfo();
+    if (!mounted) return;
     await showPenawaranPreview(
       context,
       cart: _cart,
@@ -283,6 +285,7 @@ class _PosPageState extends ConsumerState<PosPage> {
       ),
       customerName: _selectedCustomer?.nama,
       customerKota: _selectedCustomer?.alamat,
+      shop: shop,
     );
   }
 

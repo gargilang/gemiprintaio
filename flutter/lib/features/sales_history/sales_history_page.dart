@@ -303,7 +303,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
   }
 }
 
-class _DetailSheet extends StatelessWidget {
+class _DetailSheet extends ConsumerWidget {
   final Map<String, dynamic> sale;
   final NumberFormat currencyFmt;
   final DateFormat dateFmt;
@@ -312,7 +312,7 @@ class _DetailSheet extends StatelessWidget {
   const _DetailSheet({required this.sale, required this.currencyFmt, required this.dateFmt, required this.onVoid, required this.canVoid});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isVoid = sale['status_transaksi'] == 'VOIDED';
     final faktur = sale['nomor_faktur'] ?? sale['id'] ?? '-';
     final nama = sale['pelanggan_nama'] ?? 'Pelanggan Umum';
@@ -348,8 +348,9 @@ class _DetailSheet extends StatelessWidget {
           _totalRow('Kembalian', currencyFmt.format(kembalian)),
           const SizedBox(height: 16),
           Row(children: [
-            Expanded(child: OutlinedButton.icon(onPressed: () {
+            Expanded(child: OutlinedButton.icon(onPressed: () async {
               final navigator = Navigator.of(context);
+              final shop = await ref.read(settingsServiceProvider).getShopInfo();
               navigator.pop();
               navigator.push(MaterialPageRoute(
                 builder: (_) => FakturPreviewPage(
@@ -362,6 +363,8 @@ class _DetailSheet extends StatelessWidget {
                   total: total,
                   bayar: dibayar,
                   sisa: (total - dibayar) > 0 ? (total - dibayar) : 0,
+                  paymentMethod: metode == '-' ? null : metode.toString(),
+                  shop: shop,
                   lines: items.map((item) {
                     final qty = (item['quantity'] ?? item['jumlah'] ?? 0)
                         .toDouble() as double;
