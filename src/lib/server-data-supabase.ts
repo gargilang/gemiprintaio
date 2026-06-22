@@ -7,67 +7,27 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getCurrentMonthRangeJakarta } from "@/lib/date-utils";
 import { getServerSupabaseClient } from "./db-unified";
 
 function clientOrNull(): SupabaseClient | null {
   return getServerSupabaseClient();
 }
 
-export async function fetchKeuanganCashBookListActive(): Promise<
+export async function fetchKeuanganCashBookListCurrentMonth(): Promise<
   Record<string, unknown>[]
 > {
   const sb = clientOrNull();
   if (!sb) return [];
+  const { startDate, endDate } = getCurrentMonthRangeJakarta();
   const { data, error } = await sb
     .from("keuangan")
     .select("*")
-    .is("diarsipkan_pada", null)
+    .gte("tanggal", startDate)
+    .lte("tanggal", endDate)
     .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
     .order("urutan_tampilan", { ascending: false })
     .order("dibuat_pada", { ascending: false });
-  if (error) throw error;
-  return (data as Record<string, unknown>[]) || [];
-}
-
-export async function fetchKeuanganByArchiveLabel(
-  label: string
-): Promise<Record<string, unknown>[]> {
-  const sb = clientOrNull();
-  if (!sb) return [];
-  const { data: exact, error: e1 } = await sb
-    .from("keuangan")
-    .select("*")
-    .eq("label_arsip", label)
-    .order("urutan_tampilan", { ascending: true })
-    .order("tanggal", { ascending: false })
-    .order("dibuat_pada", { ascending: false });
-  if (e1) throw e1;
-  if (exact && exact.length > 0) return exact as Record<string, unknown>[];
-
-  const { data: likeRows, error: e2 } = await sb
-    .from("keuangan")
-    .select("*")
-    .like("label_arsip", `%${label}%`)
-    .order("urutan_tampilan", { ascending: true })
-    .order("tanggal", { ascending: false })
-    .order("dibuat_pada", { ascending: false });
-  if (e2) throw e2;
-  return (likeRows as Record<string, unknown>[]) || [];
-}
-
-export async function fetchKeuanganByArchiveLabelAndTime(
-  label: string,
-  archivedAt: string
-): Promise<Record<string, unknown>[]> {
-  const sb = clientOrNull();
-  if (!sb) return [];
-  const { data, error } = await sb
-    .from("keuangan")
-    .select("*")
-    .eq("label_arsip", label)
-    .eq("diarsipkan_pada", archivedAt)
-    .order("urutan_tampilan", { ascending: true })
-    .order("dibuat_pada", { ascending: true });
   if (error) throw error;
   return (data as Record<string, unknown>[]) || [];
 }

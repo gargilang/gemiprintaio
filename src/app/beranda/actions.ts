@@ -11,7 +11,7 @@ import {
 } from "@/lib/services/auto-po-service";
 import { getPOSInitData } from "@/lib/services/pos-service";
 import { getProductionOrders } from "@/lib/services/production-service";
-import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
+import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
 export interface DailySalesTrend {
   date: string; // "DD/MM"
@@ -46,10 +46,10 @@ export interface DashboardStats {
 }
 
 export async function getDashboardStatsAction(): Promise<DashboardStats> {
-  const [posData, orders, cashBooks] = await Promise.all([
+  const [posData, orders, latestMap] = await Promise.all([
     getPOSInitData(),
     getProductionOrders(),
-    fetchKeuanganCashBookListActive(),
+    getLatestPerFormulaKey(),
   ]);
 
   const sales = posData.sales ?? [];
@@ -77,10 +77,7 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
       o.prioritas === "KILAT"
   ).length;
 
-  let saldo = 0;
-  if (cashBooks.length > 0) {
-    saldo = Number((cashBooks[0] as any)?.saldo ?? 0);
-  }
+  const saldo = latestMap.saldo ?? 0;
 
   let activePiutang = 0;
   let totalPiutang = 0;

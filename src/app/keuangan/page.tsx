@@ -7,26 +7,18 @@ import ToastNotifikasi, {
 } from "@/components/ToastNotifikasi";
 import { CashBook, KategoriTransaksi } from "@/types/database";
 import { getTodayJakarta, formatDateJakarta } from "@/lib/date-utils";
-import ModalImporCsv from "@/components/ModalImporCsv";
 import ModalHapusSemuaBukuKas from "@/components/ModalHapusSemuaBukuKas";
 import ModalEditManual from "@/components/ModalEditManual";
-import ModalTutupBuku from "@/components/ModalTutupBuku";
-import ModalPilihBulan from "@/components/ModalPilihBulan";
 import PengaturanKeuanganModal, { type PengaturanTab } from "@/components/finance/PengaturanKeuanganModal";
 import RingkasanPengurus from "@/components/finance/RingkasanPengurus";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { MoneyIcon } from "@/components/icons/PageIcons";
-import { BoxIcon } from "@/components/icons/ContentIcons";
 import {
   getDebtsAction,
   getReceivablesAction,
   deleteAllCashbookAction,
   deleteCashBookEntryAction,
-  restoreArchivedTransactionsAction,
-  importCashbookFromCSVAction,
   createCashBookEntryAction,
-  getArchivedPeriodsAction,
-  archiveCashbookAction,
 } from "./actions";
 import {
   fetchSessionUser,
@@ -57,6 +49,14 @@ interface User {
 
 const CASHBOOKS_CACHE_KEY = "cashbooks-active";
 const FINANCE_CONFIG_CACHE_KEY = "finance-config";
+
+type SystemMetrics = {
+  omzet: number;
+  biaya_operasional: number;
+  biaya_bahan: number;
+  saldo: number;
+  laba_bersih: number;
+};
 
 type FinanceConfigPayload = {
   categories: FinanceCategoryConfig[];
@@ -102,20 +102,18 @@ export default function FinancePage() {
           typeof next === "function"
             ? (next as (p: CashBook[]) => CashBook[])(prev)
             : next;
-        // Mirror into SWR cache only when we are viewing the active (non-archive) table.
-        if (!viewingArchiveRef.current) {
-          swr.mutate(CASHBOOKS_CACHE_KEY, resolved, { revalidate: false });
-        }
+        // Mirror into SWR cache for instant paint on next visit.
+        swr.mutate(CASHBOOKS_CACHE_KEY, resolved, { revalidate: false });
         return resolved;
       });
     },
     [swr]
   );
-  const viewingArchiveRef = useRef<string | null>(null);
   const [totalHutang, setTotalHutang] = useState(0);
   const [hutangCount, setHutangCount] = useState(0);
   const [totalPiutang, setTotalPiutang] = useState(0);
   const [piutangCount, setPiutangCount] = useState(0);
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
   const [formData, setFormData] = useState<CashBookFormData>({
@@ -169,30 +167,12 @@ export default function FinancePage() {
   );
 
   // New modals for cash book management
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [showEditManualModal, setShowEditManualModal] = useState(false);
   const [editManualCashBook, setEditManualCashBook] = useState<CashBook | null>(
     null
   );
   const [deleting, setDeleting] = useState(false);
-
-  // Merged state for Close Books and Select Month
-  const [showCloseBooksModal, setShowCloseBooksModal] = useState(false);
-  const [showSelectMonthModal, setShowSelectMonthModal] = useState(false);
-
-  // Archive viewing state
-  const [viewingArchive, setViewingArchive] = useState<string | null>(null);
-
-  const [currentArchiveInfo, setCurrentArchiveInfo] = useState<{
-    label: string;
-    archived_at: string;
-  } | null>(null);
-
-  // Keep ref in sync so setCashBooks knows whether to mirror to SWR cache.
-  useEffect(() => {
-    viewingArchiveRef.current = viewingArchive;
-  }, [viewingArchive]);
 
   // Helper function to update a single cashbook in state without reloading
   function updateCashBookInState(updated: CashBook) {
@@ -251,39 +231,22 @@ export default function FinancePage() {
     );
   }, [cashBooks, selectedKategoriFilters]);
 
-  // Memoized summary values — recalculate once per cashBooks change.
-  // Reads the cumulative metrics from the latest visible row's hardcoded
-  // columns. The new transaksi_terhitung-backed feed handles per-actor
-  // metrics; this block only powers the four cards at the top of the page.
+  // Kartu ringkasan memakai metrik kumulatif global dari API supaya saldo/omzet
+  // tidak nol di awal bulan sebelum ada transaksi bulan berjalan.
   const summaryData = useMemo(() => {
-    if (cashBooks.length === 0) {
-      return {
-        saldo: 0,
-        omzet: 0,
-        biayaOperasional: 0,
-        biayaBahan: 0,
-        totalBiaya: 0,
-        labaBersih: 0,
-        hutang: totalHutang,
-        hutangCount: hutangCount,
-        piutang: totalPiutang,
-        piutangCount: piutangCount,
-      };
-    }
-
-    // Active data: index 0 (highest display_order = newest transaction).
-    // Archive: last index (lowest display_order = last transaction in period).
-    const latest = viewingArchive
-      ? cashBooks[cashBooks.length - 1]
-      : cashBooks[0];
+    const latest = cashBooks[0];
+    const biayaOperasional =
+      systemMetrics?.biaya_operasional ?? latest?.biaya_operasional ?? 0;
+    const biayaBahan =
+      systemMetrics?.biaya_bahan ?? latest?.biaya_bahan ?? 0;
 
     return {
-      saldo: latest.saldo,
-      omzet: latest.omzet,
-      biayaOperasional: latest.biaya_operasional,
-      biayaBahan: latest.biaya_bahan,
-      totalBiaya: latest.biaya_operasional + latest.biaya_bahan,
-      labaBersih: latest.laba_bersih,
+      saldo: systemMetrics?.saldo ?? latest?.saldo ?? 0,
+      omzet: systemMetrics?.omzet ?? latest?.omzet ?? 0,
+      biayaOperasional,
+      biayaBahan,
+      totalBiaya: biayaOperasional + biayaBahan,
+      labaBersih: systemMetrics?.laba_bersih ?? latest?.laba_bersih ?? 0,
       hutang: totalHutang,
       hutangCount: hutangCount,
       piutang: totalPiutang,
@@ -291,7 +254,7 @@ export default function FinancePage() {
     };
   }, [
     cashBooks,
-    viewingArchive,
+    systemMetrics,
     totalHutang,
     hutangCount,
     totalPiutang,
@@ -354,11 +317,8 @@ export default function FinancePage() {
         if (showPengaturanModal) setShowPengaturanModal(false);
         else if (showModal) handleCloseModal();
         else if (confirmDialog?.show) setConfirmDialog(null);
-        else if (showImportModal) setShowImportModal(false);
         else if (showDeleteAllModal) setShowDeleteAllModal(false);
         else if (showEditManualModal) setShowEditManualModal(false);
-        else if (showCloseBooksModal) setShowCloseBooksModal(false);
-        else if (showSelectMonthModal) setShowSelectMonthModal(false);
         else if (showKategoriDropdown) setShowKategoriDropdown(false);
       }
     };
@@ -369,11 +329,8 @@ export default function FinancePage() {
     showPengaturanModal,
     showModal,
     confirmDialog,
-    showImportModal,
     showDeleteAllModal,
     showEditManualModal,
-    showCloseBooksModal,
-    showSelectMonthModal,
     showKategoriDropdown,
   ]);
 
@@ -398,29 +355,17 @@ export default function FinancePage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
-  const loadCashBooks = async (archiveLabel?: string) => {
+  const loadCashBooks = async () => {
     try {
-      const url = archiveLabel
-        ? `/api/cashbook/archive/${encodeURIComponent(archiveLabel)}`
-        : "/api/keuangan/cash-book";
-
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch("/api/keuangan/cash-book", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
-
-      // Set viewing archive state
-      setViewingArchive(archiveLabel || null);
-      // Reset archive info when returning to active table
-      if (!archiveLabel) {
-        setCurrentArchiveInfo(null);
+      if (data.systemMetrics) {
+        setSystemMetrics(data.systemMetrics as SystemMetrics);
       }
-
-      // Load hutang and piutang data (only for active table, not archive)
-      if (!archiveLabel) {
-        loadHutangData();
-        loadPiutangData();
-      }
+      loadHutangData();
+      loadPiutangData();
     } catch (err) {
       console.error("Gagal memuat cash books:", err);
       showMsg("error", "Tidak bisa memuat data buku keuangan dari database.");
@@ -861,94 +806,10 @@ export default function FinancePage() {
     setShowEditManualModal(true);
   };
 
-  const handleImportSuccess = async (updatedCashBooks?: CashBook[]) => {
-    showMsg("success", " Data berhasil diimport!");
-
-    // If new cashbooks provided, update state; otherwise reload
-    if (updatedCashBooks && updatedCashBooks.length > 0) {
-      setCashBooks(updatedCashBooks);
-    } else {
-      await loadCashBooks();
-    }
-    bumpActorSummary();
-  };
-
   const handleEditManualSuccess = async () => {
     showMsg("success", " Data berhasil di-override!");
     await loadCashBooks();
     bumpActorSummary();
-  };
-
-  const handleCloseBooksSuccess = async () => {
-    showMsg("success", " Buku berhasil ditutup!");
-    await loadCashBooks();
-    bumpActorSummary();
-  };
-
-  const handleSelectArchive = async (archive: {
-    label: string;
-    archived_at: string;
-    start_date: string;
-    end_date: string;
-  }) => {
-    try {
-      const url = `/api/cashbook/archive/by-time?label=${encodeURIComponent(
-        archive.label
-      )}&at=${encodeURIComponent(archive.archived_at)}`;
-      const res = await fetch(url, { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Gagal memuat arsip");
-      setCashBooks(data.cashBooks || []);
-      setViewingArchive(archive.label);
-      setCurrentArchiveInfo({
-        label: archive.label,
-        archived_at: archive.archived_at,
-      });
-      showMsg("success", `Menampilkan arsip: ${archive.label}`);
-    } catch (err) {
-      console.error("Gagal memuat arsip:", err);
-      showMsg("error", "Tidak bisa memuat arsip");
-    }
-  };
-
-  const handleRestoreArchive = () => {
-    if (!currentArchiveInfo) {
-      showMsg("error", "Tidak ada arsip yang dipilih");
-      return;
-    }
-
-    setConfirmDialog({
-      show: true,
-      title: "Restore Arsip",
-      message: `Apakah Anda yakin ingin mengembalikan semua transaksi dari arsip "${currentArchiveInfo.label}" ke tabel aktif?\n\nSemua transaksi akan kembali menjadi aktif dan dapat diedit.`,
-      confirmText: "Ya, Restore",
-      cancelText: "Batal",
-      type: "warning",
-      onConfirm: async () => {
-        setConfirmDialog(null);
-
-        try {
-          await restoreArchivedTransactionsAction(
-            currentArchiveInfo.label,
-            currentArchiveInfo.archived_at
-          );
-
-          showMsg(
-            "success",
-            `Transaksi berhasil dikembalikan dari "${currentArchiveInfo.label}"`
-          );
-
-          // Return to active table and reload
-          setViewingArchive(null);
-          setCurrentArchiveInfo(null);
-          await loadCashBooks();
-          bumpActorSummary();
-        } catch (err: any) {
-          console.error("Restore archive error:", err);
-          showMsg("error", err.message || "Gagal restore arsip");
-        }
-      },
-    });
   };
 
   if (loading && cashBooks.length === 0) {
@@ -974,15 +835,12 @@ export default function FinancePage() {
                 Buku Keuangan
               </h2>
               <p className="text-white/90 text-sm">
-                {viewingArchive
-                  ? `Melihat Arsip: ${viewingArchive}`
-                  : "Kelola transaksi dan buku kas perusahaan"}
+                Area kerja buku kas bulan berjalan. Riwayat bulan lama tersedia di Laporan.
               </p>
             </div>
           </div>
-          {!viewingArchive && (
-            <button
-              onClick={handleOpenModal}
+          <button
+            onClick={handleOpenModal}
               className="px-6 py-3 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-300 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center gap-2"
             >
               <svg
@@ -1000,7 +858,6 @@ export default function FinancePage() {
               </svg>
               Tambah Transaksi
             </button>
-          )}
         </div>
       </div>
       {/* Summary Cards */}
@@ -1104,7 +961,6 @@ export default function FinancePage() {
           currentUser.role === "staff") && (
           <RingkasanPengurus
             formatRupiah={formatRupiah}
-            month={viewingArchive ?? undefined}
             refreshKey={actorSummaryTick}
             onOpenPeopleSettings={() => {
               setPengaturanDefaultTab("pengurus");
@@ -1209,67 +1065,24 @@ export default function FinancePage() {
             )}
           </div>
 
-          {!viewingArchive && (
-            <>
-              {(currentUser?.role === "admin" ||
-                currentUser?.role === "manager" ||
-                currentUser?.role === "staff") && (
-                <button
-                  onClick={() => { setPengaturanDefaultTab("kolom"); setShowPengaturanModal(true); }}
-                  className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                  title="Kelola pengurus, kategori transaksi, dan rumus kalkulasi"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Pengaturan
-                </button>
-              )}
-              <button
-                onClick={() => setShowDeleteAllModal(true)}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-                Hapus Semua
-              </button>
-              <button
-                onClick={() => setShowCloseBooksModal(true)}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-                Tutup Buku
-              </button>
-            </>
+          {(currentUser?.role === "admin" ||
+            currentUser?.role === "manager" ||
+            currentUser?.role === "staff") && (
+            <button
+              onClick={() => { setPengaturanDefaultTab("kolom"); setShowPengaturanModal(true); }}
+              className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+              title="Kelola pengurus, kategori transaksi, dan rumus kalkulasi"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Pengaturan
+            </button>
           )}
-
           <button
-            onClick={() => setShowSelectMonthModal(true)}
-            className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+            onClick={() => setShowDeleteAllModal(true)}
+            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
           >
             <svg
               className="w-5 h-5"
@@ -1281,87 +1094,14 @@ export default function FinancePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
               />
             </svg>
-            Pilih Arsip Bulan
+            Hapus Semua
           </button>
-
-          {!viewingArchive && (
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              Impor CSV
-            </button>
-          )}
-
-          {viewingArchive && (
-            <>
-              <button
-                onClick={handleRestoreArchive}
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                title="Kembalikan semua transaksi arsip ini ke tabel aktif"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Restore Arsip
-              </button>
-              <button
-                onClick={() => loadCashBooks()}
-                className="bg-white dark:bg-slate-900 border-2 border-slate-600 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:bg-slate-50"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                Kembali ke Aktif
-              </button>
-            </>
-          )}
           <div className="ml-auto">
             <div className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
-              {viewingArchive ? (
-                <>
-                  <BoxIcon size={16} className="text-gray-600 dark:text-slate-300" />{" "}
-                  {viewingArchive} ({filteredCashBooks.length} Transaksi)
-                </>
-              ) : (
-                <>{filteredCashBooks.length} Transaksi Aktif</>
-              )}
+              <>{filteredCashBooks.length} Transaksi Bulan Ini</>
             </div>
           </div>
         </div>
@@ -1415,7 +1155,7 @@ export default function FinancePage() {
                       key={cb.id}
                       cashBook={cb}
                       index={idx}
-                      viewingArchive={!!viewingArchive}
+                      viewingArchive={false}
                       formatRupiah={formatRupiah}
                       formatDateJakarta={formatDateJakarta}
                       getKategoriColor={getKategoriColor}
@@ -1459,13 +1199,6 @@ export default function FinancePage() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-      {/* Import CSV Modal */}
-      <ModalImporCsv
-        show={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={handleImportSuccess}
-        onImportCsv={importCashbookFromCSVAction}
-      />
       {/* Delete All Modal */}
       <ModalHapusSemuaBukuKas
         show={showDeleteAllModal}
@@ -1482,20 +1215,6 @@ export default function FinancePage() {
         }}
         onSuccess={handleEditManualSuccess}
         cashBook={editManualCashBook}
-      />
-      {/* Close Books Modal */}
-      <ModalTutupBuku
-        show={showCloseBooksModal}
-        onClose={() => setShowCloseBooksModal(false)}
-        onSuccess={handleCloseBooksSuccess}
-        onArchiveCashbook={archiveCashbookAction}
-      />
-      {/* Select Month Modal */}
-      <ModalPilihBulan
-        show={showSelectMonthModal}
-        onClose={() => setShowSelectMonthModal(false)}
-        onSelectArchive={handleSelectArchive}
-        onGetArchivedPeriods={getArchivedPeriodsAction}
       />
       {/* Pengaturan Keuangan — combined settings modal */}
       <PengaturanKeuanganModal

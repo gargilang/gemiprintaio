@@ -69,7 +69,7 @@ export default function PeriodCloseTab() {
   const handleClose = async () => {
     if (
       !confirm(
-        `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, void/adjustment/waste tidak boleh lagi di tanggal periode ini.`
+        `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, transaksi bertanggal bulan ini tidak bisa diubah/void/adjust tanpa membuka kembali periode. Data tetap bisa dilihat di Laporan.`
       )
     )
       return;
@@ -123,9 +123,9 @@ export default function PeriodCloseTab() {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Tutup Periode</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Setelah periode ditutup, transaksi di tanggal periode itu tidak
-            bisa di-void / adjust / waste lagi. Pakai ini setelah lapor pajak
-            atau finalisasi laporan bulanan.
+            Tutup periode adalah workflow resmi untuk finalisasi bulan. Data lama tetap
+            terlihat di Laporan, tetapi transaksi di bulan tertutup tidak bisa diubah
+            tanpa membuka kembali periode.
           </p>
         </div>
       </div>
@@ -142,6 +142,18 @@ export default function PeriodCloseTab() {
         </div>
       )}
 
+      <section className="bg-indigo-50 dark:bg-indigo-950/30 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800/50">
+        <h3 className="font-semibold text-indigo-900 dark:text-indigo-100 mb-2">
+          Alur tutup bulan
+        </h3>
+        <ol className="list-decimal list-inside space-y-1 text-sm text-indigo-800 dark:text-indigo-200">
+          <li>Cek Laporan Kas, Laba Rugi, Margin Penjualan, dan Hutang & Piutang.</li>
+          <li>Pastikan transaksi bulan tersebut sudah benar.</li>
+          <li>Tutup periode untuk mengunci perubahan di bulan itu.</li>
+          <li>Jika perlu koreksi, buka kembali periode dengan alasan.</li>
+        </ol>
+      </section>
+
       <section className="bg-gray-50 dark:bg-slate-800 rounded-xl p-6 border-2 border-gray-200 dark:border-slate-800 space-y-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">
           Tutup periode baru
@@ -154,7 +166,7 @@ export default function PeriodCloseTab() {
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
             >
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
@@ -171,7 +183,7 @@ export default function PeriodCloseTab() {
               type="number"
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
             />
           </div>
           <div className="md:col-span-2">
@@ -183,14 +195,14 @@ export default function PeriodCloseTab() {
               value={catatan}
               onChange={(e) => setCatatan(e.target.value)}
               placeholder="Misal: SPT Masa PPN bulan ini sudah lapor"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
             />
           </div>
         </div>
         <button
           type="button"
           onClick={handleClose}
-          className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800"
+          className="px-4 py-2 bg-slate-700 dark:bg-slate-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-slate-500 disabled:opacity-50"
         >
           Tutup periode {MONTHS[month - 1]} {year}
         </button>
