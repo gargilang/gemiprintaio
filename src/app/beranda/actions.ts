@@ -11,7 +11,7 @@ import {
 } from "@/lib/services/auto-po-service";
 import { getPOSInitData } from "@/lib/services/pos-service";
 import { getProductionOrders } from "@/lib/services/production-service";
-import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
+import { fetchKeuanganCashBookListCurrentMonth } from "@/lib/server-data-supabase";
 
 export interface DailySalesTrend {
   date: string; // "DD/MM"
@@ -49,7 +49,7 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
   const [posData, orders, cashBooks] = await Promise.all([
     getPOSInitData(),
     getProductionOrders(),
-    fetchKeuanganCashBookListActive(),
+    fetchKeuanganCashBookListCurrentMonth(),
   ]);
 
   const sales = posData.sales ?? [];

@@ -7,11 +7,13 @@ import {
   createCashBookEntry,
   canDeleteCashBookEntry,
 } from "@/lib/services/finance-service";
-import { fetchKeuanganCashBookListActive } from "@/lib/server-data-supabase";
+import { getCurrentMonthRangeJakarta } from "@/lib/date-utils";
+import { fetchKeuanganCashBookListCurrentMonth } from "@/lib/server-data-supabase";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
 export async function GET() {
   try {
+    const activePeriod = getCurrentMonthRangeJakarta();
     if (getServerSupabaseClient()) {
       // Fetch cashbook rows + computed metrics in parallel — both queries
       // hit Supabase so they share the same network latency. systemMetrics
@@ -19,7 +21,7 @@ export async function GET() {
       // alongside the legacy keuangan columns so the UI can render every
       // summary card from a single endpoint instead of two.
       const [cashBooks, latestMap] = await Promise.all([
-        fetchKeuanganCashBookListActive(),
+        fetchKeuanganCashBookListCurrentMonth(),
         getLatestPerFormulaKey(),
       ]);
       const systemMetrics = {
@@ -44,16 +46,17 @@ export async function GET() {
       return NextResponse.json({
         cashBooks: cashBooksWithDeletable,
         systemMetrics,
+        activePeriod,
       });
     }
 
     const cashBooks =
       (await db.queryRaw(
         `SELECT * FROM keuangan
-         WHERE diarsipkan_pada IS NULL
+         WHERE tanggal >= ? AND tanggal <= ?
            AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
          ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
-        [],
+        [activePeriod.startDate, activePeriod.endDate],
       )) || [];
     const latestMap = await getLatestPerFormulaKey();
     const systemMetrics = {
@@ -80,6 +83,7 @@ export async function GET() {
     return NextResponse.json({
       cashBooks: cashBooksWithDeletable,
       systemMetrics,
+      activePeriod,
     });
   } catch (error) {
     console.error("GET /api/finance/cash-book error:", error);

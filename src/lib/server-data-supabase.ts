@@ -7,21 +7,24 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getCurrentMonthRangeJakarta } from "@/lib/date-utils";
 import { getServerSupabaseClient } from "./db-unified";
 
 function clientOrNull(): SupabaseClient | null {
   return getServerSupabaseClient();
 }
 
-export async function fetchKeuanganCashBookListActive(): Promise<
+export async function fetchKeuanganCashBookListCurrentMonth(): Promise<
   Record<string, unknown>[]
 > {
   const sb = clientOrNull();
   if (!sb) return [];
+  const { startDate, endDate } = getCurrentMonthRangeJakarta();
   const { data, error } = await sb
     .from("keuangan")
     .select("*")
-    .is("diarsipkan_pada", null)
+    .gte("tanggal", startDate)
+    .lte("tanggal", endDate)
     .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
     .order("urutan_tampilan", { ascending: false })
     .order("dibuat_pada", { ascending: false });
