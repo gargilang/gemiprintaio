@@ -174,3 +174,22 @@ export function getMonthRange(
     ).padStart(2, "0")}`,
   };
 }
+
+/**
+ * Ambil rentang bulan berjalan menurut zona waktu Jakarta.
+ * Dipakai supaya halaman kerja harian tidak bergantung pada timezone browser/server.
+ */
+export function getCurrentMonthRangeJakarta(referenceDate: Date = new Date()): {
+  startDate: string;
+  endDate: string;
+} {
+  const jakartaDate = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: JAKARTA_TIMEZONE,
+  }).format(referenceDate);
+
+  const [year, month] = jakartaDate.split("-").map(Number);
+  return getMonthRange(year, month);
+}
