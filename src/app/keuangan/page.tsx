@@ -50,6 +50,14 @@ interface User {
 const CASHBOOKS_CACHE_KEY = "cashbooks-active";
 const FINANCE_CONFIG_CACHE_KEY = "finance-config";
 
+type SystemMetrics = {
+  omzet: number;
+  biaya_operasional: number;
+  biaya_bahan: number;
+  saldo: number;
+  laba_bersih: number;
+};
+
 type FinanceConfigPayload = {
   categories: FinanceCategoryConfig[];
 };
@@ -105,6 +113,7 @@ export default function FinancePage() {
   const [hutangCount, setHutangCount] = useState(0);
   const [totalPiutang, setTotalPiutang] = useState(0);
   const [piutangCount, setPiutangCount] = useState(0);
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
   const [formData, setFormData] = useState<CashBookFormData>({
@@ -222,35 +231,22 @@ export default function FinancePage() {
     );
   }, [cashBooks, selectedKategoriFilters]);
 
-  // Memoized summary values — recalculate once per cashBooks change.
-  // Reads the cumulative metrics from the latest visible row's hardcoded
-  // columns. The new transaksi_terhitung-backed feed handles per-actor
-  // metrics; this block only powers the four cards at the top of the page.
+  // Kartu ringkasan memakai metrik kumulatif global dari API supaya saldo/omzet
+  // tidak nol di awal bulan sebelum ada transaksi bulan berjalan.
   const summaryData = useMemo(() => {
-    if (cashBooks.length === 0) {
-      return {
-        saldo: 0,
-        omzet: 0,
-        biayaOperasional: 0,
-        biayaBahan: 0,
-        totalBiaya: 0,
-        labaBersih: 0,
-        hutang: totalHutang,
-        hutangCount: hutangCount,
-        piutang: totalPiutang,
-        piutangCount: piutangCount,
-      };
-    }
-
     const latest = cashBooks[0];
+    const biayaOperasional =
+      systemMetrics?.biaya_operasional ?? latest?.biaya_operasional ?? 0;
+    const biayaBahan =
+      systemMetrics?.biaya_bahan ?? latest?.biaya_bahan ?? 0;
 
     return {
-      saldo: latest.saldo,
-      omzet: latest.omzet,
-      biayaOperasional: latest.biaya_operasional,
-      biayaBahan: latest.biaya_bahan,
-      totalBiaya: latest.biaya_operasional + latest.biaya_bahan,
-      labaBersih: latest.laba_bersih,
+      saldo: systemMetrics?.saldo ?? latest?.saldo ?? 0,
+      omzet: systemMetrics?.omzet ?? latest?.omzet ?? 0,
+      biayaOperasional,
+      biayaBahan,
+      totalBiaya: biayaOperasional + biayaBahan,
+      labaBersih: systemMetrics?.laba_bersih ?? latest?.laba_bersih ?? 0,
       hutang: totalHutang,
       hutangCount: hutangCount,
       piutang: totalPiutang,
@@ -258,6 +254,7 @@ export default function FinancePage() {
     };
   }, [
     cashBooks,
+    systemMetrics,
     totalHutang,
     hutangCount,
     totalPiutang,
@@ -364,6 +361,9 @@ export default function FinancePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
+      if (data.systemMetrics) {
+        setSystemMetrics(data.systemMetrics as SystemMetrics);
+      }
       loadHutangData();
       loadPiutangData();
     } catch (err) {
