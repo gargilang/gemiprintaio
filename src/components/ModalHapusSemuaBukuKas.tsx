@@ -113,7 +113,7 @@ export default function ModalHapusSemuaBukuKas({
               Data berikut TIDAK akan terpengaruh:
             </p>
             <ul className="list-disc list-inside pl-2 text-blue-700 dark:text-blue-300">
-              <li>Arsip Tutup Buku</li>
+              <li>Transaksi arsip lama (jika ada)</li>
               <li>Data Pelanggan, Material, Vendor</li>
               <li>Data Faktur</li>
               <li>Data Pengguna</li>
