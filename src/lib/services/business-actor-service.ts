@@ -89,7 +89,8 @@ function parseCategoriesField(raw: unknown): string[] | null {
     if (!trimmed) return null;
     try {
       const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) return parsed.map((s) => String(s)).filter(Boolean);
+      if (Array.isArray(parsed))
+        return parsed.map((s) => String(s)).filter(Boolean);
     } catch {
       // Anggap sebagai string yang dipisah koma.
       return trimmed
@@ -110,7 +111,8 @@ function normalizeActorRow(raw: RawPegawaiRow): BusinessActor {
     display_order: Number(raw.display_order ?? 0),
     notes: raw.notes ?? null,
     profit_share_percent:
-      raw.profit_share_percent === null || raw.profit_share_percent === undefined
+      raw.profit_share_percent === null ||
+      raw.profit_share_percent === undefined
         ? null
         : Number(raw.profit_share_percent),
     cash_advance_categories: parseCategoriesField(raw.cash_advance_categories),
@@ -143,7 +145,7 @@ export async function listActorRoles(): Promise<ActorRole[]> {
 }
 
 export async function getActorRoleByCode(
-  roleCode: string
+  roleCode: string,
 ): Promise<ActorRole | null> {
   const result = await db.queryOne<ActorRole>("peran_pegawai", {
     where: { role_code: roleCode },
@@ -188,16 +190,18 @@ export async function createActorRole(input: {
 
 async function nextRoleDisplayOrder(): Promise<number> {
   const rows = await db.queryRaw<{ m: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS m FROM peran_pegawai"
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM peran_pegawai",
   );
   return (rows[0]?.m ?? 0) + 10;
 }
 
 // ── pegawai ─────────────────────────────────────────────────────────
 
-export async function listBusinessActors(opts: {
-  includeInactive?: boolean;
-} = {}): Promise<BusinessActor[]> {
+export async function listBusinessActors(
+  opts: {
+    includeInactive?: boolean;
+  } = {},
+): Promise<BusinessActor[]> {
   const where: Record<string, unknown> = {};
   if (!opts.includeInactive) where.is_active = 1;
   const result = await db.query<RawPegawaiRow>("pegawai", {
@@ -209,7 +213,7 @@ export async function listBusinessActors(opts: {
 }
 
 export async function getBusinessActor(
-  id: string
+  id: string,
 ): Promise<BusinessActor | null> {
   const result = await db.queryOne<RawPegawaiRow>("pegawai", {
     where: { id },
@@ -220,35 +224,24 @@ export async function getBusinessActor(
 
 async function nextActorDisplayOrder(): Promise<number> {
   const rows = await db.queryRaw<{ m: number }>(
-    "SELECT COALESCE(MAX(display_order), 0) AS m FROM pegawai"
+    "SELECT COALESCE(MAX(display_order), 0) AS m FROM pegawai",
   );
   return (rows[0]?.m ?? 0) + 10;
 }
 
-function serializeCategories(
-  cats: string[] | null | undefined
-): string | null {
+function serializeCategories(cats: string[] | null | undefined): string | null {
   if (!cats || cats.length === 0) return null;
-  return JSON.stringify(cats.map((c) => c.toUpperCase().trim()).filter(Boolean));
-}
-
-/**
- * Slugify nama tampilan jadi suffix formula_key yang stabil.
- * "Andi Sales" → "andi_sales"
- */
-export function slugifyActorName(name: string): string {
-  return (
-    name
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || `actor_${Date.now().toString(36)}`
+  return JSON.stringify(
+    cats.map((c) => c.toUpperCase().trim()).filter(Boolean),
   );
 }
 
+// slugifyActorName diekstrak ke src/lib/slug-utils.ts (pure util, aman untuk komponen klien).
+import { slugifyActorName } from "@/lib/slug-utils";
+export { slugifyActorName } from "@/lib/slug-utils";
+
 export async function createBusinessActor(
-  input: BusinessActorInput
+  input: BusinessActorInput,
 ): Promise<{ data: BusinessActor | null; error: Error | null }> {
   const name = input.display_name.trim();
   if (!name) {
@@ -266,10 +259,13 @@ export async function createBusinessActor(
     display_order: order,
     notes: input.notes?.trim() || null,
     profit_share_percent:
-      input.profit_share_percent !== null && input.profit_share_percent !== undefined
+      input.profit_share_percent !== null &&
+      input.profit_share_percent !== undefined
         ? Number(input.profit_share_percent)
         : null,
-    cash_advance_categories: serializeCategories(input.cash_advance_categories ?? null),
+    cash_advance_categories: serializeCategories(
+      input.cash_advance_categories ?? null,
+    ),
     keperluan_keyword: input.keperluan_keyword?.trim() || null,
     bonus_percent:
       input.bonus_percent !== null && input.bonus_percent !== undefined
@@ -302,16 +298,18 @@ export async function createBusinessActor(
 
 export async function updateBusinessActor(
   id: string,
-  patch: Partial<BusinessActorInput>
+  patch: Partial<BusinessActorInput>,
 ): Promise<{ data: BusinessActor | null; error: Error | null }> {
   const fields: Record<string, unknown> = {
     updated_at: getCurrentTimestamp(),
   };
-  if (patch.display_name !== undefined) fields.display_name = patch.display_name.trim();
+  if (patch.display_name !== undefined)
+    fields.display_name = patch.display_name.trim();
   if (patch.role_code !== undefined) fields.role_code = patch.role_code;
   if (patch.notes !== undefined) fields.notes = patch.notes?.trim() || null;
   if (patch.is_active !== undefined) fields.is_active = patch.is_active;
-  if (patch.display_order !== undefined) fields.display_order = patch.display_order;
+  if (patch.display_order !== undefined)
+    fields.display_order = patch.display_order;
   if (patch.profit_share_percent !== undefined) {
     fields.profit_share_percent =
       patch.profit_share_percent === null
@@ -320,7 +318,7 @@ export async function updateBusinessActor(
   }
   if (patch.cash_advance_categories !== undefined) {
     fields.cash_advance_categories = serializeCategories(
-      patch.cash_advance_categories ?? null
+      patch.cash_advance_categories ?? null,
     );
   }
   if (patch.keperluan_keyword !== undefined) {
@@ -343,10 +341,7 @@ export async function updateBusinessActor(
       supaFields.cash_advance_categories =
         patch.cash_advance_categories ?? null;
     }
-    const { error } = await sb
-      .from("pegawai")
-      .update(supaFields)
-      .eq("id", id);
+    const { error } = await sb.from("pegawai").update(supaFields).eq("id", id);
     if (error && !error.message.includes("does not exist")) {
       return { data: null, error: new Error(error.message) };
     }
@@ -366,7 +361,7 @@ export async function updateBusinessActor(
  * any formula owned by this actor.
  */
 export async function deactivateBusinessActor(
-  id: string
+  id: string,
 ): Promise<{ error: Error | null }> {
   const res = await updateBusinessActor(id, { is_active: 0 });
   if (res.error) return { error: res.error };
@@ -374,7 +369,7 @@ export async function deactivateBusinessActor(
 }
 
 export async function reactivateBusinessActor(
-  id: string
+  id: string,
 ): Promise<{ error: Error | null }> {
   const res = await updateBusinessActor(id, { is_active: 1 });
   if (res.error) return { error: res.error };
@@ -386,14 +381,14 @@ export async function reactivateBusinessActor(
  * pernah diam-diam kehilangan data audit.
  */
 export async function deleteBusinessActor(
-  id: string
+  id: string,
 ): Promise<{ error: Error | null }> {
   // Cari key formula yang tertaut.
   let linkedKeys: string[] = [];
   try {
     const rows = await db.queryRaw<{ formula_key: string }>(
       "SELECT DISTINCT formula_key FROM rumus_buku_kas WHERE actor_id = ?",
-      [id]
+      [id],
     );
     linkedKeys = rows.map((r) => r.formula_key).filter(Boolean);
   } catch {
@@ -405,12 +400,12 @@ export async function deleteBusinessActor(
     try {
       const hits = await db.queryRaw<{ c: number }>(
         `SELECT COUNT(*) AS c FROM transaksi_terhitung WHERE formula_key IN (${placeholders})`,
-        linkedKeys
+        linkedKeys,
       );
       if ((hits[0]?.c ?? 0) > 0) {
         return {
           error: new Error(
-            "Orang ini sudah punya catatan transaksi tersimpan. Pakai tombol Nonaktifkan untuk menyembunyikan tanpa kehilangan data."
+            "Orang ini sudah punya catatan transaksi tersimpan. Pakai tombol Nonaktifkan untuk menyembunyikan tanpa kehilangan data.",
           ),
         };
       }

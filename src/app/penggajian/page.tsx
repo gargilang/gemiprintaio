@@ -24,6 +24,7 @@ import {
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
 import ModalPinjamanKaryawan from "./ModalPinjamanKaryawan";
+import ModalBagiHasil from "./ModalBagiHasil";
 import ModalProsesGaji from "./ModalProsesGaji";
 import ModalTambahKaryawan from "./ModalTambahKaryawan";
 
@@ -55,31 +56,34 @@ export default function PenggajianPage() {
     id: string;
     nama: string;
   } | null>(null);
+  const [bagiHasilTarget, setBagiHasilTarget] = useState<{
+    id: string;
+    nama: string;
+  } | null>(null);
   const [showProsesGaji, setShowProsesGaji] = useState(false);
   const [showTambah, setShowTambah] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  const [hapusTarget, setHapusTarget] = useState<RingkasanKaryawan | null>(null);
+  const [hapusTarget, setHapusTarget] = useState<RingkasanKaryawan | null>(
+    null,
+  );
   const invalidate = useInvalidate();
 
-  const showMsg = useCallback(
-    (type: "success" | "error", message: string) => {
-      setNotice({ type, message });
-      setTimeout(() => setNotice(null), 3000);
-    },
-    []
-  );
+  const showMsg = useCallback((type: "success" | "error", message: string) => {
+    setNotice({ type, message });
+    setTimeout(() => setNotice(null), 3000);
+  }, []);
 
   const { data, isLoading, refresh } = useCachedData<RingkasanKaryawan[]>(
     `penggajian-ringkasan:${showInactive ? "all" : "active"}`,
-    () => listRingkasanKaryawanAction(showInactive)
+    () => listRingkasanKaryawanAction(showInactive),
   );
   const { data: metrik, refresh: refreshMetrik } = useCachedData(
     "penggajian-metrik-kas",
-    () => getMetrikKasAction()
+    () => getMetrikKasAction(),
   );
   const karyawan = useMemo(
     () => (data ?? []).filter((k) => k.role_group !== "owner"),
-    [data]
+    [data],
   );
 
   // Statistik untuk kartu ringkasan di atas tabel. Kas/Modal Kas/Saldo Kasbon
@@ -107,7 +111,7 @@ export default function PenggajianPage() {
         showMsg("error", (e as Error)?.message || "Gagal menonaktifkan.");
       }
     },
-    [reload, showMsg]
+    [reload, showMsg],
   );
 
   const handleAktif = useCallback(
@@ -120,7 +124,7 @@ export default function PenggajianPage() {
         showMsg("error", (e as Error)?.message || "Gagal mengaktifkan.");
       }
     },
-    [reload, showMsg]
+    [reload, showMsg],
   );
 
   const handleHapus = useCallback(async () => {
@@ -294,7 +298,8 @@ export default function PenggajianPage() {
                       {k.role_label}
                     </td>
                     <td className="px-6 py-3">
-                      {k.profit_share_percent === null && k.tipe_komponen.length === 0 ? (
+                      {k.profit_share_percent === null &&
+                      k.tipe_komponen.length === 0 ? (
                         <span className="text-slate-400 dark:text-slate-500 italic">
                           Belum diatur
                         </span>
@@ -352,6 +357,20 @@ export default function PenggajianPage() {
                         >
                           Kasbon
                         </button>
+                        {k.profit_share_percent != null && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBagiHasilTarget({
+                                id: k.actor_id,
+                                nama: k.nama,
+                              })
+                            }
+                            className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-xs font-semibold"
+                          >
+                            Bagi Hasil
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() =>
@@ -370,7 +389,19 @@ export default function PenggajianPage() {
                               tampil: k.is_active === 1,
                               onClick: () => handleNonaktif(k),
                               ikon: (
-                                <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                <svg
+                                  className="w-5 h-5 text-amber-600 dark:text-amber-300"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                  />
+                                </svg>
                               ),
                             },
                             {
@@ -379,7 +410,19 @@ export default function PenggajianPage() {
                               tampil: k.is_active !== 1,
                               onClick: () => handleAktif(k),
                               ikon: (
-                                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <svg
+                                  className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
                               ),
                             },
                             {
@@ -388,7 +431,19 @@ export default function PenggajianPage() {
                               varian: "bahaya",
                               onClick: () => setHapusTarget(k),
                               ikon: (
-                                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                <svg
+                                  className="w-5 h-5 text-rose-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
                               ),
                             },
                           ]}
@@ -418,6 +473,15 @@ export default function PenggajianPage() {
         <ModalPinjamanKaryawan
           actor={kasbonTarget}
           onClose={() => setKasbonTarget(null)}
+          onSuccess={reload}
+          showNotification={showMsg}
+        />
+      )}
+
+      {bagiHasilTarget && (
+        <ModalBagiHasil
+          actor={bagiHasilTarget}
+          onClose={() => setBagiHasilTarget(null)}
           onSuccess={reload}
           showNotification={showMsg}
         />
@@ -455,4 +519,3 @@ export default function PenggajianPage() {
     </div>
   );
 }
-

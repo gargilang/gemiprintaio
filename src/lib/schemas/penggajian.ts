@@ -139,3 +139,13 @@ export const prosesGajiActionSchema = z.discriminatedUnion("action", [
 export type KomponenActionInput = z.infer<typeof komponenActionSchema>;
 export type PinjamanActionInput = z.infer<typeof pinjamanActionSchema>;
 export type ProsesGajiActionInput = z.infer<typeof prosesGajiActionSchema>;
+
+// ── Potong bagi hasil (kasbon dilunasi dari bagi hasil) ───────────────────────
+export const potongBagiHasilSchema = z.object({
+  actorId: z.string().min(1),
+  jumlah: z.coerce.number().finite().positive(),
+  tanggal: z.string().min(1),
+  periode: z.string().regex(/^\d{4}-\d{2}$/, "Periode harus format YYYY-MM"),
+  keterangan: z.string().optional(),
+});
+export type PotongBagiHasilInput = z.infer<typeof potongBagiHasilSchema>;

@@ -1290,7 +1290,7 @@ CREATE TABLE pinjaman_karyawan (
       actor_id TEXT NOT NULL,
       tanggal TEXT NOT NULL DEFAULT (date('now')),
       jumlah REAL NOT NULL DEFAULT 0,
-      jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI')),
+      jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI','POTONG_BAGI_HASIL')),
       keterangan TEXT,
       keuangan_ref_id TEXT,
       proses_gaji_id TEXT,

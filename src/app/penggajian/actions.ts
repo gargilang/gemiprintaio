@@ -36,6 +36,8 @@ import {
   catatTarikPinjaman,
   bayarPinjamanTunai,
   revertPinjaman,
+  potongBagiHasil,
+  batalkanPotongBagiHasil,
 } from "@/lib/services/pinjaman-karyawan-service";
 import {
   daftarProsesGaji,
@@ -47,6 +49,7 @@ import {
   type OpsiDraftGaji,
   type MetodeBayar,
 } from "@/lib/services/penggajian-service";
+import { potongBagiHasilSchema } from "@/lib/schemas/penggajian";
 
 // ── Ringkasan halaman (karyawan + komponen + saldo pinjaman) ────────────────
 export interface RingkasanKaryawan {
@@ -68,7 +71,7 @@ export interface RingkasanKaryawan {
  * Join di memori untuk menghindari N+1.
  */
 export async function listRingkasanKaryawanAction(
-  includeInactive = false
+  includeInactive = false,
 ): Promise<RingkasanKaryawan[]> {
   try {
     const [actors, roles] = await Promise.all([
@@ -158,9 +161,15 @@ export async function listPengurusBelumDigajiAction(): Promise<
       // Hanya pengurus (punya bagi hasil) yang BELUM punya komponen gaji aktif.
       if (a.profit_share_percent === null) continue;
       const komponen = await listKomponen(a.id);
-      const adaKomponen = komponen.some((k) => Number(k.aktif_status ?? 1) === 1);
+      const adaKomponen = komponen.some(
+        (k) => Number(k.aktif_status ?? 1) === 1,
+      );
       if (adaKomponen) continue;
-      hasil.push({ actor_id: a.id, nama: a.display_name, role_code: a.role_code });
+      hasil.push({
+        actor_id: a.id,
+        nama: a.display_name,
+        role_code: a.role_code,
+      });
     }
     return hasil;
   } catch (error) {
@@ -190,7 +199,11 @@ export async function tambahKaryawanAction(input: {
     if (created.error || !created.data) {
       throw new Error(created.error?.message || "Gagal menambah karyawan");
     }
-    return { success: true, actor_id: created.data.id, nama: created.data.display_name };
+    return {
+      success: true,
+      actor_id: created.data.id,
+      nama: created.data.display_name,
+    };
   } catch (error) {
     console.error("tambahKaryawanAction error:", error);
     throw error;
@@ -227,7 +240,7 @@ export async function getInfoBagiHasilAction(actorId: string): Promise<{
 /** Set/ubah bagi hasil seseorang dengan hard cap 100%. persen=null menghapus bagi hasil. */
 export async function setBagiHasilAction(
   actorId: string,
-  persen: number | null
+  persen: number | null,
 ): Promise<{ success: true }> {
   try {
     await requireAdminOrManager();
@@ -239,7 +252,7 @@ export async function setBagiHasilAction(
       const sisa = Math.max(0, 100 - terpakaiLain);
       if (persen > sisa) {
         throw new Error(
-          `Bagi hasil ${persen}% melebihi sisa jatah ${sisa}%. Total semua orang maksimal 100%.`
+          `Bagi hasil ${persen}% melebihi sisa jatah ${sisa}%. Total semua orang maksimal 100%.`,
         );
       }
     }
@@ -293,13 +306,13 @@ export async function hapusKaryawanAction(actorId: string) {
     const komponen = await listKomponen(actorId);
     if (komponen.some((k) => Number(k.aktif_status ?? 1) === 1)) {
       throw new Error(
-        "Tidak bisa dihapus: karyawan masih punya komponen gaji aktif. Hapus komponennya dulu atau nonaktifkan saja."
+        "Tidak bisa dihapus: karyawan masih punya komponen gaji aktif. Hapus komponennya dulu atau nonaktifkan saja.",
       );
     }
     const saldo = await hitungSaldoPinjaman(actorId);
     if (saldo !== 0) {
       throw new Error(
-        "Tidak bisa dihapus: karyawan masih punya saldo kasbon berjalan. Lunasi dulu atau nonaktifkan saja."
+        "Tidak bisa dihapus: karyawan masih punya saldo kasbon berjalan. Lunasi dulu atau nonaktifkan saja.",
       );
     }
     const orang = await getBusinessActor(actorId);
@@ -323,7 +336,9 @@ export async function listKomponenAction(actorId: string) {
   }
 }
 
-export async function simpanKomponenAction(input: KomponenInput & { id?: string }) {
+export async function simpanKomponenAction(
+  input: KomponenInput & { id?: string },
+) {
   try {
     await requireAdminOrManager();
     if (input.id) {
@@ -415,7 +430,10 @@ export async function daftarProsesGajiAction() {
   }
 }
 
-export async function hitungDraftGajiAction(periode: string, opsi: OpsiDraftGaji = {}) {
+export async function hitungDraftGajiAction(
+  periode: string,
+  opsi: OpsiDraftGaji = {},
+) {
   try {
     await requireAdminOrManager();
     return await hitungDraftGaji(periode, opsi);
@@ -439,7 +457,7 @@ export async function simpanDraftGajiAction(draft: DraftGaji) {
 export async function bayarProsesGajiAction(
   runId: string,
   tanggalBayar: string,
-  metodeBayar: MetodeBayar
+  metodeBayar: MetodeBayar,
 ) {
   try {
     const s = await requireAdminOrManager();
@@ -460,6 +478,29 @@ export async function batalkanProsesGajiAction(runId: string) {
     console.error("batalkanProsesGajiAction error:", error);
     throw error;
   }
+}
+
+// ── Potong Bagi Hasil ────────────────────────────────────────────────────────
+export async function potongBagiHasilAction(input: {
+  actorId: string;
+  jumlah: number;
+  tanggal: string;
+  periode: string;
+  keterangan?: string;
+}): Promise<void> {
+  const session = await requireAdminOrManager();
+  const parsed = potongBagiHasilSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error("Data potong bagi hasil tidak valid.");
+  }
+  await potongBagiHasil({ ...parsed.data, dibuatOleh: session.uid });
+}
+
+export async function batalkanPotongBagiHasilAction(
+  pinjamanId: string,
+): Promise<void> {
+  await requireAdminOrManager();
+  await batalkanPotongBagiHasil(pinjamanId);
 }
 
 /** Nama toko untuk kop slip gaji. */

@@ -244,6 +244,82 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
   console.info("✅ Migrated rumus_buku_kas: db_column is now nullable");
 }
 
+/**
+ * Rebuild pinjaman_karyawan untuk menambah 'POTONG_BAGI_HASIL' ke CHECK constraint.
+ * SQLite tidak bisa ALTER CHECK in-place → rename, recreate, copy, drop, rename.
+ * Hanya berjalan bila tabel lama (tanpa POTONG_BAGI_HASIL) terdeteksi.
+ */
+function migratePinjamanKaryawanJenisConstraint(db: any) {
+  const tableSql = (
+    db
+      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = 'pinjaman_karyawan'")
+      .get() as { sql?: string } | undefined
+  )?.sql;
+  if (!tableSql || tableSql.includes("'POTONG_BAGI_HASIL'")) return;
+
+  const oldName = "pinjaman_karyawan_old_bagi_hasil";
+  db.exec("PRAGMA foreign_keys = OFF;");
+  db.exec("BEGIN TRANSACTION;");
+  try {
+    db.exec(`ALTER TABLE pinjaman_karyawan RENAME TO ${oldName};`);
+    db.exec(`
+      CREATE TABLE pinjaman_karyawan (
+        id TEXT PRIMARY KEY,
+        actor_id TEXT NOT NULL,
+        tanggal TEXT NOT NULL DEFAULT (date('now')),
+        jumlah REAL NOT NULL DEFAULT 0,
+        jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI','POTONG_BAGI_HASIL')),
+        keterangan TEXT,
+        keuangan_ref_id TEXT,
+        proses_gaji_id TEXT,
+        dibuat_oleh TEXT,
+        dibuat_pada TEXT DEFAULT (datetime('now')),
+        diperbarui_pada TEXT DEFAULT (datetime('now')),
+        sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+        last_synced_at TEXT,
+        sync_version INTEGER DEFAULT 1,
+        updated_at_server TEXT,
+        updated_by_device TEXT DEFAULT 'server',
+        change_version INTEGER DEFAULT 0,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT,
+        FOREIGN KEY (actor_id) REFERENCES pegawai(id) ON DELETE CASCADE,
+        FOREIGN KEY (proses_gaji_id) REFERENCES proses_gaji(id) ON DELETE SET NULL
+      );
+    `);
+    const targetCols = (
+      db.prepare("PRAGMA table_info(pinjaman_karyawan)").all() as Array<{ name: string }>
+    ).map((c) => c.name);
+    const oldCols = new Set(
+      (
+        db.prepare(`PRAGMA table_info(${oldName})`).all() as Array<{ name: string }>
+      ).map((c) => c.name)
+    );
+    const commonCols = targetCols.filter((name) => oldCols.has(name));
+    if (commonCols.length > 0) {
+      db.exec(`
+        INSERT INTO pinjaman_karyawan (${commonCols.join(", ")})
+        SELECT ${commonCols.join(", ")}
+        FROM ${oldName}
+      `);
+    }
+    db.exec(`DROP TABLE ${oldName};`);
+    db.exec("COMMIT;");
+  } catch (error) {
+    db.exec("ROLLBACK;");
+    throw error;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_actor ON pinjaman_karyawan(actor_id);
+    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_jenis ON pinjaman_karyawan(jenis);
+    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(proses_gaji_id);
+    CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_sync ON pinjaman_karyawan(sync_status);
+  `);
+}
+
 export function ensureServerSQLiteSyncV2Schema(db: any) {
   // Rename legacy English-named tables to Indonesian BEFORE any bootstrap
   // CREATE/ALTER runs, so all subsequent statements operate on the renamed
@@ -2061,7 +2137,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       actor_id TEXT NOT NULL,
       tanggal TEXT NOT NULL DEFAULT (date('now')),
       jumlah REAL NOT NULL DEFAULT 0,
-      jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI')),
+      jenis TEXT NOT NULL CHECK(jenis IN ('TARIK','POTONG_GAJI','BAYAR_TUNAI','POTONG_BAGI_HASIL')),
       keterangan TEXT,
       keuangan_ref_id TEXT,
       proses_gaji_id TEXT,
@@ -2085,6 +2161,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_run ON pinjaman_karyawan(proses_gaji_id);
     CREATE INDEX IF NOT EXISTS idx_pinjaman_karyawan_sync ON pinjaman_karyawan(sync_status);
   `);
+
+  // Rebuild pinjaman_karyawan untuk existing installs (tambah POTONG_BAGI_HASIL ke CHECK).
+  migratePinjamanKaryawanJenisConstraint(db);
 
   serverSqliteColumnsCache.clear();
 }

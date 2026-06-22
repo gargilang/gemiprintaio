@@ -20,6 +20,7 @@ const JENIS_LABEL: Record<string, string> = {
   TARIK: "Tarik Kasbon",
   POTONG_GAJI: "Potong Gaji",
   BAYAR_TUNAI: "Bayar Tunai",
+  POTONG_BAGI_HASIL: "Potong Bagi Hasil",
 };
 
 const JENIS_CHIP: Record<string, string> = {
@@ -28,6 +29,8 @@ const JENIS_CHIP: Record<string, string> = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
   BAYAR_TUNAI:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
+  POTONG_BAGI_HASIL:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200",
 };
 
 export interface ModalPinjamanKaryawanProps {
@@ -53,7 +56,7 @@ export default function ModalPinjamanKaryawan({
 
   const { data, isLoading, refresh } = useCachedData<PinjamanData>(
     cacheKey,
-    () => listPinjamanAction(actor.id)
+    () => listPinjamanAction(actor.id),
   );
   const riwayat = useMemo(() => data?.pinjaman ?? [], [data]);
   const saldo = data?.saldo ?? 0;
@@ -64,7 +67,7 @@ export default function ModalPinjamanKaryawan({
   const [keterangan, setKeterangan] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [revertTarget, setRevertTarget] = useState<PinjamanKaryawan | null>(
-    null
+    null,
   );
 
   const reloadList = useCallback(() => {
@@ -98,7 +101,10 @@ export default function ModalPinjamanKaryawan({
       reloadList();
       onSuccess();
     } catch (e: any) {
-      showNotification("error", e?.message || "Gagal menyimpan transaksi kasbon.");
+      showNotification(
+        "error",
+        e?.message || "Gagal menyimpan transaksi kasbon.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -293,15 +299,16 @@ export default function ModalPinjamanKaryawan({
                       <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">
                         {formatRupiah(p.jumlah)}
                       </span>
-                      {p.jenis !== "POTONG_GAJI" && (
-                        <button
-                          type="button"
-                          onClick={() => setRevertTarget(p)}
-                          className="text-rose-600 hover:text-rose-700 dark:text-rose-400 text-xs font-medium"
-                        >
-                          Batalkan
-                        </button>
-                      )}
+                      {p.jenis !== "POTONG_GAJI" &&
+                        p.jenis !== "POTONG_BAGI_HASIL" && (
+                          <button
+                            type="button"
+                            onClick={() => setRevertTarget(p)}
+                            className="text-rose-600 hover:text-rose-700 dark:text-rose-400 text-xs font-medium"
+                          >
+                            Batalkan
+                          </button>
+                        )}
                     </div>
                   </li>
                 ))}
@@ -326,4 +333,3 @@ export default function ModalPinjamanKaryawan({
     </>
   );
 }
-

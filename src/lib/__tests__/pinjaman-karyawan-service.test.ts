@@ -15,7 +15,7 @@ import { resetMockDb, mockTable } from "./helpers/mock-db";
 
 jest.mock("@/lib/db-unified", () => {
   const real = jest.requireActual(
-    "./helpers/mock-db"
+    "./helpers/mock-db",
   ) as typeof import("./helpers/mock-db");
   return {
     db: real.__mock.db,
@@ -39,6 +39,8 @@ jest.mock("@/lib/services/accounting-periods-service", () => ({
 import {
   catatTarikPinjaman,
   bayarPinjamanTunai,
+  potongBagiHasil,
+  batalkanPotongBagiHasil,
   hitungSaldoPinjaman,
   hitungSaldoPinjamanBatch,
   listPinjaman,
@@ -187,7 +189,7 @@ describe("catatTarikPinjaman", () => {
 
     const cashbook = Array.from(mockTable("keuangan").values());
     const entry = cashbook.find(
-      (r) => r.kategori_transaksi === "PINJAMAN_KARYAWAN"
+      (r) => r.kategori_transaksi === "PINJAMAN_KARYAWAN",
     );
     expect(entry).toBeDefined();
     expect(entry!.kredit).toBe(250000);
@@ -208,7 +210,7 @@ describe("catatTarikPinjaman", () => {
         actorId: "a1",
         jumlah: 100000,
         tanggal: "2026-01-01",
-      })
+      }),
     ).rejects.toThrow(/periode/i);
   });
 });
@@ -234,7 +236,7 @@ describe("bayarPinjamanTunai", () => {
     expect(pinjaman.jenis).toBe("BAYAR_TUNAI");
 
     const entry = Array.from(mockTable("keuangan").values()).find(
-      (r) => r.kategori_transaksi === "PINJAMAN_KARYAWAN" && r.debit === 200000
+      (r) => r.kategori_transaksi === "PINJAMAN_KARYAWAN" && r.debit === 200000,
     );
     expect(entry).toBeDefined();
     expect(entry!.kredit).toBe(0);
@@ -260,7 +262,7 @@ describe("revertPinjaman", () => {
     expect(pinjaman.is_deleted).toBe(1);
     // Baris keuangan ber-[REF] hilang.
     const sisaRef = Array.from(mockTable("keuangan").values()).filter((r) =>
-      String(r.keperluan).includes(`[REF:pinjaman-${tarik.id}]`)
+      String(r.keperluan).includes(`[REF:pinjaman-${tarik.id}]`),
     );
     expect(sisaRef.length).toBe(0);
     // Saldo kembali 0.
@@ -295,5 +297,181 @@ describe("listPinjaman", () => {
     });
     const list = await listPinjaman("a1");
     expect(list.map((r) => r.id).sort()).toEqual(["p1"]);
+  });
+});
+
+describe("potongBagiHasil", () => {
+  it("menolak jumlah > saldo pinjaman", async () => {
+    seedActor("actor-suri");
+    // Suri punya saldo 5.000.000 dari TARIK
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-01",
+      jumlah: 5_000_000,
+      jenis: "TARIK",
+      keterangan: "Kasbon",
+      keuangan_ref_id: null,
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+    await expect(
+      potongBagiHasil({
+        actorId: "actor-suri",
+        jumlah: 6_000_000,
+        tanggal: "2026-05-31",
+        periode: "2026-05",
+      }),
+    ).rejects.toThrow(/tidak boleh melebihi saldo/);
+  });
+
+  it("menolak tanggal di periode ditutup", async () => {
+    seedActor("actor-suri");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-01",
+      jumlah: 5_000_000,
+      jenis: "TARIK",
+      keterangan: "Kasbon",
+      keuangan_ref_id: null,
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+    isDateInClosedPeriodMock.mockResolvedValue(true);
+    await expect(
+      potongBagiHasil({
+        actorId: "actor-suri",
+        jumlah: 3_000_000,
+        tanggal: "2026-05-31",
+        periode: "2026-05",
+      }),
+    ).rejects.toThrow(/periode akuntansi yang sudah ditutup/);
+  });
+
+  it("post double-entry: LABA kredit + PINJAMAN_KARYAWAN debit, saldo net 0", async () => {
+    seedActor("actor-suri");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-01",
+      jumlah: 10_000_000,
+      jenis: "TARIK",
+      keterangan: "Kasbon",
+      keuangan_ref_id: null,
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+
+    const result = await potongBagiHasil({
+      actorId: "actor-suri",
+      jumlah: 7_000_000,
+      tanggal: "2026-05-31",
+      periode: "2026-05",
+      dibuatOleh: "admin-gemi-001",
+    });
+
+    expect(result.jenis).toBe("POTONG_BAGI_HASIL");
+    expect(result.jumlah).toBe(7_000_000);
+
+    // Harus ada 2 baris keuangan: LABA kredit + PINJAMAN_KARYAWAN debit
+    const keuRows = Array.from(mockTable("keuangan").values());
+    const labaRow = keuRows.find((r) => r.kategori_transaksi === "LABA");
+    const pinjamanRow = keuRows.find(
+      (r) => r.kategori_transaksi === "PINJAMAN_KARYAWAN",
+    );
+    expect(labaRow).toBeDefined();
+    expect(labaRow!.debit).toBe(0);
+    expect(labaRow!.kredit).toBe(7_000_000);
+    expect(pinjamanRow).toBeDefined();
+    expect(pinjamanRow!.debit).toBe(7_000_000);
+    expect(pinjamanRow!.kredit).toBe(0);
+
+    // Saldo pinjaman berkurang
+    const saldo = await hitungSaldoPinjaman("actor-suri");
+    expect(saldo).toBe(3_000_000);
+  });
+});
+
+describe("batalkanPotongBagiHasil", () => {
+  it("menghapus kedua baris keuangan dan mengembalikan saldo", async () => {
+    seedActor("actor-suri");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-01",
+      jumlah: 10_000_000,
+      jenis: "TARIK",
+      keterangan: "Kasbon",
+      keuangan_ref_id: null,
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+
+    const result = await potongBagiHasil({
+      actorId: "actor-suri",
+      jumlah: 7_000_000,
+      tanggal: "2026-05-31",
+      periode: "2026-05",
+    });
+
+    await batalkanPotongBagiHasil(result.id);
+
+    // Baris pinjaman ditandai is_deleted
+    const pinjamanRow = mockTable("pinjaman_karyawan").get(result.id);
+    expect(pinjamanRow!.is_deleted).toBe(1);
+
+    // Semua baris keuangan ber-[REF] dihapus
+    const keuRows = Array.from(mockTable("keuangan").values());
+    const refRows = keuRows.filter((r) =>
+      String(r.keperluan || "").includes(`[REF:pinjaman-${result.id}]`),
+    );
+    expect(refRows.length).toBe(0);
+
+    // Saldo kembali ke 10.000.000
+    const saldo = await hitungSaldoPinjaman("actor-suri");
+    expect(saldo).toBe(10_000_000);
+  });
+
+  it("menolak membatalkan jenis non-POTONG_BAGI_HASIL", async () => {
+    seedActor("actor-suri");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-01",
+      jumlah: 5_000_000,
+      jenis: "TARIK",
+      keterangan: "Kasbon",
+      keuangan_ref_id: null,
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+    await expect(batalkanPotongBagiHasil("p1")).rejects.toThrow(
+      /Hanya baris POTONG_BAGI_HASIL/,
+    );
+  });
+});
+
+describe("revertPinjaman — penolakan POTONG_BAGI_HASIL", () => {
+  it("menolak revert langsung untuk POTONG_BAGI_HASIL", async () => {
+    seedActor("actor-suri");
+    mockTable("pinjaman_karyawan").set("p1", {
+      id: "p1",
+      actor_id: "actor-suri",
+      tanggal: "2026-05-31",
+      jumlah: 7_000_000,
+      jenis: "POTONG_BAGI_HASIL",
+      keterangan: "Potong bagi hasil",
+      keuangan_ref_id: "keu-1",
+      proses_gaji_id: null,
+      dibuat_oleh: null,
+      is_deleted: 0,
+    });
+    await expect(revertPinjaman("p1")).rejects.toThrow(/bagi hasil/);
   });
 });
