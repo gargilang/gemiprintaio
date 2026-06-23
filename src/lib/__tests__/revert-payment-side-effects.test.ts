@@ -32,6 +32,7 @@ jest.mock("@/lib/services/finance-service", () => ({
   __esModule: true,
   recalculateCashbookIfAvailable: (...args: any[]) =>
     recalculateCashbookIfAvailableMock(...args),
+  resolveOpenPeriodeIdForKeuangan: jest.fn().mockResolvedValue(null),
 }));
 
 import { revertSalePayment } from "../services/pos-mutations";

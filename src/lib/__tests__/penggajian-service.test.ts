@@ -35,6 +35,7 @@ const recalculateMock = jest.fn();
 jest.mock("@/lib/services/finance-service", () => ({
   __esModule: true,
   recalculateCashbookIfAvailable: (...args: any[]) => recalculateMock(...args),
+  resolveOpenPeriodeIdForKeuangan: jest.fn().mockResolvedValue(null),
 }));
 
 const isDateInClosedPeriodMock = jest.fn();

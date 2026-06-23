@@ -21,6 +21,7 @@ jest.mock("@/lib/server-data-supabase", () => ({
 jest.mock("@/lib/services/finance-service", () => ({
   __esModule: true,
   recalculateCashbookIfAvailable: jest.fn(),
+  resolveOpenPeriodeIdForKeuangan: jest.fn().mockResolvedValue(null),
 }));
 jest.mock("@/lib/services/inventory-service", () => ({
   __esModule: true,

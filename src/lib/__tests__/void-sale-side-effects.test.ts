@@ -36,6 +36,7 @@ jest.mock("@/lib/services/finance-service", () => ({
   __esModule: true,
   recalculateCashbookIfAvailable: (...args: any[]) =>
     recalculateCashbookIfAvailableMock(...args),
+  resolveOpenPeriodeIdForKeuangan: jest.fn().mockResolvedValue(null),
 }));
 
 const deleteMaklonPurchasesForSaleMock = jest.fn();

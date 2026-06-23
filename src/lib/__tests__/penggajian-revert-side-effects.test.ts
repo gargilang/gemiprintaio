@@ -24,6 +24,7 @@ jest.mock("@/lib/services/finance-service", () => ({
   __esModule: true,
   recalculateCashbookIfAvailable: (...args: any[]) =>
     recalculateCashbookIfAvailableMock(...args),
+  resolveOpenPeriodeIdForKeuangan: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("@/lib/services/accounting-periods-service", () => ({
