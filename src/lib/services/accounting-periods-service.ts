@@ -139,6 +139,40 @@ export function formatPeriodLabel(periodKey: string): string {
   return `${NAMA_BULAN[month] ?? String(month)} ${year}`;
 }
 
+/** Ambil tahun dan bulan berjalan menurut timezone Jakarta. */
+function getJakartaYearMonth(now = new Date()): { year: number; month: number } {
+  const jakartaDate = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(now);
+  const [year, month] = jakartaDate.split("-").map(Number);
+  return { year, month };
+}
+
+/**
+ * Ambil atau buat periode OPEN mulai dari bulan tertentu.
+ * Bila bulan tersebut sudah CLOSED, lanjut ke bulan berikutnya (setelah tutup buku).
+ */
+async function ensureOpenPeriodStartingAt(
+  year: number,
+  month: number
+): Promise<AccountingPeriod> {
+  let y = year;
+  let m = month;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const period = await getOrCreatePeriod(y, m);
+    if (period.status === "OPEN") return period;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  throw new Error("Tidak ditemukan periode OPEN yang tersedia");
+}
+
 export async function getOrCreateOpenPeriod(): Promise<AccountingPeriod> {
   const result = await db.query<AccountingPeriod>("accounting_periods", {
     where: { status: "OPEN" },
@@ -148,12 +182,6 @@ export async function getOrCreateOpenPeriod(): Promise<AccountingPeriod> {
   if (result.error) throw result.error;
   if (result.data?.length) return result.data[0];
 
-  const jakartaDate = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "Asia/Jakarta",
-  }).format(new Date());
-  const [year, month] = jakartaDate.split("-").map(Number);
-  return getOrCreatePeriod(year, month);
+  const { year, month } = getJakartaYearMonth();
+  return ensureOpenPeriodStartingAt(year, month);
 }

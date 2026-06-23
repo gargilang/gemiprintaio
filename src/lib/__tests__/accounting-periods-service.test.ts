@@ -67,6 +67,26 @@ describe("getOrCreateOpenPeriod", () => {
     expect(result.id).not.toBe("p-mei");
   });
 
+  it("membuat periode OPEN bulan berikutnya bila bulan berjalan sudah CLOSED", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-06-24T10:00:00+07:00"));
+
+    mockTable("accounting_periods").set("p-jun", {
+      id: "p-jun",
+      period_key: "2026-06",
+      start_date: "2026-06-01",
+      end_date: "2026-06-30",
+      status: "CLOSED",
+    });
+
+    const result = await getOrCreateOpenPeriod();
+    expect(result.status).toBe("OPEN");
+    expect(result.period_key).toBe("2026-07");
+    expect(result.id).not.toBe("p-jun");
+
+    jest.useRealTimers();
+  });
+
   it("membuat periode baru bila tidak ada yang OPEN", async () => {
     // DB kosong
     const result = await getOrCreateOpenPeriod();
