@@ -731,11 +731,12 @@ CREATE TABLE keuangan (
       override_biaya_operasional INTEGER DEFAULT 0,
       override_biaya_bahan INTEGER DEFAULT 0,
       override_laba_bersih INTEGER DEFAULT 0,
-    status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED','VOIDED')), voided_at TEXT, voided_by TEXT, void_reason TEXT, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
+    status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN ('POSTED','VOIDED')), voided_at TEXT, voided_by TEXT, void_reason TEXT, periode_id TEXT REFERENCES accounting_periods(id), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1);
 
 -- Indexes for keuangan
 CREATE INDEX idx_keuangan_sync_status ON keuangan(sync_status);
 CREATE INDEX idx_keuangan_status_transaksi ON keuangan(status_transaksi);
+CREATE INDEX idx_keuangan_periode_id ON keuangan(periode_id);
 
 -- Table: finance_category_definitions
 CREATE TABLE finance_category_definitions (

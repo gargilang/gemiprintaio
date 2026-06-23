@@ -977,6 +977,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     { table: "barang", column: "default_location_id", ddl: "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'" },
     { table: "keuangan", column: "reference_type", ddl: "ALTER TABLE keuangan ADD COLUMN reference_type TEXT" },
     { table: "keuangan", column: "reference_id", ddl: "ALTER TABLE keuangan ADD COLUMN reference_id TEXT" },
+    { table: "keuangan", column: "periode_id", ddl: "ALTER TABLE keuangan ADD COLUMN periode_id TEXT REFERENCES accounting_periods(id)" },
   ];
   for (const { table, column, ddl } of hardeningCols) {
     const exists = db
