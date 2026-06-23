@@ -99,11 +99,15 @@ Owner tidak perlu tahu soal `periode_id` — interaksi satu-satunya tetap tombol
 
 ## Dampak pada Flutter
 
-**Tidak ada perubahan Flutter yang diperlukan untuk fase ini.**
+Flutter memanggil `/api/keuangan/cash-book` → API mengembalikan data period-scoped → Flutter otomatis menampilkan data yang benar. Tidak ada perubahan logic Flutter yang diperlukan.
 
-- Flutter memanggil `/api/keuangan/cash-book` → API mengembalikan data period-scoped → Flutter otomatis menampilkan data yang benar
-- Field `periode_id` baru di response JSON diabaikan oleh `CashBookEntry.fromJson()` (Dart ignore unknown fields)
-- Model `cashbook.dart` tidak perlu diubah
+Detail teknis yang sudah diverifikasi:
+- Kartu summary Flutter (`_buildSummaryCards()`) membaca `omzet`, `biaya_operasional`, `saldo`, dll. langsung dari `data['systemMetrics']` — bukan dari per-baris `keuangan`. Nilai-nilai ini otomatis period-scoped setelah API diubah.
+- Cashbook list Flutter menampilkan `data['cashBooks']` yang di-filter `periode_id` oleh API — otomatis benar.
+- Field `periode_id` baru di response JSON diabaikan oleh `CashBookEntry.fromJson()` (Dart ignore unknown fields). Model `cashbook.dart` tidak perlu diubah.
+- Field per-baris legacy (`entry.omzet`, `entry.saldo`, dll.) ada di model tapi **tidak dirender di UI Flutter** — tidak ada dampak.
+
+**Satu perubahan Flutter yang perlu ditambahkan** (konsistensi dengan web): tampilkan label periode aktif di header halaman Keuangan Flutter (mis. teks kecil "Periode: Mei 2026" di bawah judul). API response perlu mengembalikan field `periode_label` untuk keperluan ini. Ini termasuk dalam task #6 urutan implementasi.
 
 ---
 
@@ -130,4 +134,4 @@ Tidak ada. Semua modul ini memanggil `createCashBookEntry()` di `finance-service
 | 3 | API cashbook: ganti filter kalender → filter `periode_id` |
 | 4 | Kartu Omzet/Biaya: direct `SUM` dari `keuangan` per periode |
 | 5 | RingkasanPengurus: inject nilai period-scoped ke formula evaluator |
-| 6 | UI label: tampilkan "Periode: [nama periode]" di header halaman Keuangan |
+| 6 | UI label: tampilkan "Periode: [nama periode]" di header web + Flutter (API tambah field `periode_label`) |
