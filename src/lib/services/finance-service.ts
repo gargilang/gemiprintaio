@@ -25,6 +25,7 @@ import {
   getMaxUrutanTampilanKeuangan,
 } from "../server-data-supabase";
 import { createCoalescedRunner } from "../coalesce";
+import { getOrCreateOpenPeriod } from "./accounting-periods-service";
 
 export interface CashBookEntry {
   id: string;
@@ -119,6 +120,14 @@ export async function createCashBookEntry(data: {
   const id = generateId();
   const now = getCurrentTimestamp();
 
+  let periodeId: string | undefined;
+  try {
+    const periode = await getOrCreateOpenPeriod();
+    periodeId = periode.id;
+  } catch (e) {
+    console.warn("[createCashBookEntry] Gagal mengambil periode aktif:", e);
+  }
+
   const entry = {
     id,
     tanggal: data.tanggal,
@@ -136,6 +145,7 @@ export async function createCashBookEntry(data: {
     biaya_bahan: 0,
     saldo: 0,
     laba_bersih: 0,
+    periode_id: periodeId ?? null,
   };
 
   const result = await db.insert("keuangan", entry);

@@ -32,6 +32,22 @@ export async function fetchKeuanganCashBookListCurrentMonth(): Promise<
   return (data as Record<string, unknown>[]) || [];
 }
 
+export async function fetchKeuanganCashBookByPeriod(
+  periodeId: string
+): Promise<Record<string, unknown>[]> {
+  const sb = clientOrNull();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from("keuangan")
+    .select("*")
+    .eq("periode_id", periodeId)
+    .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
+    .order("urutan_tampilan", { ascending: false })
+    .order("dibuat_pada", { ascending: false });
+  if (error) throw error;
+  return (data as Record<string, unknown>[]) || [];
+}
+
 export async function getMaxUrutanTampilanKeuangan(): Promise<number> {
   const sb = clientOrNull();
   if (!sb) return 0;
