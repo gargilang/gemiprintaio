@@ -7,33 +7,42 @@ import {
   createCashBookEntry,
   canDeleteCashBookEntry,
 } from "@/lib/services/finance-service";
-import { getCurrentMonthRangeJakarta } from "@/lib/date-utils";
-import { fetchKeuanganCashBookListCurrentMonth } from "@/lib/server-data-supabase";
+import { fetchKeuanganCashBookByPeriod } from "@/lib/server-data-supabase";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
 export async function GET() {
   try {
-    const activePeriod = getCurrentMonthRangeJakarta();
+    const { getOrCreateOpenPeriod, formatPeriodLabel } = await import(
+      "@/lib/services/accounting-periods-service"
+    );
+    const { computePeriodMetrics } = await import(
+      "@/lib/services/periode-metrics-service"
+    );
+
+    // Dapatkan periode aktif (OPEN). Bila tidak ada, buat otomatis.
+    const currentPeriod = await getOrCreateOpenPeriod();
+    const periodeLabel = formatPeriodLabel(currentPeriod.period_key);
+
     if (getServerSupabaseClient()) {
-      // Fetch cashbook rows + computed metrics in parallel — both queries
-      // hit Supabase so they share the same network latency. systemMetrics
-      // exposes the v2 transaksi_terhitung values (kas, modal_kas, etc.)
-      // alongside the legacy keuangan columns so the UI can render every
-      // summary card from a single endpoint instead of two.
-      const [cashBooks, latestMap] = await Promise.all([
-        fetchKeuanganCashBookListCurrentMonth(),
-        getLatestPerFormulaKey(),
+      const [cashBooks, latestMap, periodMetrics] = await Promise.all([
+        fetchKeuanganCashBookByPeriod(currentPeriod.id),
+        getLatestPerFormulaKey(), // saldo, modal_kas, saldo_kasbon, kas tetap global
+        computePeriodMetrics(currentPeriod.id),
       ]);
+
       const systemMetrics = {
-        omzet: latestMap.omzet ?? 0,
-        biaya_operasional: latestMap.biaya_operasional ?? 0,
-        biaya_bahan: latestMap.biaya_bahan ?? 0,
+        // Metrik periode: reset setiap tutup periode
+        omzet: periodMetrics.omzet,
+        biaya_operasional: periodMetrics.biaya_operasional,
+        biaya_bahan: periodMetrics.biaya_bahan,
+        laba_bersih: periodMetrics.laba_bersih,
+        // Metrik global: tidak reset (kas fisik tidak hilang saat tutup buku)
         saldo: latestMap.saldo ?? 0,
-        laba_bersih: latestMap.laba_bersih ?? 0,
         modal_kas: latestMap.modal_kas ?? 0,
         saldo_kasbon: latestMap.saldo_kasbon ?? 0,
         kas: latestMap.kas ?? 0,
       };
+
       const cashBooksWithDeletable = cashBooks.map(
         (row: Record<string, unknown>) => ({
           ...row,
@@ -43,28 +52,40 @@ export async function GET() {
           }),
         }),
       );
+
       return NextResponse.json({
         cashBooks: cashBooksWithDeletable,
         systemMetrics,
-        activePeriod,
+        periodeLabel,
+        periodeId: currentPeriod.id,
+        activePeriod: {
+          startDate: currentPeriod.start_date,
+          endDate: currentPeriod.end_date,
+        },
       });
     }
 
+    // SQLite fallback
     const cashBooks =
       (await db.queryRaw(
         `SELECT * FROM keuangan
-         WHERE tanggal >= ? AND tanggal <= ?
+         WHERE periode_id = ?
            AND COALESCE(status_transaksi, 'POSTED') <> 'VOIDED'
          ORDER BY urutan_tampilan DESC, dibuat_pada DESC`,
-        [activePeriod.startDate, activePeriod.endDate],
+        [currentPeriod.id],
       )) || [];
-    const latestMap = await getLatestPerFormulaKey();
+
+    const [latestMap, periodMetrics] = await Promise.all([
+      getLatestPerFormulaKey(),
+      computePeriodMetrics(currentPeriod.id),
+    ]);
+
     const systemMetrics = {
-      omzet: latestMap.omzet ?? 0,
-      biaya_operasional: latestMap.biaya_operasional ?? 0,
-      biaya_bahan: latestMap.biaya_bahan ?? 0,
+      omzet: periodMetrics.omzet,
+      biaya_operasional: periodMetrics.biaya_operasional,
+      biaya_bahan: periodMetrics.biaya_bahan,
+      laba_bersih: periodMetrics.laba_bersih,
       saldo: latestMap.saldo ?? 0,
-      laba_bersih: latestMap.laba_bersih ?? 0,
       modal_kas: latestMap.modal_kas ?? 0,
       saldo_kasbon: latestMap.saldo_kasbon ?? 0,
       kas: latestMap.kas ?? 0,
@@ -83,10 +104,15 @@ export async function GET() {
     return NextResponse.json({
       cashBooks: cashBooksWithDeletable,
       systemMetrics,
-      activePeriod,
+      periodeLabel,
+      periodeId: currentPeriod.id,
+      activePeriod: {
+        startDate: currentPeriod.start_date,
+        endDate: currentPeriod.end_date,
+      },
     });
   } catch (error) {
-    console.error("GET /api/finance/cash-book error:", error);
+    console.error("GET /api/keuangan/cash-book error:", error);
     return NextResponse.json(
       { error: "Gagal memuat data keuangan" },
       { status: 500 },

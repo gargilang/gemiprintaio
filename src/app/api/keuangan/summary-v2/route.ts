@@ -30,6 +30,8 @@ import {
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import { hitungSaldoPinjamanBatch } from "@/lib/services/pinjaman-karyawan-service";
 import { listKomponenBatch } from "@/lib/services/komponen-kompensasi-service";
+import { getOrCreateOpenPeriod } from "@/lib/services/accounting-periods-service";
+import { computePeriodMetrics } from "@/lib/services/periode-metrics-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,12 +51,26 @@ export async function GET(request: NextRequest) {
     // 2. Fetch actors, roles, formulas and latest computed values in parallel.
     //    listFormulasRaw skips the redundant seedDefaultsIfEmpty call inside
     //    listFormulas() since we already seeded above.
-    const [actors, roles, formulas, latestMap] = await Promise.all([
+    // Bila tidak ada filter bulan, gunakan periode aktif (period-scoped metrics).
+    // Bila ada filter bulan (tampilan historis), tetap gunakan running total kumulatif.
+    const currentPeriod = month ? null : await getOrCreateOpenPeriod().catch(() => null);
+
+    const [actors, roles, formulas, latestMap, periodMetrics] = await Promise.all([
       listBusinessActors({ includeInactive: false }),
       listActorRoles(),
       listFormulasRaw(),
       getLatestPerFormulaKey(month),
+      currentPeriod ? computePeriodMetrics(currentPeriod.id) : Promise.resolve(null),
     ]);
+
+    // Inject period-scoped omzet/biaya/laba ke latestMap supaya formula Bagi Hasil
+    // mengevaluasi berdasarkan periode aktif, bukan akumulasi sepanjang masa.
+    if (periodMetrics) {
+      latestMap.omzet = periodMetrics.omzet;
+      latestMap.biaya_operasional = periodMetrics.biaya_operasional;
+      latestMap.biaya_bahan = periodMetrics.biaya_bahan;
+      latestMap.laba_bersih = periodMetrics.laba_bersih;
+    }
 
     // 3. Disable legacy orphan actor formulas (no actor_id) using the
     //    already-fetched formula list — no extra DB read.
@@ -117,15 +133,13 @@ export async function GET(request: NextRequest) {
       summary.columns.push({ formulaKey: "bonus_komponen", label: "Bonus/Komisi", group: "bonus" });
     }
 
-    // Surface key system metrics so the page can render summary cards
-    // without computing them client-side. The values come from the
-    // latest computed row in the requested month.
+    // latestMap.omzet/biaya/laba sudah di-override dengan period-scoped values di atas.
     const systemMetrics = {
       omzet: latestMap.omzet ?? 0,
       biaya_operasional: latestMap.biaya_operasional ?? 0,
       biaya_bahan: latestMap.biaya_bahan ?? 0,
-      saldo: latestMap.saldo ?? 0,
       laba_bersih: latestMap.laba_bersih ?? 0,
+      saldo: latestMap.saldo ?? 0,        // tetap global/kumulatif
       modal_kas: latestMap.modal_kas ?? 0,
       saldo_kasbon: latestMap.saldo_kasbon ?? 0,
       kas: latestMap.kas ?? 0,
