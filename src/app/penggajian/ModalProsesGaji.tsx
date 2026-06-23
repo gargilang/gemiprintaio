@@ -13,7 +13,7 @@ import {
   simpanDraftGajiAction,
   bayarProsesGajiAction,
   batalkanProsesGajiAction,
-  getNamaTokoAction,
+  getShopSettingsForSlipAction,
 } from "./actions";
 import type {
   DraftGaji,
@@ -166,7 +166,7 @@ export default function ModalProsesGaji({
   const handleCetakSlip = useCallback(
     async (run: ProsesGajiDetail, slip: ProsesGajiDetail["slips"][number]) => {
       try {
-        const namaToko = await getNamaTokoAction();
+        const shop = await getShopSettingsForSlipAction();
         let komponen: { nama: string; tipe?: string; nilai: number }[] = [];
         try {
           const parsed = JSON.parse(slip.komponen_snapshot || "[]");
@@ -181,7 +181,7 @@ export default function ModalProsesGaji({
           komponen = [];
         }
         printSlipGaji({
-          nama_toko: namaToko,
+          nama_toko: shop.nama_toko || "gemiprint",
           periode: run.periode,
           tanggal_bayar: run.tanggal_bayar,
           nama_karyawan: (slip as any).nama || slip.actor_id,
@@ -190,6 +190,7 @@ export default function ModalProsesGaji({
           potongan_kasbon: slip.potongan_kasbon,
           neto: slip.neto,
           metode_bayar: (slip as any).metode_bayar,
+          shop,
         });
       } catch (e: any) {
         showNotification("error", e?.message || "Gagal mencetak slip.");

@@ -513,3 +513,28 @@ export async function getNamaTokoAction(): Promise<string> {
     return "gemiprint";
   }
 }
+
+/** Pengaturan toko untuk branding slip gaji (logo, alamat, kontak). */
+export async function getShopSettingsForSlipAction() {
+  try {
+    const s = await getShopSettings();
+    return {
+      nama_toko: s.nama_toko,
+      slogan: s.slogan,
+      alamat: s.alamat,
+      telepon: s.telepon,
+      email: s.email,
+      website: s.website,
+    };
+  } catch (error) {
+    console.error("getShopSettingsForSlipAction error:", error);
+    return {
+      nama_toko: "gemiprint",
+      slogan: "Digital Printing & Advertising",
+      alamat: null,
+      telepon: null,
+      email: null,
+      website: null,
+    };
+  }
+}
