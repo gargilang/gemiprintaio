@@ -995,6 +995,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_inventory_movements_location ON inventory_movements(location_id);
     CREATE INDEX IF NOT EXISTS idx_keuangan_reference ON keuangan(reference_type, reference_id);
+    CREATE INDEX IF NOT EXISTS idx_keuangan_periode_id ON keuangan(periode_id);
   `);
 
   db.exec(`

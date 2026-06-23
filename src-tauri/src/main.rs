@@ -370,8 +370,10 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'",
         "ALTER TABLE keuangan ADD COLUMN reference_type TEXT",
         "ALTER TABLE keuangan ADD COLUMN reference_id TEXT",
+        "ALTER TABLE keuangan ADD COLUMN periode_id TEXT REFERENCES accounting_periods(id)",
         "CREATE INDEX IF NOT EXISTS idx_inventory_movements_location ON inventory_movements(location_id)",
         "CREATE INDEX IF NOT EXISTS idx_keuangan_reference ON keuangan(reference_type, reference_id)",
+        "CREATE INDEX IF NOT EXISTS idx_keuangan_periode_id ON keuangan(periode_id)",
     ];
     for sql in hardening_cols {
         let _ = conn.execute(sql, []);
