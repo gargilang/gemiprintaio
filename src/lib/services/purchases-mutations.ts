@@ -7,7 +7,7 @@ import "server-only";
 
 import { db, getServerSupabaseClient, isCompositeTransactionAtomic } from "../db-unified";
 import { fetchLastNomorPembelian } from "../server-data-supabase";
-import { recalculateCashbookIfAvailable } from "./finance-service";
+import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "./finance-service";
 import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
@@ -506,6 +506,7 @@ async function createPurchaseAttempt(data: {
         }
         keperluan += ` [REF:${purchaseId}]`;
 
+        const periodeId = await resolveOpenPeriodeIdForKeuangan();
         const financeResult = await db.insert("keuangan", {
           id: generateId("keu"),
           tanggal: data.tanggal,
@@ -519,6 +520,7 @@ async function createPurchaseAttempt(data: {
           urutan_tampilan: nextOrder,
           reference_type: "PURCHASE",
           reference_id: purchaseId,
+          periode_id: periodeId,
         });
         if (financeResult.error) {
           throw financeResult.error;
@@ -705,6 +707,7 @@ export async function createMaklonPurchase(input: {
 
       const keperluan = `Maklon ${input.saleInvoiceNumber} - ${vendorName} [REF:${purchaseId}]`;
 
+      const periodeIdMaklon = await resolveOpenPeriodeIdForKeuangan();
       const financeResult = await db.insert("keuangan", {
         id: generateId("keu"),
         tanggal: input.tanggal,
@@ -719,6 +722,7 @@ export async function createMaklonPurchase(input: {
         urutan_tampilan: nextOrder,
         reference_type: "PURCHASE_MAKLON",
         reference_id: purchaseId,
+        periode_id: periodeIdMaklon,
       });
       if (financeResult.error) throw financeResult.error;
     } else {
@@ -1425,6 +1429,7 @@ export async function payDebt(data: {
     const kategoriPembayaran =
       (purchase as any).tipe_pembelian === "MAKLON" ? "MAKLON" : "SUPPLY";
 
+    const periodeIdBayar = await resolveOpenPeriodeIdForKeuangan();
     await db.insert("keuangan", {
       id: `keu-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       tanggal: data.tanggal_bayar || new Date().toISOString().split("T")[0],
@@ -1440,6 +1445,7 @@ export async function payDebt(data: {
       reference_type:
         kategoriPembayaran === "MAKLON" ? "PURCHASE_MAKLON_PAYMENT" : "PURCHASE_PAYMENT",
       reference_id: data.purchase_id,
+      periode_id: periodeIdBayar,
     });
 
     await recalculateCashbookIfAvailable();

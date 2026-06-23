@@ -3,7 +3,7 @@
  */
 
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
-import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "@/lib/services/finance-service";
 import { isDateInClosedPeriod } from "@/lib/services/accounting-periods-service";
 import { friendlyPgError } from "@/lib/pg-error";
 import {
@@ -230,6 +230,7 @@ export async function bayarProsesGaji(
 
       const now = getCurrentTimestamp();
       const token = refToken(runId);
+      const periodeIdGaji = await resolveOpenPeriodeIdForKeuangan();
 
       for (const slip of slips) {
         // 1) Beban gaji penuh (bruto) — kredit, mengurangi laba lewat kategori GAJI.
@@ -248,6 +249,7 @@ export async function bayarProsesGaji(
           reference_id: runId,
           dibuat_pada: now,
           diperbarui_pada: now,
+          periode_id: periodeIdGaji,
         });
         if (gajiRes.error) throw gajiRes.error;
 
@@ -268,6 +270,7 @@ export async function bayarProsesGaji(
             reference_id: runId,
             dibuat_pada: now,
             diperbarui_pada: now,
+            periode_id: periodeIdGaji,
           });
           if (potongRes.error) throw potongRes.error;
 

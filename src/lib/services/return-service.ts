@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
-import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "@/lib/services/finance-service";
 import {
   getInventoryMovements,
   postInventoryMovement,
@@ -34,6 +34,7 @@ async function insertCashbookEntry(input: {
   reference_type: string;
   reference_id: string;
 }) {
+  const periodeId = await resolveOpenPeriodeIdForKeuangan();
   const res = await db.insert("keuangan", {
     id: generateId(),
     tanggal: input.tanggal,
@@ -46,6 +47,7 @@ async function insertCashbookEntry(input: {
     urutan_tampilan: await nextCashbookOrder(),
     reference_type: input.reference_type,
     reference_id: input.reference_id,
+    periode_id: periodeId,
   });
   if (res.error) throw res.error;
 }

@@ -18,7 +18,7 @@ import {
   createMaklonPurchase,
   deleteMaklonPurchasesForSale,
 } from "./purchases-service";
-import { recalculateCashbookIfAvailable } from "./finance-service";
+import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "./finance-service";
 import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
@@ -1559,6 +1559,7 @@ async function createFinanceEntry(data: {
   const keuanganId = generateId();
   const debit = data.debit ?? 0;
   const kredit = data.kredit ?? 0;
+  const periodeId = await resolveOpenPeriodeIdForKeuangan();
   const finance = {
     id: keuanganId,
     tanggal: data.tanggal,
@@ -1573,6 +1574,7 @@ async function createFinanceEntry(data: {
     urutan_tampilan: nextDisplayOrder,
     reference_type: data.reference_type || null,
     reference_id: data.reference_id || null,
+    periode_id: periodeId,
   };
 
   const result = await db.insert("keuangan", finance);

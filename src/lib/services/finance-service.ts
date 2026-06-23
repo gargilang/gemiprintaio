@@ -27,6 +27,20 @@ import {
 import { createCoalescedRunner } from "../coalesce";
 import { getOrCreateOpenPeriod } from "./accounting-periods-service";
 
+/**
+ * Ambil periode_id OPEN untuk baris keuangan baru.
+ * Gagal aman → null (kolom nullable, transaksi tidak hilang).
+ */
+export async function resolveOpenPeriodeIdForKeuangan(): Promise<string | null> {
+  try {
+    const periode = await getOrCreateOpenPeriod();
+    return periode.id;
+  } catch (e) {
+    console.warn("[resolveOpenPeriodeIdForKeuangan] Gagal mengambil periode aktif:", e);
+    return null;
+  }
+}
+
 export interface CashBookEntry {
   id: string;
   tanggal: string;
@@ -119,14 +133,7 @@ export async function createCashBookEntry(data: {
   const nextOrder = await nextUrutanTampilanKeuangan();
   const id = generateId();
   const now = getCurrentTimestamp();
-
-  let periodeId: string | undefined;
-  try {
-    const periode = await getOrCreateOpenPeriod();
-    periodeId = periode.id;
-  } catch (e) {
-    console.warn("[createCashBookEntry] Gagal mengambil periode aktif:", e);
-  }
+  const periodeId = await resolveOpenPeriodeIdForKeuangan();
 
   const entry = {
     id,
@@ -145,7 +152,7 @@ export async function createCashBookEntry(data: {
     biaya_bahan: 0,
     saldo: 0,
     laba_bersih: 0,
-    periode_id: periodeId ?? null,
+    periode_id: periodeId,
   };
 
   const result = await db.insert("keuangan", entry);

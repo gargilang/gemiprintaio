@@ -17,7 +17,7 @@
  */
 
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
-import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "@/lib/services/finance-service";
 import { isDateInClosedPeriod } from "@/lib/services/accounting-periods-service";
 import { friendlyPgError } from "@/lib/pg-error";
 
@@ -171,6 +171,7 @@ export async function catatTarikPinjaman(
 
       // Posting keuangan: kredit (kas keluar), netral terhadap laba.
       const keuanganId = generateId();
+      const periodeId = await resolveOpenPeriodeIdForKeuangan();
       const keuRes = await db.insert("keuangan", {
         id: keuanganId,
         tanggal: input.tanggal,
@@ -185,6 +186,7 @@ export async function catatTarikPinjaman(
         reference_id: pinjamanId,
         dibuat_pada: now,
         diperbarui_pada: now,
+        periode_id: periodeId,
       });
       if (keuRes.error) throw keuRes.error;
 
@@ -243,6 +245,7 @@ export async function bayarPinjamanTunai(
 
       // Posting keuangan: debit (kas masuk).
       const keuanganId = generateId();
+      const periodeIdBayar = await resolveOpenPeriodeIdForKeuangan();
       const keuRes = await db.insert("keuangan", {
         id: keuanganId,
         tanggal: input.tanggal,
@@ -257,6 +260,7 @@ export async function bayarPinjamanTunai(
         reference_id: pinjamanId,
         dibuat_pada: now,
         diperbarui_pada: now,
+        periode_id: periodeIdBayar,
       });
       if (keuRes.error) throw keuRes.error;
 
@@ -390,6 +394,7 @@ export async function potongBagiHasil(
 
       // 1) LABA kredit — seakan bagi hasil dibayar tunai (saldo kas ↓).
       const labaKeuId = generateId();
+      const periodeIdPotong = await resolveOpenPeriodeIdForKeuangan();
       const labaRes = await db.insert("keuangan", {
         id: labaKeuId,
         tanggal: input.tanggal,
@@ -404,6 +409,7 @@ export async function potongBagiHasil(
         reference_id: pinjamanId,
         dibuat_pada: now,
         diperbarui_pada: now,
+        periode_id: periodeIdPotong,
       });
       if (labaRes.error) throw labaRes.error;
 
@@ -423,6 +429,7 @@ export async function potongBagiHasil(
         reference_id: pinjamanId,
         dibuat_pada: now,
         diperbarui_pada: now,
+        periode_id: periodeIdPotong,
       });
       if (pinjamanKeuRes.error) throw pinjamanKeuRes.error;
 
