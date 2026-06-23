@@ -30,6 +30,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
   List<Map<String, dynamic>> _kategoriOptions = [];
   Map<String, dynamic> _systemMetrics = {};
   bool _isLoading = true;
+  String _periodeLabel = '';
   String _search = '';
   String _filterKategori = 'SEMUA';
 
@@ -99,6 +100,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
           _systemMetrics = data['systemMetrics'] is Map<String, dynamic>
               ? data['systemMetrics'] as Map<String, dynamic>
               : {};
+          _periodeLabel = (data['periodeLabel'] as String?) ?? '';
           final seenKategori = <String>{};
           _kategoriOptions = categories
               .whereType<Map>()
@@ -604,7 +606,26 @@ class _FinancePageState extends ConsumerState<FinancePage>
               headerSliverBuilder: (_, _) => [
                 SliverToBoxAdapter(
                   child: Column(
-                    children: [const SizedBox(height: 8), _buildSummaryCards()],
+                    children: [
+                      const SizedBox(height: 8),
+                      if (_periodeLabel.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _periodeLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      _buildSummaryCards(),
+                    ],
                   ),
                 ),
                 SliverPersistentHeader(

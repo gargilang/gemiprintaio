@@ -114,6 +114,7 @@ export default function FinancePage() {
   const [totalPiutang, setTotalPiutang] = useState(0);
   const [piutangCount, setPiutangCount] = useState(0);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
+  const [periodeLabel, setPeriodeLabel] = useState("Periode Aktif");
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
   const [formData, setFormData] = useState<CashBookFormData>({
@@ -361,6 +362,9 @@ export default function FinancePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Gagal memuat data");
       setCashBooks(data.cashBooks || []);
+      if (data.periodeLabel) {
+        setPeriodeLabel(data.periodeLabel as string);
+      }
       if (data.systemMetrics) {
         setSystemMetrics(data.systemMetrics as SystemMetrics);
       }
@@ -835,7 +839,9 @@ export default function FinancePage() {
                 Buku Keuangan
               </h2>
               <p className="text-white/90 text-sm">
-                Area kerja buku kas bulan berjalan. Riwayat bulan lama tersedia di Laporan.
+                Area kerja buku kas —{" "}
+                <span className="font-semibold">{periodeLabel}</span>. Riwayat
+                tersedia di Laporan.
               </p>
             </div>
           </div>
@@ -1101,7 +1107,7 @@ export default function FinancePage() {
           </button>
           <div className="ml-auto">
             <div className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
-              <>{filteredCashBooks.length} Transaksi Bulan Ini</>
+              <>{filteredCashBooks.length} Transaksi {periodeLabel}</>
             </div>
           </div>
         </div>
