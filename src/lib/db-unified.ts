@@ -1524,6 +1524,28 @@ class UnifiedDatabase {
         db.exec("UPDATE sync_queue SET status = COALESCE(status, 'pending')");
       }
     }
+
+    // Tabel laporan_bulanan: riwayat laporan bulanan digenerate
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS laporan_bulanan (
+        id TEXT PRIMARY KEY,
+        nomor_laporan TEXT NOT NULL UNIQUE,
+        accounting_period_id TEXT NOT NULL,
+        dibuat_oleh TEXT NOT NULL,
+        dibuat_pada TEXT NOT NULL DEFAULT (datetime('now')),
+        kata_pembuka TEXT,
+        kata_penutup TEXT,
+        sync_status TEXT NOT NULL DEFAULT 'pending',
+        last_synced_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 0,
+        updated_at_server TEXT,
+        updated_by_device TEXT,
+        change_version INTEGER NOT NULL DEFAULT 0,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT
+      )
+    `);
   }
 
   private async queueToLocalSync(

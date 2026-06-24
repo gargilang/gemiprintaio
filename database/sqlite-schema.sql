@@ -1332,3 +1332,26 @@ CREATE TABLE biaya_tambahan_penjualan (
 
 CREATE INDEX idx_biaya_tambahan_penjualan_sale ON biaya_tambahan_penjualan(penjualan_id);
 CREATE INDEX idx_biaya_tambahan_sync_status ON biaya_tambahan_penjualan(sync_status);
+
+-- Table: laporan_bulanan
+CREATE TABLE laporan_bulanan (
+      id TEXT PRIMARY KEY,
+      nomor_laporan TEXT NOT NULL UNIQUE,
+      accounting_period_id TEXT NOT NULL REFERENCES accounting_periods(id),
+      dibuat_oleh TEXT NOT NULL,
+      dibuat_pada TEXT NOT NULL DEFAULT (datetime('now')),
+      kata_pembuka TEXT,
+      kata_penutup TEXT,
+      sync_status TEXT NOT NULL DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+      last_synced_at TEXT,
+      sync_version INTEGER NOT NULL DEFAULT 0,
+      updated_at_server TEXT,
+      updated_by_device TEXT,
+      change_version INTEGER NOT NULL DEFAULT 0,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
+      client_mutation_id TEXT
+    );
+
+CREATE INDEX idx_laporan_bulanan_period ON laporan_bulanan(accounting_period_id);
+CREATE INDEX idx_laporan_bulanan_sync ON laporan_bulanan(sync_status);

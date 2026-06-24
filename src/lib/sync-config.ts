@@ -57,11 +57,16 @@ export const PAYROLL_SYNC_TABLES = [
   "pinjaman_karyawan",
 ] as const;
 
+export const REPORTING_SYNC_TABLES = [
+  "laporan_bulanan",
+] as const;
+
 export const ALL_SYNC_TABLES = [
   ...CORE_SYNC_TABLES,
   ...BALANCE_SYNC_TABLES,
   ...MASTER_SYNC_TABLES,
   ...PAYROLL_SYNC_TABLES,
+  ...REPORTING_SYNC_TABLES,
 ] as const;
 
 export type SyncTable = (typeof ALL_SYNC_TABLES)[number];
