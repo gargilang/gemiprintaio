@@ -53,11 +53,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
         final sales = posData['sales'] as List? ?? [];
         final orders = prodData['orders'] as List? ?? [];
-        final entries =
-            financeData['cashBooks'] as List? ??
-            financeData['entries'] as List? ??
-            financeData['keuangan'] as List? ??
-            [];
+        final systemMetrics = financeData['systemMetrics'] is Map<String, dynamic>
+            ? financeData['systemMetrics'] as Map<String, dynamic>
+            : <String, dynamic>{};
 
         // Hitung statistik hari ini
         final today = DateTime.now();
@@ -88,22 +86,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               prioritas == 'KILAT';
         }).length;
 
-        // Saldo kas
-        double saldo = 0;
-        if (entries.isNotEmpty) {
-          saldo = (entries.last['saldo'] as num?)?.toDouble() ?? 0;
-        }
-
-        // Piutang aktif
-        int activePiutang = 0;
-        double totalPiutang = 0;
-        for (final s in sales) {
-          final status = s['status_pembayaran'] as String? ?? 'LUNAS';
-          if (status == 'AKTIF' || status == 'SEBAGIAN') {
-            activePiutang++;
-            totalPiutang += (s['sisa_piutang'] as num?)?.toDouble() ?? 0;
-          }
-        }
+        final saldo = (systemMetrics['saldo'] as num?)?.toDouble() ?? 0;
+        final kas = (systemMetrics['kas'] as num?)?.toDouble() ?? 0;
 
         setState(() {
           _stats = {
@@ -113,8 +97,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             'activeOrders': activeOrders,
             'kilat': kilat,
             'saldo': saldo,
-            'activePiutang': activePiutang,
-            'totalPiutang': totalPiutang,
+            'kas': kas,
           };
           _isLoading = false;
         });
@@ -311,7 +294,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 children: [
                   Expanded(
                     child: _statCard(
-                      'Saldo Kas',
+                      'Saldo',
                       _fmt.format(_stats!['saldo']),
                       Icons.account_balance_wallet_rounded,
                       AppColors.primary,
@@ -320,11 +303,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _statCard(
-                      'Piutang Aktif',
-                      _fmt.format(_stats!['totalPiutang']),
-                      Icons.receipt_outlined,
-                      AppColors.error,
-                      subtitle: '${_stats!['activePiutang']} transaksi',
+                      'Kas',
+                      _fmt.format(_stats!['kas']),
+                      Icons.payments_rounded,
+                      AppColors.success,
                     ),
                   ),
                 ],

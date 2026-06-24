@@ -167,7 +167,6 @@ class _FinancePageState extends ConsumerState<FinancePage>
 
   // ============ KARTU RINGKASAN (gaya gradient existing) ============
   static const Color _indigoColor = Color(0xFF4F46E5);
-  static const Color _amberColor = Color(0xFFF59E0B);
 
   Widget _buildSummaryCards() {
     final saldo = _metric('saldo');
@@ -188,7 +187,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
               _summaryCard(
                 'Saldo',
                 saldo,
-                _indigoColor,
+                AppColors.primary,
                 Icons.account_balance_wallet_rounded,
               ),
             ],
@@ -230,7 +229,7 @@ class _FinancePageState extends ConsumerState<FinancePage>
           const SizedBox(height: 12),
           Row(
             children: [
-              _summaryCard('Kas', kas, _amberColor, Icons.payments_rounded),
+              _summaryCard('Kas', kas, AppColors.success, Icons.payments_rounded),
             ],
           ),
           const SizedBox(height: 8),
