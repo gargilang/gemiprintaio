@@ -11,8 +11,10 @@ import {
   BoxIcon,
   ShoppingCartIcon,
   ClipboardIcon,
+  DocumentIcon,
 } from "@/components/icons/ContentIcons";
 import { getFormalAccountingReportAction } from "./actions";
+import ModalLaporanBulanan from "./ModalLaporanBulanan";
 import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 
 interface User {
@@ -158,6 +160,7 @@ export default function ReportsPage() {
   const [formalReport, setFormalReport] =
     useState<FormalAccountingReport | null>(null);
   const [loadingFormalReport, setLoadingFormalReport] = useState(false);
+  const [showModalLaporan, setShowModalLaporan] = useState(false);
   const loading = currentUser === null;
 
   useEffect(() => {
@@ -228,6 +231,8 @@ export default function ReportsPage() {
     }
   };
 
+  const handleBukaModalLaporan = () => setShowModalLaporan(true);
+
   const reportTypes = [
     {
       id: "cash" as ReportType,
@@ -291,6 +296,39 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Laporan Manajemen Bulanan */}
+      <div className="mb-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border-2 border-indigo-100 dark:border-indigo-900/40">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="bg-indigo-100 dark:bg-indigo-900/40 rounded-xl p-3 flex-shrink-0">
+                <DocumentIcon size={28} className="text-indigo-600 dark:text-indigo-300" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
+                  Laporan Manajemen Bulanan
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
+                  Dokumen resmi A4 siap cetak: ringkasan KPI, hutang/piutang, riwayat
+                  buku kas, dan kolom tanda tangan.
+                </p>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+                  Hanya untuk periode yang sudah ditutup
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleBukaModalLaporan}
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow"
+            >
+              <DocumentIcon size={16} className="text-white" />
+              Buat Laporan
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Report Type Selection */}
       <div className="mb-6">
         <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
@@ -342,6 +380,13 @@ export default function ReportsPage() {
           report={formalReport}
           formatRupiah={formatRupiah}
         />
+      {/* Modal Laporan Bulanan */}
+      {showModalLaporan && (
+        <ModalLaporanBulanan
+          onClose={() => setShowModalLaporan(false)}
+          showNotification={showMsg}
+        />
+      )}
       {/* Notification Toast */}
       {notice && (
         <ToastNotifikasi type={notice.type} message={notice.message} />
