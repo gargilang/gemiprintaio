@@ -151,7 +151,7 @@ const PurchaseRow = memo(
         } catch (settingsError) {
           console.warn("Data usaha tidak bisa dimuat untuk print pembelian:", settingsError);
         }
-        printFakturPembelian({
+        await printFakturPembelian({
           nomor_pembelian:
             purchase.nomor_pembelian || purchase.nomor_faktur,
           nomor_faktur_vendor: purchase.nomor_faktur,

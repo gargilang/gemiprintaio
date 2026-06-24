@@ -10,6 +10,11 @@ import {
   formatRupiahPlain,
 } from "@/lib/format-id";
 import type { LaporanBulananData } from "@/lib/services/laporan-bulanan-service";
+import {
+  printHtmlDocument,
+  renderGemiprintFontFaces,
+  resolvePrintAssetOrigin,
+} from "@/lib/print-fonts";
 
 // Logo SVG paths — sama persis dengan faktur-print.ts
 const LOGO_SVG_PATHS = `
@@ -36,10 +41,14 @@ function pct(n: number): string {
   return `${n.toFixed(2)}%`;
 }
 
-export function generateLaporanBulananHTML(data: LaporanBulananData): string {
+export function generateLaporanBulananHTML(
+  data: LaporanBulananData,
+  options?: { assetOrigin?: string }
+): string {
+  const assetOrigin = resolvePrintAssetOrigin(options?.assetOrigin);
+  const baseHref = assetOrigin ? `${assetOrigin}/` : "/";
   const { info_toko, kpi, hutang_piutang, buku_kas, saldo_akhir, ttd } = data;
 
-  const tokoNama = esc(info_toko.nama_toko);
   const tokoAlamat = info_toko.alamat
     ? esc(info_toko.alamat).replace(/\n/g, "<br>")
     : "";
@@ -74,27 +83,10 @@ export function generateLaporanBulananHTML(data: LaporanBulananData): string {
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <base href="${esc(baseHref)}">
   <title>Laporan Manajemen Bulanan — ${esc(data.periode_label)}</title>
   <style>
-    @font-face {
-      font-family: 'Bauhaus 93';
-      src: url('/assets/fonts/BAUHS93.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'TW Cen MT';
-      src: url('/assets/fonts/Tw Cen MT.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'TW Cen MT';
-      src: url('/assets/fonts/TwCenMTStdBold.otf') format('opentype');
-      font-weight: bold;
-      font-style: normal;
-    }
-
+    ${renderGemiprintFontFaces(assetOrigin)}
     @page { size: A4 portrait; margin: 12mm; }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -266,25 +258,40 @@ export function generateLaporanBulananHTML(data: LaporanBulananData): string {
     }
     table.hutang-piutang td.num { text-align: right; font-weight: bold; }
 
-    /* ── TTD ── */
+    /* ── TTD (berdampingan, gaya sama slip gaji) ── */
     .ttd-block {
       margin-top: 16px;
-      display: flex;
-      justify-content: space-between;
       position: relative;
       z-index: 1;
+      font-size: 9.5pt;
     }
-    .ttd-col {
-      width: 45%;
+    .ttd-kota {
+      color: #555;
+      margin-bottom: 10px;
       font-size: 8.5pt;
       line-height: 1.4;
     }
-    .ttd-col .ttd-kota { color: #555; margin-bottom: 6px; }
-    .ttd-col .ttd-jabatan { font-weight: bold; margin-bottom: 36px; }
-    .ttd-col .ttd-garis {
+    .ttd-signatures {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 48px;
+      align-items: flex-start;
+    }
+    .ttd-signature {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 26px;
+    }
+    .ttd-jabatan { font-weight: bold; }
+    .ttd-garis {
       border-top: 1px solid #0a1b3d;
-      padding-top: 3px;
+      padding-top: 4px;
+      width: 180px;
       font-weight: bold;
+      line-height: 1.35;
     }
 
     /* ── HALAMAN 2+: BUKU KAS ── */
@@ -487,22 +494,23 @@ ${data.kata_penutup
 
 <!-- TTD -->
 <div class="ttd-block">
-  <div class="ttd-col">
-    <div class="ttd-kota">${esc(kotaTanggal)}</div>
-    <div class="ttd-jabatan">Direktur,</div>
-    <div class="ttd-garis">${namaDirektur || "________________________"}</div>
-  </div>
-  <div class="ttd-col" style="text-align:right">
-    <div class="ttd-kota">&nbsp;</div>
-    <div class="ttd-jabatan">Manajer,</div>
-    <div class="ttd-garis">${namaManajer || "________________________"}</div>
+  <div class="ttd-kota">${esc(kotaTanggal)}</div>
+  <div class="ttd-signatures">
+    <div class="ttd-signature">
+      <div class="ttd-jabatan">Direktur,</div>
+      <div class="ttd-garis">${namaDirektur || "________________________"}</div>
+    </div>
+    <div class="ttd-signature">
+      <div class="ttd-jabatan">Manajer,</div>
+      <div class="ttd-garis">${namaManajer || "________________________"}</div>
+    </div>
   </div>
 </div>
 
 <!-- ══════════════ HALAMAN 2+: RIWAYAT BUKU KAS ══════════════ -->
 <div class="page-break">
   <div class="kas-header">
-    <div class="kas-toko">${tokoNama} — Riwayat Buku Kas</div>
+    <div class="kas-toko">Riwayat Buku Kas</div>
     <div class="kas-meta">
       Periode: ${esc(data.periode_label)}<br>
       No. Laporan: ${esc(data.nomor_laporan)}
@@ -534,43 +542,8 @@ ${data.kata_penutup
 }
 
 /**
- * Buka popup window dan trigger print dialog.
- * Mengikuti pola yang sama dengan printFaktur di faktur-print.ts.
+ * Buka popup window dan trigger print dialog setelah font siap dimuat.
  */
 export function printLaporanBulanan(html: string): boolean {
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.addEventListener("load", () => {
-      printWindow.print();
-    });
-    return true;
-  }
-
-  // Fallback: iframe tersembunyi
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "Cetak laporan bulanan");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
-  document.body.appendChild(iframe);
-
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
-    document.body.removeChild(iframe);
-    return false;
-  }
-
-  frameWindow.document.write(html);
-  frameWindow.document.close();
-  frameWindow.addEventListener("load", () => {
-    frameWindow.print();
-  });
-
-  setTimeout(() => {
-    if (iframe.parentNode) document.body.removeChild(iframe);
-  }, 120_000);
-
-  return true;
+  return printHtmlDocument(html, "Cetak laporan bulanan");
 }

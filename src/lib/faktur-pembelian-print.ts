@@ -10,6 +10,8 @@
  */
 
 import { formatJakartaDate, formatRupiahPlain } from "@/lib/format-id";
+import { openPrintDocument } from "@/lib/print-fonts";
+import { preparePrintHtml } from "@/lib/print-embed-client";
 
 export interface FakturPembelianItem {
   nama: string;
@@ -479,57 +481,12 @@ export function generateFakturPembelianHTML(
 </html>`;
 }
 
-function writeFakturToWindow(target: Window, html: string): void {
-  target.document.open();
-  target.document.write(html);
-  target.document.close();
-  target.focus();
-}
-
-function printAfterAssetsReady(target: Window): void {
-  const print = () => {
-    try {
-      target.focus();
-      target.print();
-    } catch {
-      // print() may be blocked; preview is still available in the target document
-    }
-  };
-
-  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
-  fontsReady.then(print).catch(print);
-}
-
 /** Returns true if a print preview window or iframe was opened. */
-export function printFakturPembelian(data: FakturPembelianData): boolean {
-  const html = generateFakturPembelianHTML(data);
-
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    writeFakturToWindow(printWindow, html);
-    return true;
-  }
-
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "Cetak bukti penerimaan");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
-  document.body.appendChild(iframe);
-
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
-    document.body.removeChild(iframe);
-    return false;
-  }
-
-  writeFakturToWindow(frameWindow, html);
-  printAfterAssetsReady(frameWindow);
-
-  window.setTimeout(() => {
-    if (iframe.parentNode) document.body.removeChild(iframe);
-  }, 120_000);
-
-  return true;
+export async function printFakturPembelian(
+  data: FakturPembelianData
+): Promise<boolean> {
+  const html = await preparePrintHtml(generateFakturPembelianHTML(data));
+  return openPrintDocument(html, "Cetak bukti penerimaan");
 }
 
 /**

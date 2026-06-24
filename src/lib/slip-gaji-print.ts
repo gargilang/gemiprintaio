@@ -11,6 +11,8 @@ import {
   formatJakartaDate,
   formatRupiahPlain,
 } from "@/lib/format-id";
+import { openPrintDocument } from "@/lib/print-fonts";
+import { preparePrintHtml } from "@/lib/print-embed-client";
 
 export interface SlipKomponenBaris {
   nama: string;
@@ -113,9 +115,14 @@ function renderGemiprintFontFaces(assetOrigin: string): string {
 
 function renderKomponenRow(k: SlipKomponenBaris, index: number): string {
   const tipeLabel = k.tipe ? TIPE_LABEL[k.tipe] ?? k.tipe : "";
-  const namaCell = tipeLabel
-    ? `${escapeHtml(k.nama)}<br><span class="tipe">${escapeHtml(tipeLabel)}</span>`
-    : escapeHtml(k.nama);
+  const namaTrim = k.nama.trim();
+  const tipeSudahDiNama =
+    tipeLabel &&
+    tipeLabel.localeCompare(namaTrim, "id", { sensitivity: "accent" }) === 0;
+  const namaCell =
+    tipeLabel && !tipeSudahDiNama
+      ? `${escapeHtml(k.nama)}<br><span class="tipe">${escapeHtml(tipeLabel)}</span>`
+      : escapeHtml(k.nama);
 
   return `
     <tr>
@@ -577,58 +584,11 @@ export function generateSlipGajiHTML(
 </html>`;
 }
 
-function writeToWindow(target: Window, html: string): void {
-  target.document.open();
-  target.document.write(html);
-  target.document.close();
-  target.focus();
-}
-
-function printAfterAssetsReady(target: Window): void {
-  const print = () => {
-    try {
-      target.focus();
-      target.print();
-    } catch {
-      // print() bisa diblokir; pratinjau tetap tersedia di dokumen target.
-    }
-  };
-  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
-  fontsReady.then(print).catch(print);
-}
-
 /** Buka pratinjau cetak slip gaji. Mengembalikan true bila window/iframe terbuka. */
-export function printSlipGaji(data: SlipGajiData): boolean {
+export async function printSlipGaji(data: SlipGajiData): Promise<boolean> {
   const assetOrigin = resolvePrintAssetOrigin();
-  const html = generateSlipGajiHTML(data, { assetOrigin });
-
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    writeToWindow(printWindow, html);
-    printAfterAssetsReady(printWindow);
-    return true;
-  }
-
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "Cetak slip gaji");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
-  document.body.appendChild(iframe);
-
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
-    document.body.removeChild(iframe);
-    return false;
-  }
-
-  writeToWindow(frameWindow, html);
-  printAfterAssetsReady(frameWindow);
-
-  window.setTimeout(() => {
-    if (iframe.parentNode) {
-      document.body.removeChild(iframe);
-    }
-  }, 120_000);
-
-  return true;
+  const html = await preparePrintHtml(
+    generateSlipGajiHTML(data, { assetOrigin })
+  );
+  return openPrintDocument(html, "Cetak slip gaji");
 }

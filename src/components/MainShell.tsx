@@ -24,6 +24,7 @@ import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
 import StatusSinkronisasi from "./StatusSinkronisasi";
 import KalkulatorMengambang from "./KalkulatorMengambang";
 import PratinjauFakturMengambang from "./PratinjauFakturMengambang";
+import { preparePrintHtml } from "@/lib/print-embed-client";
 import {
   fetchSessionUser,
   getCachedSessionUser,
@@ -60,7 +61,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           orientation?: "landscape" | "portrait";
         }>
       ).detail;
-      setFakturPreview({ html, title, orientation });
+      void preparePrintHtml(html).then((embedded) => {
+        setFakturPreview({ html: embedded, title, orientation });
+      });
     };
     window.addEventListener("gemi:preview-faktur", handler);
     return () => window.removeEventListener("gemi:preview-faktur", handler);

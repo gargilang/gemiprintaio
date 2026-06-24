@@ -13,6 +13,7 @@ import {
 } from "@/lib/services/laporan-bulanan-service";
 import { listAccountingPeriods } from "@/lib/services/accounting-periods-service";
 import { generateLaporanBulananHTML } from "@/lib/laporan-bulanan-print";
+import { embedGemiprintFontsInHtml } from "@/lib/print-fonts-server";
 import { generateLaporanBulananSchema } from "@/lib/schemas/laporan";
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { AuthGuardError } from "@/lib/auth-guard-error";
@@ -96,7 +97,7 @@ export async function generateLaporanBulananAction(
       });
     }
 
-    return generateLaporanBulananHTML(laporanData);
+    return embedGemiprintFontsInHtml(generateLaporanBulananHTML(laporanData));
   } catch (err) {
     if (err instanceof AuthGuardError) throw err;
     console.error("generateLaporanBulananAction error:", err);

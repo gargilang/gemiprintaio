@@ -180,7 +180,7 @@ export default function ModalProsesGaji({
         } catch {
           komponen = [];
         }
-        printSlipGaji({
+        await printSlipGaji({
           nama_toko: shop.nama_toko || "gemiprint",
           periode: run.periode,
           tanggal_bayar: run.tanggal_bayar,

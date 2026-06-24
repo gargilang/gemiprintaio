@@ -3,6 +3,8 @@
 
 import type { KategoriTransaksi } from "@/types/database";
 
+export { stripReferenceId } from "@/lib/keperluan-display";
+
 export interface KategoriColor {
   bg: string;
   text: string;
@@ -18,12 +20,6 @@ export interface FinanceCategoryConfig {
   color_border: string;
   metric_contributions?: unknown;
 }
-
-/** Buang token [REF:xxx] dari teks tampilan (tetap tersimpan utuh di database). */
-export const stripReferenceId = (text: string | null | undefined): string => {
-  if (!text) return "";
-  return text.replace(/\s*\[REF:[^\]]+\]/g, "").trim();
-};
 
 /**
  * Kategori "non-kas" — entri jurnal akuntansi yang TIDAK menggerakkan saldo kas

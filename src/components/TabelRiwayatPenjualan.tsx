@@ -493,7 +493,7 @@ export default function TabelRiwayatPenjualan({
       const total = sale.total_jumlah;
       const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       const sisa = Math.max(0, total - bayar);
-      printFaktur({
+      await printFaktur({
         nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
         pelanggan_nama: nama,

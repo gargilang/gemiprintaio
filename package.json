@@ -30,6 +30,7 @@
     "supabase:stress:seed": "node --env-file=.env.local scripts/seed-stress-test-data.mjs",
     "supabase:stress:remove": "node --env-file=.env.local scripts/remove-stress-test-data.mjs",
     "seed:local-admin": "node scripts/seed-local-admin.mjs",
+    "fonts:install-local": "bash scripts/install-gemiprint-fonts.sh",
     "supabase:local:start": "npx supabase start",
     "supabase:local:stop": "npx supabase stop",
     "supabase:local:status": "npx supabase status",

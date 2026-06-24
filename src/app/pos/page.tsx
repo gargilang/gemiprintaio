@@ -1108,7 +1108,7 @@ export default function POSPage() {
           if (printType === "faktur" || printType === "both") {
             const { printFaktur } = await import("@/lib/faktur-print");
             const fakturData = await buildFakturData();
-            const printed = printFaktur(fakturData);
+            const printed = await printFaktur(fakturData);
             if (!printed) {
               showMsg(
                 "error",

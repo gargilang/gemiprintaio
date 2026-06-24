@@ -6,6 +6,9 @@
 import "server-only";
 
 import { db, getServerSupabaseClient } from "../db-unified";
+import { listFinanceCategories } from "./finance-config-service";
+import { stripReferenceId } from "@/lib/keperluan-display";
+import { humanizeKategoriKode } from "@/app/keuangan/keuangan-utils";
 
 // ============================================================================
 // TYPES
@@ -207,6 +210,7 @@ export async function getFormalAccountingReport(data: {
     purchasesRes,
     customersRes,
     vendorsRes,
+    financeCategories,
   ] = await Promise.all([
     db.query<any>("penjualan", {}),
     db.query<any>("item_penjualan", {}),
@@ -217,6 +221,7 @@ export async function getFormalAccountingReport(data: {
     db.query<any>("pembelian", {}),
     db.query<any>("pelanggan", {}),
     db.query<any>("vendor", {}),
+    listFinanceCategories(),
   ]);
 
   for (const result of [
@@ -241,6 +246,11 @@ export async function getFormalAccountingReport(data: {
   const vendorMap = new Map(vendors.map((v: any) => [v.id, v]));
   const purchases = (purchasesRes.data || []).filter(isPosted);
   const purchaseMap = new Map(purchases.map((p: any) => [p.id, p]));
+  const categoryLabelMap = new Map(
+    financeCategories.map((c) => [c.category_code, c.display_name])
+  );
+  const labelKategori = (code: string) =>
+    categoryLabelMap.get(code) || humanizeKategoriKode(code);
 
   const sales = (salesRes.data || [])
     .filter(isPosted)
@@ -455,8 +465,8 @@ export async function getFormalAccountingReport(data: {
       cashOnHand: num(latestCashbookRow?.kas ?? latestCashbookRow?.saldo),
       rows: cashbookRows.map((row: any) => ({
         date: toDateKey(row.tanggal),
-        category: String(row.kategori_transaksi || ""),
-        description: String(row.keperluan || ""),
+        category: labelKategori(String(row.kategori_transaksi || "")),
+        description: stripReferenceId(row.keperluan) || "",
         debit: num(row.debit),
         credit: num(row.kredit),
         balance: num(row.saldo),
