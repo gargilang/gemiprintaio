@@ -74,6 +74,7 @@ export default function ModalLaporanBulanan({ onClose, showNotification }: Props
           accounting_period_id: selectedPeriodId,
           kata_pembuka: kataPembuka,
           kata_penutup: kataPenutup,
+          simpan_riwayat: mode === "print",
         });
 
         if (mode === "preview") {

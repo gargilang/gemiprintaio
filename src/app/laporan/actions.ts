@@ -11,7 +11,9 @@ import {
   simpanLaporanBulanan,
   type LaporanBulananData,
 } from "@/lib/services/laporan-bulanan-service";
+import { listAccountingPeriods } from "@/lib/services/accounting-periods-service";
 import { generateLaporanBulananHTML } from "@/lib/laporan-bulanan-print";
+import { generateLaporanBulananSchema } from "@/lib/schemas/laporan";
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { AuthGuardError } from "@/lib/auth-guard-error";
 import { db } from "@/lib/db-unified";
@@ -29,26 +31,21 @@ export async function getFormalAccountingReportAction(data: {
   }
 }
 
-/**
- * Ambil daftar accounting_periods yang sudah CLOSED, diurutkan terbaru dulu.
- */
+/** Daftar periode akuntansi CLOSED untuk dropdown modal. */
 export async function getClosedAccountingPeriodsAction(): Promise<
   Array<{ id: string; period_key: string; start_date: string; end_date: string }>
 > {
   try {
     await requireAdminOrManager();
-    return await db.queryRaw<{
-      id: string;
-      period_key: string;
-      start_date: string;
-      end_date: string;
-    }>(
-      `SELECT id, period_key, start_date, end_date
-       FROM accounting_periods
-       WHERE status = 'CLOSED'
-       ORDER BY start_date DESC`,
-      []
-    );
+    const periods = await listAccountingPeriods();
+    return periods
+      .filter((p) => p.status === "CLOSED")
+      .map(({ id, period_key, start_date, end_date }) => ({
+        id,
+        period_key,
+        start_date,
+        end_date,
+      }));
   } catch (err) {
     if (err instanceof AuthGuardError) throw err;
     console.error("getClosedAccountingPeriodsAction error:", err);
@@ -56,16 +53,18 @@ export async function getClosedAccountingPeriodsAction(): Promise<
   }
 }
 
-/**
- * Generate HTML laporan bulanan dan simpan record ke DB.
- */
-export async function generateLaporanBulananAction(params: {
-  accounting_period_id: string;
-  kata_pembuka: string;
-  kata_penutup: string;
-}): Promise<string> {
+/** Generate HTML laporan bulanan; simpan riwayat hanya bila simpan_riwayat true. */
+export async function generateLaporanBulananAction(
+  rawParams: unknown
+): Promise<string> {
   try {
     const session = await requireAdminOrManager();
+
+    const parsed = generateLaporanBulananSchema.safeParse(rawParams);
+    if (!parsed.success) {
+      throw new Error("Data laporan tidak valid.");
+    }
+    const params = parsed.data;
 
     const periodRes = await db.queryOne<{ period_key: string; status: string }>(
       "accounting_periods",
@@ -86,14 +85,16 @@ export async function generateLaporanBulananAction(params: {
       kata_penutup: params.kata_penutup,
     });
 
-    await simpanLaporanBulanan({
-      id: randomUUID(),
-      nomor_laporan: nomorLaporan,
-      accounting_period_id: params.accounting_period_id,
-      dibuat_oleh: session.uid,
-      kata_pembuka: params.kata_pembuka,
-      kata_penutup: params.kata_penutup,
-    });
+    if (params.simpan_riwayat) {
+      await simpanLaporanBulanan({
+        id: randomUUID(),
+        nomor_laporan: nomorLaporan,
+        accounting_period_id: params.accounting_period_id,
+        dibuat_oleh: session.uid,
+        kata_pembuka: params.kata_pembuka,
+        kata_penutup: params.kata_penutup,
+      });
+    }
 
     return generateLaporanBulananHTML(laporanData);
   } catch (err) {

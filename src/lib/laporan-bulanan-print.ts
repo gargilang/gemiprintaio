@@ -443,7 +443,7 @@ ${data.kata_pembuka
     <tr>
       <td class="no">7</td>
       <td>Total Pembelian</td>
-      <td class="nilai">${rp(kpi.total_pembelian)} <span style="font-weight:normal;font-size:8pt;color:#555">(${kpi.jumlah_po} PO)</span></td>
+      <td class="nilai">${rp(kpi.total_pembelian)} <span style="font-weight:normal;font-size:8pt;color:#555">(${kpi.jumlah_po} pesanan)</span></td>
     </tr>
     <tr>
       <td class="no">8</td>

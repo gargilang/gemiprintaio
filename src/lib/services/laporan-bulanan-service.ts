@@ -8,11 +8,11 @@ import "server-only";
 
 import { db } from "@/lib/db-unified";
 import { getFormalAccountingReport } from "@/lib/services/reports-service";
+import { listFinanceCategories } from "@/lib/services/finance-config-service";
+import { listBusinessActors } from "@/lib/services/business-actor-service";
 import { formatPeriodKeyLabel } from "@/lib/laporan-bulanan-utils";
 
 export { formatPeriodKeyLabel } from "@/lib/laporan-bulanan-utils";
-
-// ── Tipe data publik ────────────────────────────────────────────────────────
 
 export interface InfoToko {
   nama_toko: string;
@@ -73,29 +73,36 @@ export interface LaporanBulananData {
   kata_penutup: string;
 }
 
-// ── Helper ──────────────────────────────────────────────────────────────────
-
 function num(v: unknown): number {
   const n = Number(v);
   return isFinite(n) ? n : 0;
 }
 
-// ── Fungsi utama ────────────────────────────────────────────────────────────
+function inDateRange(date: string | undefined, start: string, end: string): boolean {
+  const key = String(date ?? "").slice(0, 10);
+  return key >= start && key <= end;
+}
 
-/**
- * Buat nomor laporan sequential: LPR/YYYY/MM/XXX.
- * Hitung berapa laporan sudah ada untuk YYYY/MM yang sama, lalu +1.
- */
+function isPosted(row: { status_transaksi?: string }): boolean {
+  return String(row.status_transaksi ?? "POSTED") === "POSTED";
+}
+
+/** Buat nomor laporan sequential: LPR/YYYY/MM/XXX. */
 export async function generateNomorLaporan(periodKey: string): Promise<string> {
   const [yyyy, mm] = periodKey.split("-");
   const prefix = `LPR/${yyyy}/${mm}/`;
 
-  const rows = await db.queryRaw<{ cnt: number }>(
-    `SELECT COUNT(*) AS cnt FROM laporan_bulanan
-     WHERE nomor_laporan LIKE ?`,
-    [`${prefix}%`]
+  const result = await db.query<{ nomor_laporan: string; is_deleted?: number }>(
+    "laporan_bulanan",
+    {}
   );
-  const count = num(rows[0]?.cnt ?? 0);
+  if (result.error) throw result.error;
+
+  const count = (result.data ?? []).filter(
+    (row) =>
+      (row.is_deleted ?? 0) === 0 && row.nomor_laporan.startsWith(prefix)
+  ).length;
+
   const seq = String(count + 1).padStart(3, "0");
   return `${prefix}${seq}`;
 }
@@ -144,107 +151,78 @@ export async function getLaporanBulananData(params: {
   const period = periodRes.data;
   const { start_date, end_date, period_key } = period;
 
-  const formal = await getFormalAccountingReport({ startDate: start_date, endDate: end_date });
+  const [formal, keuanganRes, pembelianRes, categories, actors, tokoRes] =
+    await Promise.all([
+      getFormalAccountingReport({ startDate: start_date, endDate: end_date }),
+      db.query<{
+        tanggal: string;
+        kategori_transaksi: string;
+        kredit: number;
+        status_transaksi?: string;
+      }>("keuangan", {}),
+      db.query<{
+        tanggal: string;
+        total_jumlah: number;
+        status_transaksi?: string;
+      }>("pembelian", {}),
+      listFinanceCategories(),
+      listBusinessActors(),
+      db.queryOne<{
+        nama_toko: string;
+        slogan: string | null;
+        alamat: string | null;
+        telepon: string | null;
+        email: string | null;
+      }>("pengaturan_toko", { where: { id: "default" } }),
+    ]);
 
-  const gajiRows = await db.queryRaw<{ total: number }>(
-    `SELECT COALESCE(SUM(kredit), 0) AS total
-     FROM keuangan
-     WHERE status_transaksi = 'POSTED'
-       AND kategori_transaksi = 'GAJI'
-       AND tanggal BETWEEN ? AND ?`,
-    [start_date, end_date]
-  );
-  const totalGaji = num(gajiRows[0]?.total ?? 0);
+  if (keuanganRes.error) throw keuanganRes.error;
+  if (pembelianRes.error) throw pembelianRes.error;
+  if (tokoRes.error) throw tokoRes.error;
 
-  const pembelianRows = await db.queryRaw<{ total: number; cnt: number }>(
-    `SELECT COALESCE(SUM(total_jumlah), 0) AS total, COUNT(*) AS cnt
-     FROM pembelian
-     WHERE status_transaksi = 'POSTED'
-       AND tanggal BETWEEN ? AND ?`,
-    [start_date, end_date]
-  );
-  const totalPembelian = num(pembelianRows[0]?.total ?? 0);
-  const jumlahPO = num(pembelianRows[0]?.cnt ?? 0);
+  const totalGaji = (keuanganRes.data ?? [])
+    .filter(
+      (row) =>
+        isPosted(row) &&
+        row.kategori_transaksi === "GAJI" &&
+        inDateRange(row.tanggal, start_date, end_date)
+    )
+    .reduce((sum, row) => sum + num(row.kredit), 0);
 
-  const piutangRows = await db.queryRaw<{ cnt: number; total: number }>(
-    `SELECT COUNT(*) AS cnt, COALESCE(SUM(sisa_piutang), 0) AS total
-     FROM piutang_penjualan
-     WHERE sisa_piutang > 0`,
-    []
+  const pembelianInPeriod = (pembelianRes.data ?? []).filter(
+    (row) =>
+      isPosted(row) && inDateRange(row.tanggal, start_date, end_date)
   );
-  const hutangRows = await db.queryRaw<{ cnt: number; total: number }>(
-    `SELECT COUNT(*) AS cnt, COALESCE(SUM(sisa_hutang), 0) AS total
-     FROM hutang_pembelian
-     WHERE sisa_hutang > 0`,
-    []
+  const totalPembelian = pembelianInPeriod.reduce(
+    (sum, row) => sum + num(row.total_jumlah),
+    0
   );
+  const jumlahPO = pembelianInPeriod.length;
 
-  const inventoriRows = await db.queryRaw<{ nilai: number }>(
-    `SELECT COALESCE(SUM(jumlah_stok * average_cost_per_base_unit), 0) AS nilai
-     FROM barang
-     WHERE lacak_inventori_status != 0`,
-    []
-  );
-  const nilaiInventori = num(inventoriRows[0]?.nilai ?? 0);
-
-  const pegawaiList = await db.queryRaw<{ display_name: string; role_label: string }>(
-    `SELECT p.display_name, r.role_label
-     FROM pegawai p
-     JOIN peran_pegawai r ON p.role_code = r.role_code
-     WHERE p.is_active = 1`,
-    []
-  );
-  const findRole = (keyword: string) =>
-    pegawaiList.find((p) =>
-      p.role_label.toLowerCase().includes(keyword.toLowerCase())
+  const findByRoleCode = (keyword: string) =>
+    actors.find((actor) =>
+      actor.role_code.toLowerCase().includes(keyword.toLowerCase())
     )?.display_name ?? null;
 
   const ttd: TtdInfo = {
-    nama_direktur: findRole("direktur"),
-    nama_manajer: findRole("manajer") ?? findRole("manager"),
+    nama_direktur: findByRoleCode("direktur"),
+    nama_manajer: findByRoleCode("manajer") ?? findByRoleCode("manager"),
   };
 
-  const tokoRes = await db.queryOne<{
-    nama_toko: string;
-    slogan: string | null;
-    alamat: string | null;
-    telepon: string | null;
-    email: string | null;
-  }>("pengaturan_toko", { where: { id: "default" } });
-  const toko = tokoRes.data;
-
-  const kasRows = await db.queryRaw<{
-    tanggal: string;
-    kategori_transaksi: string;
-    keperluan: string | null;
-    debit: number;
-    kredit: number;
-    saldo: number;
-  }>(
-    `SELECT tanggal, kategori_transaksi, keperluan, debit, kredit, saldo
-     FROM keuangan
-     WHERE status_transaksi = 'POSTED'
-       AND tanggal BETWEEN ? AND ?
-     ORDER BY tanggal ASC, dibuat_pada ASC`,
-    [start_date, end_date]
+  const catMap = new Map(
+    categories.map((cat) => [cat.category_code, cat.display_name])
   );
 
-  const catDefs = await db.queryRaw<{ category_code: string; display_name: string }>(
-    `SELECT category_code, display_name FROM finance_category_definitions`,
-    []
-  );
-  const catMap = new Map(catDefs.map((c) => [c.category_code, c.display_name]));
-
-  const bukuKas: BarisBukuKas[] = kasRows.map((row) => ({
-    tanggal: row.tanggal,
-    kategori_label: catMap.get(row.kategori_transaksi) ?? row.kategori_transaksi,
-    keperluan: row.keperluan ?? "",
+  const bukuKas: BarisBukuKas[] = formal.cashReport.rows.map((row) => ({
+    tanggal: row.date,
+    kategori_label: catMap.get(row.category) ?? row.category,
+    keperluan: row.description,
     debit: num(row.debit),
-    kredit: num(row.kredit),
-    saldo: num(row.saldo),
+    kredit: num(row.credit),
+    saldo: num(row.balance),
   }));
 
-  const saldoAkhir = bukuKas.length > 0 ? bukuKas[bukuKas.length - 1].saldo : 0;
+  const saldoAkhir = num(formal.cashReport.endingBalance);
 
   const omzet = formal.profitLoss.revenue;
   const hpp = formal.profitLoss.cogs;
@@ -268,8 +246,10 @@ export async function getLaporanBulananData(params: {
     margin_bersih_persen: marginBersih,
     total_pembelian: totalPembelian,
     jumlah_po: jumlahPO,
-    nilai_inventori: nilaiInventori,
+    nilai_inventori: num(formal.inventory.inventoryValue),
   };
+
+  const toko = tokoRes.data;
 
   return {
     nomor_laporan: params.nomor_laporan,
@@ -285,10 +265,10 @@ export async function getLaporanBulananData(params: {
     },
     kpi,
     hutang_piutang: {
-      jumlah_piutang: num(piutangRows[0]?.cnt ?? 0),
-      total_piutang: num(piutangRows[0]?.total ?? 0),
-      jumlah_hutang: num(hutangRows[0]?.cnt ?? 0),
-      total_hutang: num(hutangRows[0]?.total ?? 0),
+      jumlah_piutang: formal.receivables.count,
+      total_piutang: formal.receivables.totalOutstanding,
+      jumlah_hutang: formal.payables.count,
+      total_hutang: formal.payables.totalOutstanding,
     },
     buku_kas: bukuKas,
     saldo_akhir: saldoAkhir,
