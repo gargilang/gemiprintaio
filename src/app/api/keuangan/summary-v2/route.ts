@@ -17,6 +17,7 @@ import {
   disableLegacyOrphanActorFormulas,
   getActorFinanceSummary,
   syncAllActiveActorFormulas,
+  applyPeriodScopedFormulaOverrides,
 } from "@/lib/services/formula-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 import {
@@ -63,14 +64,9 @@ export async function GET(request: NextRequest) {
       currentPeriod ? computePeriodMetrics(currentPeriod.id) : Promise.resolve(null),
     ]);
 
-    // Inject period-scoped omzet/biaya/laba ke latestMap supaya formula Bagi Hasil
-    // mengevaluasi berdasarkan periode aktif, bukan akumulasi sepanjang masa.
-    if (periodMetrics) {
-      latestMap.omzet = periodMetrics.omzet;
-      latestMap.biaya_operasional = periodMetrics.biaya_operasional;
-      latestMap.biaya_bahan = periodMetrics.biaya_bahan;
-      latestMap.laba_bersih = periodMetrics.laba_bersih;
-    }
+    // Inject period-scoped omzet/biaya/laba + bagi hasil/bonus ke latestMap
+    // supaya panel Pengurus Usaha reset mengikuti periode aktif.
+    applyPeriodScopedFormulaOverrides(latestMap, actors, formulas, periodMetrics);
 
     // 3. Disable legacy orphan actor formulas (no actor_id) using the
     //    already-fetched formula list — no extra DB read.

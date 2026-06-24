@@ -33,7 +33,9 @@ import {
   listActorRoles,
   listBusinessActors,
   slugifyActorName,
+  type BusinessActor,
 } from "@/lib/services/business-actor-service";
+import type { PeriodMetrics } from "@/lib/services/periode-metrics-service";
 
 // ── AST builders (small composable helpers) ─────────────────────────────────
 
@@ -551,6 +553,51 @@ export async function getActorFinanceSummary(
   );
 
   return { columns, rows: [...actorRows, ...globalRows] };
+}
+
+/**
+ * Ganti nilai formula bagi hasil / bonus di `latestMap` dengan hitungan
+ * period-scoped (bukan running total `transaksi_terhitung`).
+ *
+ * Dipanggil dari summary-v2 saat tidak ada filter bulan historis: omzet/biaya/laba
+ * sudah di-scope per `periode_id`, maka bagi hasil (% laba) dan bonus (% omzet/dll)
+ * harus ikut dihitung ulang dari metrik periode yang sama.
+ */
+export function applyPeriodScopedFormulaOverrides(
+  latestMap: Record<string, number>,
+  actors: BusinessActor[],
+  formulas: FormulaDefinition[],
+  periodMetrics: PeriodMetrics | null
+): void {
+  if (!periodMetrics) return;
+
+  latestMap.omzet = periodMetrics.omzet;
+  latestMap.biaya_operasional = periodMetrics.biaya_operasional;
+  latestMap.biaya_bahan = periodMetrics.biaya_bahan;
+  latestMap.laba_bersih = periodMetrics.laba_bersih;
+
+  const actorById = new Map(actors.map((a) => [a.id, a]));
+
+  for (const f of formulas) {
+    if (!f.enabled || !f.actorId) continue;
+    const actor = actorById.get(f.actorId);
+    if (!actor) continue;
+    const key = f.formulaKey ?? f.dbColumn;
+    if (!key) continue;
+
+    if (f.formulaGroup === "profit_share" && actor.profit_share_percent !== null) {
+      const percent = Number(actor.profit_share_percent);
+      latestMap[key] = Math.round((periodMetrics.laba_bersih * percent) / 100);
+      continue;
+    }
+
+    if (f.formulaGroup === "bonus" && actor.bonus_percent !== null) {
+      const source = actor.bonus_source_formula_key || "omzet";
+      const sourceVal = latestMap[source] ?? 0;
+      const percent = Number(actor.bonus_percent);
+      latestMap[key] = Math.round((sourceVal * percent) / 100);
+    }
+  }
 }
 
 /** Hitung formula bertipe actor yang aktif tapi tidak ditautkan ke business_actor mana pun. */
