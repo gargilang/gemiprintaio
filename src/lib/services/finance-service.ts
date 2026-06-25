@@ -7,7 +7,9 @@ import "server-only";
 
 import {
   type CashbookRecalcInputRow,
+  buildOutputRowFromPersisted,
   computeCashbookRecalculationUpdates,
+  computeSingleCashbookRowUpdate,
   sortCashbookRowsForRecalc,
 } from "@/lib/ast/cashbook-recalc";
 import {
@@ -158,7 +160,10 @@ export async function createCashBookEntry(data: {
   const result = await db.insert("keuangan", entry);
   if (result.error) throw result.error;
 
-  await recalculateCashbookIfAvailable();
+  const recalced = await recalculateAppendedCashbookEntry(id);
+  if (!recalced) {
+    await recalculateCashbookIfAvailable();
+  }
 
   const cashBook = await getCashBookEntry(id);
   return { id, cashBook };
@@ -212,6 +217,166 @@ const runRecalcCoalesced = createCoalescedRunner(recalculateCashbookCore);
 
 export function recalculateCashbookIfAvailable(): Promise<boolean> {
   return runRecalcCoalesced();
+}
+
+/** Kunci metrik kumulatif yang hanya disimpan di transaksi_terhitung (bukan kolom keuangan). */
+const TC_ONLY_METRIC_KEYS = ["modal_kas", "saldo_kasbon", "kas"] as const;
+
+/**
+ * Pulihkan mirror transaksi_terhitung bila baris terbaru belum punya hasil AST.
+ * Dipanggil sebelum membaca kartu ringkasan (Keuangan / Penggajian).
+ */
+export async function ensureLatestCashbookMetricsFresh(): Promise<void> {
+  const sb = getServerSupabaseClient();
+  if (!sb) return;
+
+  const { data: latest, error } = await sb
+    .from("keuangan")
+    .select("id")
+    .is("diarsipkan_pada", null)
+    .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
+    .order("urutan_tampilan", { ascending: false })
+    .order("dibuat_pada", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !latest?.id) return;
+
+  const { data: tcRows, error: tcErr } = await sb
+    .from("transaksi_terhitung")
+    .select("formula_key")
+    .eq("transaction_id", latest.id);
+
+  if (tcErr) return;
+
+  const keys = new Set((tcRows ?? []).map((r) => r.formula_key));
+  const missingTcOnly = TC_ONLY_METRIC_KEYS.some((k) => !keys.has(k));
+  if ((tcRows ?? []).length === 0 || missingTcOnly) {
+    await recalculateAppendedCashbookEntry(latest.id);
+  }
+}
+
+/**
+ * Hitung ulang satu baris yang baru ditambahkan di ujung ledger (O(1)).
+ * Mengasumsikan baris sebelumnya sudah konsisten — aman untuk createCashBookEntry.
+ */
+export async function recalculateAppendedCashbookEntry(
+  transactionId: string,
+): Promise<boolean> {
+  try {
+    const row = await getCashBookEntry(transactionId);
+    if (!row || row.status_transaksi === "VOIDED" || row.diarsipkan_pada) {
+      return false;
+    }
+
+    const [formulas, partners] = await Promise.all([
+      listActiveFormulas(),
+      listPartners(),
+    ]);
+
+    const sb = getServerSupabaseClient();
+    let prevRow: CashbookRecalcInputRow | null = null;
+    let rowIndex = 0;
+
+    if (sb) {
+      const { data: prevRows, error } = await sb
+        .from("keuangan")
+        .select("*")
+        .is("diarsipkan_pada", null)
+        .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
+        .lt("urutan_tampilan", row.urutan_tampilan)
+        .order("urutan_tampilan", { ascending: true })
+        .order("dibuat_pada", { ascending: true });
+      if (error) {
+        console.warn("[recalculateAppendedCashbookEntry] fetch prev:", error);
+        return false;
+      }
+      const sortedPrev = sortCashbookRowsForRecalc(
+        (prevRows ?? []) as CashbookRecalcInputRow[],
+      );
+      rowIndex = sortedPrev.length;
+      prevRow = sortedPrev[sortedPrev.length - 1] ?? null;
+    } else {
+      const allRows = await db.query<CashbookRecalcInputRow>("keuangan", {
+        where: { diarsipkan_pada: null },
+        orderBy: { column: "urutan_tampilan", ascending: true },
+      });
+      const sorted = sortCashbookRowsForRecalc(
+        (allRows.data ?? []).filter((r) => r.status_transaksi !== "VOIDED"),
+      );
+      rowIndex = sorted.findIndex((r) => r.id === transactionId);
+      if (rowIndex < 0) return false;
+      prevRow = rowIndex > 0 ? sorted[rowIndex - 1] : null;
+    }
+
+    const { getComputedRow } = await import(
+      "@/lib/services/transaction-computed-service"
+    );
+    const prevOutputs = prevRow
+      ? buildOutputRowFromPersisted(
+          prevRow,
+          await getComputedRow(prevRow.id),
+          formulas,
+        )
+      : {};
+
+    const batch = computeSingleCashbookRowUpdate(
+      row as CashbookRecalcInputRow,
+      prevOutputs,
+      rowIndex,
+      formulas,
+      partners,
+    );
+
+    if (Object.keys(batch.updates).length > 0) {
+      const res = await db.update("keuangan", transactionId, batch.updates);
+      if (res.error) {
+        console.warn("[recalculateAppendedCashbookEntry] update:", res.error);
+        return false;
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const computedRows = Object.entries(batch.computed).map(
+      ([formulaKey, value]) => ({
+        transaction_id: transactionId,
+        formula_key: formulaKey,
+        value,
+        computed_at: nowIso,
+      }),
+    );
+
+    if (computedRows.length > 0 && sb) {
+      const { error: tcErr } = await sb
+        .from("transaksi_terhitung")
+        .upsert(computedRows, { onConflict: "transaction_id,formula_key" });
+      if (tcErr) {
+        console.warn("[recalculateAppendedCashbookEntry] tc upsert:", tcErr);
+        return false;
+      }
+    } else if (computedRows.length > 0) {
+      for (const rowPayload of computedRows) {
+        await db.executeRaw(
+          `INSERT INTO transaksi_terhitung (transaction_id, formula_key, value, computed_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(transaction_id, formula_key) DO UPDATE SET
+             value = excluded.value,
+             computed_at = excluded.computed_at`,
+          [
+            rowPayload.transaction_id,
+            rowPayload.formula_key,
+            rowPayload.value,
+            rowPayload.computed_at,
+          ],
+        );
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.warn("[recalculateAppendedCashbookEntry] failed:", e);
+    return false;
+  }
 }
 
 async function recalculateCashbookCore(): Promise<boolean> {

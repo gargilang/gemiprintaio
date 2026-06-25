@@ -19,6 +19,7 @@ class DetailKasbonSheet extends ConsumerStatefulWidget {
 
 class _DetailKasbonSheetState extends ConsumerState<DetailKasbonSheet> {
   List<Map<String, dynamic>> _riwayat = [];
+  int _totalRiwayat = 0;
   bool _isLoading = true;
   final _fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
@@ -36,6 +37,7 @@ class _DetailKasbonSheetState extends ConsumerState<DetailKasbonSheet> {
       if (mounted) {
         setState(() {
           _riwayat = (data['pinjaman'] as List<dynamic>?)?.map((j) => j as Map<String, dynamic>).toList() ?? [];
+          _totalRiwayat = (data['totalRiwayat'] as num?)?.toInt() ?? _riwayat.length;
           _isLoading = false;
         });
       }
@@ -127,7 +129,17 @@ class _DetailKasbonSheetState extends ConsumerState<DetailKasbonSheet> {
           Expanded(child: _actionButton('Bayar Tunai', Icons.payments_rounded, Colors.green.shade50, Colors.green.shade600, () => _doAction('bayar'))),
         ])),
         const SizedBox(height: 12), const Divider(height: 1),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Row(children: [Text('Riwayat Kasbon', style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 1))])),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Riwayat Kasbon', style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 1)),
+              if (!_isLoading && _totalRiwayat > _riwayat.length)
+                Text('${_riwayat.length} dari $_totalRiwayat terbaru', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+            ],
+          ),
+        ),
         Flexible(child: _isLoading ? const Center(child: CircularProgressIndicator()) : _riwayat.isEmpty ? Center(child: Text('Belum ada riwayat', style: TextStyle(color: Colors.grey.shade500, fontSize: 13))) : ListView.builder(shrinkWrap: true, padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: _riwayat.length, itemBuilder: (_, i) {
           final row = _riwayat[i];
           final isTarik = row['jenis'] == 'TARIK';

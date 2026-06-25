@@ -12,7 +12,7 @@ const conn = process.env.DATABASE_URL || process.env.DIRECT_URL;
 if (!conn) {
   console.error(
     "Error: DATABASE_URL atau DIRECT_URL tidak ditemukan di .env.local.\n" +
-      "Buka Supabase Dashboard → Settings → Database → Connection string, lalu tambahkan ke .env.local."
+      "Buka Supabase Dashboard → Settings → Database → Connection string, lalu tambahkan ke .env.local.",
   );
   process.exit(1);
 }
@@ -23,7 +23,7 @@ if (pgDumpCheck.status !== 0) {
   console.error(
     "Error: pg_dump tidak ditemukan. Install dengan:\n" +
       "  sudo pacman -S --noconfirm postgresql\n" +
-      "Lalu jalankan ulang."
+      "Lalu jalankan ulang.",
   );
   process.exit(1);
 }
@@ -65,21 +65,28 @@ const pad = (n) => String(n).padStart(2, "0");
 const timestamp =
   `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
   `T${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-const label = process.argv[2] ? `-${process.argv[2].replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+const label = process.argv[2]
+  ? `-${process.argv[2].replace(/[^a-zA-Z0-9_-]/g, "_")}`
+  : "";
 const filename = `snapshot-${timestamp}${label}.sql`;
 const filepath = resolve(snapshotsDir, filename);
 
+console.log(
+  `Target DB: ${parsed.hostname}:${parsed.port || "5432"}/${parsed.pathname.slice(1)}`,
+);
 console.log(`Membuat snapshot schema public → ${filepath} ...`);
 
 // Jalankan pg_dump
 const result = spawnSync(
   "pg_dump",
   ["--schema=public", "--no-owner", "--no-privileges", "-f", filepath],
-  { env: pgEnv, stdio: ["ignore", "inherit", "pipe"] }
+  { env: pgEnv, stdio: ["ignore", "inherit", "pipe"] },
 );
 
 if (result.status !== 0) {
-  const errMsg = result.stderr ? result.stderr.toString() : "(tidak ada pesan error)";
+  const errMsg = result.stderr
+    ? result.stderr.toString()
+    : "(tidak ada pesan error)";
   console.error("pg_dump gagal:\n" + errMsg);
   process.exit(1);
 }
@@ -97,5 +104,5 @@ console.log(
     `  Ukuran: ${sizeKB} KB\n` +
     `  Tabel : ${tableCount} CREATE TABLE ditemukan\n` +
     `  Data  : ${copyCount} blok COPY ditemukan\n\n` +
-    `Pengingat: Salin folder \`snapshots/\` ke Google Drive/Dropbox agar aman bila laptop rusak.`
+    `Pengingat: Salin folder \`snapshots/\` ke Google Drive/Dropbox agar aman bila laptop rusak.`,
 );

@@ -20,7 +20,7 @@ import {
   listActorRoles,
 } from "@/lib/services/business-actor-service";
 import { syncFormulasForActor } from "@/lib/services/formula-service";
-import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
+import { recalculateCashbookIfAvailable, ensureLatestCashbookMetricsFresh } from "@/lib/services/finance-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
@@ -125,6 +125,7 @@ export async function getMetrikKasAction(): Promise<{
   saldo_kasbon: number;
 }> {
   try {
+    await ensureLatestCashbookMetricsFresh();
     const latestMap = await getLatestPerFormulaKey();
     return {
       kas: latestMap.kas ?? 0,
@@ -366,11 +367,26 @@ export async function hapusKomponenAction(id: string) {
 }
 
 // ── Pinjaman karyawan (kasbon) ───────────────────────────────────────────────
+const RIWAYAT_KASBON_LIMIT = 30;
+
 export async function listPinjamanAction(actorId?: string) {
   try {
-    const pinjaman = await listPinjaman(actorId);
-    const saldo = actorId ? await hitungSaldoPinjaman(actorId) : null;
-    return { pinjaman, saldo };
+    // Ambil semua sekali — hitung saldo di memori, potong untuk tampilan
+    const semua = await listPinjaman(actorId);
+    let saldo: number | null = null;
+    if (actorId) {
+      saldo = 0;
+      for (const r of semua) {
+        const jumlah = Number(r.jumlah) || 0;
+        if (r.jenis === "TARIK") saldo += jumlah;
+        else saldo -= jumlah;
+      }
+    }
+    return {
+      pinjaman: semua.slice(0, RIWAYAT_KASBON_LIMIT),
+      totalRiwayat: semua.length,
+      saldo,
+    };
   } catch (error) {
     console.error("listPinjamanAction error:", error);
     throw error;

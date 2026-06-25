@@ -70,81 +70,104 @@ export async function getMonthSummary(
 /**
  * Nilai terakhir per formula_key — berguna untuk metrik kumulatif di mana
  * "baris terakhir di periode" adalah angka yang benar untuk ditampilkan.
+ *
+ * Strategi: ambil baris keuangan aktif dengan urutan_tampilan tertinggi,
+ * lalu gabungkan kolom legacy (saldo, omzet, …) dengan transaksi_terhitung
+ * milik baris itu. Lebih andal daripada scan seluruh transaksi_terhitung
+ * (yang bisa basi bila recalc penuh belum sempat menulis mirror v2).
  */
 export async function getLatestPerFormulaKey(
   yearMonth?: string
 ): Promise<ComputedSummary> {
-  // Pendekatan: untuk tiap formula_key, ambil nilai dari transaksi terbaru
-  // (urut urutan_tampilan, lalu dibuat_pada) di window.
   const sb = getServerSupabaseClient();
   if (sb) {
     let q = sb
-      .from("transaksi_terhitung")
-      .select("transaction_id, formula_key, value, keuangan!inner(tanggal, urutan_tampilan, dibuat_pada)");
+      .from("keuangan")
+      .select(
+        "id, saldo, omzet, biaya_operasional, biaya_bahan, laba_bersih, tanggal, urutan_tampilan",
+      )
+      .is("diarsipkan_pada", null)
+      .or("status_transaksi.is.null,status_transaksi.neq.VOIDED")
+      .order("urutan_tampilan", { ascending: false })
+      .order("dibuat_pada", { ascending: false })
+      .limit(1);
+
     if (yearMonth) {
-      // Supabase tidak mendukung strftime — jatuh balik ke filter rentang.
       const [year, month] = yearMonth.split("-").map(Number);
       if (year && month) {
         const start = new Date(year, month - 1, 1).toISOString().slice(0, 10);
         const endMonth = month === 12 ? 1 : month + 1;
         const endYear = month === 12 ? year + 1 : year;
         const end = new Date(endYear, endMonth - 1, 1).toISOString().slice(0, 10);
-        q = q.gte("keuangan.tanggal", start).lt("keuangan.tanggal", end);
+        q = q.gte("tanggal", start).lt("tanggal", end);
       }
     }
-    const { data } = await q;
-    if (Array.isArray(data) && data.length > 0) {
-      // Group: untuk tiap formula_key, simpan baris dengan urutan_tampilan tertinggi.
-      // Supabase bisa mengembalikan baris yang di-join sebagai array atau objek
-      // tunggal tergantung kardinalitas relasi — normalisasi keduanya.
-      const grouped = new Map<string, { order: number; val: number }>();
-      type JoinRow = {
-        formula_key: string;
-        value: number | string;
-        keuangan:
-          | { urutan_tampilan?: number | null }
-          | Array<{ urutan_tampilan?: number | null }>
-          | null;
+
+    const { data: latestRow, error } = await q.maybeSingle();
+    if (!error && latestRow) {
+      const out: ComputedSummary = {
+        saldo: Number(latestRow.saldo ?? 0),
+        omzet: Number(latestRow.omzet ?? 0),
+        biaya_operasional: Number(latestRow.biaya_operasional ?? 0),
+        biaya_bahan: Number(latestRow.biaya_bahan ?? 0),
+        laba_bersih: Number(latestRow.laba_bersih ?? 0),
       };
-      for (const r of data as unknown as JoinRow[]) {
-        const k = Array.isArray(r.keuangan) ? r.keuangan[0] : r.keuangan;
-        const order = k?.urutan_tampilan ?? 0;
-        const existing = grouped.get(r.formula_key);
-        if (!existing || order > existing.order) {
-          grouped.set(r.formula_key, { order, val: Number(r.value) });
-        }
+
+      const { data: tcRows } = await sb
+        .from("transaksi_terhitung")
+        .select("formula_key, value")
+        .eq("transaction_id", latestRow.id);
+
+      for (const r of tcRows ?? []) {
+        out[r.formula_key] = Number(r.value ?? 0);
       }
-      const out: ComputedSummary = {};
-      for (const [k, v] of grouped) out[k] = v.val;
       return out;
     }
   }
 
   try {
     const params: unknown[] = [];
-    let whereClause = "";
+    let whereClause =
+      "WHERE k.diarsipkan_pada IS NULL AND COALESCE(k.status_transaksi, 'POSTED') <> 'VOIDED'";
     if (yearMonth) {
-      whereClause = `WHERE strftime('%Y-%m', k.tanggal) = ?`;
+      whereClause += ` AND strftime('%Y-%m', k.tanggal) = ?`;
       params.push(yearMonth);
     }
-    const rows = await db.queryRaw<{ formula_key: string; value: number }>(
-      `SELECT tc.formula_key AS formula_key, tc.value AS value
-         FROM transaksi_terhitung tc
-         JOIN keuangan k ON k.id = tc.transaction_id
+
+    const latestKeuangan = await db.queryRaw<{
+      id: string;
+      saldo: number;
+      omzet: number;
+      biaya_operasional: number;
+      biaya_bahan: number;
+      laba_bersih: number;
+    }>(
+      `SELECT id, saldo, omzet, biaya_operasional, biaya_bahan, laba_bersih
+         FROM keuangan k
          ${whereClause}
-         JOIN (
-           SELECT tc2.formula_key, MAX(k2.urutan_tampilan) AS max_order
-             FROM transaksi_terhitung tc2
-             JOIN keuangan k2 ON k2.id = tc2.transaction_id
-            ${whereClause ? whereClause.replace(/\bk\b/g, "k2") : ""}
-            GROUP BY tc2.formula_key
-         ) latest
-           ON latest.formula_key = tc.formula_key
-          AND latest.max_order   = k.urutan_tampilan`,
-      [...params, ...(yearMonth ? [yearMonth] : [])]
+         ORDER BY k.urutan_tampilan DESC, k.dibuat_pada DESC
+         LIMIT 1`,
+      params,
     );
-    const out: ComputedSummary = {};
-    for (const r of rows) out[r.formula_key] = Number(r.value ?? 0);
+
+    const row = latestKeuangan[0];
+    if (!row) return {};
+
+    const out: ComputedSummary = {
+      saldo: Number(row.saldo ?? 0),
+      omzet: Number(row.omzet ?? 0),
+      biaya_operasional: Number(row.biaya_operasional ?? 0),
+      biaya_bahan: Number(row.biaya_bahan ?? 0),
+      laba_bersih: Number(row.laba_bersih ?? 0),
+    };
+
+    const tcRows = await db.queryRaw<{ formula_key: string; value: number }>(
+      "SELECT formula_key, value FROM transaksi_terhitung WHERE transaction_id = ?",
+      [row.id],
+    );
+    for (const r of tcRows) {
+      out[r.formula_key] = Number(r.value ?? 0);
+    }
     return out;
   } catch {
     return {};

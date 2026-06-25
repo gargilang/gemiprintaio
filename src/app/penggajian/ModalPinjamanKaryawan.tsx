@@ -42,6 +42,7 @@ export interface ModalPinjamanKaryawanProps {
 
 interface PinjamanData {
   pinjaman: PinjamanKaryawan[];
+  totalRiwayat: number;
   saldo: number | null;
 }
 
@@ -59,6 +60,7 @@ export default function ModalPinjamanKaryawan({
     () => listPinjamanAction(actor.id),
   );
   const riwayat = useMemo(() => data?.pinjaman ?? [], [data]);
+  const totalRiwayat = data?.totalRiwayat ?? 0;
   const saldo = data?.saldo ?? 0;
 
   const [mode, setMode] = useState<"TARIK" | "BAYAR_TUNAI">("TARIK");
@@ -257,9 +259,16 @@ export default function ModalPinjamanKaryawan({
 
           {/* Riwayat */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
-              Riwayat
-            </h3>
+            <div className="flex items-baseline justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Riwayat
+              </h3>
+              {totalRiwayat > riwayat.length && (
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  Menampilkan {riwayat.length} dari {totalRiwayat} transaksi terbaru
+                </span>
+              )}
+            </div>
             {isLoading ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Memuat...
@@ -269,7 +278,7 @@ export default function ModalPinjamanKaryawan({
                 Belum ada transaksi kasbon.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-64 overflow-y-auto">
                 {riwayat.map((p) => (
                   <li
                     key={p.id}

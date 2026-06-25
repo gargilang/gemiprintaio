@@ -17,7 +17,7 @@ const conn = process.env.DATABASE_URL || process.env.DIRECT_URL;
 if (!conn) {
   console.error(
     "Error: DATABASE_URL atau DIRECT_URL tidak ditemukan di .env.local.\n" +
-      "Buka Supabase Dashboard → Settings → Database → Connection string, lalu tambahkan ke .env.local."
+      "Buka Supabase Dashboard → Settings → Database → Connection string, lalu tambahkan ke .env.local.",
   );
   process.exit(1);
 }
@@ -28,7 +28,7 @@ if (psqlCheck.status !== 0) {
   console.error(
     "Error: psql tidak ditemukan. Install dengan:\n" +
       "  sudo pacman -S --noconfirm postgresql\n" +
-      "Lalu jalankan ulang."
+      "Lalu jalankan ulang.",
   );
   process.exit(1);
 }
@@ -60,7 +60,10 @@ const pgEnv = {
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const snapshotsDir = resolve(projectRoot, "snapshots");
-const wipeSQL = resolve(dirname(fileURLToPath(import.meta.url)), "wipe-public-schema.sql");
+const wipeSQL = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "wipe-public-schema.sql",
+);
 
 // Daftar snapshot, diurutkan by mtime descending (terbaru duluan)
 function listSnapshots() {
@@ -120,7 +123,7 @@ if (isListMode) {
     const copyCount = countCopyBlocks(s.path);
     console.log(
       `  ${String(i + 1).padStart(2)}. ${s.name}\n` +
-        `      Ukuran: ${formatSize(s.size)}  |  Tanggal: ${formatDate(s.mtime)}  |  Blok data: ${copyCount}\n`
+        `      Ukuran: ${formatSize(s.size)}  |  Tanggal: ${formatDate(s.mtime)}  |  Blok data: ${copyCount}\n`,
     );
   });
   process.exit(0);
@@ -131,7 +134,7 @@ const snapshots = listSnapshots();
 if (snapshots.length === 0) {
   console.log(
     "Tidak ada snapshot tersimpan di folder snapshots/.\n" +
-      "Jalankan dulu: npm run db:snapshot"
+      "Jalankan dulu: npm run db:snapshot",
   );
   process.exit(0);
 }
@@ -141,7 +144,9 @@ let chosen;
 if (snapshotArg) {
   // Mode non-interaktif: path diberikan via argumen
   const fullPath = resolve(projectRoot, snapshotArg);
-  const found = snapshots.find((s) => s.path === fullPath || s.name === basename(snapshotArg));
+  const found = snapshots.find(
+    (s) => s.path === fullPath || s.name === basename(snapshotArg),
+  );
   if (!found) {
     console.error(`Error: Snapshot tidak ditemukan: ${snapshotArg}`);
     process.exit(1);
@@ -149,7 +154,7 @@ if (snapshotArg) {
   if (!isConfirm) {
     console.error(
       "Error: Mode non-interaktif butuh flag --confirm.\n" +
-        `Contoh: npm run db:restore -- ${snapshotArg} --confirm`
+        `Contoh: npm run db:restore -- ${snapshotArg} --confirm`,
     );
     process.exit(1);
   }
@@ -161,14 +166,19 @@ if (snapshotArg) {
     const copyCount = countCopyBlocks(s.path);
     console.log(
       `  ${String(i + 1).padStart(2)}. ${s.name}\n` +
-        `      Ukuran: ${formatSize(s.size)}  |  Tanggal: ${formatDate(s.mtime)}  |  Blok data: ${copyCount}\n`
+        `      Ukuran: ${formatSize(s.size)}  |  Tanggal: ${formatDate(s.mtime)}  |  Blok data: ${copyCount}\n`,
     );
   });
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   const ask = (q) => new Promise((res) => rl.question(q, res));
 
-  const indexStr = await ask(`Pilih nomor snapshot (1-${snapshots.length}), atau tekan Enter untuk batal: `);
+  const indexStr = await ask(
+    `Pilih nomor snapshot (1-${snapshots.length}), atau tekan Enter untuk batal: `,
+  );
   if (!indexStr.trim()) {
     console.log("Dibatalkan.");
     rl.close();
@@ -193,12 +203,12 @@ if (snapshotArg) {
       `  Snapshot : ${chosen.name}\n` +
       `  Database : ${parsed.hostname}${parsed.pathname}\n` +
       (isProd ? "  STATUS   : *** DATABASE PRODUKSI ***\n" : "") +
-      "════════════════════════════════════════════════════════════════\n"
+      "════════════════════════════════════════════════════════════════\n",
   );
 
   // Konfirmasi ganda: ketik nama file persis
   const confirm1 = await ask(
-    `Ketik nama file snapshot persis untuk konfirmasi\n(atau Enter untuk batal): `
+    `Ketik nama file snapshot persis untuk konfirmasi\n(atau Enter untuk batal): `,
   );
   if (confirm1.trim() !== chosen.name) {
     console.log("Nama tidak cocok. Restore dibatalkan.");
@@ -207,7 +217,7 @@ if (snapshotArg) {
   }
 
   const confirm2 = await ask(
-    `Konfirmasi terakhir. Ketik "HAPUS" untuk melanjutkan (atau Enter untuk batal): `
+    `Konfirmasi terakhir. Ketik "HAPUS" untuk melanjutkan (atau Enter untuk batal): `,
   );
   rl.close();
   if (confirm2.trim() !== "HAPUS") {
@@ -219,7 +229,7 @@ if (snapshotArg) {
 // === Mulai restore ===
 if (isProd) {
   console.log(
-    "\nPeringatan: Anda merestore ke DATABASE PRODUKSI. Melanjutkan sesuai permintaan...\n"
+    "\nPeringatan: Anda merestore ke DATABASE PRODUKSI. Melanjutkan sesuai permintaan...\n",
   );
 }
 
@@ -246,7 +256,9 @@ const psqlResult = spawnSync("psql", ["-f", chosen.path], {
 });
 
 if (psqlResult.status !== 0) {
-  const errMsg = psqlResult.stderr ? psqlResult.stderr.toString() : "(tidak ada pesan error)";
+  const errMsg = psqlResult.stderr
+    ? psqlResult.stderr.toString()
+    : "(tidak ada pesan error)";
   console.error("psql gagal:\n" + errMsg);
   process.exit(1);
 }
@@ -283,5 +295,5 @@ const copyCount = countCopyBlocks(chosen.path);
 console.log(
   `\nRestore selesai!\n` +
     `  Snapshot : ${chosen.name}\n` +
-    `  Blok data: ${copyCount} tabel berhasil direstore\n`
+    `  Blok data: ${copyCount} tabel berhasil direstore\n`,
 );

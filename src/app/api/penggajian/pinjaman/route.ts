@@ -5,23 +5,40 @@ export const dynamic = "force-dynamic";
 import { requireAdminOrManager, AuthGuardError } from "@/lib/auth-guard-server";
 import {
   listPinjaman,
-  hitungSaldoPinjaman,
   catatTarikPinjaman,
   bayarPinjamanTunai,
   revertPinjaman,
 } from "@/lib/services/pinjaman-karyawan-service";
 import { pinjamanActionSchema } from "@/lib/schemas/penggajian";
 
+const RIWAYAT_LIMIT = 30;
+
 /**
  * GET /api/penggajian/pinjaman?actor_id=... — daftar pinjaman + saldo (ungated).
- * Tanpa actor_id: kembalikan seluruh ledger (tanpa saldo).
+ * Ambil semua sekali, hitung saldo di memori, kembalikan maksimal 30 terbaru +
+ * total keseluruhan sehingga klien bisa menampilkan "X dari Y transaksi".
+ * Tanpa actor_id: kembalikan seluruh ledger tanpa limit (untuk keperluan internal).
  */
 export async function GET(req: NextRequest) {
   try {
     const actorId = req.nextUrl.searchParams.get("actor_id") || undefined;
-    const pinjaman = await listPinjaman(actorId);
-    const saldo = actorId ? await hitungSaldoPinjaman(actorId) : null;
-    return NextResponse.json({ pinjaman, saldo });
+    const semua = await listPinjaman(actorId);
+
+    let saldo: number | null = null;
+    if (actorId) {
+      saldo = 0;
+      for (const r of semua) {
+        const jumlah = Number(r.jumlah) || 0;
+        if (r.jenis === "TARIK") saldo += jumlah;
+        else saldo -= jumlah;
+      }
+    }
+
+    return NextResponse.json({
+      pinjaman: actorId ? semua.slice(0, RIWAYAT_LIMIT) : semua,
+      totalRiwayat: semua.length,
+      saldo,
+    });
   } catch (error: any) {
     console.error("Error fetching pinjaman karyawan:", error);
     return NextResponse.json(

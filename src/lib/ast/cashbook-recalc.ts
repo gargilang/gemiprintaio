@@ -43,6 +43,13 @@ import {
   type PartnerDefinition,
 } from "./types";
 
+export type CashbookRowUpdate = {
+  id: string;
+  updates: Record<string, number>;
+  computed: Record<string, number>;
+  outputs: OutputRow;
+};
+
 /** Bentuk baris yang dikonsumsi engine recalc. */
 export interface CashbookRecalcInputRow {
   id: string;
@@ -110,23 +117,135 @@ function inputForRow(row: CashbookRecalcInputRow): InputRow {
  *
  * Both are emitted so callers can dual-write during the migration window.
  */
-export function computeCashbookRecalculationUpdates(
-  sortedRows: CashbookRecalcInputRow[],
+function buildEvalContext(
+  rowIndex: number,
+  row: CashbookRecalcInputRow,
+  prevOutputs: OutputRow,
+  ordered: FormulaDefinition[],
+  partnerMap: Record<string, PartnerDefinition>,
+  groupKeys: Record<string, string[]>,
+): { input: InputRow; currentOutputs: OutputRow; ctx: EvalContext } {
+  const input = inputForRow(row);
+  const currentOutputs: OutputRow = {};
+  const ctx: EvalContext = {
+    row: rowIndex + 2,
+    input,
+    prevOutputs,
+    currentOutputs,
+    partners: partnerMap,
+    groupKeys,
+  };
+  return { input, currentOutputs, ctx };
+}
+
+function evaluateRowFormulas(
+  ordered: FormulaDefinition[],
+  ctx: EvalContext,
+  currentOutputs: OutputRow,
+): void {
+  for (const formula of ordered) {
+    let value: OutputRow[string];
+    try {
+      value = evaluate(formula.ast, ctx);
+    } catch (err) {
+      if (err instanceof SearchNotFoundError || err instanceof FormulaEvalError) {
+        value = 0;
+      } else {
+        throw err;
+      }
+    }
+    currentOutputs[formula.column] = value;
+    const fKey = resolveFormulaKey(formula);
+    if (fKey && fKey !== formula.column) currentOutputs[fKey] = value;
+  }
+}
+
+function patchFromOutputs(
+  row: CashbookRecalcInputRow,
+  ordered: FormulaDefinition[],
+  currentOutputs: OutputRow,
+): { updates: Record<string, number>; computed: Record<string, number> } {
+  const updates: Record<string, number> = {};
+  const computed: Record<string, number> = {};
+  for (const formula of ordered) {
+    const dbCol = formula.dbColumn;
+    const formulaKey = resolveFormulaKey(formula);
+    const value = currentOutputs[formula.column];
+    const numeric =
+      typeof value === "number"
+        ? value
+        : typeof value === "boolean"
+          ? value
+            ? 1
+            : 0
+          : Number(value) || 0;
+
+    if (formulaKey) computed[formulaKey] = numeric;
+
+    if (dbCol) {
+      if (truthyOverride(row[`override_${dbCol}`])) continue;
+      updates[dbCol] = numeric;
+    }
+  }
+  return { updates, computed };
+}
+
+function nextPrevOutputsFromRow(
+  ordered: FormulaDefinition[],
+  currentOutputs: OutputRow,
+): OutputRow {
+  const nextPrevOutputs: OutputRow = { ...currentOutputs };
+  for (const formula of ordered) {
+    const fKey = resolveFormulaKey(formula);
+    if (fKey && fKey !== formula.column) {
+      nextPrevOutputs[fKey] = currentOutputs[formula.column];
+    }
+  }
+  return nextPrevOutputs;
+}
+
+/** Bangun snapshot output baris sebelumnya dari kolom keuangan + transaksi_terhitung. */
+export function buildOutputRowFromPersisted(
+  row: CashbookRecalcInputRow,
+  computed: Record<string, number>,
+  formulas: FormulaDefinition[],
+): OutputRow {
+  const outputs: OutputRow = {};
+  for (const formula of formulas) {
+    const key = resolveFormulaKey(formula);
+    let val: number | undefined;
+    if (formula.dbColumn) {
+      const raw = row[formula.dbColumn];
+      if (raw !== undefined && raw !== null && !truthyOverride(row[`override_${formula.dbColumn}`])) {
+        val = Number(raw) || 0;
+      }
+    }
+    if (val === undefined && computed[key] !== undefined) val = computed[key];
+    if (val === undefined && computed[formula.column] !== undefined) {
+      val = computed[formula.column];
+    }
+    if (val !== undefined) {
+      outputs[formula.column] = val;
+      if (key !== formula.column) outputs[key] = val;
+    }
+  }
+  return outputs;
+}
+
+/** Hitung satu baris buku kas dengan prevOutputs yang sudah diketahui (append cepat). */
+export function computeSingleCashbookRowUpdate(
+  row: CashbookRecalcInputRow,
+  prevOutputs: OutputRow,
+  rowIndex: number,
   formulas: FormulaDefinition[] = cloneDefaults(DEFAULT_FORMULAS),
-  partners: PartnerDefinition[] = cloneDefaults(DEFAULT_PARTNERS)
-): Array<{
-  id: string;
-  updates: Record<string, number>;
-  computed: Record<string, number>;
-  outputs: OutputRow;
-}> {
+  partners: PartnerDefinition[] = cloneDefaults(DEFAULT_PARTNERS),
+): CashbookRowUpdate {
   const active = formulas.filter((f) => f.enabled);
   const ordered = sortFormulasByDependency(active);
 
   const partnerMap: Record<string, PartnerDefinition> = {};
   for (const p of partners) partnerMap[p.id] = p;
 
-  // Build groupKeys map for SUM_GROUP() — formula_group → list of column ids.
   const groupKeys: Record<string, string[]> = {};
   for (const f of active) {
     const g = f.formulaGroup;
@@ -135,85 +254,55 @@ export function computeCashbookRecalculationUpdates(
     groupKeys[g].push(f.column);
   }
 
-  const out: Array<{
-    id: string;
-    updates: Record<string, number>;
-    computed: Record<string, number>;
-    outputs: OutputRow;
-  }> = [];
+  const { currentOutputs, ctx } = buildEvalContext(
+    rowIndex,
+    row,
+    prevOutputs,
+    ordered,
+    partnerMap,
+    groupKeys,
+  );
+  evaluateRowFormulas(ordered, ctx, currentOutputs);
+  const { updates, computed } = patchFromOutputs(row, ordered, currentOutputs);
+  return { id: row.id, updates, computed, outputs: currentOutputs };
+}
 
+export function computeCashbookRecalculationUpdates(
+  sortedRows: CashbookRecalcInputRow[],
+  formulas: FormulaDefinition[] = cloneDefaults(DEFAULT_FORMULAS),
+  partners: PartnerDefinition[] = cloneDefaults(DEFAULT_PARTNERS)
+): CashbookRowUpdate[] {
+  const active = formulas.filter((f) => f.enabled);
+  const ordered = sortFormulasByDependency(active);
+
+  const partnerMap: Record<string, PartnerDefinition> = {};
+  for (const p of partners) partnerMap[p.id] = p;
+
+  const groupKeys: Record<string, string[]> = {};
+  for (const f of active) {
+    const g = f.formulaGroup;
+    if (!g) continue;
+    if (!groupKeys[g]) groupKeys[g] = [];
+    groupKeys[g].push(f.column);
+  }
+
+  const out: CashbookRowUpdate[] = [];
   let prevOutputs: OutputRow = {};
 
   for (let i = 0; i < sortedRows.length; i++) {
     const row = sortedRows[i];
-    const input = inputForRow(row);
-    const currentOutputs: OutputRow = {};
-
-    for (const formula of ordered) {
-      const ctx: EvalContext = {
-        row: i + 2,
-        input,
-        prevOutputs,
-        currentOutputs,
-        partners: partnerMap,
-        groupKeys,
-      };
-      let value: OutputRow[string];
-      try {
-        value = evaluate(formula.ast, ctx);
-      } catch (err) {
-        if (err instanceof SearchNotFoundError || err instanceof FormulaEvalError) {
-          value = 0;
-        } else {
-          throw err;
-        }
-      }
-      currentOutputs[formula.column] = value;
-      // Indeks juga dengan semantic key supaya formula berikutnya di baris yang
-      // sama bisa membaca lewat outputRef("laba_bersih") — bukan cuma huruf
-      // kolom "K". Tanpa ini, bagi hasil/kasbon/bonus selalu membaca 0.
-      const fKey = resolveFormulaKey(formula);
-      if (fKey && fKey !== formula.column) currentOutputs[fKey] = value;
-    }
-
-    const updates: Record<string, number> = {};
-    const computed: Record<string, number> = {};
-    for (const formula of ordered) {
-      const dbCol = formula.dbColumn;
-      const formulaKey = resolveFormulaKey(formula);
-      const value = currentOutputs[formula.column];
-      const numeric =
-        typeof value === "number"
-          ? value
-          : typeof value === "boolean"
-            ? value
-              ? 1
-              : 0
-            : Number(value) || 0;
-
-      // Always populate the semantic (transaksi_terhitung) map.
-      if (formulaKey) computed[formulaKey] = numeric;
-
-      // Legacy keuangan column update — skip when an explicit override exists.
-      if (dbCol) {
-        if (truthyOverride(row[`override_${dbCol}`])) continue;
-        updates[dbCol] = numeric;
-      }
-    }
-
+    const { currentOutputs, ctx } = buildEvalContext(
+      i,
+      row,
+      prevOutputs,
+      ordered,
+      partnerMap,
+      groupKeys,
+    );
+    evaluateRowFormulas(ordered, ctx, currentOutputs);
+    const { updates, computed } = patchFromOutputs(row, ordered, currentOutputs);
     out.push({ id: row.id, updates, computed, outputs: currentOutputs });
-
-    // Build prevOutputs for the next row. Index by both the legacy letter
-    // (formula.column) AND the semantic formulaKey so that AST nodes using
-    // prevOut("kasbon_suri") resolve correctly alongside prevOut("J").
-    const nextPrevOutputs: OutputRow = { ...currentOutputs };
-    for (const formula of ordered) {
-      const fKey = resolveFormulaKey(formula);
-      if (fKey && fKey !== formula.column) {
-        nextPrevOutputs[fKey] = currentOutputs[formula.column];
-      }
-    }
-    prevOutputs = nextPrevOutputs;
+    prevOutputs = nextPrevOutputsFromRow(ordered, currentOutputs);
   }
 
   return out;

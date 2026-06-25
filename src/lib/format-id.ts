@@ -61,6 +61,22 @@ export function formatRupiahPlain(amount: number | null | undefined): string {
 }
 
 /**
+ * Parse input uang dari form (mendukung format Indonesia `10.000.000` atau `10000000`).
+ */
+export function parseLocalizedAmount(raw: string | null | undefined): number {
+  if (!raw) return 0;
+  const trimmed = raw.trim().replace(/\s+/g, "");
+  if (!trimmed) return 0;
+
+  const normalized = trimmed
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
  * Format an ISO/Date input as a long Indonesian date in Asia/Jakarta,
  * e.g. `23 Mei 2026`.
  */

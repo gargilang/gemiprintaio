@@ -6,6 +6,7 @@ import { db, getServerSupabaseClient } from "@/lib/db-unified";
 import {
   createCashBookEntry,
   canDeleteCashBookEntry,
+  ensureLatestCashbookMetricsFresh,
 } from "@/lib/services/finance-service";
 import { fetchKeuanganCashBookByPeriod } from "@/lib/server-data-supabase";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
@@ -24,6 +25,7 @@ export async function GET() {
     const periodeLabel = formatPeriodLabel(currentPeriod.period_key);
 
     if (getServerSupabaseClient()) {
+      await ensureLatestCashbookMetricsFresh();
       const [cashBooks, latestMap, periodMetrics] = await Promise.all([
         fetchKeuanganCashBookByPeriod(currentPeriod.id),
         getLatestPerFormulaKey(), // saldo, modal_kas, saldo_kasbon, kas tetap global

@@ -117,10 +117,12 @@ export async function hitungSaldoPinjamanBatch(
 /** Daftar ledger pinjaman; bila actorId diisi, hanya karyawan itu. */
 export async function listPinjaman(
   actorId?: string,
+  limit?: number,
 ): Promise<PinjamanKaryawan[]> {
   const result = await db.query<PinjamanKaryawan>("pinjaman_karyawan", {
     where: actorId ? { actor_id: actorId } : undefined,
     orderBy: { column: "tanggal", ascending: false },
+    limit,
   });
   return (result.data || []).filter((r) => Number(r.is_deleted ?? 0) === 0);
 }

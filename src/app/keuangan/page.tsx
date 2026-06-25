@@ -7,6 +7,7 @@ import ToastNotifikasi, {
 } from "@/components/ToastNotifikasi";
 import { CashBook, KategoriTransaksi } from "@/types/database";
 import { getTodayJakarta, formatDateJakarta } from "@/lib/date-utils";
+import { parseLocalizedAmount } from "@/lib/format-id";
 import ModalHapusSemuaBukuKas from "@/components/ModalHapusSemuaBukuKas";
 import ModalEditManual from "@/components/ModalEditManual";
 import PengaturanKeuanganModal, { type PengaturanTab } from "@/components/finance/PengaturanKeuanganModal";
@@ -25,7 +26,7 @@ import {
   getCachedSessionUser,
 } from "@/lib/client-session";
 import { useSWRConfig } from "swr";
-import { useCachedData } from "@/lib/use-cached-data";
+import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import CashBookRow from "./CashBookRow";
 import ModalTransaksiKeuangan, {
   type CashBookFormData,
@@ -142,6 +143,7 @@ export default function FinancePage() {
   const [showPengaturanModal, setShowPengaturanModal] = useState(false);
   const [pengaturanDefaultTab, setPengaturanDefaultTab] = useState<PengaturanTab>("pengurus");
   const [actorSummaryTick, setActorSummaryTick] = useState(0);
+  const invalidate = useInvalidate();
 
   // Paksa RingkasanPengurus memuat ulang summary-v2 setelah transaksi berubah.
   // Kartu Saldo/Omzet/Biaya dihitung langsung dari state lokal cashBooks, tapi
@@ -152,6 +154,10 @@ export default function FinancePage() {
   const bumpActorSummary = useCallback(() => {
     setActorSummaryTick((t) => t + 1);
   }, []);
+
+  const bumpKasMetricsCache = useCallback(() => {
+    invalidate("penggajian-metrik-kas");
+  }, [invalidate]);
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -528,8 +534,8 @@ export default function FinancePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const debitVal = parseFloat(formData.debit) || 0;
-    const kreditVal = parseFloat(formData.kredit) || 0;
+    const debitVal = parseLocalizedAmount(formData.debit);
+    const kreditVal = parseLocalizedAmount(formData.kredit);
 
     if (debitVal === 0 && kreditVal === 0) {
       showMsg("error", "Debit atau kredit harus diisi!");
@@ -595,6 +601,7 @@ export default function FinancePage() {
       }
       // Bagi Hasil (rumus server) ikut berubah → refetch ringkasan pengurus.
       bumpActorSummary();
+      bumpKasMetricsCache();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -706,6 +713,7 @@ export default function FinancePage() {
           setCashBooks((prev) => prev.filter((cb) => cb.id !== cashBook.id));
           // Bagi Hasil ikut berubah → refetch ringkasan pengurus.
           bumpActorSummary();
+          bumpKasMetricsCache();
         } catch (err) {
           console.error(err);
           showMsg(
@@ -732,6 +740,7 @@ export default function FinancePage() {
       // Clear local state instead of reloading
       setCashBooks([]);
       bumpActorSummary();
+      bumpKasMetricsCache();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -814,6 +823,7 @@ export default function FinancePage() {
     showMsg("success", " Data berhasil di-override!");
     await loadCashBooks();
     bumpActorSummary();
+    bumpKasMetricsCache();
   };
 
   if (loading && cashBooks.length === 0) {

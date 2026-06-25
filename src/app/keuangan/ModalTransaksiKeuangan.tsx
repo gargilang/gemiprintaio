@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import type { KategoriTransaksi } from "@/types/database";
 import ModalFormShell from "@/components/ModalFormShell";
+import { parseLocalizedAmount } from "@/lib/format-id";
 
 // Modal tambah/edit transaksi buku kas. Diekstrak dari page.tsx (Fase 6 C1 step 2).
 // Murni presentational: induk pegang state form + submit (jalur uang tetap di induk).
@@ -137,7 +138,7 @@ export default function ModalTransaksiKeuangan({
             />
             {formData.debit && (
               <p className="text-xs text-green-600 mt-1">
-                {formatRupiah(parseFloat(formData.debit))}
+                {formatRupiah(parseLocalizedAmount(formData.debit))}
               </p>
             )}
           </div>
@@ -157,7 +158,7 @@ export default function ModalTransaksiKeuangan({
             />
             {formData.kredit && (
               <p className="text-xs text-red-600 mt-1">
-                {formatRupiah(parseFloat(formData.kredit))}
+                {formatRupiah(parseLocalizedAmount(formData.kredit))}
               </p>
             )}
           </div>
