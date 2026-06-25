@@ -227,10 +227,10 @@ export default function KolomTab({
         </div>
       )}
 
-      {/* Single flat table — system rows + formula rows */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+      {/* Tabel kolom — hanya bagian ini yang di-scroll (sama seperti tab Kategori) */}
+      <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shadow-[0_1px_0_0_rgb(226_232_240)] dark:shadow-[0_1px_0_0_rgb(51_65_85)]">
             <tr>
               <th className="px-3 py-2 text-left">Nama Kolom</th>
               <th className="px-3 py-2 text-left">Tipe</th>
