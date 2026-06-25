@@ -344,10 +344,10 @@ export default function ReportsPage() {
                 relative p-5 rounded-xl border-2 text-left transition-all duration-200
                 ${
                   selectedReportType === type.id && type.available
-                    ? "border-purple-500 bg-purple-50 dark:bg-slate-800 shadow-lg transform scale-105"
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 dark:border-purple-400 shadow-lg transform scale-105"
                     : type.available
-                      ? "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-300 hover:shadow-md"
-                      : "border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800 cursor-not-allowed opacity-60"
+                      ? "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-purple-300 dark:hover:border-purple-500/60 hover:shadow-md"
+                      : "border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80 cursor-not-allowed opacity-60"
                 }
               `}
             >
@@ -421,7 +421,7 @@ function FormalReportPanel({
   const cashReport = report?.cashReport ?? emptyCashReport();
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
           <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">{title}</h3>
@@ -439,7 +439,7 @@ function FormalReportPanel({
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
@@ -450,7 +450,7 @@ function FormalReportPanel({
               type="date"
               value={endDate}
               onChange={(e) => onEndDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <button
@@ -464,8 +464,8 @@ function FormalReportPanel({
       </div>
 
       {!report ? (
-        <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
-          <ClipboardIcon size={48} className="mx-auto text-gray-300 mb-3" />
+        <div className="bg-gray-50 dark:bg-slate-800/80 rounded-xl p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 text-center">
+          <ClipboardIcon size={48} className="mx-auto text-gray-300 dark:text-slate-500 mb-3" />
           <p className="text-gray-700 dark:text-slate-300 font-semibold">
             Pilih periode lalu klik Muat Laporan
           </p>
@@ -702,23 +702,29 @@ function MetricCard({
   wide?: boolean;
 }) {
   const classes = {
-    green: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:text-emerald-300",
-    slate: "border-slate-200 bg-slate-50 dark:bg-slate-800 text-slate-700",
-    blue: "border-blue-200 bg-blue-50 text-blue-700 dark:text-blue-300",
-    red: "border-red-200 bg-red-50 text-red-700",
-    purple: "border-purple-200 bg-purple-50 text-purple-700 dark:text-purple-300",
-    amber: "border-amber-200 bg-amber-50 text-amber-700 dark:text-amber-300",
+    green:
+      "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    slate:
+      "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
+    blue:
+      "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    red:
+      "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
+    purple:
+      "border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    amber:
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   }[color];
 
   return (
     <div
-      className={`rounded-xl border p-4 ${classes} ${
+      className={`rounded-xl border p-4 shadow-sm ${classes} ${
         wide ? "md:col-span-2" : ""
       }`}
     >
-      <p className="text-sm text-gray-600 dark:text-slate-300 font-semibold">{label}</p>
-      <p className="text-2xl font-bold">{value}</p>
-      {detail && <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{detail}</p>}
+      <p className="text-sm font-semibold opacity-80">{label}</p>
+      <p className="text-2xl font-bold mt-0.5">{value}</p>
+      {detail && <p className="text-xs opacity-70 mt-1">{detail}</p>}
     </div>
   );
 }
@@ -733,15 +739,15 @@ function FormalTable({
   rows: string[][];
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
       {title && (
-        <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-800 font-bold text-gray-800 dark:text-slate-100">
+        <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 font-bold text-gray-800 dark:text-slate-100">
           {title}
         </div>
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-white">
+          <thead className="bg-slate-800 dark:bg-slate-700 text-white">
             <tr>
               {columns.map((column) => (
                 <th key={column} className="px-4 py-3 text-left font-bold">
