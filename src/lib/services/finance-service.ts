@@ -223,6 +223,21 @@ export function recalculateCashbookIfAvailable(): Promise<boolean> {
 const TC_ONLY_METRIC_KEYS = ["modal_kas", "saldo_kasbon", "kas"] as const;
 
 /**
+ * Periksa apakah prevRow ada tapi prevOutputs tidak memiliki nilai terdefinisi
+ * untuk setidaknya satu metrik global (kas, modal_kas, saldo_kasbon).
+ *
+ * Jika true, O(1) recalc akan menghitung dari 0 dan menghasilkan nilai salah —
+ * caller harus menjalankan full recalc sebagai gantinya.
+ */
+export function prevRowMissingGlobalTc(
+  prevRow: { id: string } | null,
+  prevOutputs: Record<string, number | undefined>,
+): boolean {
+  if (!prevRow) return false;
+  return TC_ONLY_METRIC_KEYS.some((k) => prevOutputs[k] == null);
+}
+
+/**
  * Pulihkan mirror transaksi_terhitung bila baris terbaru belum punya hasil AST.
  * Dipanggil sebelum membaca kartu ringkasan (Keuangan / Penggajian).
  */
@@ -319,6 +334,21 @@ export async function recalculateAppendedCashbookEntry(
           formulas,
         )
       : {};
+
+    // Jika prevRow ada tapi TC-nya tidak punya metrik global (kas, modal_kas,
+    // saldo_kasbon), O(1) recalc akan mulai dari 0 dan menghasilkan nilai salah
+    // (mis. kas = 0 − 300.000 = −300.000 bukan nilai kumulatif yang benar).
+    // Kembalikan false agar caller menjalankan full recalc.
+    if (prevRowMissingGlobalTc(
+      prevRow,
+      prevOutputs as Record<string, number | undefined>,
+    )) {
+      console.warn(
+        `[recalculateAppendedCashbookEntry] prevRow ${prevRow?.id} ` +
+          `tidak punya TC untuk metrik global — fallback ke full recalc`,
+      );
+      return false;
+    }
 
     const batch = computeSingleCashbookRowUpdate(
       row as CashbookRecalcInputRow,
