@@ -2,7 +2,7 @@
 -- Menggantikan loop sequential di recalculateCashbookViaSupabase yang lambat
 -- karena setiap UPDATE adalah round-trip terpisah ke Supabase.
 --
--- Parameter: updates JSONB — array objek, masing-masing berisi "id" (UUID)
+-- Parameter: updates JSONB — array objek, masing-masing berisi "id" (text)
 -- dan kolom yang perlu diperbarui. Kolom yang tidak ada di objek tidak ditimpa
 -- (dijaga dengan COALESCE).
 --
@@ -12,7 +12,6 @@
 CREATE OR REPLACE FUNCTION bulk_update_keuangan(updates jsonb)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
 AS $$
 DECLARE
   rec jsonb;
@@ -25,7 +24,7 @@ BEGIN
       biaya_operasional = COALESCE((rec->>'biaya_operasional')::numeric, biaya_operasional),
       biaya_bahan       = COALESCE((rec->>'biaya_bahan')::numeric,       biaya_bahan),
       laba_bersih       = COALESCE((rec->>'laba_bersih')::numeric,       laba_bersih)
-    WHERE id = (rec->>'id')::uuid;
+    WHERE id = rec->>'id';
   END LOOP;
 END;
 $$;

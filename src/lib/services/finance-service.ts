@@ -267,7 +267,10 @@ export async function ensureLatestCashbookMetricsFresh(): Promise<void> {
   const keys = new Set((tcRows ?? []).map((r) => r.formula_key));
   const missingTcOnly = TC_ONLY_METRIC_KEYS.some((k) => !keys.has(k));
   if ((tcRows ?? []).length === 0 || missingTcOnly) {
-    await recalculateAppendedCashbookEntry(latest.id);
+    const ok = await recalculateAppendedCashbookEntry(latest.id);
+    if (!ok) {
+      await recalculateCashbookIfAvailable();
+    }
   }
 }
 
