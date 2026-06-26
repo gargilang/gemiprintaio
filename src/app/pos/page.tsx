@@ -60,11 +60,23 @@ import {
   type UnitPrice,
   type FinishingItem,
   type CartItem,
+  type BiayaTambahanItem,
   type SubkontraktorOption,
   type POSInitData,
   EMPTY_POS_INIT,
   KATEGORI_ORDER,
 } from "./pos-types";
+
+/** Kumpulkan baris biaya tambahan valid dari semua item keranjang. */
+function getCartBiayaTambahanRows(cart: CartItem[]): BiayaTambahanItem[] {
+  return cart.flatMap((item) =>
+    (item.biaya_tambahan || []).filter((b) => b.label.trim() && b.nominal > 0)
+  );
+}
+
+function getCartBiayaTambahanTotal(cart: CartItem[]): number {
+  return getCartBiayaTambahanRows(cart).reduce((sum, b) => sum + b.nominal, 0);
+}
 
 export default function POSPage() {
   const router = useRouter();
@@ -180,9 +192,9 @@ export default function POSPage() {
   const [showFormFinishingModal, setShowFormFinishingModal] = useState(false);
   const [formHargaSatuan, setFormHargaSatuan] = useState<number | null>(null);
   const [showFormHargaModal, setShowFormHargaModal] = useState(false);
-  const [biayaTambahan, setBiayaTambahan] = useState<
-    Array<{ label: string; nominal: number }>
-  >([]);
+  const [formBiayaTambahan, setFormBiayaTambahan] = useState<BiayaTambahanItem[]>(
+    []
+  );
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
@@ -443,6 +455,7 @@ export default function POSPage() {
     setSelectedRollSize(null);
     setFormFinishing([]);
     setFormHargaSatuan(null);
+    setFormBiayaTambahan([]);
   };
 
   const handleCancelEdit = () => {
@@ -519,6 +532,9 @@ export default function POSPage() {
     const hargaPerSatuan = formHargaSatuan ?? hargaKatalog;
 
     const subtotalRaw = finalQuantity * hargaPerSatuan;
+    const validFormBiayaTambahan = formBiayaTambahan
+      .filter((b) => b.label.trim() && b.nominal > 0)
+      .map((b) => ({ label: b.label.trim(), nominal: b.nominal }));
 
     return {
       barang_id: selectedMaterial.id,
@@ -534,6 +550,8 @@ export default function POSPage() {
       // "Harga Ubah" dan fungsi Reset di modal bisa bekerja dengan benar
       originalHargaSatuan: hargaKatalog,
       finishing: formFinishing.length > 0 ? [...formFinishing] : undefined,
+      biaya_tambahan:
+        validFormBiayaTambahan.length > 0 ? validFormBiayaTambahan : undefined,
       butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
       panjang: originalPanjang,
       lebar: originalLebar,
@@ -557,6 +575,9 @@ export default function POSPage() {
     setQuantity("1");
     setUseRounding(material.butuh_dimensi_status === 1);
     setSelectedRollSize(null);
+    setFormFinishing([]);
+    setFormHargaSatuan(null);
+    setFormBiayaTambahan([]);
 
     const defaultUnit = material.unit_prices.find(
       (u) => u.default_status === 1
@@ -625,6 +646,9 @@ export default function POSPage() {
 
     // Pulihkan finishing dan harga override dari item yang sedang diedit
     setFormFinishing(item.finishing ? [...item.finishing] : []);
+    setFormBiayaTambahan(
+      item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : []
+    );
     if (
       item.originalHargaSatuan != null &&
       Math.abs(item.harga_satuan - item.originalHargaSatuan) > 0.01
@@ -810,10 +834,7 @@ export default function POSPage() {
     }
 
     const subtotalItems = getCartChargeTotal(cart, roundCartPrices);
-    const biayaTambahanTotal = biayaTambahan.reduce(
-      (sum, b) => sum + (Number(b.nominal) || 0),
-      0
-    );
+    const biayaTambahanTotal = getCartBiayaTambahanTotal(cart);
     const total = subtotalItems + biayaTambahanTotal;
     const bayar = parseFloat(jumlahBayar) || 0;
 
@@ -863,6 +884,10 @@ export default function POSPage() {
     setRefreshing(true);
     try {
       const lineCharges = allocateCartLineCharges(cart, roundCartPrices);
+      const checkoutBiayaTambahan = getCartBiayaTambahanRows(cart).map((b) => ({
+        label: b.label.trim(),
+        nominal: b.nominal,
+      }));
       const saleItems = cart.map((item, index) => ({
         barang_id: item.barang_id,
         harga_satuan_id: item.harga_satuan_id,
@@ -909,9 +934,7 @@ export default function POSPage() {
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
-        biaya_tambahan: biayaTambahan
-          .filter((b) => b.label.trim() && b.nominal > 0)
-          .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+        biaya_tambahan: checkoutBiayaTambahan,
         ...(ppnFaktur
           ? {
               kena_ppn: true,
@@ -1016,9 +1039,7 @@ export default function POSPage() {
           kembalian: kembalian,
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || undefined,
-          biaya_tambahan: biayaTambahan
-            .filter((b) => b.label.trim() && b.nominal > 0)
-            .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+          biaya_tambahan: checkoutBiayaTambahan,
         });
 
         const buildFakturData = async () => {
@@ -1113,9 +1134,7 @@ export default function POSPage() {
             catatan: catatan.trim() || undefined,
             ppn,
             shop,
-            biaya_tambahan: biayaTambahan
-              .filter((b) => b.label.trim() && b.nominal > 0)
-              .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+            biaya_tambahan: checkoutBiayaTambahan,
           };
         };
 
@@ -1165,7 +1184,6 @@ export default function POSPage() {
       setPpnFaktur(null);
       setRoundCartPrices(true);
       setFakturUmum(null);
-      setBiayaTambahan([]);
 
       // Reload data
       await loadAllData();
@@ -1626,6 +1644,116 @@ export default function POSPage() {
                             )}
                           </div>
                         )}
+
+                        {/* Finishing, ubah harga, biaya tambahan — diisi sebelum masuk keranjang */}
+                        <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setShowFormFinishingModal(true)}
+                              className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
+                                formFinishing.length > 0
+                                  ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
+                                  : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
+                              }`}
+                            >
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                              </svg>
+                              {formFinishing.length > 0 ? `Finishing (${formFinishing.length})` : "+ Finishing"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowFormHargaModal(true)}
+                              className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
+                                formHargaSatuan !== null
+                                  ? "border-[#2266ff] bg-blue-50 dark:bg-blue-900/30 text-[#2266ff] dark:text-blue-300"
+                                  : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-[#2266ff]/50"
+                              }`}
+                            >
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                              {formHargaSatuan !== null ? "Harga Ubah" : "Ubah Harga"}
+                            </button>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                                Biaya Tambahan
+                                {formBiayaTambahan.length > 0 && (
+                                  <span className="ml-1 text-[#00afef]">({formBiayaTambahan.length})</span>
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormBiayaTambahan([
+                                    ...formBiayaTambahan,
+                                    { label: "", nominal: 0 },
+                                  ])
+                                }
+                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors"
+                              >
+                                + Tambah
+                              </button>
+                            </div>
+                            {formBiayaTambahan.length === 0 ? (
+                              <p className="text-[10px] text-gray-400 dark:text-slate-500">
+                                Ongkir, biaya pasang, dll (opsional)
+                              </p>
+                            ) : (
+                              <div className="space-y-1">
+                                {formBiayaTambahan.map((biaya, idx) => (
+                                  <div key={idx} className="flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={biaya.label}
+                                      onChange={(e) => {
+                                        const next = [...formBiayaTambahan];
+                                        next[idx] = { ...next[idx], label: e.target.value };
+                                        setFormBiayaTambahan(next);
+                                      }}
+                                      placeholder="Ongkir, pasang, dll"
+                                      className="flex-1 min-w-0 px-2 py-1 text-[11px] bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef]"
+                                    />
+                                    <input
+                                      type="number"
+                                      step="1000"
+                                      min="0"
+                                      value={biaya.nominal || ""}
+                                      onChange={(e) => {
+                                        const next = [...formBiayaTambahan];
+                                        next[idx] = {
+                                          ...next[idx],
+                                          nominal: parseFloat(e.target.value) || 0,
+                                        };
+                                        setFormBiayaTambahan(next);
+                                      }}
+                                      placeholder="0"
+                                      className="w-20 px-1.5 py-1 text-[11px] text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setFormBiayaTambahan(
+                                          formBiayaTambahan.filter((_, i) => i !== idx)
+                                        )
+                                      }
+                                      className="p-0.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                                      aria-label="Hapus biaya"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Right: quantity, roll, add button */}
@@ -1742,38 +1870,6 @@ export default function POSPage() {
                             </div>
                           )}
 
-                        {/* Tombol Finishing + Ubah Harga — set sebelum masuk keranjang */}
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setShowFormFinishingModal(true)}
-                            className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
-                              formFinishing.length > 0
-                                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
-                                : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
-                            }`}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                            </svg>
-                            {formFinishing.length > 0 ? `Finishing (${formFinishing.length})` : "+ Finishing"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowFormHargaModal(true)}
-                            className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
-                              formHargaSatuan !== null
-                                ? "border-[#2266ff] bg-blue-50 dark:bg-blue-900/30 text-[#2266ff] dark:text-blue-300"
-                                : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-[#2266ff]/50"
-                            }`}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                            {formHargaSatuan !== null ? "Harga Ubah" : "Ubah Harga"}
-                          </button>
-                        </div>
-
                         <button
                           type="button"
                           onClick={handleAddToCart}
@@ -1793,81 +1889,6 @@ export default function POSPage() {
                 )}
               </div>
           </div>
-
-            {/* Biaya Tambahan — per transaksi (ongkir, biaya pasang, dll) */}
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-[#00afef]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Biaya Tambahan
-                  {biayaTambahan.length > 0 && (
-                    <span className="text-sm font-normal text-[#00afef]">({biayaTambahan.length})</span>
-                  )}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setBiayaTambahan([...biayaTambahan, { label: "", nominal: 0 }])}
-                  className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors border border-[#00afef]/20"
-                >
-                  + Tambah
-                </button>
-              </div>
-
-              {biayaTambahan.length === 0 ? (
-                <p className="text-xs text-gray-500 dark:text-slate-400">Ongkir, biaya pasang, dan biaya tambahan lainnya.</p>
-              ) : (
-                <div className="space-y-2">
-                  {biayaTambahan.map((biaya, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={biaya.label}
-                        onChange={(e) => {
-                          const next = [...biayaTambahan];
-                          next[idx] = { ...next[idx], label: e.target.value };
-                          setBiayaTambahan(next);
-                        }}
-                        placeholder="Ongkir, biaya pasang, dll"
-                        className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
-                      />
-                      <input
-                        type="number"
-                        step="1000"
-                        min="0"
-                        value={biaya.nominal || ""}
-                        onChange={(e) => {
-                          const next = [...biayaTambahan];
-                          next[idx] = { ...next[idx], nominal: parseFloat(e.target.value) || 0 };
-                          setBiayaTambahan(next);
-                        }}
-                        placeholder="0"
-                        className="w-28 px-2 py-1.5 text-sm text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setBiayaTambahan(biayaTambahan.filter((_, i) => i !== idx))}
-                        className="p-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                        aria-label="Hapus biaya"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                  {biayaTambahan.some((b) => b.nominal > 0) && (
-                    <div className="flex items-center justify-between pt-1 border-t border-[#00afef]/20 text-sm">
-                      <span className="text-gray-600 dark:text-slate-400">Total biaya tambahan</span>
-                      <span className="font-bold text-[#00afef]">
-                        Rp {biayaTambahan.reduce((s, b) => s + (Number(b.nominal) || 0), 0).toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
         </div>
 
           {/* Right: Cart */}
@@ -1911,8 +1932,6 @@ export default function POSPage() {
               onPrioritasChange={setPrioritas}
               onPrintTypeChange={setPrintType}
               onCheckout={handleCheckout}
-              onGetFinishingOptions={getFinishingOptionsAction}
-              biayaTambahan={biayaTambahan}
               customerName={
                 selectedPelanggan?.nama || pencarianPelanggan.trim() || undefined
               }

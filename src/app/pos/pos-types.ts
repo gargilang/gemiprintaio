@@ -40,6 +40,11 @@ export interface FinishingItem {
   keterangan?: string;
 }
 
+export interface BiayaTambahanItem {
+  label: string;
+  nominal: number;
+}
+
 export interface CartItem {
   barang_id: string;
   barang_nama: string;
@@ -65,6 +70,8 @@ export interface CartItem {
    */
   originalHargaSatuan?: number;
   finishing?: FinishingItem[];
+  /** Biaya tambahan per baris keranjang (ongkir item, biaya pasang, dll). */
+  biaya_tambahan?: BiayaTambahanItem[];
   // Maklon (subcontract) line. When set, this cart entry represents work
   // outsourced to a partner shop instead of a regular catalog item.
   tipe_item?: "BARANG" | "MAKLON";
