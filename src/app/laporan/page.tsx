@@ -520,8 +520,6 @@ function FormalReportPanel({
                   "Debit",
                   "Kredit",
                   "Saldo",
-                  "Omzet",
-                  "Biaya Ops",
                 ]}
                 rows={cashReport.rows.map((row) => [
                   row.date,
@@ -530,8 +528,6 @@ function FormalReportPanel({
                   formatRupiah(row.debit),
                   formatRupiah(row.credit),
                   formatRupiah(row.balance),
-                  formatRupiah(row.omzet),
-                  formatRupiah(row.operationalExpenses),
                 ])}
               />
             </>
