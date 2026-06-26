@@ -27,6 +27,12 @@ import {
 } from "@/lib/client-session";
 import { useSWRConfig } from "swr";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
+import {
+  extractMetrikKas,
+  PENGGAJIAN_METRIK_KAS_CACHE_KEY,
+  type MetrikSistemKeuangan,
+  type RingkasanPengurusCepat,
+} from "@/lib/finance-summary-cache";
 import CashBookRow from "./CashBookRow";
 import ModalTransaksiKeuangan, {
   type CashBookFormData,
@@ -57,7 +63,7 @@ type SystemMetrics = {
   biaya_bahan: number;
   saldo: number;
   laba_bersih: number;
-};
+} & MetrikSistemKeuangan;
 
 type FinanceConfigPayload = {
   categories: FinanceCategoryConfig[];
@@ -115,6 +121,8 @@ export default function FinancePage() {
   const [totalPiutang, setTotalPiutang] = useState(0);
   const [piutangCount, setPiutangCount] = useState(0);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
+  const [actorSummarySeed, setActorSummarySeed] =
+    useState<RingkasanPengurusCepat | null>(null);
   const [periodeLabel, setPeriodeLabel] = useState("Periode Aktif");
   const [showModal, setShowModal] = useState(false);
   const [editingCashBook, setEditingCashBook] = useState<CashBook | null>(null);
@@ -155,9 +163,25 @@ export default function FinancePage() {
     setActorSummaryTick((t) => t + 1);
   }, []);
 
-  const bumpKasMetricsCache = useCallback(() => {
-    invalidate("penggajian-metrik-kas");
-  }, [invalidate]);
+  const publishKasMetricsCache = useCallback(
+    (metrics: SystemMetrics | null | undefined) => {
+      const metrikKas = extractMetrikKas(metrics);
+      if (!metrikKas) return false;
+      swr.mutate(PENGGAJIAN_METRIK_KAS_CACHE_KEY, metrikKas, {
+        revalidate: false,
+      });
+      return true;
+    },
+    [swr]
+  );
+
+  const bumpKasMetricsCache = useCallback(
+    (metrics?: SystemMetrics | null) => {
+      if (publishKasMetricsCache(metrics)) return;
+      invalidate(PENGGAJIAN_METRIK_KAS_CACHE_KEY);
+    },
+    [invalidate, publishKasMetricsCache]
+  );
 
   const applyFinanceConfig = useCallback(
     (data: FinanceConfigPayload) => {
@@ -180,13 +204,6 @@ export default function FinancePage() {
     null
   );
   const [deleting, setDeleting] = useState(false);
-
-  // Helper function to update a single cashbook in state without reloading
-  function updateCashBookInState(updated: CashBook) {
-    setCashBooks((prev) =>
-      prev.map((cb) => (cb.id === updated.id ? { ...cb, ...updated } : cb))
-    );
-  }
 
   // Filter state — multi-select with checkboxes
   const [selectedKategoriFilters, setSelectedKategoriFilters] = useState<
@@ -362,7 +379,7 @@ export default function FinancePage() {
     setTimeout(() => setNotice(null), 3000);
   };
 
-  const loadCashBooks = async () => {
+  const loadCashBooks = async (): Promise<SystemMetrics | null> => {
     try {
       const res = await fetch("/api/keuangan/cash-book", { cache: "no-store" });
       const data = await res.json();
@@ -371,14 +388,22 @@ export default function FinancePage() {
       if (data.periodeLabel) {
         setPeriodeLabel(data.periodeLabel as string);
       }
+      let latestMetrics: SystemMetrics | null = null;
       if (data.systemMetrics) {
-        setSystemMetrics(data.systemMetrics as SystemMetrics);
+        latestMetrics = data.systemMetrics as SystemMetrics;
+        setSystemMetrics(latestMetrics);
+        publishKasMetricsCache(latestMetrics);
+      }
+      if (data.actorSummarySeed) {
+        setActorSummarySeed(data.actorSummarySeed as RingkasanPengurusCepat);
       }
       loadHutangData();
       loadPiutangData();
+      return latestMetrics;
     } catch (err) {
       console.error("Gagal memuat cash books:", err);
       showMsg("error", "Tidak bisa memuat data buku keuangan dari database.");
+      return null;
     }
   };
 
@@ -570,13 +595,6 @@ export default function FinancePage() {
         if (!res.ok)
           throw new Error(data?.error || "Gagal mengupdate transaksi");
 
-        // Update local state for edits
-        if (data.cashBook) {
-          updateCashBookInState(data.cashBook);
-        } else {
-          await loadCashBooks();
-        }
-
         showMsg("success", " Transaksi berhasil diupdate!");
       } else {
         // Create new transaction
@@ -595,13 +613,10 @@ export default function FinancePage() {
 
       handleCloseModal();
 
-      // For new transactions, reload; for edits, state already updated
-      if (!editingCashBook) {
-        await loadCashBooks();
-      }
+      const latestMetrics = await loadCashBooks();
       // Bagi Hasil (rumus server) ikut berubah → refetch ringkasan pengurus.
       bumpActorSummary();
-      bumpKasMetricsCache();
+      if (!latestMetrics) bumpKasMetricsCache();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -709,11 +724,10 @@ export default function FinancePage() {
             " Transaksi berhasil dihapus dan data telah dikalkulasi ulang!"
           );
 
-          // Remove from local state instead of reloading
-          setCashBooks((prev) => prev.filter((cb) => cb.id !== cashBook.id));
+          const latestMetrics = await loadCashBooks();
           // Bagi Hasil ikut berubah → refetch ringkasan pengurus.
           bumpActorSummary();
-          bumpKasMetricsCache();
+          if (!latestMetrics) bumpKasMetricsCache();
         } catch (err) {
           console.error(err);
           showMsg(
@@ -737,10 +751,10 @@ export default function FinancePage() {
       );
       setShowDeleteAllModal(false);
 
-      // Clear local state instead of reloading
       setCashBooks([]);
+      const latestMetrics = await loadCashBooks();
       bumpActorSummary();
-      bumpKasMetricsCache();
+      if (!latestMetrics) bumpKasMetricsCache();
     } catch (err) {
       console.error(err);
       showMsg(
@@ -821,9 +835,9 @@ export default function FinancePage() {
 
   const handleEditManualSuccess = async () => {
     showMsg("success", " Data berhasil di-override!");
-    await loadCashBooks();
+    const latestMetrics = await loadCashBooks();
     bumpActorSummary();
-    bumpKasMetricsCache();
+    if (!latestMetrics) bumpKasMetricsCache();
   };
 
   if (loading && cashBooks.length === 0) {
@@ -978,6 +992,8 @@ export default function FinancePage() {
           <RingkasanPengurus
             formatRupiah={formatRupiah}
             refreshKey={actorSummaryTick}
+            latestSystemMetrics={systemMetrics}
+            fallbackSummary={actorSummarySeed}
             onOpenPeopleSettings={() => {
               setPengaturanDefaultTab("pengurus");
               setShowPengaturanModal(true);

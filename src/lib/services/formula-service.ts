@@ -409,6 +409,7 @@ export interface ActorFinanceSummaryRow {
   actorId: string | null;
   displayName: string;
   roleLabel: string;
+  profitSharePercent: number | null;
   /** Map formula_key → nilai numerik (atau null kalau tidak berlaku). */
   metrics: Record<string, number | null>;
   displayOrder: number;
@@ -523,6 +524,10 @@ export async function getActorFinanceSummary(
         displayName: actor.display_name,
         roleLabel:
           roleLabelByCode.get(actor.role_code) ?? actor.role_code,
+        profitSharePercent:
+          actor.profit_share_percent === null
+            ? null
+            : Number(actor.profit_share_percent),
         metrics,
         displayOrder: actor.display_order,
         isGlobal: false,
@@ -545,6 +550,7 @@ export async function getActorFinanceSummary(
         actorId: null,
         displayName: f.name,
         roleLabel: "Rumus kustom",
+        profitSharePercent: null,
         metrics,
         displayOrder: 9_000_000 + f.displayOrder,
         isGlobal: true,

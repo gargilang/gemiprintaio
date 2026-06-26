@@ -8,6 +8,8 @@ import {
   canDeleteCashBookEntry,
   ensureLatestCashbookMetricsFresh,
 } from "@/lib/services/finance-service";
+import { listBusinessActors, listActorRoles } from "@/lib/services/business-actor-service";
+import { buildRingkasanPengurusCepat } from "@/lib/finance-summary-cache";
 import { fetchKeuanganCashBookByPeriod } from "@/lib/server-data-supabase";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
 
@@ -26,10 +28,12 @@ export async function GET() {
 
     if (getServerSupabaseClient()) {
       await ensureLatestCashbookMetricsFresh();
-      const [cashBooks, latestMap, periodMetrics] = await Promise.all([
+      const [cashBooks, latestMap, periodMetrics, actors, roles] = await Promise.all([
         fetchKeuanganCashBookByPeriod(currentPeriod.id),
         getLatestPerFormulaKey(), // saldo, modal_kas, saldo_kasbon, kas tetap global
         computePeriodMetrics(currentPeriod.id),
+        listBusinessActors({ includeInactive: false }),
+        listActorRoles(),
       ]);
 
       const systemMetrics = {
@@ -58,6 +62,11 @@ export async function GET() {
       return NextResponse.json({
         cashBooks: cashBooksWithDeletable,
         systemMetrics,
+        actorSummarySeed: buildRingkasanPengurusCepat({
+          actors,
+          roles,
+          latestSystemMetrics: systemMetrics,
+        }),
         periodeLabel,
         periodeId: currentPeriod.id,
         activePeriod: {
@@ -77,9 +86,11 @@ export async function GET() {
         [currentPeriod.id],
       )) || [];
 
-    const [latestMap, periodMetrics] = await Promise.all([
+    const [latestMap, periodMetrics, actors, roles] = await Promise.all([
       getLatestPerFormulaKey(),
       computePeriodMetrics(currentPeriod.id),
+      listBusinessActors({ includeInactive: false }),
+      listActorRoles(),
     ]);
 
     const systemMetrics = {
@@ -106,6 +117,11 @@ export async function GET() {
     return NextResponse.json({
       cashBooks: cashBooksWithDeletable,
       systemMetrics,
+      actorSummarySeed: buildRingkasanPengurusCepat({
+        actors,
+        roles,
+        latestSystemMetrics: systemMetrics,
+      }),
       periodeLabel,
       periodeId: currentPeriod.id,
       activePeriod: {

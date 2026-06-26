@@ -7,8 +7,13 @@
  * saat dikunjungi ulang (tanpa spinner setelah muat pertama). Revalidasi di latar.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import {
+  sumGroupWithQuickMetrics,
+  type MetrikSistemKeuangan,
+  type RingkasanPengurusCepat,
+} from "@/lib/finance-summary-cache";
 
 type FormulaGroup =
   | "summary"
@@ -27,6 +32,7 @@ interface ActorRow {
   actorId: string | null;
   displayName: string;
   roleLabel: string;
+  profitSharePercent?: number | null;
   metrics: Record<string, number | null>;
   displayOrder: number;
   isGlobal: boolean;
@@ -43,28 +49,17 @@ interface Props {
   month?: string;
   formatRupiah: (n: number) => string;
   refreshKey?: string | number;
+  latestSystemMetrics?: Pick<MetrikSistemKeuangan, "laba_bersih"> | null;
+  fallbackSummary?: RingkasanPengurusCepat | null;
   onOpenPeopleSettings?: () => void;
 }
 
 async function fetchSummary(url: string): Promise<SummaryV2Response> {
   // Ambil ringkasan dari API summary-v2 dan lempar pesan ramah bila gagal.
-  const r = await fetch(url);
+  const r = await fetch(url, { cache: "no-store" });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body?.error || "Gagal memuat ringkasan");
   return body as SummaryV2Response;
-}
-
-function sumGroup(
-  // Jumlahkan semua kolom rumus dalam satu grup; null bila grup tak punya nilai.
-  metrics: Record<string, number | null>,
-  columns: SummaryColumn[],
-  group: FormulaGroup
-): number | null {
-  const keys = columns.filter((c) => c.group === group).map((c) => c.formulaKey);
-  if (keys.length === 0) return null;
-  const hasAny = keys.some((k) => metrics[k] !== undefined && metrics[k] !== null);
-  if (!hasAny) return null;
-  return keys.reduce((sum, k) => sum + (metrics[k] ?? 0), 0);
 }
 
 function CellValue({
@@ -84,36 +79,37 @@ export default function RingkasanPengurus({
   month,
   formatRupiah,
   refreshKey,
+  latestSystemMetrics,
+  fallbackSummary,
   onOpenPeopleSettings,
 }: Props) {
   const [collapsed, setCollapsed] = useState(true);
+  const lastRefreshKey = useRef(refreshKey);
 
   const url = `/api/keuangan/summary-v2${month ? `?month=${encodeURIComponent(month)}` : ""}`;
-  // Pakai SWR key stabil berdasarkan URL + tick refresh eksplisit saja.
-  // Jangan sematkan lastCashBookLoadAt di sini — itu berubah tiap kali buku kas
-  // dimuat ulang dan akan membusukkan cache tanpa perlu, memunculkan spinner
-  // di setiap tambah/edit transaksi. refreshKey (actorSummaryTick) hanya
-  // bertambah saat pengaturan pengurus/rumus benar-benar berubah.
-  const swrKey = refreshKey != null && refreshKey !== "" && refreshKey !== 0
-    ? `${url}__r${refreshKey}`
-    : url;
-
-  const { data, error, isLoading } = useSWR<SummaryV2Response>(
-    swrKey,
+  const { data, error, isLoading, mutate } = useSWR<SummaryV2Response>(
+    url,
     () => fetchSummary(url),
     { keepPreviousData: true }
   );
 
+  useEffect(() => {
+    if (refreshKey == null || refreshKey === "") return;
+    if (lastRefreshKey.current === refreshKey) return;
+    lastRefreshKey.current = refreshKey;
+    void mutate();
+  }, [mutate, refreshKey]);
+
   const hasGroup = useMemo(() => {
-    const cols = data?.columns ?? [];
+    const cols = (data ?? fallbackSummary)?.columns ?? [];
     return {
       profit_share: cols.some((c) => c.group === "profit_share"),
       cash_advance: cols.some((c) => c.group === "cash_advance"),
       bonus: cols.some((c) => c.group === "bonus"),
     };
-  }, [data]);
+  }, [data, fallbackSummary]);
 
-  if (isLoading && !data) {
+  if (isLoading && !data && !fallbackSummary) {
     return (
       <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
         Memuat ringkasan pengurus…
@@ -121,7 +117,7 @@ export default function RingkasanPengurus({
     );
   }
 
-  if (error && !data) {
+  if (error && !data && !fallbackSummary) {
     return (
       <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
         Gagal memuat ringkasan: {(error as Error).message}
@@ -129,9 +125,10 @@ export default function RingkasanPengurus({
     );
   }
 
-  const rows = data?.rows ?? [];
-  const columns = data?.columns ?? [];
-  const legacyCount = data?.legacyOrphanFormulas ?? 0;
+  const renderedData = data ?? fallbackSummary;
+  const rows = renderedData?.rows ?? [];
+  const columns = renderedData?.columns ?? [];
+  const legacyCount = renderedData?.legacyOrphanFormulas ?? 0;
   const actorRows = rows.filter((r) => !r.isGlobal);
 
   if (actorRows.length === 0) {
@@ -221,9 +218,12 @@ export default function RingkasanPengurus({
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {actorRows.map((row) => {
-                  const ps = sumGroup(row.metrics, columns, "profit_share");
-                  const ca = sumGroup(row.metrics, columns, "cash_advance");
-                  const bn = sumGroup(row.metrics, columns, "bonus");
+                  const ps = sumGroupWithQuickMetrics(row.metrics, columns, "profit_share", {
+                    latestSystemMetrics,
+                    profitSharePercent: row.profitSharePercent,
+                  });
+                  const ca = sumGroupWithQuickMetrics(row.metrics, columns, "cash_advance");
+                  const bn = sumGroupWithQuickMetrics(row.metrics, columns, "bonus");
                   const noMetrics = ps === null && ca === null && bn === null;
                   return (
                     <tr
