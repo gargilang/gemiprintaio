@@ -20,6 +20,7 @@ import {
   nonaktifkanKaryawanAction,
   aktifkanKaryawanAction,
   hapusKaryawanAction,
+  urutkanKaryawanAction,
   type RingkasanKaryawan,
 } from "./actions";
 import ModalKomponenKompensasi from "./ModalKomponenKompensasi";
@@ -66,6 +67,7 @@ export default function PenggajianPage() {
   const [hapusTarget, setHapusTarget] = useState<RingkasanKaryawan | null>(
     null,
   );
+  const [urutBusy, setUrutBusy] = useState(false);
   const invalidate = useInvalidate();
 
   const showMsg = useCallback((type: "success" | "error", message: string) => {
@@ -139,6 +141,26 @@ export default function PenggajianPage() {
       setHapusTarget(null);
     }
   }, [hapusTarget, reload, showMsg]);
+
+  const handlePindahUrutan = useCallback(
+    async (index: number, arah: -1 | 1) => {
+      const target = index + arah;
+      if (target < 0 || target >= karyawan.length || urutBusy) return;
+      const berikut = [...karyawan];
+      [berikut[index], berikut[target]] = [berikut[target], berikut[index]];
+      try {
+        setUrutBusy(true);
+        await urutkanKaryawanAction(berikut.map((k) => k.actor_id));
+        showMsg("success", "Urutan karyawan diperbarui.");
+        reload();
+      } catch (e) {
+        showMsg("error", (e as Error)?.message || "Gagal memperbarui urutan.");
+      } finally {
+        setUrutBusy(false);
+      }
+    },
+    [karyawan, reload, showMsg, urutBusy],
+  );
 
   return (
     <div className="space-y-6">
@@ -271,6 +293,9 @@ export default function PenggajianPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
+                  <th className="text-center px-3 py-3 font-medium w-20">
+                    Urutan
+                  </th>
                   <th className="text-left px-6 py-3 font-medium">Nama</th>
                   <th className="text-left px-6 py-3 font-medium">Jabatan</th>
                   <th className="text-left px-6 py-3 font-medium">
@@ -284,13 +309,68 @@ export default function PenggajianPage() {
                 </tr>
               </thead>
               <tbody>
-                {karyawan.map((k) => (
+                {karyawan.map((k, index) => (
                   <tr
                     key={k.actor_id}
                     className={`border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
                       k.is_active === 0 ? "opacity-60" : ""
                     }`}
                   >
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 text-xs font-bold tabular-nums">
+                          {index + 1}
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handlePindahUrutan(index, -1)}
+                            disabled={index === 0 || urutBusy}
+                            aria-label={`Naikkan urutan ${k.nama}`}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 15l7-7 7 7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePindahUrutan(index, 1)}
+                            disabled={
+                              index === karyawan.length - 1 || urutBusy
+                            }
+                            aria-label={`Turunkan urutan ${k.nama}`}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">
                       {k.nama}
                     </td>

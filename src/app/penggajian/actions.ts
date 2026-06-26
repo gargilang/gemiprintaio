@@ -18,6 +18,7 @@ import {
   deleteBusinessActor,
   getBusinessActor,
   listActorRoles,
+  reorderBusinessActors,
 } from "@/lib/services/business-actor-service";
 import { syncFormulasForActor } from "@/lib/services/formula-service";
 import { recalculateCashbookIfAvailable, ensureLatestCashbookMetricsFresh } from "@/lib/services/finance-service";
@@ -58,6 +59,7 @@ export interface RingkasanKaryawan {
   role_code: string;
   role_label: string;
   role_group: string;
+  display_order: number;
   jumlah_komponen: number;
   tipe_komponen: string[];
   saldo_pinjaman: number;
@@ -80,6 +82,9 @@ export async function listRingkasanKaryawanAction(
     ]);
     const groupByCode = new Map(roles.map((r) => [r.role_code, r.role_group]));
     const labelByCode = new Map(roles.map((r) => [r.role_code, r.role_label]));
+    const roleOrderByCode = new Map(
+      roles.map((r) => [r.role_code, r.display_order]),
+    );
     const hasil: RingkasanKaryawan[] = [];
     for (const a of actors) {
       const komponen = await listKomponen(a.id);
@@ -91,6 +96,7 @@ export async function listRingkasanKaryawanAction(
         role_code: a.role_code,
         role_label: labelByCode.get(a.role_code) ?? a.role_code,
         role_group: groupByCode.get(a.role_code) ?? "other",
+        display_order: a.display_order,
         jumlah_komponen: aktif.length,
         tipe_komponen: Array.from(new Set(aktif.map((k) => k.tipe))),
         saldo_pinjaman: saldo,
@@ -98,6 +104,15 @@ export async function listRingkasanKaryawanAction(
         is_active: a.is_active,
       });
     }
+    hasil.sort((a, b) => {
+      if (a.display_order !== b.display_order) {
+        return a.display_order - b.display_order;
+      }
+      const roleA = roleOrderByCode.get(a.role_code) ?? 999;
+      const roleB = roleOrderByCode.get(b.role_code) ?? 999;
+      if (roleA !== roleB) return roleA - roleB;
+      return a.nama.localeCompare(b.nama, "id");
+    });
     return hasil;
   } catch (error) {
     console.error("listRingkasanKaryawanAction error:", error);
@@ -267,6 +282,24 @@ export async function setBagiHasilAction(
     return { success: true };
   } catch (error) {
     console.error("setBagiHasilAction error:", error);
+    throw error;
+  }
+}
+
+// ── Urutan tampilan karyawan ─────────────────────────────────────────────────
+export async function urutkanKaryawanAction(orderedIds: string[]) {
+  try {
+    await requireAdminOrManager();
+    if (orderedIds.length === 0) return { success: true };
+    const updates = orderedIds.map((id, index) => ({
+      id,
+      display_order: (index + 1) * 10,
+    }));
+    const res = await reorderBusinessActors(updates);
+    if (res.error) throw res.error;
+    return { success: true };
+  } catch (error) {
+    console.error("urutkanKaryawanAction error:", error);
     throw error;
   }
 }

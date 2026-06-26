@@ -376,6 +376,19 @@ export async function reactivateBusinessActor(
   return { error: null };
 }
 
+/** Susun ulang urutan tampilan pegawai (nomor lebih kecil = lebih atas). */
+export async function reorderBusinessActors(
+  updates: Array<{ id: string; display_order: number }>,
+): Promise<{ error: Error | null }> {
+  for (const u of updates) {
+    const res = await updateBusinessActor(u.id, {
+      display_order: u.display_order,
+    });
+    if (res.error) return { error: res.error };
+  }
+  return { error: null };
+}
+
 /**
  * Hapus permanen. Menolak kalau ada nilai computed historis supaya tidak
  * pernah diam-diam kehilangan data audit.

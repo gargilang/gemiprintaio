@@ -45,6 +45,7 @@ export interface OpsiDraftGaji {
 interface PegawaiRow {
   id: string;
   display_name: string;
+  display_order?: number;
   is_active?: number;
   is_deleted?: number;
 }
@@ -86,7 +87,9 @@ export async function hitungDraftGaji(
   const sumberNilai = opsi.sumberNilai || {};
   const potonganPerActor = opsi.potonganPerActor || {};
 
-  const actorsResult = await db.query<PegawaiRow>("pegawai", {});
+  const actorsResult = await db.query<PegawaiRow>("pegawai", {
+    orderBy: { column: "display_order", ascending: true },
+  });
   const actors = (actorsResult.data || []).filter(
     (a) => Number(a.is_deleted ?? 0) === 0 && Number(a.is_active ?? 1) === 1
   );
