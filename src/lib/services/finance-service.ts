@@ -505,12 +505,12 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
   }> = [];
   const nowIso = new Date().toISOString();
 
+  // Kumpulkan semua baris yang butuh update keuangan dan baris TC.
+  const keuanganBatchUpdates: Record<string, unknown>[] = [];
+
   for (const { id, updates, computed } of batch) {
     if (Object.keys(updates).length > 0) {
-      const res = await db.update("keuangan", id, updates);
-      if (res.error) {
-        console.warn("recalculateCashbookViaSupabase update:", res.error);
-      }
+      keuanganBatchUpdates.push({ id, ...updates });
     }
 
     const rowOverrides = overrideMap.get(id);
@@ -522,6 +522,28 @@ async function recalculateCashbookViaSupabase(): Promise<boolean> {
         value: ov ?? value,
         computed_at: nowIso,
       });
+    }
+  }
+
+  // Perbarui kolom keuangan: satu RPC call menggantikan N sequential updates.
+  if (keuanganBatchUpdates.length > 0) {
+    const { error: rpcErr } = await sb.rpc("bulk_update_keuangan", {
+      updates: keuanganBatchUpdates as unknown[],
+    });
+    if (rpcErr) {
+      // RPC mungkin belum tersedia (migrasi belum dijalankan) — fallback sequential.
+      console.warn(
+        "bulk_update_keuangan RPC tidak tersedia, fallback sequential:",
+        rpcErr.message,
+      );
+      for (const { id, updates } of batch) {
+        if (Object.keys(updates).length > 0) {
+          const res = await db.update("keuangan", id, updates);
+          if (res.error) {
+            console.warn("recalculateCashbookViaSupabase update:", res.error);
+          }
+        }
+      }
     }
   }
 
