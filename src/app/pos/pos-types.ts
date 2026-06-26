@@ -48,6 +48,8 @@ export interface CartItem {
   faktor_konversi: number;
   harga_satuan: number;
   jumlah: number;
+  /** Jumlah lembar/roll untuk barang berdimensi (jumlah m² = jumlah_roll × panjang × lebar). */
+  jumlah_roll?: number;
   panjang?: number;
   lebar?: number;
   butuh_dimensi?: boolean;

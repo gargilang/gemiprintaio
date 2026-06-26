@@ -303,18 +303,20 @@ export default function POSPage() {
       selectedRollSize
     );
     if (!billed) return null;
-    const area = billed.panjang * billed.lebar;
+    const pieceCount = Math.max(1, Math.round(parseFloat(quantity) || 1));
+    const areaPerPiece = billed.panjang * billed.lebar;
     const hargaPerSatuan = selectedPelanggan?.member_status
       ? selectedUnit.harga_member || selectedUnit.harga_jual
       : selectedUnit.harga_jual;
-    const subtotalRaw = billed.area * hargaPerSatuan;
+    const subtotalRaw = areaPerPiece * pieceCount * hargaPerSatuan;
     return {
       panjang: billed.panjang,
       lebar: billed.lebar,
-      area: billed.area,
+      area: areaPerPiece * pieceCount,
       usesRotation: billed.usesRotation,
       subtotalRaw,
       hargaPerSatuan,
+      pieceCount,
     };
   }, [
     useRounding,
@@ -324,6 +326,7 @@ export default function POSPage() {
     parsedLebar,
     selectedUnit,
     selectedPelanggan,
+    quantity,
   ]);
 
   const loadAllData = async () => {
@@ -444,6 +447,7 @@ export default function POSPage() {
     }
 
     let finalQuantity = parseFloat(quantity);
+    let jumlahRoll: number | undefined;
     let originalPanjang: number | undefined;
     let originalLebar: number | undefined;
     let rollUsed: number | undefined;
@@ -484,7 +488,12 @@ export default function POSPage() {
 
       billedPanjang = billedP;
       billedLebar = billedL;
-      finalQuantity = billedP * billedL;
+      jumlahRoll = Math.max(1, Math.round(finalQuantity) || 1);
+      if (isNaN(finalQuantity) || finalQuantity <= 0) {
+        showMsg("error", "Masukkan jumlah yang valid");
+        return null;
+      }
+      finalQuantity = billedP * billedL * jumlahRoll;
     } else {
       if (isNaN(finalQuantity) || finalQuantity <= 0) {
         showMsg("error", "Masukkan jumlah yang valid");
@@ -506,6 +515,7 @@ export default function POSPage() {
       faktor_konversi: selectedUnit.faktor_konversi,
       harga_satuan: hargaPerSatuan,
       jumlah: finalQuantity,
+      jumlah_roll: jumlahRoll,
       subtotalRaw,
       originalHargaSatuan: hargaPerSatuan,
       butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
@@ -577,7 +587,18 @@ export default function POSPage() {
       setSelectedRollSize(
         item.useRounding ? (item.selectedRollSize ?? null) : null
       );
-      setQuantity("1");
+      const perPieceArea =
+        item.useRounding &&
+        item.billedPanjang != null &&
+        item.billedLebar != null
+          ? item.billedPanjang * item.billedLebar
+          : item.panjang * item.lebar;
+      const pieces =
+        item.jumlah_roll ??
+        (perPieceArea > 0
+          ? Math.max(1, Math.round(item.jumlah / perPieceArea))
+          : 1);
+      setQuantity(String(pieces));
     } else {
       setPanjang("");
       setLebar("");
@@ -981,7 +1002,7 @@ export default function POSPage() {
                   item.billedPanjang != null &&
                   item.billedLebar != null
                   ? formatRollCartDetailLine(item)
-                  : `${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m = ${item.jumlah.toFixed(2)} m²`
+                  : `${(item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : ""}${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m = ${item.jumlah.toFixed(2)} m²`
                 : undefined,
           })),
           total: total,
@@ -1605,7 +1626,9 @@ export default function POSPage() {
                       <div className="space-y-3">
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
-                            Jumlah
+                            {selectedMaterial.butuh_dimensi_status === 1
+                              ? "Jumlah lembar"
+                              : "Jumlah"}
                           </label>
                           <div className="flex items-center gap-2">
                             <button
@@ -1621,11 +1644,7 @@ export default function POSPage() {
                             </button>
                             <input
                               type="number"
-                              step={
-                                selectedMaterial.butuh_dimensi_status === 1
-                                  ? "0.01"
-                                  : "1"
-                              }
+                              step="1"
                               value={quantity}
                               onChange={(e) => setQuantity(e.target.value)}
                               onKeyDown={(e) => {
@@ -1718,6 +1737,7 @@ export default function POSPage() {
                           )}
 
                         <button
+                          type="button"
                           onClick={handleAddToCart}
                           className={`w-full py-2.5 text-white rounded-lg font-bold transition-all shadow-md text-sm ${
                             editingCartIndex !== null

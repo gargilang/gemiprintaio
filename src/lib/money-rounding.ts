@@ -64,6 +64,7 @@ export function formatRollCartDetailLine(item: {
   billedPanjang?: number;
   billedLebar?: number;
   selectedRollSize?: number;
+  jumlah_roll?: number;
   jumlah: number;
   harga_satuan: number;
 }): string {
@@ -81,5 +82,7 @@ export function formatRollCartDetailLine(item: {
     billedLebar,
     selectedRollSize
   );
-  return `${printLen.toFixed(2)} × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
+  const rollPrefix =
+    (item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : "";
+  return `${rollPrefix}${printLen.toFixed(2)} × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
 }

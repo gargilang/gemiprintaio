@@ -28,6 +28,7 @@ interface CartItem {
   nama_satuan: string;
   harga_satuan: number;
   jumlah: number;
+  jumlah_roll?: number;
   panjang?: number;
   lebar?: number;
   butuh_dimensi?: boolean;
@@ -387,6 +388,9 @@ export default function KeranjangPOS({
                           formatRollCartDetailLine(item)
                         ) : (
                           <>
+                            {(item.jumlah_roll ?? 1) > 1
+                              ? `${item.jumlah_roll} × `
+                              : ""}
                             {item.panjang.toFixed(2)} × {item.lebar.toFixed(2)}{" "}
                             m = {item.jumlah.toFixed(2)} m² @ Rp{" "}
                             {formatPosUnitPrice(item.harga_satuan)}
