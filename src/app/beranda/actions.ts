@@ -52,7 +52,11 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
     getLatestPerFormulaKey(),
   ]);
 
-  const sales = posData.sales ?? [];
+  // Buang transaksi yang sudah dibatalkan (VOIDED) agar tidak ikut
+  // menghitung statistik, tren, atau daftar terakhir di Beranda.
+  const sales = (posData.sales ?? []).filter(
+    (s: any) => s.status_transaksi !== "VOIDED",
+  );
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -68,13 +72,13 @@ export async function getDashboardStatsAction(): Promise<DashboardStats> {
   }
 
   const activeOrders = orders.filter(
-    (o: any) => o.status === "MENUNGGU" || o.status === "PROSES"
+    (o: any) => o.status === "MENUNGGU" || o.status === "PROSES",
   ).length;
 
   const kilat = orders.filter(
     (o: any) =>
       (o.status === "MENUNGGU" || o.status === "PROSES") &&
-      o.prioritas === "KILAT"
+      o.prioritas === "KILAT",
   ).length;
 
   const saldo = latestMap.saldo ?? 0;
@@ -165,7 +169,7 @@ export async function getReorderSuggestionsAction(): Promise<ReorderSuggestionsR
 }
 
 export async function generateDraftPurchaseOrdersAction(
-  vendor_ids?: string[]
+  vendor_ids?: string[],
 ): Promise<GenerateDraftPurchaseOrdersResult> {
   const session = await requireAdminOrManager();
   return generateDraftPurchaseOrders({

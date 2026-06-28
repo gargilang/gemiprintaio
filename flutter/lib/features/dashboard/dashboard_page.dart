@@ -51,7 +51,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         final prodData = results[1] as Map<String, dynamic>;
         final financeData = results[2] as Map<String, dynamic>;
 
-        final sales = posData['sales'] as List? ?? [];
+        // Buang transaksi yang sudah dibatalkan (VOIDED) agar tidak ikut
+        // menghitung statistik di dashboard.
+        final sales = (posData['sales'] as List? ?? [])
+            .where((s) => s['status_transaksi'] != 'VOIDED')
+            .toList();
         final orders = prodData['orders'] as List? ?? [];
         final systemMetrics = financeData['systemMetrics'] is Map<String, dynamic>
             ? financeData['systemMetrics'] as Map<String, dynamic>
