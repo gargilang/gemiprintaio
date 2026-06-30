@@ -3,6 +3,7 @@ import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/models/finishing_option.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
+import 'package:gemiprint/features/pos/widgets/finishing_picker.dart';
 import 'package:gemiprint/models/material_item.dart';
 
 /// Sheet konfigurasi item: satuan/harga, dimensi (Lebar × Panjang),
@@ -54,6 +55,10 @@ class _AddItemBodyState extends State<_AddItemBody> {
   double? _selectedRollSize;
   String? _error;
 
+  List<FinishingSelection> _finishing = [];
+  double? _overrideHarga;
+  final List<ItemBiaya> _biayaTambahan = [];
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +78,10 @@ class _AddItemBodyState extends State<_AddItemBody> {
 
   bool get _dim => widget.material.dimensiRequired;
   double get _hargaSatuan => _price.hargaUntuk(isMember: widget.isMember);
+  double get _hargaAktif => _overrideHarga ?? _hargaSatuan;
+  bool get _isOverride => _overrideHarga != null;
+  double get _totalBiaya =>
+      _biayaTambahan.fold(0.0, (s, b) => s + b.nominal);
 
   /// Sinkronkan [_selectedRollSize] dari input dimensi saat ini.
   ///
@@ -158,7 +167,7 @@ class _AddItemBodyState extends State<_AddItemBody> {
         hargaSatuanId: _price.id,
         namaSatuan: _price.label,
         faktorKonversi: _price.faktorKonversi,
-        hargaSatuan: _hargaSatuan,
+        hargaSatuan: _hargaAktif,
         originalHargaSatuan: _hargaSatuan,
         butuhDimensi: _dim,
         jumlah: c.jumlah,
@@ -168,14 +177,116 @@ class _AddItemBodyState extends State<_AddItemBody> {
         selectedRollSize: c.rollSize,
         billedPanjang: c.billedP,
         billedLebar: c.billedL,
+        finishing: List.from(_finishing),
+        biayaTambahan: List.from(_biayaTambahan),
       ),
     );
+  }
+
+  Future<void> _editFinishing() async {
+    final result = await showFinishingPicker(
+      context,
+      options: widget.finishingOptions,
+      initial: _finishing,
+    );
+    if (result != null) setState(() => _finishing = result);
+  }
+
+  Future<void> _editHarga() async {
+    final ctrl = TextEditingController(
+      text: _hargaAktif.toStringAsFixed(0),
+    );
+    final result = await showDialog<double?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ubah Harga Satuan'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(prefixText: 'Rp '),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          if (_isOverride)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _hargaSatuan),
+              child: const Text('Reset'),
+            ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(ctx, double.tryParse(ctrl.text)),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        if ((result - _hargaSatuan).abs() < 0.005) {
+          _overrideHarga = null;
+        } else {
+          _overrideHarga = result;
+        }
+      });
+    }
+  }
+
+  Future<void> _addBiaya() async {
+    final labelCtrl = TextEditingController();
+    final nominalCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Biaya Tambahan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelCtrl,
+              decoration: const InputDecoration(labelText: 'Keterangan (ongkir…)'),
+              autofocus: true,
+            ),
+            TextField(
+              controller: nominalCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Nominal',
+                prefixText: 'Rp ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Tambah'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final nominal = double.tryParse(nominalCtrl.text) ?? 0;
+      if (labelCtrl.text.trim().isNotEmpty && nominal > 0) {
+        setState(() => _biayaTambahan
+            .add(ItemBiaya(label: labelCtrl.text.trim(), nominal: nominal)));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final computed = _compute();
-    final subtotal = computed != null ? computed.jumlah * _hargaSatuan : 0.0;
+    final subtotal = computed != null
+        ? computed.jumlah * _hargaAktif + _totalBiaya
+        : 0.0;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DraggableScrollableSheet(
@@ -269,6 +380,97 @@ class _AddItemBodyState extends State<_AddItemBody> {
                     const SizedBox(height: 6),
                     _numField(_qtyCtrl, 'Jumlah'),
                   ],
+                  const SizedBox(height: 16),
+                  const Text('FINISHING',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      ..._finishing.map((f) => Chip(
+                            label: Text(f.jenisFinishing,
+                                style: const TextStyle(fontSize: 11)),
+                            onDeleted: () =>
+                                setState(() => _finishing.remove(f)),
+                            deleteIconColor: AppColors.primary,
+                          )),
+                      ActionChip(
+                        avatar: const Icon(Icons.add, size: 14),
+                        label: Text(
+                          _finishing.isEmpty ? 'Tambah Finishing' : 'Edit',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        onPressed: _editFinishing,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('HARGA SATUAN',
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      if (_isOverride)
+                        Text(
+                          'Rp ${formatPosUnitPrice(_hargaSatuan)}',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              decoration: TextDecoration.lineThrough,
+                              color: Colors.grey),
+                        ),
+                      const SizedBox(width: 6),
+                      Text('Rp ${formatPosUnitPrice(_hargaAktif)}',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _isOverride ? AppColors.success : null)),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: _editHarga,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('Ubah',
+                              style: TextStyle(fontSize: 11)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('BIAYA TAMBAHAN',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  ..._biayaTambahan.asMap().entries.map((e) => Row(
+                        children: [
+                          Expanded(
+                              child: Text(e.value.label,
+                                  style: const TextStyle(fontSize: 12))),
+                          Text('Rp ${formatPosUnitPrice(e.value.nominal)}',
+                              style: const TextStyle(fontSize: 12)),
+                          GestureDetector(
+                            onTap: () =>
+                                setState(() => _biayaTambahan.removeAt(e.key)),
+                            child: const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.close,
+                                  size: 14, color: Colors.grey),
+                            ),
+                          ),
+                        ],
+                      )),
+                  TextButton.icon(
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('Biaya tambahan (ongkir…)',
+                        style: TextStyle(fontSize: 12)),
+                    onPressed: _addBiaya,
+                  ),
                   const SizedBox(height: 16),
                   if (_error != null)
                     Padding(
