@@ -316,6 +316,15 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute(sql, []);
     }
 
+    // ── Dimensi penawaran & PO (20260630200000_penawaran_dimensi.sql) ────
+    let penawaran_po_dimensi_cols = [
+        "ALTER TABLE item_penawaran ADD COLUMN jumlah_lembar INTEGER",
+        "ALTER TABLE purchase_order_items ADD COLUMN jumlah_roll INTEGER",
+    ];
+    for sql in penawaran_po_dimensi_cols {
+        let _ = conn.execute(sql, []);
+    }
+
     // ── Long-term hardening ──────────────────────────────────────────────
     let _ = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS lokasi (

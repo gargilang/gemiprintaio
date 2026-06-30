@@ -1208,6 +1208,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       subtotal REAL NOT NULL,
       panjang REAL,
       lebar REAL,
+      jumlah_lembar INTEGER,
       tipe_item TEXT NOT NULL DEFAULT 'BARANG' CHECK(tipe_item IN ('BARANG','JASA','MAKLON')),
       vendor_subkontrak_id TEXT,
       biaya_subkontrak REAL,
@@ -1280,6 +1281,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       subtotal REAL NOT NULL,
       panjang REAL,
       lebar REAL,
+      jumlah_roll INTEGER,
       dpp_satuan REAL NOT NULL DEFAULT 0,
       ppn_satuan REAL NOT NULL DEFAULT 0,
       dpp_total REAL NOT NULL DEFAULT 0,
@@ -1618,6 +1620,40 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       db.exec(
         `ALTER TABLE item_pembelian ADD COLUMN jumlah_roll INTEGER NOT NULL DEFAULT 1`
       );
+    }
+  }
+
+  // ── Dimensi penawaran & PO: jumlah_lembar / jumlah_roll ─────────────────
+  // Mirror of supabase migration 20260630200000_penawaran_dimensi.sql.
+  const itemPenawaranExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penawaran' LIMIT 1"
+    )
+    .get();
+  if (itemPenawaranExists) {
+    const ipnCols = (
+      db.prepare("PRAGMA table_info(item_penawaran)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (!ipnCols.includes("jumlah_lembar")) {
+      db.exec(`ALTER TABLE item_penawaran ADD COLUMN jumlah_lembar INTEGER`);
+    }
+  }
+
+  const poItemsExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'purchase_order_items' LIMIT 1"
+    )
+    .get();
+  if (poItemsExists) {
+    const poiCols = (
+      db.prepare("PRAGMA table_info(purchase_order_items)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    if (!poiCols.includes("jumlah_roll")) {
+      db.exec(`ALTER TABLE purchase_order_items ADD COLUMN jumlah_roll INTEGER`);
     }
   }
 

@@ -142,18 +142,6 @@ export function isServerSide(): boolean {
 
 // SQLite section moved to db-sqlite.ts
 
-/** Runtime ALTER untuk kolom dimensi penawaran/PO (instal SQLite lama). */
-function ensurePenawaranPoDimensiColumns(db: any) {
-  // item_penawaran — jumlah lembar untuk barang dimensi
-  try {
-    db.exec(`ALTER TABLE item_penawaran ADD COLUMN jumlah_lembar INTEGER`);
-  } catch {}
-  // purchase_order_items — jumlah roll untuk barang dimensi
-  try {
-    db.exec(`ALTER TABLE purchase_order_items ADD COLUMN jumlah_roll INTEGER`);
-  } catch {}
-}
-
 async function getServerSQLiteTableColumns(table: string): Promise<Set<string>> {
   const cached = serverSqliteColumnsCache.get(table);
   if (cached) {
@@ -164,8 +152,6 @@ async function getServerSQLiteTableColumns(table: string): Promise<Set<string>> 
   if (!db) {
     return new Set();
   }
-
-  ensurePenawaranPoDimensiColumns(db);
 
   try {
     // PRAGMA table_info returns the canonical list of columns for the table.
