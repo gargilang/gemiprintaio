@@ -5,6 +5,7 @@ import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { QuotationIcon } from "@/components/icons/PageIcons";
 import MenuAksi from "@/components/MenuAksi";
+import { generateHtmlPenawaran } from "@/lib/penawaran-po-print";
 import {
   convertQuotationToSaleAction,
   createQuotationAction,
@@ -19,6 +20,10 @@ type DraftItem = {
   nama_satuan: string;
   faktor_konversi: number;
   harga_satuan: number;
+  panjang?: number | null;
+  lebar?: number | null;
+  jumlah_lembar?: number | null;
+  butuh_dimensi?: boolean;
 };
 
 const money = (value: number) =>
@@ -28,7 +33,7 @@ const money = (value: number) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const initial = { quotations: [], customers: [], materials: [] };
+const initial = { quotations: [], customers: [], materials: [], shop: null };
 
 export default function PenawaranPage() {
   const { data: rawData, isLoading, mutate } = useCachedData<any>(
@@ -64,15 +69,20 @@ export default function PenawaranPage() {
       material?.unit_prices?.find((u: any) => Number(u.default_status) === 1) ||
       material?.unit_prices?.[0];
     if (!material || !unit) return;
+    const isDim = Number(material.butuh_dimensi_status) === 1;
     setItems((prev) => [
       ...prev,
       {
         barang_id: material.id,
         harga_satuan_id: unit.id,
-        jumlah: 1,
-        nama_satuan: unit.nama_satuan,
+        jumlah: isDim ? 0 : 1,
+        nama_satuan: isDim ? "m²" : (unit.nama_satuan || "pcs"),
         faktor_konversi: Number(unit.faktor_konversi || 1),
         harga_satuan: Number(unit.harga_jual || unit.harga_member || 0),
+        butuh_dimensi: isDim,
+        panjang: isDim ? 0 : null,
+        lebar: isDim ? 0 : null,
+        jumlah_lembar: isDim ? 1 : null,
       },
     ]);
   }
@@ -90,6 +100,9 @@ export default function PenawaranPage() {
         catatan,
         items: items.map((item) => ({
           ...item,
+          panjang: item.panjang || null,
+          lebar: item.lebar || null,
+          jumlah_lembar: item.jumlah_lembar || null,
           subtotal: Number(item.jumlah || 0) * Number(item.harga_satuan || 0),
         })),
       });
@@ -146,51 +159,26 @@ export default function PenawaranPage() {
   function printQuote(quote: any) {
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
-    const itemsHtml = (quote.items || [])
-      .map(
-        (item: any, index: number) => `
-          <tr>
-            <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:center;">${index + 1}</td>
-            <td style="padding:6px 8px;border:1px solid #cbd5e1;">${item.barang_nama || item.barang_id}</td>
-            <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;">${Number(item.jumlah || 0).toLocaleString("id-ID")} ${item.nama_satuan || ""}</td>
-            <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;">${money(item.harga_satuan)}</td>
-            <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;">${money(item.subtotal)}</td>
-          </tr>`
-      )
-      .join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${quote.nomor_penawaran}</title>
-<style>
-  body{font-family:'Segoe UI',Arial,sans-serif;color:#0f172a;padding:24px;}
-  h1{margin:0 0 4px;font-size:22px;}
-  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;}
-  th{background:#f1f5f9;border:1px solid #cbd5e1;padding:8px;text-align:left;}
-  .meta{display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:#475569;}
-  .total{margin-top:12px;display:flex;justify-content:flex-end;font-size:16px;font-weight:600;}
-  .notes{margin-top:18px;font-size:12px;color:#475569;white-space:pre-wrap;}
-  .footer{margin-top:32px;font-size:12px;color:#94a3b8;}
-</style></head><body>
-<h1>PENAWARAN HARGA</h1>
-<div style="font-size:13px;color:#475569;">No: ${quote.nomor_penawaran}</div>
-<div class="meta">
-  <div>
-    <div><strong>Kepada:</strong> ${quote.pelanggan_nama_snapshot || "Pelanggan Umum"}</div>
-    <div>${quote.pelanggan_kota || ""}</div>
-  </div>
-  <div style="text-align:right;">
-    <div>Tanggal: ${quote.tanggal || ""}</div>
-    <div>Berlaku s.d.: ${quote.berlaku_sampai || "-"}</div>
-    <div>Status: ${quote.status}</div>
-  </div>
-</div>
-<table>
-  <thead><tr><th>#</th><th>Barang</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Harga</th><th style="text-align:right;">Subtotal</th></tr></thead>
-  <tbody>${itemsHtml}</tbody>
-</table>
-<div class="total">Total: ${money(quote.total_jumlah)}</div>
-${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan}</div>` : ""}
-<div class="footer">Dokumen ini dihasilkan otomatis. Silakan konfirmasi sebelum konversi ke faktur.</div>
-<script>window.onload=()=>{window.print();}</script>
-</body></html>`;
+    const html = generateHtmlPenawaran({
+      nomor: quote.nomor_penawaran,
+      tanggal: quote.tanggal || new Date().toLocaleDateString("id-ID"),
+      berlaku_sampai: quote.berlaku_sampai,
+      kepada_nama: quote.pelanggan_nama_snapshot || "Pelanggan Umum",
+      kepada_kota: quote.pelanggan_kota,
+      items: (quote.items || []).map((item: any) => ({
+        nama: item.barang_nama || item.barang_id,
+        lebar: item.lebar,
+        panjang: item.panjang,
+        jumlah_lembar: item.jumlah_lembar,
+        jumlah: Number(item.jumlah || 0),
+        nama_satuan: item.nama_satuan || "",
+        harga_satuan: Number(item.harga_satuan || 0),
+        subtotal: Number(item.subtotal || 0),
+      })),
+      total: Number(quote.total_jumlah || 0),
+      catatan: quote.catatan,
+      shop: data.shop,
+    });
     win.document.write(html);
     win.document.close();
   }
@@ -230,12 +218,154 @@ ${quote.catatan ? `<div class="notes"><strong>Catatan:</strong>\n${quote.catatan
             <div className="space-y-2">
               {items.map((item, index) => {
                 const material = data.materials.find((m: any) => m.id === item.barang_id);
+                const isDim = item.butuh_dimensi;
+
+                const updateDim = (
+                  field: "lebar" | "panjang" | "jumlah_lembar",
+                  val: number
+                ) => {
+                  setItems((prev) =>
+                    prev.map((row, i) => {
+                      if (i !== index) return row;
+                      const updated = { ...row, [field]: val };
+                      const l = Number(updated.lebar) || 0;
+                      const p = Number(updated.panjang) || 0;
+                      const lembar = Number(updated.jumlah_lembar) || 1;
+                      return {
+                        ...updated,
+                        jumlah: isDim ? l * p * lembar : row.jumlah,
+                      };
+                    })
+                  );
+                };
+
                 return (
-                  <div key={`${item.barang_id}-${index}`} className="grid grid-cols-[1fr_70px_100px_32px] gap-2 rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-sm">
-                    <span className="self-center truncate text-slate-800 dark:text-slate-100">{material?.nama || item.barang_id}</span>
-                    <input className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1" type="number" min="0" value={item.jumlah} onChange={(e) => setItems((prev) => prev.map((row, i) => i === index ? { ...row, jumlah: Number(e.target.value) } : row))} />
-                    <input className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1" type="number" min="0" value={item.harga_satuan} onChange={(e) => setItems((prev) => prev.map((row, i) => i === index ? { ...row, harga_satuan: Number(e.target.value) } : row))} />
-                    <button className="rounded bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400" onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}>x</button>
+                  <div
+                    key={`${item.barang_id}-${index}`}
+                    className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-sm space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                        {material?.nama || item.barang_id}
+                      </span>
+                      <button
+                        className="rounded bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-2 py-0.5 ml-2"
+                        onClick={() =>
+                          setItems((prev) => prev.filter((_, i) => i !== index))
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                    {isDim ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                            Lebar (m)
+                          </label>
+                          <input
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.lebar ?? ""}
+                            onChange={(e) =>
+                              updateDim("lebar", Number(e.target.value))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                            Panjang (m)
+                          </label>
+                          <input
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.panjang ?? ""}
+                            onChange={(e) =>
+                              updateDim("panjang", Number(e.target.value))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                            Lembar
+                          </label>
+                          <input
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={item.jumlah_lembar ?? 1}
+                            onChange={(e) =>
+                              updateDim("jumlah_lembar", Number(e.target.value))
+                            }
+                          />
+                        </div>
+                        <div className="col-span-3 text-xs text-slate-400 dark:text-slate-500">
+                          = {Number(item.jumlah).toFixed(2)} m² @ Rp{" "}
+                          {money(item.harga_satuan)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-[70px_100px] gap-2">
+                        <input
+                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          type="number"
+                          min="0"
+                          placeholder="Qty"
+                          value={item.jumlah}
+                          onChange={(e) =>
+                            setItems((prev) =>
+                              prev.map((row, i) =>
+                                i === index
+                                  ? { ...row, jumlah: Number(e.target.value) }
+                                  : row
+                              )
+                            )
+                          }
+                        />
+                        <input
+                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          type="number"
+                          min="0"
+                          placeholder="Harga"
+                          value={item.harga_satuan}
+                          onChange={(e) =>
+                            setItems((prev) =>
+                              prev.map((row, i) =>
+                                i === index
+                                  ? {
+                                      ...row,
+                                      harga_satuan: Number(e.target.value),
+                                    }
+                                  : row
+                              )
+                            )
+                          }
+                        />
+                      </div>
+                    )}
+                    {isDim ? (
+                      <input
+                        className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                        type="number"
+                        min="0"
+                        placeholder="Harga per m²"
+                        value={item.harga_satuan}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? { ...row, harga_satuan: Number(e.target.value) }
+                                : row
+                            )
+                          )
+                        }
+                      />
+                    ) : null}
                   </div>
                 );
               })}
