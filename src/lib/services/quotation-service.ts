@@ -29,6 +29,7 @@ export interface QuotationItemInput {
   subtotal?: number;
   panjang?: number | null;
   lebar?: number | null;
+  jumlah_lembar?: number | null;
   tipe_item?: "BARANG" | "JASA" | "MAKLON";
   vendor_subkontrak_id?: string | null;
   biaya_subkontrak?: number | null;
@@ -103,6 +104,7 @@ async function enrichQuotations(rows: any[]) {
     items: (itemsByQuote.get(row.id) || []).map((item) => ({
       ...item,
       barang_nama: barangMap.get(item.barang_id)?.nama || "",
+      jumlah_lembar: item.jumlah_lembar ?? null,
     })),
   }));
 }
@@ -173,6 +175,7 @@ export async function createQuotation(input: UpsertQuotationInput): Promise<{ id
         subtotal: item.subtotal,
         panjang: item.panjang ?? null,
         lebar: item.lebar ?? null,
+        jumlah_lembar: item.jumlah_lembar ?? null,
         tipe_item: item.tipe_item,
         vendor_subkontrak_id: item.vendor_subkontrak_id || null,
         biaya_subkontrak: item.biaya_subkontrak ?? null,
@@ -245,6 +248,7 @@ export async function updateQuotation(id: string, input: UpsertQuotationInput) {
         subtotal: item.subtotal,
         panjang: item.panjang ?? null,
         lebar: item.lebar ?? null,
+        jumlah_lembar: item.jumlah_lembar ?? null,
         tipe_item: item.tipe_item,
         vendor_subkontrak_id: item.vendor_subkontrak_id || null,
         biaya_subkontrak: item.biaya_subkontrak ?? null,
@@ -293,6 +297,7 @@ export async function convertQuotationToSale(
       subtotal: Number(item.subtotal || 0),
       panjang: item.panjang ?? undefined,
       lebar: item.lebar ?? undefined,
+      jumlah_lembar: item.jumlah_lembar ?? undefined,
       tipe_item: item.tipe_item || "BARANG",
       vendor_subkontrak_id: item.vendor_subkontrak_id || null,
       biaya_subkontrak: item.biaya_subkontrak ?? null,

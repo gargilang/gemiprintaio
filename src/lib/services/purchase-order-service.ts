@@ -28,6 +28,7 @@ export interface PurchaseOrderItemInput {
   subtotal?: number;
   panjang?: number | null;
   lebar?: number | null;
+  jumlah_roll?: number | null;
 }
 
 export interface UpsertPurchaseOrderInput {
@@ -102,6 +103,7 @@ async function enrichPurchaseOrders(rows: any[]) {
     items: (itemsByPo.get(row.id) || []).map((item) => ({
       ...item,
       barang_nama: barangMap.get(item.barang_id)?.nama || "",
+      jumlah_roll: item.jumlah_roll ?? null,
     })),
   }));
 }
@@ -170,6 +172,7 @@ export async function createPurchaseOrder(input: UpsertPurchaseOrderInput) {
         subtotal: item.subtotal,
         panjang: item.panjang ?? null,
         lebar: item.lebar ?? null,
+        jumlah_roll: item.jumlah_roll ?? null,
         dpp_satuan: item.dpp_satuan,
         ppn_satuan: item.ppn_satuan,
         dpp_total: item.dpp_total,
