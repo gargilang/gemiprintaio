@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PrinterIcon } from "@/components/icons/PageIcons";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import type {
@@ -56,6 +56,41 @@ export default function SpkDetailModal({
   onPrint,
 }: SpkDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [komponenByBarang, setKomponenByBarang] = useState<
+    Record<string, Array<{ qty: number; komponen_nama: string }>>
+  >({});
+
+  // Muat komponen BOM per barang saat detail SPK dibuka
+  useEffect(() => {
+    const items = order.items || [];
+    const barangIds = [
+      ...new Set(items.map((item) => item.barang_id).filter(Boolean)),
+    ] as string[];
+    if (barangIds.length === 0) {
+      setKomponenByBarang({});
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(
+      barangIds.map(async (barangId) => {
+        const res = await fetch(`/api/barang-komponen?parent_barang_id=${barangId}`);
+        const data = await res.json();
+        return [barangId, data.komponen || []] as const;
+      })
+    ).then((entries) => {
+      if (cancelled) return;
+      const map: Record<string, Array<{ qty: number; komponen_nama: string }>> = {};
+      for (const [bid, komponen] of entries) {
+        if (komponen.length > 0) map[bid] = komponen;
+      }
+      setKomponenByBarang(map);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
 
   // Tutup saat klik di luar panel modal.
   useClickOutside(modalRef, () => onClose(), true);
@@ -173,6 +208,14 @@ export default function SpkDetailModal({
                     <div className="font-bold text-gray-900 dark:text-slate-100 mb-1">
                       {idx + 1}. {item.barang_nama}
                     </div>
+                    {item.barang_id && komponenByBarang[item.barang_id]?.length > 0 && (
+                      <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                        Komponen:{" "}
+                        {komponenByBarang[item.barang_id]
+                          .map((k) => `${k.qty} × ${k.komponen_nama}`)
+                          .join(", ")}
+                      </div>
+                    )}
                     <div className="text-sm text-gray-600 dark:text-slate-300">
                       Jumlah: {item.jumlah} {item.nama_satuan}
                     </div>
