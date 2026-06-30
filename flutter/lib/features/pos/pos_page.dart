@@ -43,7 +43,6 @@ class _PosPageState extends ConsumerState<PosPage> {
   List<FinishingOption>? _finishingOptions;
 
   final List<CartItem> _cart = [];
-  final List<BiayaTambahan> _biayaTambahan = [];
   Customer? _selectedCustomer;
   bool _roundCartPrices = true;
 
@@ -136,7 +135,7 @@ class _PosPageState extends ConsumerState<PosPage> {
         _cart.map((c) => c.subtotalRaw).toList(),
         _roundCartPrices,
       ) +
-      _biayaTambahan.fold<double>(0, (s, b) => s + b.nominal);
+      _cart.fold<double>(0, (s, item) => s + item.totalBiayaTambahan);
 
   Future<void> _addMaterial(MaterialItem m) async {
     if (m.harga.isEmpty) {
@@ -173,15 +172,12 @@ class _PosPageState extends ConsumerState<PosPage> {
       builder: (ctx) => CartSheet(
         cart: _cart,
         roundCartPrices: _roundCartPrices,
-        biayaTambahan: _biayaTambahan,
         onToggleRounding: (v) => setState(() => _roundCartPrices = v),
         onRemoveLine: (i) => setState(() => _cart.removeAt(i)),
         onOverridePrice: (i, p) => setState(() => _cart[i].hargaSatuan = p),
         onResetPrice: (i) =>
             setState(() => _cart[i].hargaSatuan = _cart[i].originalHargaSatuan),
         onEditFinishing: (i) => _editFinishing(ctx, i),
-        onAddBiaya: () => _addBiaya(ctx),
-        onRemoveBiaya: (i) => setState(() => _biayaTambahan.removeAt(i)),
         onPenawaran: () {
           Navigator.pop(ctx);
           _openPenawaran();
@@ -208,54 +204,6 @@ class _PosPageState extends ConsumerState<PosPage> {
     }
   }
 
-  Future<void> _addBiaya(BuildContext sheetCtx) async {
-    final labelCtrl = TextEditingController();
-    final nominalCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: sheetCtx,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Biaya Tambahan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: labelCtrl,
-              decoration: const InputDecoration(labelText: 'Label (ongkir…)'),
-            ),
-            TextField(
-              controller: nominalCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Nominal',
-                prefixText: 'Rp ',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Tambah'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      final nominal = double.tryParse(nominalCtrl.text) ?? 0;
-      if (labelCtrl.text.trim().isNotEmpty && nominal > 0) {
-        setState(
-          () => _biayaTambahan.add(
-            BiayaTambahan(label: labelCtrl.text.trim(), nominal: nominal),
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _pickCustomer() async {
     final picked = await showCustomerPicker(
       context,
@@ -279,9 +227,9 @@ class _PosPageState extends ConsumerState<PosPage> {
       context,
       cart: _cart,
       roundCartPrices: _roundCartPrices,
-      biayaTambahanTotal: _biayaTambahan.fold<double>(
+      biayaTambahanTotal: _cart.fold<double>(
         0,
-        (s, b) => s + b.nominal,
+        (s, item) => s + item.totalBiayaTambahan,
       ),
       customerName: _selectedCustomer?.nama,
       customerKota: _selectedCustomer?.alamat,
@@ -320,8 +268,6 @@ class _PosPageState extends ConsumerState<PosPage> {
         'metode_pembayaran': payment.metode,
         'kasir_id': user?.id,
         'prioritas': 'NORMAL',
-        if (_biayaTambahan.isNotEmpty)
-          'biaya_tambahan': _biayaTambahan.map((b) => b.toJson()).toList(),
       });
       if (!mounted) return;
       final invoice =
@@ -330,7 +276,6 @@ class _PosPageState extends ConsumerState<PosPage> {
       showSuccessSnackbar(context, 'Invoice $invoice berhasil! SPK: $spk');
       setState(() {
         _cart.clear();
-        _biayaTambahan.clear();
         _selectedCustomer = null;
         _roundCartPrices = true;
       });

@@ -3,27 +3,17 @@ import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
 
-class BiayaTambahan {
-  String label;
-  double nominal;
-  BiayaTambahan({required this.label, required this.nominal});
-  Map<String, dynamic> toJson() => {'label': label, 'nominal': nominal};
-}
-
 /// Sheet keranjang menerima snapshot dan callback dari halaman pemanggil.
 /// Pilihan pembulatan disimpan sebagai state lokal agar tampilan sheet langsung
 /// berubah, lalu callback dipanggil untuk menyinkronkan nilai ke halaman.
 class CartSheet extends StatefulWidget {
   final List<CartItem> cart;
   final bool roundCartPrices;
-  final List<BiayaTambahan> biayaTambahan;
   final ValueChanged<bool> onToggleRounding;
   final void Function(int index) onRemoveLine;
   final void Function(int index, double newPrice) onOverridePrice;
   final void Function(int index) onResetPrice;
   final void Function(int index) onEditFinishing;
-  final VoidCallback onAddBiaya;
-  final void Function(int index) onRemoveBiaya;
   final VoidCallback onPenawaran;
   final VoidCallback onBayar;
 
@@ -31,14 +21,11 @@ class CartSheet extends StatefulWidget {
     super.key,
     required this.cart,
     required this.roundCartPrices,
-    required this.biayaTambahan,
     required this.onToggleRounding,
     required this.onRemoveLine,
     required this.onOverridePrice,
     required this.onResetPrice,
     required this.onEditFinishing,
-    required this.onAddBiaya,
-    required this.onRemoveBiaya,
     required this.onPenawaran,
     required this.onBayar,
   });
@@ -50,15 +37,12 @@ class CartSheet extends StatefulWidget {
 class _CartSheetState extends State<CartSheet> {
   late bool _round = widget.roundCartPrices;
 
-  double get _biayaTotal =>
-      widget.biayaTambahan.fold<double>(0, (s, b) => s + b.nominal);
-
   double get _total =>
       getCartChargeTotal(
         widget.cart.map((c) => c.subtotalRaw).toList(),
         _round,
       ) +
-      _biayaTotal;
+      widget.cart.fold<double>(0, (s, item) => s + item.totalBiayaTambahan);
 
   Future<void> _editPrice(int index) async {
     final item = widget.cart[index];
@@ -161,32 +145,6 @@ class _CartSheetState extends State<CartSheet> {
                       ),
                     ),
                   ],
-                ),
-                ...widget.biayaTambahan.asMap().entries.map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(e.value.label)),
-                        Text('Rp ${formatPosUnitPrice(e.value.nominal)}'),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 16),
-                          onPressed: () {
-                            widget.onRemoveBiaya(e.key);
-                            setState(() {});
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Biaya tambahan (ongkir…)'),
-                  onPressed: () {
-                    widget.onAddBiaya();
-                    setState(() {});
-                  },
                 ),
               ],
             ),
@@ -317,6 +275,12 @@ class _CartSheetState extends State<CartSheet> {
               Text(
                 'Finishing: ${item.finishing.map((f) => f.jenisFinishing).join(', ')}',
                 style: TextStyle(fontSize: 10, color: Colors.purple.shade400),
+              ),
+            if (item.biayaTambahan.isNotEmpty)
+              Text(
+                'Biaya: ${item.biayaTambahan.map((b) => b.label).join(', ')} '
+                '(+Rp ${formatPosUnitPrice(item.totalBiayaTambahan)})',
+                style: TextStyle(fontSize: 10, color: Colors.orange.shade700),
               ),
             const SizedBox(height: 4),
             Row(
