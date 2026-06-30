@@ -916,6 +916,58 @@ export async function voidProductionMaterialConsumption(
 }
 
 /**
+ * Potong stok komponen rakitan (BOM) saat item SPK diselesaikan.
+ * Untuk setiap baris di barang_komponen dengan parent_barang_id = barangId,
+ * panggil postInventoryMovement KELUAR (qty komponen × qtySPK).
+ * Stok komponen boleh minus — kegagalan tidak memblok penyelesaian SPK.
+ */
+export async function deductBomComponents({
+  barangId,
+  qtySPK,
+  spkId,
+  nomorSpk,
+  dibuatOleh,
+  itemProduksiId,
+}: {
+  barangId: string;
+  qtySPK: number;
+  spkId: string;
+  nomorSpk: string;
+  dibuatOleh: string;
+  itemProduksiId?: string;
+}): Promise<void> {
+  const res = await db.query<any>("barang_komponen", {
+    where: { parent_barang_id: barangId, is_deleted: 0 },
+  });
+  const komponen = res.data || [];
+  if (komponen.length === 0) return;
+
+  for (const k of komponen) {
+    const totalQty = Number(k.qty) * qtySPK;
+    if (!Number.isFinite(totalQty) || totalQty <= 0) continue;
+    try {
+      await postInventoryMovement({
+        id: itemProduksiId ? `bom-${itemProduksiId}-${k.id}` : undefined,
+        barang_id: k.komponen_id,
+        tanggal: new Date().toISOString().split("T")[0],
+        movement_type: "PRODUCTION_ISSUE",
+        qty_delta: -totalQty,
+        source_type: "PRODUCTION_BOM",
+        source_id: spkId,
+        source_line_id: itemProduksiId || null,
+        catatan: `Rakitan SPK #${nomorSpk} [REF:${spkId}]`,
+        dibuat_oleh: dibuatOleh,
+      });
+    } catch (err) {
+      console.warn(
+        `[BOM] Gagal potong komponen ${k.komponen_id} untuk SPK ${spkId}:`,
+        err
+      );
+    }
+  }
+}
+
+/**
  * Perbarui status item produksi
  */
 export async function updateProductionItemStatus(
@@ -988,6 +1040,26 @@ export async function updateProductionItemStatus(
 
     if (result.error) {
       throw result.error;
+    }
+
+    // BOM: potong stok komponen rakitan saat item baru diselesaikan
+    if (data.status === "SELESAI" && cur.data?.status !== "SELESAI") {
+      const itemFull = await db.queryOne<any>("item_produksi", { where: { id: itemId } });
+      const barangId = itemFull.data?.barang_id;
+      const qtySPK = Number(itemFull.data?.jumlah || 1);
+      const orderId = itemFull.data?.order_produksi_id;
+      if (barangId && orderId) {
+        const orderData = await db.queryOne<any>("order_produksi", { where: { id: orderId } });
+        const nomorSpk = String(orderData.data?.nomor_spk || orderId);
+        await deductBomComponents({
+          barangId,
+          qtySPK,
+          spkId: orderId,
+          nomorSpk,
+          dibuatOleh: data.operator_id || "system",
+          itemProduksiId: itemId,
+        });
+      }
     }
 
     // Otomasi: hitung ulang status order dari item (hormati override manual).
