@@ -2,6 +2,7 @@
 
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { getMaterials } from "@/lib/services/materials-service";
+import { getShopSettings } from "@/lib/services/shop-settings-service";
 import { getVendors } from "@/lib/services/vendors-service";
 import {
   createPurchaseOrder,
@@ -13,12 +14,13 @@ import {
 } from "@/lib/services/purchase-order-service";
 
 export async function getPurchaseOrdersInitAction() {
-  const [purchaseOrders, materials, vendors] = await Promise.all([
+  const [purchaseOrders, materials, vendors, shop] = await Promise.all([
     getPurchaseOrders(),
     getMaterials(),
     getVendors(),
+    getShopSettings(),
   ]);
-  return { purchaseOrders, materials, vendors };
+  return { purchaseOrders, materials, vendors, shop };
 }
 
 export async function createPurchaseOrderAction(input: UpsertPurchaseOrderInput) {

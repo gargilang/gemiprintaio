@@ -2,6 +2,7 @@
 
 import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import { getPOSInitData } from "@/lib/services/pos-service";
+import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
   convertQuotationToSale,
   createQuotation,
@@ -13,12 +14,17 @@ import {
 } from "@/lib/services/quotation-service";
 
 export async function getPenawaranInitAction() {
-  const [pos, quotations] = await Promise.all([getPOSInitData(), getQuotations()]);
+  const [pos, quotations, shop] = await Promise.all([
+    getPOSInitData(),
+    getQuotations(),
+    getShopSettings(),
+  ]);
   return {
     customers: pos.customers,
     materials: pos.materials,
     subkontraktor: pos.subkontraktor,
     quotations,
+    shop,
   };
 }
 
