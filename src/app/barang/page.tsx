@@ -911,6 +911,7 @@ export default function MaterialsPage() {
         onGetSubcategories={getSubcategoriesAction}
         onGetUnits={getUnitsAction}
         onGetQuickSpecs={getQuickSpecsAction}
+        materials={materials}
       />
 
       {movementMaterial && (

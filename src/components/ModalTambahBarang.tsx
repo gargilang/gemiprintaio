@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useRouter } from "next/navigation";
 import PanelHargaSatuan from "./barang/PanelHargaSatuan";
+import PanelKomponenRakitan from "@/components/PanelKomponenRakitan";
 import type { UnitPrice } from "./barang/types-barang";
 
 interface AddMaterialModalProps {
@@ -18,6 +19,8 @@ interface AddMaterialModalProps {
   onGetSubcategories: () => Promise<any[]>;
   onGetUnits: () => Promise<any[]>;
   onGetQuickSpecs: () => Promise<any[]>;
+  /** Daftar semua barang — untuk pilih komponen rakitan saat edit */
+  materials?: any[];
 }
 
 export default function ModalTambahBarang({
@@ -32,6 +35,7 @@ export default function ModalTambahBarang({
   onGetSubcategories,
   onGetUnits,
   onGetQuickSpecs,
+  materials,
 }: AddMaterialModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -887,6 +891,23 @@ export default function ModalTambahBarang({
                 )}
               </div>
             </div>
+
+            {/* Komponen Rakitan — hanya tampil saat edit barang yang dilacak */}
+            {editData?.id && formData.track_inventory && (
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                  Komponen Rakitan
+                </h3>
+                <PanelKomponenRakitan
+                  parentBarangId={editData.id}
+                  allBarang={(materials || []).map((m: any) => ({
+                    id: m.id,
+                    nama: m.nama,
+                    satuan_dasar: m.satuan_dasar || "",
+                  }))}
+                />
+              </div>
+            )}
           </div>
         </form>
 
