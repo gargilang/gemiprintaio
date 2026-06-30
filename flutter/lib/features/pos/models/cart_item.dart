@@ -1,5 +1,13 @@
 import 'package:gemiprint/features/pos/models/finishing_option.dart';
 
+/// Biaya tambahan per item (mis. ongkir, laminasi manual, dll).
+class ItemBiaya {
+  final String label;
+  final double nominal;
+  const ItemBiaya({required this.label, required this.nominal});
+  Map<String, dynamic> toJson() => {'label': label, 'nominal': nominal};
+}
+
 /// Baris keranjang POS. Mirror dari web `src/app/pos/pos-types.ts` CartItem.
 ///
 /// `jumlah` selalu dihitung saat item dibuat (m² untuk dimensi, qty untuk
@@ -31,6 +39,10 @@ class CartItem {
 
   List<FinishingSelection> finishing;
 
+  /// Biaya tambahan per item (ongkir, fee, dll). Tidak masuk subtotalRaw;
+  /// dijumlahkan terpisah sebagai [totalBiayaTambahan].
+  List<ItemBiaya> biayaTambahan;
+
   // Maklon (subkontrak)
   final String tipeItem; // 'BARANG' | 'MAKLON'
   final String? vendorSubkontrakId;
@@ -56,6 +68,7 @@ class CartItem {
     this.billedPanjang,
     this.billedLebar,
     this.finishing = const [],
+    this.biayaTambahan = const [],
     this.tipeItem = 'BARANG',
     this.vendorSubkontrakId,
     this.vendorSubkontrakNama,
@@ -69,6 +82,9 @@ class CartItem {
   double get subtotalRaw => jumlah * hargaSatuan;
 
   bool get isOverride => (hargaSatuan - originalHargaSatuan).abs() > 0.005;
+
+  double get totalBiayaTambahan =>
+      biayaTambahan.fold(0.0, (s, b) => s + b.nominal);
 
   /// Bangun payload item untuk `createSale`. [lineCharge] adalah tagihan baris
   /// setelah alokasi pembulatan (lihat `allocateCartLineCharges`). Harga satuan
@@ -90,6 +106,8 @@ class CartItem {
       if (selectedRollSize != null) 'selectedRollSize': selectedRollSize,
       if (finishing.isNotEmpty)
         'finishing': finishing.map((f) => f.toJson()).toList(),
+      if (biayaTambahan.isNotEmpty)
+        'biaya_tambahan': biayaTambahan.map((b) => b.toJson()).toList(),
       if (isMaklon) ...{
         'tipe_item': 'MAKLON',
         'vendor_subkontrak_id': vendorSubkontrakId,

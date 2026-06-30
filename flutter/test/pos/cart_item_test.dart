@@ -103,4 +103,65 @@ void main() {
       expect(payload['deskripsi_pekerjaan'], 'Finishing kayu');
     });
   });
+
+  group('biayaTambahan', () {
+    test('subtotalRaw tidak masukkan biaya tambahan', () {
+      final item = CartItem(
+        barangId: 'b1',
+        barangNama: 'Banner',
+        hargaSatuanId: 'h1',
+        namaSatuan: 'm²',
+        faktorKonversi: 1,
+        hargaSatuan: 50000,
+        originalHargaSatuan: 50000,
+        butuhDimensi: false,
+        jumlah: 2,
+        biayaTambahan: [ItemBiaya(label: 'Ongkir', nominal: 10000)],
+      );
+      expect(item.subtotalRaw, 100000);
+    });
+
+    test('totalBiayaTambahan menjumlahkan nominal', () {
+      final item = CartItem(
+        barangId: 'b1',
+        barangNama: 'Banner',
+        hargaSatuanId: 'h1',
+        namaSatuan: 'm²',
+        faktorKonversi: 1,
+        hargaSatuan: 50000,
+        originalHargaSatuan: 50000,
+        butuhDimensi: false,
+        jumlah: 2,
+        biayaTambahan: [
+          ItemBiaya(label: 'Ongkir', nominal: 10000),
+          ItemBiaya(label: 'Packing', nominal: 5000),
+        ],
+      );
+      expect(item.totalBiayaTambahan, 15000);
+    });
+
+    test('ItemBiaya.toJson() menghasilkan map yang benar', () {
+      final b = ItemBiaya(label: 'Ongkir', nominal: 12500);
+      expect(b.toJson(), {'label': 'Ongkir', 'nominal': 12500});
+    });
+
+    test('toSalePayload menyertakan biaya_tambahan per item', () {
+      final item = CartItem(
+        barangId: 'b1',
+        barangNama: 'Banner',
+        hargaSatuanId: 'h1',
+        namaSatuan: 'm²',
+        faktorKonversi: 1,
+        hargaSatuan: 50000,
+        originalHargaSatuan: 50000,
+        butuhDimensi: false,
+        jumlah: 2,
+        biayaTambahan: [ItemBiaya(label: 'Ongkir', nominal: 10000)],
+      );
+      final payload = item.toSalePayload(100000);
+      expect(payload['biaya_tambahan'], [
+        {'label': 'Ongkir', 'nominal': 10000},
+      ]);
+    });
+  });
 }
