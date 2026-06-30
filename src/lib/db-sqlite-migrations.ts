@@ -492,6 +492,29 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     );
     CREATE INDEX IF NOT EXISTS idx_barang_roll_variants_barang
       ON barang_roll_variants(barang_id, aktif_status, lebar_m);
+
+    CREATE TABLE IF NOT EXISTS barang_komponen (
+      id TEXT PRIMARY KEY,
+      parent_barang_id TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
+      komponen_id TEXT NOT NULL REFERENCES barang(id),
+      qty REAL NOT NULL DEFAULT 1,
+      satuan TEXT,
+      catatan TEXT,
+      dibuat_oleh TEXT,
+      dibuat_pada TEXT,
+      diperbarui_pada TEXT,
+      sync_status TEXT DEFAULT 'pending',
+      last_synced_at TEXT,
+      sync_version INTEGER DEFAULT 0,
+      updated_at_server TEXT,
+      updated_by_device TEXT,
+      change_version INTEGER DEFAULT 0,
+      is_deleted INTEGER DEFAULT 0,
+      deleted_at TEXT,
+      client_mutation_id TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+    CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);
   `);
 
   // Recreate inventory_movements when its CHECK constraint predates roll movements.
@@ -2202,6 +2225,105 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   // Rebuild pinjaman_karyawan untuk existing installs (tambah POTONG_BAGI_HASIL ke CHECK).
   migratePinjamanKaryawanJenisConstraint(db);
+
+  // ── barang_komponen — BOM komponen rakitan (20260630100000_barang_komponen.sql)
+  const barangKomponenExists = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang_komponen' LIMIT 1"
+    )
+    .get();
+  if (barangKomponenExists) {
+    const bkCols = (
+      db.prepare("PRAGMA table_info(barang_komponen)").all() as Array<{
+        name: string;
+      }>
+    ).map((c) => c.name);
+    const barangKomponenAdditiveCols = [
+      {
+        column: "parent_barang_id",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN parent_barang_id TEXT",
+      },
+      {
+        column: "komponen_id",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN komponen_id TEXT",
+      },
+      { column: "qty", ddl: "ALTER TABLE barang_komponen ADD COLUMN qty REAL NOT NULL DEFAULT 1" },
+      { column: "satuan", ddl: "ALTER TABLE barang_komponen ADD COLUMN satuan TEXT" },
+      { column: "catatan", ddl: "ALTER TABLE barang_komponen ADD COLUMN catatan TEXT" },
+      {
+        column: "dibuat_oleh",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN dibuat_oleh TEXT",
+      },
+      { column: "dibuat_pada", ddl: "ALTER TABLE barang_komponen ADD COLUMN dibuat_pada TEXT" },
+      {
+        column: "diperbarui_pada",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN diperbarui_pada TEXT",
+      },
+      {
+        column: "sync_status",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN sync_status TEXT DEFAULT 'pending'",
+      },
+      {
+        column: "last_synced_at",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN last_synced_at TEXT",
+      },
+      {
+        column: "sync_version",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN sync_version INTEGER DEFAULT 0",
+      },
+      {
+        column: "updated_at_server",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN updated_at_server TEXT",
+      },
+      {
+        column: "updated_by_device",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN updated_by_device TEXT",
+      },
+      {
+        column: "change_version",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN change_version INTEGER DEFAULT 0",
+      },
+      {
+        column: "is_deleted",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN is_deleted INTEGER DEFAULT 0",
+      },
+      { column: "deleted_at", ddl: "ALTER TABLE barang_komponen ADD COLUMN deleted_at TEXT" },
+      {
+        column: "client_mutation_id",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN client_mutation_id TEXT",
+      },
+    ];
+    for (const { column, ddl } of barangKomponenAdditiveCols) {
+      if (!bkCols.includes(column)) {
+        db.exec(ddl);
+      }
+    }
+  } else {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS barang_komponen (
+        id TEXT PRIMARY KEY,
+        parent_barang_id TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
+        komponen_id TEXT NOT NULL REFERENCES barang(id),
+        qty REAL NOT NULL DEFAULT 1,
+        satuan TEXT,
+        catatan TEXT,
+        dibuat_oleh TEXT,
+        dibuat_pada TEXT,
+        diperbarui_pada TEXT,
+        sync_status TEXT DEFAULT 'pending',
+        last_synced_at TEXT,
+        sync_version INTEGER DEFAULT 0,
+        updated_at_server TEXT,
+        updated_by_device TEXT,
+        change_version INTEGER DEFAULT 0,
+        is_deleted INTEGER DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+      CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);
+    `);
+  }
 
   serverSqliteColumnsCache.clear();
 }

@@ -325,6 +325,34 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute(sql, []);
     }
 
+    // ── barang_komponen — BOM komponen rakitan (20260630100000_barang_komponen.sql)
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS barang_komponen (
+          id TEXT PRIMARY KEY,
+          parent_barang_id TEXT NOT NULL,
+          komponen_id TEXT NOT NULL,
+          qty REAL NOT NULL DEFAULT 1,
+          satuan TEXT,
+          catatan TEXT,
+          dibuat_oleh TEXT,
+          dibuat_pada TEXT DEFAULT (datetime('now')),
+          diperbarui_pada TEXT DEFAULT (datetime('now')),
+          sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+          last_synced_at TEXT,
+          sync_version INTEGER DEFAULT 0,
+          updated_at_server TEXT,
+          updated_by_device TEXT DEFAULT 'tauri',
+          change_version INTEGER DEFAULT 0,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          deleted_at TEXT,
+          client_mutation_id TEXT,
+          FOREIGN KEY (parent_barang_id) REFERENCES barang(id) ON DELETE CASCADE,
+          FOREIGN KEY (komponen_id) REFERENCES barang(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+        CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);",
+    );
+
     // ── Long-term hardening ──────────────────────────────────────────────
     let _ = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS lokasi (
@@ -449,6 +477,7 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         "satuan_barang",
         "spesifikasi_cepat_barang",
         "barang",
+        "barang_komponen",
         "harga_barang_satuan",
         "opsi_finishing",
         "pelanggan",

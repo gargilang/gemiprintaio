@@ -34,6 +34,7 @@ export const BALANCE_SYNC_TABLES = [
 export const MASTER_SYNC_TABLES = [
   "barang",
   "barang_roll_variants",
+  "barang_komponen",
   "harga_barang_satuan",
   "pelanggan",
   "vendor",

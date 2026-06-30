@@ -61,6 +61,31 @@ CREATE TABLE barang_roll_variants (
 
 CREATE INDEX idx_barang_roll_variants_barang ON barang_roll_variants(barang_id, aktif_status, lebar_m);
 
+-- Table: barang_komponen (komponen rakitan / BOM sederhana)
+CREATE TABLE IF NOT EXISTS barang_komponen (
+  id                 TEXT PRIMARY KEY,
+  parent_barang_id   TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
+  komponen_id        TEXT NOT NULL REFERENCES barang(id),
+  qty                REAL NOT NULL DEFAULT 1,
+  satuan             TEXT,
+  catatan            TEXT,
+  dibuat_oleh        TEXT,
+  dibuat_pada        TEXT,
+  diperbarui_pada    TEXT,
+  sync_status        TEXT DEFAULT 'pending',
+  last_synced_at     TEXT,
+  sync_version       INTEGER DEFAULT 0,
+  updated_at_server  TEXT,
+  updated_by_device  TEXT,
+  change_version     INTEGER DEFAULT 0,
+  is_deleted         INTEGER DEFAULT 0,
+  deleted_at         TEXT,
+  client_mutation_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);
+
 -- Table: inventory_movements
 CREATE TABLE inventory_movements (
       id TEXT PRIMARY KEY,
