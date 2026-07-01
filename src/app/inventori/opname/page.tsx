@@ -23,7 +23,9 @@ export default function StockOpnamePage() {
     await mutate();
   };
   const [selectedId, setSelectedId] = useState("");
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [counts, setCounts] = useState<
+    Record<string, { qty?: number; linear_m?: number }>
+  >({});
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -39,12 +41,20 @@ export default function StockOpnamePage() {
   useEffect(() => {
     if (!selected) return;
     setCounts((prev) => {
-      const next: Record<string, number> = {};
+      const next: Record<string, { qty?: number; linear_m?: number }> = {};
       let differs = false;
       for (const item of selected.items || []) {
-        const value = Number(item.counted_qty ?? item.system_qty ?? 0);
+        const isRoll = !!item.roll_variant_id;
+        const value = isRoll
+          ? {
+              linear_m: Number(
+                item.counted_linear_m ?? item.system_linear_m ?? 0,
+              ),
+            }
+          : { qty: Number(item.counted_qty ?? item.system_qty ?? 0) };
         next[item.id] = value;
-        if (prev[item.id] !== value) differs = true;
+        if (JSON.stringify(prev[item.id]) !== JSON.stringify(value))
+          differs = true;
       }
       const prevKeys = Object.keys(prev);
       if (!differs && prevKeys.length === Object.keys(next).length) return prev;
@@ -75,9 +85,10 @@ export default function StockOpnamePage() {
     try {
       await updateStockOpnameCountsAction(
         id,
-        Object.entries(counts).map(([stock_opname_item_id, counted_qty]) => ({
+        Object.entries(counts).map(([stock_opname_item_id, val]) => ({
           stock_opname_item_id,
-          counted_qty,
+          counted_qty: val.qty,
+          counted_linear_m: val.linear_m,
         })),
       );
       setNotice("Hitungan fisik tersimpan.");
@@ -103,9 +114,10 @@ export default function StockOpnamePage() {
     try {
       await updateStockOpnameCountsAction(
         selected.id,
-        Object.entries(counts).map(([stock_opname_item_id, counted_qty]) => ({
+        Object.entries(counts).map(([stock_opname_item_id, val]) => ({
           stock_opname_item_id,
-          counted_qty,
+          counted_qty: val.qty,
+          counted_linear_m: val.linear_m,
         })),
       );
       await postStockOpnameAction(selected.id);
@@ -249,50 +261,172 @@ export default function StockOpnamePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(selected.items || []).map((item: any) => {
-                      const counted =
-                        counts[item.id] ?? Number(item.system_qty || 0);
-                      const delta = counted - Number(item.system_qty || 0);
-                      return (
-                        <tr
-                          key={item.id}
-                          className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
-                        >
-                          <td className="p-3">
-                            <span>{item.barang_nama || item.barang_id}</span>
-                            {Number(item.butuh_dimensi_status) === 1 && (
-                              <span className="ml-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                                (dimensi)
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right tabular-nums">
-                            {Number(item.butuh_dimensi_status) === 1
-                              ? `${Number(item.system_qty || 0).toFixed(2)} m²`
-                              : String(item.system_qty ?? 0)}
-                          </td>
-                          <td className="p-3 text-right">
-                            <input
-                              disabled={saving || selected.status !== "DRAFT"}
-                              className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right"
-                              type="number"
-                              value={counted}
-                              onChange={(e) =>
-                                setCounts((prev) => ({
-                                  ...prev,
-                                  [item.id]: Number(e.target.value),
-                                }))
-                              }
-                            />
-                          </td>
-                          <td
-                            className={`p-3 text-right ${delta === 0 ? "text-slate-400 dark:text-slate-500" : delta < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
-                          >
-                            {delta}
-                          </td>
-                        </tr>
+                    {(() => {
+                      // Kelompokkan: non-roll tampil langsung, roll dikelompokkan per barang_id.
+                      const items: any[] = selected.items || [];
+                      const nonRoll = items.filter(
+                        (item: any) => !item.roll_variant_id,
                       );
-                    })}
+                      const rollByBarang = new Map<string, any[]>();
+                      for (const item of items.filter(
+                        (i: any) => i.roll_variant_id,
+                      )) {
+                        const list = rollByBarang.get(item.barang_id) || [];
+                        list.push(item);
+                        rollByBarang.set(item.barang_id, list);
+                      }
+
+                      const rows: React.ReactElement[] = [];
+
+                      // Tampilkan barang dimensi dulu (per group)
+                      for (const [barangId, variantItems] of rollByBarang) {
+                        const totalSistem = variantItems.reduce(
+                          (sum: number, i: any) =>
+                            sum + Number(i.system_qty || 0),
+                          0,
+                        );
+                        rows.push(
+                          <tr
+                            key={`group-${barangId}`}
+                            className="bg-emerald-50/50 dark:bg-emerald-900/10 border-t border-slate-200 dark:border-slate-700"
+                          >
+                            <td
+                              className="p-3 font-semibold text-emerald-800 dark:text-emerald-300"
+                              colSpan={4}
+                            >
+                              {variantItems[0].barang_nama || barangId}
+                              <span className="ml-2 text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                                ({totalSistem.toFixed(2)} m² sistem)
+                              </span>
+                            </td>
+                          </tr>,
+                        );
+
+                        for (const item of variantItems) {
+                          const countVal = counts[item.id] ?? {
+                            linear_m: Number(item.system_linear_m ?? 0),
+                          };
+                          const countedLinear = countVal.linear_m ?? 0;
+                          const countedQty =
+                            countedLinear * Number(item.roll_width_m);
+                          const delta =
+                            countedQty - Number(item.system_qty || 0);
+
+                          rows.push(
+                            <tr
+                              key={item.id}
+                              className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                            >
+                              <td className="p-3 pl-8 text-sm text-slate-500 dark:text-slate-400">
+                                ↳ Lebar {Number(item.roll_width_m).toFixed(2)} m
+                              </td>
+                              <td className="p-3 text-right tabular-nums text-sm">
+                                {Number(item.system_linear_m ?? 0).toFixed(2)} m
+                                <span className="ml-1 text-xs text-slate-400">
+                                  (= {Number(item.system_qty || 0).toFixed(2)}{" "}
+                                  m²)
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <input
+                                  disabled={
+                                    saving || selected.status !== "DRAFT"
+                                  }
+                                  className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right text-sm"
+                                  type="number"
+                                  step="0.01"
+                                  value={countedLinear}
+                                  onChange={(e) =>
+                                    setCounts((prev) => ({
+                                      ...prev,
+                                      [item.id]: {
+                                        linear_m: Number(e.target.value),
+                                      },
+                                    }))
+                                  }
+                                />
+                                <span className="ml-1 text-xs text-slate-400">
+                                  m
+                                </span>
+                              </td>
+                              <td
+                                className={`p-3 text-right tabular-nums text-sm ${
+                                  delta === 0
+                                    ? "text-slate-400 dark:text-slate-500"
+                                    : delta < 0
+                                      ? "text-rose-600 dark:text-rose-400"
+                                      : "text-emerald-600 dark:text-emerald-400"
+                                }`}
+                              >
+                                {delta === 0
+                                  ? "\u2014"
+                                  : `${delta > 0 ? "+" : ""}${delta.toFixed(2)} m²`}
+                              </td>
+                            </tr>,
+                          );
+                        }
+                      }
+
+                      // Tampilkan barang non-dimensi
+                      for (const item of nonRoll) {
+                        const countVal = counts[item.id] ?? {
+                          qty: Number(item.system_qty || 0),
+                        };
+                        const counted = countVal.qty ?? 0;
+                        const delta = counted - Number(item.system_qty || 0);
+
+                        rows.push(
+                          <tr
+                            key={item.id}
+                            className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          >
+                            <td className="p-3">
+                              <span>{item.barang_nama || item.barang_id}</span>
+                              {Number(item.butuh_dimensi_status) === 1 &&
+                                !item.roll_variant_id && (
+                                  <span className="ml-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    (dimensi)
+                                  </span>
+                                )}
+                            </td>
+                            <td className="p-3 text-right tabular-nums">
+                              {Number(item.butuh_dimensi_status) === 1
+                                ? `${Number(item.system_qty || 0).toFixed(2)} m²`
+                                : String(item.system_qty ?? 0)}
+                            </td>
+                            <td className="p-3 text-right">
+                              <input
+                                disabled={saving || selected.status !== "DRAFT"}
+                                className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right"
+                                type="number"
+                                value={counted}
+                                onChange={(e) =>
+                                  setCounts((prev) => ({
+                                    ...prev,
+                                    [item.id]: {
+                                      qty: Number(e.target.value),
+                                    },
+                                  }))
+                                }
+                              />
+                            </td>
+                            <td
+                              className={`p-3 text-right tabular-nums ${
+                                delta === 0
+                                  ? "text-slate-400 dark:text-slate-500"
+                                  : delta < 0
+                                    ? "text-rose-600 dark:text-rose-400"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {delta}
+                            </td>
+                          </tr>,
+                        );
+                      }
+
+                      return rows;
+                    })()}
                   </tbody>
                 </table>
               </div>
