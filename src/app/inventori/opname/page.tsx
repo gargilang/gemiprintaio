@@ -12,10 +12,11 @@ import {
 } from "./actions";
 
 export default function StockOpnamePage() {
-  const { data: sessionsData, isLoading, mutate } = useCachedData<any[]>(
-    "stock-opname-list",
-    getStockOpnamesAction
-  );
+  const {
+    data: sessionsData,
+    isLoading,
+    mutate,
+  } = useCachedData<any[]>("stock-opname-list", getStockOpnamesAction);
   const sessions = useMemo(() => sessionsData ?? [], [sessionsData]);
   const loading = isLoading && !sessionsData;
   const reload = async () => {
@@ -32,7 +33,7 @@ export default function StockOpnamePage() {
 
   const selected = useMemo(
     () => sessions.find((session) => session.id === selectedId),
-    [sessions, selectedId]
+    [sessions, selectedId],
   );
 
   useEffect(() => {
@@ -59,7 +60,9 @@ export default function StockOpnamePage() {
       setSelectedId(result.id);
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal membuat opname");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal membuat opname",
+      );
     } finally {
       setSaving(false);
     }
@@ -75,12 +78,14 @@ export default function StockOpnamePage() {
         Object.entries(counts).map(([stock_opname_item_id, counted_qty]) => ({
           stock_opname_item_id,
           counted_qty,
-        }))
+        })),
       );
       setNotice("Hitungan fisik tersimpan.");
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal simpan hitungan");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal simpan hitungan",
+      );
     } finally {
       setSaving(false);
     }
@@ -88,9 +93,12 @@ export default function StockOpnamePage() {
 
   async function post() {
     if (!selected) return;
-    if (!window.confirm(
-      `Posting stock opname ${selected.nomor_opname}?\nDelta akan menjadi mutasi ADJUSTMENT dan stok di sistem akan diupdate. Item dengan delta nol tidak akan membuat mutasi.`
-    )) return;
+    if (
+      !window.confirm(
+        `Posting stock opname ${selected.nomor_opname}?\nDelta akan menjadi mutasi ADJUSTMENT dan stok di sistem akan diupdate. Item dengan delta nol tidak akan membuat mutasi.`,
+      )
+    )
+      return;
     setSaving(true);
     try {
       await updateStockOpnameCountsAction(
@@ -98,13 +106,15 @@ export default function StockOpnamePage() {
         Object.entries(counts).map(([stock_opname_item_id, counted_qty]) => ({
           stock_opname_item_id,
           counted_qty,
-        }))
+        })),
       );
       await postStockOpnameAction(selected.id);
       setNotice("Stock opname diposting.");
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal posting opname");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal posting opname",
+      );
     } finally {
       setSaving(false);
     }
@@ -133,12 +143,21 @@ export default function StockOpnamePage() {
           <div className="flex items-center gap-3">
             <StockOpnameIcon size={28} className="text-white" />
             <div>
-              <h2 className="text-2xl font-bold uppercase tracking-wide">Opname Stok</h2>
-              <p className="text-white/90 text-sm">Snapshot stok sistem, input fisik, pratinjau selisih, lalu posting penyesuaian.</p>
+              <h2 className="text-2xl font-bold uppercase tracking-wide">
+                Opname Stok
+              </h2>
+              <p className="text-white/90 text-sm">
+                Snapshot stok sistem, input fisik, pratinjau selisih, lalu
+                posting penyesuaian.
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {notice ? <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">{notice}</div> : null}
+            {notice ? (
+              <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">
+                {notice}
+              </div>
+            ) : null}
             <button
               disabled={saving}
               className="rounded-md bg-white/20 hover:bg-white/30 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 transition-colors"
@@ -153,23 +172,33 @@ export default function StockOpnamePage() {
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-sm">
           <div className="space-y-2">
             {loading ? (
-              <div className="p-3 text-sm text-slate-500 dark:text-slate-400">Memuat...</div>
+              <div className="p-3 text-sm text-slate-500 dark:text-slate-400">
+                Memuat...
+              </div>
             ) : sessions.length === 0 ? (
-              <div className="p-3 text-sm text-slate-500 dark:text-slate-400">Belum ada sesi opname.</div>
-            ) : sessions.map((session) => (
-              <button
-                key={session.id}
-                className={`w-full rounded-md border p-3 text-left text-sm transition-colors ${
-                  session.id === selectedId
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 dark:border-emerald-500"
-                    : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
-                onClick={() => setSelectedId(session.id)}
-              >
-                <div className="font-semibold text-slate-800 dark:text-slate-100">{session.nomor_opname}</div>
-                <div className="text-slate-500 dark:text-slate-400">{session.status} - {session.tanggal}</div>
-              </button>
-            ))}
+              <div className="p-3 text-sm text-slate-500 dark:text-slate-400">
+                Belum ada sesi opname.
+              </div>
+            ) : (
+              sessions.map((session) => (
+                <button
+                  key={session.id}
+                  className={`w-full rounded-md border p-3 text-left text-sm transition-colors ${
+                    session.id === selectedId
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 dark:border-emerald-500"
+                      : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                  onClick={() => setSelectedId(session.id)}
+                >
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">
+                    {session.nomor_opname}
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400">
+                    {session.status} - {session.tanggal}
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
@@ -177,8 +206,13 @@ export default function StockOpnamePage() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 p-4">
                 <div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-100">{selected.nomor_opname}</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">Status {selected.status} - delta qty {selected.total_delta_qty || 0}</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">
+                    {selected.nomor_opname}
+                  </div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    Status {selected.status} - delta qty{" "}
+                    {selected.total_delta_qty || 0}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -210,28 +244,52 @@ export default function StockOpnamePage() {
                     <tr>
                       <th className="p-3">Barang</th>
                       <th className="p-3 text-right">Sistem</th>
-                      <th className="p-3 text-right">Fisik</th>
+                      <th className="p-3 text-right">Fisik (m² atau unit)</th>
                       <th className="p-3 text-right">Delta</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(selected.items || []).map((item: any) => {
-                      const counted = counts[item.id] ?? Number(item.system_qty || 0);
+                      const counted =
+                        counts[item.id] ?? Number(item.system_qty || 0);
                       const delta = counted - Number(item.system_qty || 0);
                       return (
-                        <tr key={item.id} className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                          <td className="p-3">{item.barang_nama || item.barang_id}</td>
-                          <td className="p-3 text-right">{item.system_qty}</td>
+                        <tr
+                          key={item.id}
+                          className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                        >
+                          <td className="p-3">
+                            <span>{item.barang_nama || item.barang_id}</span>
+                            {Number(item.butuh_dimensi_status) === 1 && (
+                              <span className="ml-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                (dimensi)
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-right tabular-nums">
+                            {Number(item.butuh_dimensi_status) === 1
+                              ? `${Number(item.system_qty || 0).toFixed(2)} m²`
+                              : String(item.system_qty ?? 0)}
+                          </td>
                           <td className="p-3 text-right">
                             <input
                               disabled={saving || selected.status !== "DRAFT"}
                               className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right"
                               type="number"
                               value={counted}
-                              onChange={(e) => setCounts((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))}
+                              onChange={(e) =>
+                                setCounts((prev) => ({
+                                  ...prev,
+                                  [item.id]: Number(e.target.value),
+                                }))
+                              }
                             />
                           </td>
-                          <td className={`p-3 text-right ${delta === 0 ? "text-slate-400 dark:text-slate-500" : delta < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>{delta}</td>
+                          <td
+                            className={`p-3 text-right ${delta === 0 ? "text-slate-400 dark:text-slate-500" : delta < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                          >
+                            {delta}
+                          </td>
                         </tr>
                       );
                     })}
@@ -240,7 +298,9 @@ export default function StockOpnamePage() {
               </div>
             </>
           ) : (
-            <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Pilih sesi opname atau klik &ldquo;Sesi Baru&rdquo; untuk memulai.</div>
+            <div className="p-6 text-sm text-slate-500 dark:text-slate-400">
+              Pilih sesi opname atau klik &ldquo;Sesi Baru&rdquo; untuk memulai.
+            </div>
           )}
         </div>
       </div>

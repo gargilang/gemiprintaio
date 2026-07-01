@@ -15,25 +15,31 @@ async function enrichSessions(rows: any[]) {
   const itemsBySession = await fetchChildrenByForeignKey<any>(
     "stock_opname_items",
     "stock_opname_id",
-    sessionIds
+    sessionIds,
   );
 
   const barangIds = [...itemsBySession.values()]
     .flat()
     .map((item) => item.barang_id)
     .filter(Boolean);
-  const barangMap = await buildLookupMap<{ id: string; nama: string }>(
-    "barang",
-    barangIds,
-    "nama,satuan_dasar"
-  );
+  const barangMap = await buildLookupMap<{
+    id: string;
+    nama: string;
+    satuan_dasar: string;
+    butuh_dimensi_status: number;
+  }>("barang", barangIds, "nama,satuan_dasar,butuh_dimensi_status");
 
   return rows.map((row) => ({
     ...row,
-    items: (itemsBySession.get(row.id) || []).map((item) => ({
-      ...item,
-      barang_nama: barangMap.get(item.barang_id)?.nama || "",
-    })),
+    items: (itemsBySession.get(row.id) || []).map((item) => {
+      const barang = barangMap.get(item.barang_id);
+      return {
+        ...item,
+        barang_nama: barang?.nama || "",
+        satuan_dasar: barang?.satuan_dasar ?? "",
+        butuh_dimensi_status: Number(barang?.butuh_dimensi_status ?? 0),
+      };
+    }),
   }));
 }
 
@@ -62,13 +68,20 @@ export async function createStockOpname(input: {
 }) {
   const tanggal = input.tanggal || todayJakarta();
   const id = generateId();
-  const nomor = await generateDailyDocumentNumber("stock_opnames", "nomor_opname", "SO", tanggal);
+  const nomor = await generateDailyDocumentNumber(
+    "stock_opnames",
+    "nomor_opname",
+    "SO",
+    tanggal,
+  );
   const materials = await getMaterials();
-  const selectedIds = input.barang_ids?.length ? new Set(input.barang_ids) : null;
+  const selectedIds = input.barang_ids?.length
+    ? new Set(input.barang_ids)
+    : null;
   const tracked = materials.filter(
     (material: any) =>
       Number(material.lacak_inventori_status ?? 1) !== 0 &&
-      (!selectedIds || selectedIds.has(material.id))
+      (!selectedIds || selectedIds.has(material.id)),
   );
 
   await db.transaction(async () => {
@@ -105,16 +118,23 @@ export async function createStockOpname(input: {
 
 export async function updateStockOpnameCounts(
   id: string,
-  items: Array<{ stock_opname_item_id: string; counted_qty: number; catatan?: string | null }>
+  items: Array<{
+    stock_opname_item_id: string;
+    counted_qty: number;
+    catatan?: string | null;
+  }>,
 ) {
   const session = await getStockOpnameById(id);
   if (!session) throw new Error("Opname stok tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAF yang bisa diedit");
+  if (session.status !== "DRAFT")
+    throw new Error("Hanya opname DRAF yang bisa diedit");
 
   let totalDeltaQty = 0;
   let totalDeltaValue = 0;
   for (const input of items) {
-    const existing = (session.items || []).find((item: any) => item.id === input.stock_opname_item_id);
+    const existing = (session.items || []).find(
+      (item: any) => item.id === input.stock_opname_item_id,
+    );
     if (!existing) continue;
     const countedQty = numeric(input.counted_qty);
     const deltaQty = countedQty - numeric(existing.system_qty);
@@ -143,7 +163,8 @@ export async function updateStockOpnameCounts(
 export async function postStockOpname(id: string, actorId?: string | null) {
   const session = await getStockOpnameById(id);
   if (!session) throw new Error("Opname stok tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Opname stok sudah diposting/batal");
+  if (session.status !== "DRAFT")
+    throw new Error("Opname stok sudah diposting/batal");
 
   let totalDeltaQty = 0;
   let totalDeltaValue = 0;
@@ -182,13 +203,18 @@ export async function postStockOpname(id: string, actorId?: string | null) {
     if (updHeader.error) throw updHeader.error;
   });
 
-  return { id, total_delta_qty: totalDeltaQty, total_delta_value: totalDeltaValue };
+  return {
+    id,
+    total_delta_qty: totalDeltaQty,
+    total_delta_value: totalDeltaValue,
+  };
 }
 
 export async function cancelStockOpname(id: string) {
   const session = await getStockOpnameById(id);
   if (!session) throw new Error("Opname stok tidak ditemukan");
-  if (session.status !== "DRAFT") throw new Error("Hanya opname DRAF yang bisa dibatalkan");
+  if (session.status !== "DRAFT")
+    throw new Error("Hanya opname DRAF yang bisa dibatalkan");
   const upd = await db.update("stock_opnames", id, { status: "CANCELLED" });
   if (upd.error) throw upd.error;
 }
