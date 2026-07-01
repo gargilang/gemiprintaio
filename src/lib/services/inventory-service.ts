@@ -71,7 +71,12 @@ function numeric(value: unknown): number {
 }
 
 function shouldRevalueAverage(type: InventoryMovementType): boolean {
-  return !["SALE_ISSUE", "WASTE", "PRODUCTION_ISSUE", "PRODUCTION_WASTE"].includes(type);
+  return ![
+    "SALE_ISSUE",
+    "WASTE",
+    "PRODUCTION_ISSUE",
+    "PRODUCTION_WASTE",
+  ].includes(type);
 }
 
 export interface RollVariant {
@@ -88,11 +93,11 @@ export interface RollVariant {
 
 async function syncUnitPurchasePricesFromAverage(
   barangId: string,
-  averageCostPerBaseUnit: number
+  averageCostPerBaseUnit: number,
 ): Promise<void> {
   const upsRes = await db.query<{ id: string; faktor_konversi: number }>(
     "harga_barang_satuan",
-    { where: { barang_id: barangId } }
+    { where: { barang_id: barangId } },
   );
   if (upsRes.error) throw upsRes.error;
 
@@ -106,13 +111,17 @@ async function syncUnitPurchasePricesFromAverage(
   }
 }
 
-export async function getRollVariants(barangId?: string): Promise<RollVariant[]> {
+export async function getRollVariants(
+  barangId?: string,
+): Promise<RollVariant[]> {
   const result = await db.query<RollVariant>("barang_roll_variants", {
     ...(barangId ? { where: { barang_id: barangId } } : {}),
     orderBy: { column: "lebar_m", ascending: true },
   });
   if (result.error) throw result.error;
-  return (result.data || []).filter((row: any) => Number(row.aktif_status) !== 0);
+  return (result.data || []).filter(
+    (row: any) => Number(row.aktif_status) !== 0,
+  );
 }
 
 export async function findOrCreateRollVariant(input: {
@@ -132,7 +141,7 @@ export async function findOrCreateRollVariant(input: {
   });
   if (existing.error) throw existing.error;
   const found = (existing.data || []).find(
-    (row: any) => Math.abs(Number(row.lebar_m) - width) < 0.000001
+    (row: any) => Math.abs(Number(row.lebar_m) - width) < 0.000001,
   );
   if (found) {
     if (Number(found.aktif_status) === 0) {
@@ -170,7 +179,10 @@ async function updateRollVariantFromMovement(input: {
   linear_delta_m?: number | null;
   unit_cost: number;
 }): Promise<void> {
-  if (!input.roll_variant_id || !Number.isFinite(Number(input.linear_delta_m))) {
+  if (
+    !input.roll_variant_id ||
+    !Number.isFinite(Number(input.linear_delta_m))
+  ) {
     return;
   }
   const linearDelta = Number(input.linear_delta_m);
@@ -191,8 +203,8 @@ async function updateRollVariantFromMovement(input: {
   if (afterLength < -0.000001) {
     throw new Error(
       `Stok roll ${width.toLocaleString("id-ID")}m tidak cukup. Panjang tersedia ${beforeLength.toLocaleString(
-        "id-ID"
-      )}m, dibutuhkan ${Math.abs(linearDelta).toLocaleString("id-ID")}m.`
+        "id-ID",
+      )}m, dibutuhkan ${Math.abs(linearDelta).toLocaleString("id-ID")}m.`,
     );
   }
 
@@ -204,7 +216,10 @@ async function updateRollVariantFromMovement(input: {
   if (deltaArea > 0) {
     avgAfter =
       afterArea > 0
-        ? Math.max(0, (beforeArea * avgBefore + deltaArea * input.unit_cost) / afterArea)
+        ? Math.max(
+            0,
+            (beforeArea * avgBefore + deltaArea * input.unit_cost) / afterArea,
+          )
         : 0;
   } else if (afterArea <= 0) {
     avgAfter = 0;
@@ -219,12 +234,15 @@ async function updateRollVariantFromMovement(input: {
 }
 
 export async function postInventoryMovement(
-  input: PostInventoryMovementInput
+  input: PostInventoryMovementInput,
 ): Promise<InventoryMovement | null> {
   if (!input.barang_id) {
     throw new Error("Barang wajib diisi untuk pergerakan stok");
   }
-  if (!Number.isFinite(Number(input.qty_delta)) || Number(input.qty_delta) === 0) {
+  if (
+    !Number.isFinite(Number(input.qty_delta)) ||
+    Number(input.qty_delta) === 0
+  ) {
     throw new Error("Jumlah pergerakan stok tidak boleh 0");
   }
 
@@ -233,7 +251,7 @@ export async function postInventoryMovement(
   // Tauri tidak melalui RPC, jadi cek di TS supaya mode offline juga aman.
   if (input.tanggal && (await isDateInClosedPeriod(input.tanggal))) {
     throw new Error(
-      `Tanggal ${input.tanggal} jatuh di periode yang sudah ditutup. Gunakan jurnal pembalik di periode berjalan.`
+      `Tanggal ${input.tanggal} jatuh di periode yang sudah ditutup. Gunakan jurnal pembalik di periode berjalan.`,
     );
   }
 
@@ -259,16 +277,19 @@ export async function postInventoryMovement(
   if (qtyAfter < -0.000001) {
     throw new Error(
       `Stok tidak cukup untuk ${material.nama || "barang ini"}. Stok tersedia ${qtyBefore.toLocaleString(
-        "id-ID"
-      )}, dibutuhkan ${Math.abs(qtyDelta).toLocaleString("id-ID")}.`
+        "id-ID",
+      )}, dibutuhkan ${Math.abs(qtyDelta).toLocaleString("id-ID")}.`,
     );
   }
   if (Math.abs(qtyAfter) < 0.000001) qtyAfter = 0;
 
   if (input.roll_variant_id && Number.isFinite(Number(input.linear_delta_m))) {
-    const variantResult = await db.queryOne<RollVariant>("barang_roll_variants", {
-      where: { id: input.roll_variant_id },
-    });
+    const variantResult = await db.queryOne<RollVariant>(
+      "barang_roll_variants",
+      {
+        where: { id: input.roll_variant_id },
+      },
+    );
     if (variantResult.error) throw variantResult.error;
     const variant = variantResult.data as RollVariant | null;
     if (!variant) throw new Error("Varian roll tidak ditemukan");
@@ -277,8 +298,10 @@ export async function postInventoryMovement(
     if (variantAfter < -0.000001) {
       throw new Error(
         `Stok roll ${Number(variant.lebar_m).toLocaleString("id-ID")}m tidak cukup. Panjang tersedia ${Number(
-          variant.panjang_tersedia_m || 0
-        ).toLocaleString("id-ID")}m, dibutuhkan ${Math.abs(linearDelta).toLocaleString("id-ID")}m.`
+          variant.panjang_tersedia_m || 0,
+        ).toLocaleString(
+          "id-ID",
+        )}m, dibutuhkan ${Math.abs(linearDelta).toLocaleString("id-ID")}m.`,
       );
     }
   }
@@ -336,15 +359,17 @@ export async function postInventoryMovement(
   return movement;
 }
 
-export async function getInventoryMovements(filters: {
-  barang_id?: string;
-  source_id?: string;
-  source_type?: string;
-  movement_type?: InventoryMovementType;
-  date_from?: string;
-  date_to?: string;
-  reference?: string;
-} = {}): Promise<InventoryMovement[]> {
+export async function getInventoryMovements(
+  filters: {
+    barang_id?: string;
+    source_id?: string;
+    source_type?: string;
+    movement_type?: InventoryMovementType;
+    date_from?: string;
+    date_to?: string;
+    reference?: string;
+  } = {},
+): Promise<InventoryMovement[]> {
   const where: Record<string, string> = {};
   if (filters.barang_id) where.barang_id = filters.barang_id;
   if (filters.source_id) where.source_id = filters.source_id;
@@ -358,7 +383,9 @@ export async function getInventoryMovements(filters: {
   if (result.error) throw result.error;
   let rows = result.data || [];
   if (filters.date_from) {
-    rows = rows.filter((row) => String(row.tanggal || "") >= filters.date_from!);
+    rows = rows.filter(
+      (row) => String(row.tanggal || "") >= filters.date_from!,
+    );
   }
   if (filters.date_to) {
     rows = rows.filter((row) => String(row.tanggal || "") <= filters.date_to!);
@@ -376,7 +403,7 @@ export async function getInventoryMovements(filters: {
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(needle)
+        .includes(needle),
     );
   }
   return rows;
@@ -392,6 +419,10 @@ export async function createInventoryAdjustment(input: {
   unit_cost?: number | null;
   tanggal?: string;
   dibuat_oleh?: string | null;
+  /** Opsional — hanya untuk barang dimensi */
+  roll_variant_id?: string | null;
+  roll_width_m?: number | null;
+  linear_delta_m?: number | null;
 }): Promise<InventoryMovement | null> {
   if (!input.reason?.trim()) {
     throw new Error("Alasan penyesuaian stok wajib diisi");
@@ -410,6 +441,9 @@ export async function createInventoryAdjustment(input: {
     source_id: generateId(),
     catatan: note,
     dibuat_oleh: input.dibuat_oleh || null,
+    roll_variant_id: input.roll_variant_id ?? null,
+    roll_width_m: input.roll_width_m ?? null,
+    linear_delta_m: input.linear_delta_m ?? null,
   });
 }
 
@@ -426,6 +460,11 @@ export async function createWasteMovement(input: {
   reason: string;
   tanggal?: string;
   dibuat_oleh?: string | null;
+  /** Opsional — hanya untuk barang dimensi */
+  roll_variant_id?: string | null;
+  roll_width_m?: number | null;
+  /** linear_delta_m harus positif; service akan membalik ke negatif */
+  linear_delta_m?: number | null;
 }): Promise<InventoryMovement | null> {
   if (!input.reason?.trim()) {
     throw new Error("Alasan/keterangan barang rusak wajib diisi");
@@ -445,6 +484,13 @@ export async function createWasteMovement(input: {
     source_id: generateId(),
     catatan: input.reason.trim(),
     dibuat_oleh: input.dibuat_oleh || null,
+    roll_variant_id: input.roll_variant_id ?? null,
+    roll_width_m: input.roll_width_m ?? null,
+    // linear_delta_m dari caller selalu positif; WASTE mengurangi stok → negatif
+    linear_delta_m:
+      input.linear_delta_m != null
+        ? -Math.abs(Number(input.linear_delta_m))
+        : null,
   });
 }
 
@@ -455,7 +501,12 @@ export async function convertRollVariant(input: {
   reason?: string | null;
   tanggal?: string;
   dibuat_oleh?: string | null;
-}): Promise<{ ok: true; source_width_m: number; length_m: number; target_widths_m: number[] }> {
+}): Promise<{
+  ok: true;
+  source_width_m: number;
+  length_m: number;
+  target_widths_m: number[];
+}> {
   if (!input.source_roll_variant_id) {
     throw new Error("Varian roll sumber wajib dipilih");
   }
@@ -466,18 +517,23 @@ export async function convertRollVariant(input: {
   const source = sourceResult.data as RollVariant | null;
   if (!source) throw new Error("Varian roll sumber tidak ditemukan");
 
-  const targets = (input.target_widths_m || []).map(Number).filter((n) => Number.isFinite(n) && n > 0);
-  if (targets.length === 0) throw new Error("Minimal satu lebar roll tujuan wajib diisi");
+  const targets = (input.target_widths_m || [])
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (targets.length === 0)
+    throw new Error("Minimal satu lebar roll tujuan wajib diisi");
   const targetTotalWidth = targets.reduce((sum, width) => sum + width, 0);
   const sourceWidth = positiveNumber(source.lebar_m);
   if (Math.abs(targetTotalWidth - sourceWidth) > 0.000001) {
     throw new Error(
-      `Total lebar tujuan (${targetTotalWidth.toLocaleString("id-ID")}m) harus sama dengan lebar sumber (${sourceWidth.toLocaleString("id-ID")}m).`
+      `Total lebar tujuan (${targetTotalWidth.toLocaleString("id-ID")}m) harus sama dengan lebar sumber (${sourceWidth.toLocaleString("id-ID")}m).`,
     );
   }
 
-  const length = positiveNumber(input.length_m) || numeric(source.panjang_tersedia_m);
-  if (length <= 0) throw new Error("Panjang roll yang dikonversi harus lebih dari 0");
+  const length =
+    positiveNumber(input.length_m) || numeric(source.panjang_tersedia_m);
+  if (length <= 0)
+    throw new Error("Panjang roll yang dikonversi harus lebih dari 0");
   if (length > numeric(source.panjang_tersedia_m) + 0.000001) {
     throw new Error("Panjang konversi melebihi stok roll sumber");
   }
@@ -485,7 +541,9 @@ export async function convertRollVariant(input: {
   const unitCost = numeric(source.average_cost_per_m2);
   const tanggal = input.tanggal || new Date().toISOString().split("T")[0];
   const conversionId = generateId();
-  const note = input.reason?.trim() || `Konversi roll ${sourceWidth}m menjadi ${targets.join("m + ")}m`;
+  const note =
+    input.reason?.trim() ||
+    `Konversi roll ${sourceWidth}m menjadi ${targets.join("m + ")}m`;
 
   await postInventoryMovement({
     id: `${conversionId}-out`,
@@ -530,7 +588,12 @@ export async function convertRollVariant(input: {
     });
   }
 
-  return { ok: true, source_width_m: sourceWidth, length_m: length, target_widths_m: targets };
+  return {
+    ok: true,
+    source_width_m: sourceWidth,
+    length_m: length,
+    target_widths_m: targets,
+  };
 }
 
 export async function rebuildInventoryBalance(barangId: string): Promise<{
@@ -550,13 +613,13 @@ export async function rebuildInventoryBalance(barangId: string): Promise<{
     const unitCost = positiveNumber(movement.unit_cost) || avg;
     const nextQty = qty + delta;
     if (nextQty < -0.000001) {
-      throw new Error(`Ledger stok ${barangId} tidak valid: stok menjadi negatif`);
+      throw new Error(
+        `Ledger stok ${barangId} tidak valid: stok menjadi negatif`,
+      );
     }
     if (shouldRevalueAverage(movement.movement_type)) {
       avg =
-        nextQty > 0
-          ? Math.max(0, (qty * avg + delta * unitCost) / nextQty)
-          : 0;
+        nextQty > 0 ? Math.max(0, (qty * avg + delta * unitCost) / nextQty) : 0;
     } else if (nextQty <= 0) {
       avg = 0;
     }
@@ -576,4 +639,3 @@ export async function rebuildInventoryBalance(barangId: string): Promise<{
     average_cost_per_base_unit: avg,
   };
 }
-
