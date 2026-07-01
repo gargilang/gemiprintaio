@@ -378,8 +378,9 @@ export async function getPOSInitData(): Promise<POSInitData> {
       orderBy: { column: "nama", ascending: true },
     });
 
-    // Ambil barang beserta kategori
+    // Ambil barang beserta kategori (hanya yang tampil di POS)
     const materialsResult = await db.query("barang", {
+      where: { muncul_di_pos_status: 1 },
       orderBy: { column: "frekuensi_terjual", ascending: false },
     });
 

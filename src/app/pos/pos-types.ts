@@ -24,6 +24,7 @@ export interface UnitPrice {
   harga_jual: number;
   harga_member: number;
   default_status: number;
+  nama_produk_jual?: string | null;
 }
 
 export interface Material {
@@ -31,6 +32,7 @@ export interface Material {
   nama: string;
   butuh_dimensi_status: number;
   frekuensi_terjual: number;
+  muncul_di_pos_status?: number;
   kategori_nama?: string;
   unit_prices: UnitPrice[];
 }
@@ -113,3 +115,25 @@ export const KATEGORI_ORDER = [
   "Finishing",
   "Lain-lain",
 ];
+
+// Interface baru — satu entri per harga_barang_satuan, siap tampil di grid POS
+export interface ProdukJualFlat {
+  /** ID dari harga_barang_satuan */
+  id: string;
+  /** Nama yang tampil di kartu POS: nama_produk_jual jika ada, fallback ke nama_satuan */
+  nama: string;
+  /** Nama satuan internal (untuk stock deduction) */
+  nama_satuan: string;
+  nama_produk_jual?: string | null;
+  harga_jual: number;
+  harga_member: number;
+  faktor_konversi: number;
+  default_status: number;
+  /** ID barang induk */
+  barang_id: string;
+  /** Nama barang induk — ditampilkan sebagai label sekunder di kartu */
+  barang_nama: string;
+  butuh_dimensi_status: number;
+  kategori_nama?: string | null;
+  frekuensi_terjual: number;
+}

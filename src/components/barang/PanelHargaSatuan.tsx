@@ -45,7 +45,7 @@ export default function PanelHargaSatuan({
           <span className="w-8 h-8 bg-blue-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
             2
           </span>
-          Harga Per Satuan Jual
+          Produk Jual
         </h3>
         <button
           type="button"
@@ -85,9 +85,7 @@ export default function PanelHargaSatuan({
                     type="radio"
                     name="default_unit"
                     checked={up.default_status}
-                    onChange={() =>
-                      onUpdate(index, "default_status", true)
-                    }
+                    onChange={() => onUpdate(index, "default_status", true)}
                     className="w-4 h-4 text-blue-500"
                   />
                   <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
@@ -119,7 +117,26 @@ export default function PanelHargaSatuan({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              {/* Nama Produk — label customer-facing di POS */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Nama Produk
+                </label>
+                <input
+                  type="text"
+                  value={up.nama_produk_jual ?? ""}
+                  onChange={(e) =>
+                    onUpdate(index, "nama_produk_jual", e.target.value || null)
+                  }
+                  placeholder="Nama tampil di POS (opsional)"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  Kosong = pakai nama satuan
+                </p>
+              </div>
+
               {/* Nama Satuan - DROPDOWN */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -129,11 +146,7 @@ export default function PanelHargaSatuan({
                   required
                   value={up.nama_satuan}
                   onChange={(e) =>
-                    onUpdate(
-                      index,
-                      "nama_satuan",
-                      e.target.value
-                    )
+                    onUpdate(index, "nama_satuan", e.target.value)
                   }
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   disabled={loadingMaster}
@@ -171,15 +184,14 @@ export default function PanelHargaSatuan({
                     onUpdate(
                       index,
                       "faktor_konversi",
-                      parseFloat(e.target.value) || 1
+                      parseFloat(e.target.value) || 1,
                     )
                   }
                   placeholder="1"
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                  1 {up.nama_satuan} = {up.faktor_konversi}{" "}
-                  {baseUnit}
+                  1 {up.nama_satuan} = {up.faktor_konversi} {baseUnit}
                 </p>
               </div>
 
@@ -196,7 +208,7 @@ export default function PanelHargaSatuan({
                     onUpdate(
                       index,
                       "harga_beli",
-                      parseFloat(e.target.value) || 0
+                      parseFloat(e.target.value) || 0,
                     )
                   }
                   placeholder="0"
@@ -220,7 +232,7 @@ export default function PanelHargaSatuan({
                     onUpdate(
                       index,
                       "harga_jual",
-                      parseFloat(e.target.value) || 0
+                      parseFloat(e.target.value) || 0,
                     )
                   }
                   placeholder="0"
@@ -244,7 +256,7 @@ export default function PanelHargaSatuan({
                     onUpdate(
                       index,
                       "harga_member",
-                      parseFloat(e.target.value) || 0
+                      parseFloat(e.target.value) || 0,
                     )
                   }
                   placeholder="0"
@@ -265,16 +277,16 @@ export default function PanelHargaSatuan({
         </p>
         <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4">
           <li>
-            • <strong>Pulpen:</strong> Base unit "pcs", tambah satuan
-            "lusin" (konversi 12), "pack" (konversi 144)
+            • <strong>Flexi Banner:</strong> Nama Produk "Print Banner per m²",
+            Satuan "m²", Konversi 1
           </li>
           <li>
-            • <strong>Flexi Banner:</strong> Base unit "meter", tambah
-            satuan "roll" (konversi 50)
+            • <strong>HVS A4:</strong> Nama Produk "Print Hitam Putih A4",
+            Satuan "lembar", Konversi 1
           </li>
           <li>
-            • <strong>Kertas HVS:</strong> Base unit "lembar", tambah
-            satuan "rim" (konversi 500)
+            • <strong>Kertas Foto:</strong> Nama Produk "Print Foto 4R", Satuan
+            "lembar", Konversi 1
           </li>
         </ul>
       </div>

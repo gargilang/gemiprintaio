@@ -25,7 +25,7 @@ CREATE TABLE barang (
       roll_inventory_status INTEGER NOT NULL DEFAULT 0,
       default_location_id TEXT DEFAULT 'main',
       dibuat_pada TEXT DEFAULT (datetime('now')),
-      diperbarui_pada TEXT DEFAULT (datetime('now')), frekuensi_terjual INTEGER DEFAULT 0, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
+      diperbarui_pada TEXT DEFAULT (datetime('now')), frekuensi_terjual INTEGER DEFAULT 0, muncul_di_pos_status INTEGER NOT NULL DEFAULT 1, sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
       FOREIGN KEY (subkategori_id) REFERENCES subkategori_barang(id) ON DELETE SET NULL
     );
@@ -181,6 +181,7 @@ CREATE TABLE "harga_barang_satuan" (
         harga_member REAL DEFAULT 0,
         default_status INTEGER DEFAULT 0,
         urutan_tampilan INTEGER DEFAULT 0,
+        nama_produk_jual TEXT,
         dibuat_pada TEXT DEFAULT (datetime('now')),
         diperbarui_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
         FOREIGN KEY (barang_id) REFERENCES "barang"(id) ON DELETE CASCADE,
