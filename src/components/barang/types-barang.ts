@@ -9,4 +9,5 @@ export interface UnitPrice {
   harga_member: number;
   default_status: boolean;
   urutan_tampilan?: number;
+  nama_produk_jual?: string | null;
 }
