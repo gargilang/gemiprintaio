@@ -50,7 +50,7 @@ export async function createMaterialWithUnitPricesAction(data: any) {
 
 export async function updateMaterialWithUnitPricesAction(
   id: string,
-  data: any
+  data: any,
 ) {
   try {
     return await updateMaterial(id, data);
@@ -89,6 +89,9 @@ export async function createInventoryAdjustmentAction(data: {
   unit_cost?: number | null;
   tanggal?: string;
   dibuat_oleh?: string | null;
+  roll_variant_id?: string | null;
+  roll_width_m?: number | null;
+  linear_delta_m?: number | null;
 }) {
   try {
     const s = await requireAdminOrManager();
@@ -105,6 +108,9 @@ export async function createWasteMovementAction(data: {
   reason: string;
   tanggal?: string;
   dibuat_oleh?: string | null;
+  roll_variant_id?: string | null;
+  roll_width_m?: number | null;
+  linear_delta_m?: number | null;
 }) {
   try {
     const s = await requireAdminOrManager();

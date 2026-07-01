@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
 import ModalTambahBarang from "@/components/ModalTambahBarang";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ModalCatatRusak from "./ModalCatatRusak";
+import ModalAdjustStok, { type MaterialAdjust } from "./ModalAdjustStok";
 import ModalKonversiRoll from "./ModalKonversiRoll";
 import { BoxIcon } from "@/components/icons/ContentIcons";
 import MenuAksi from "@/components/MenuAksi";
@@ -48,10 +49,10 @@ const MaterialRow = memo(
     onConvertRoll: (material: any) => void;
   }) => {
     const defaultUnit = material.unit_prices?.find(
-      (up: any) => up.default_status
+      (up: any) => up.default_status,
     );
     const otherUnits = material.unit_prices?.filter(
-      (up: any) => !up.default_status
+      (up: any) => !up.default_status,
     );
     const averageCostPerBaseUnit =
       Number(material.average_cost_per_base_unit || 0) ||
@@ -63,11 +64,15 @@ const MaterialRow = memo(
       <tr
         key={material.id}
         className={`border-b border-gray-200 dark:border-slate-800 hover:bg-emerald-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+          index % 2 === 0
+            ? "bg-white dark:bg-slate-900"
+            : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
-          <div className="font-semibold text-gray-800 dark:text-slate-100">{material.nama}</div>
+          <div className="font-semibold text-gray-800 dark:text-slate-100">
+            {material.nama}
+          </div>
           {material.spesifikasi && (
             <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {material.spesifikasi}
@@ -179,8 +184,18 @@ const MaterialRow = memo(
                 tampil: !!material.lacak_inventori_status,
                 onClick: () => onViewMovements(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 text-slate-600 dark:text-slate-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 ),
               },
@@ -190,8 +205,18 @@ const MaterialRow = memo(
                 tampil: !!material.lacak_inventori_status,
                 onClick: () => onAdjustStock(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                  <svg
+                    className="w-5 h-5 text-amber-600 dark:text-amber-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v12m6-6H6"
+                    />
                   </svg>
                 ),
               },
@@ -201,9 +226,24 @@ const MaterialRow = memo(
                 tampil: !!material.lacak_inventori_status,
                 onClick: () => onWasteMaterial(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-rose-600 dark:text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                  <svg
+                    className="w-5 h-5 text-rose-600 dark:text-rose-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"
+                    />
                   </svg>
                 ),
               },
@@ -215,8 +255,18 @@ const MaterialRow = memo(
                   Number(material.butuh_dimensi_status) === 1,
                 onClick: () => onConvertRoll(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                  <svg
+                    className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"
+                    />
                   </svg>
                 ),
               },
@@ -225,8 +275,18 @@ const MaterialRow = memo(
                 judul: "Edit",
                 onClick: () => onEdit(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg
+                    className="w-5 h-5 text-blue-600 dark:text-blue-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                 ),
               },
@@ -236,8 +296,18 @@ const MaterialRow = memo(
                 varian: "bahaya",
                 onClick: () => onDelete(material),
                 ikon: (
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 ),
               },
@@ -246,7 +316,7 @@ const MaterialRow = memo(
         </td>
       </tr>
     );
-  }
+  },
 );
 
 MaterialRow.displayName = "MaterialRow";
@@ -269,7 +339,7 @@ export default function MaterialsPage() {
   // mengembalikannya untuk POS/proses maklon.
   const materials = useMemo(
     () => sembunyikanPlaceholderBarang(materialsData ?? []),
-    [materialsData]
+    [materialsData],
   );
   const setMaterials = useCallback<
     (next: any[] | ((prev: any[]) => any[])) => void
@@ -282,10 +352,10 @@ export default function MaterialsPage() {
             ? (next as (p: any[]) => any[])(base)
             : next;
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutateMaterials]
+    [mutateMaterials],
   );
   const loading = materialsLoading;
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
@@ -293,9 +363,6 @@ export default function MaterialsPage() {
   const [movementRows, setMovementRows] = useState<any[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
   const [adjustMaterial, setAdjustMaterial] = useState<any>(null);
-  const [adjustQty, setAdjustQty] = useState("");
-  const [adjustReason, setAdjustReason] = useState("");
-  const [savingAdjustment, setSavingAdjustment] = useState(false);
   const [wasteMaterial, setWasteMaterial] = useState<any>(null);
   const [convertMaterial, setConvertMaterial] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -320,7 +387,7 @@ export default function MaterialsPage() {
   // Helper function to update a single material in state without reloading
   function updateMaterialInState(updated: Material) {
     setMaterials((prev: any[]) =>
-      prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+      prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)),
     );
   }
 
@@ -334,14 +401,15 @@ export default function MaterialsPage() {
       filtered = filtered.filter(
         (m) =>
           m.nama.toLowerCase().includes(query) ||
-          (m.category_name && m.category_name.toLowerCase().includes(query))
+          (m.category_name && m.category_name.toLowerCase().includes(query)),
       );
     }
 
     // Apply low stock filter
     if (showLowStockOnly) {
       filtered = filtered.filter(
-        (m) => m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum
+        (m) =>
+          m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum,
       );
     }
 
@@ -354,17 +422,23 @@ export default function MaterialsPage() {
       } else if (sortBy === "stock") {
         comparison = a.jumlah_stok - b.jumlah_stok;
       } else if (sortBy === "value") {
-        const aDefaultUnit = a.unit_prices?.find((up: any) => up.default_status);
-        const bDefaultUnit = b.unit_prices?.find((up: any) => up.default_status);
+        const aDefaultUnit = a.unit_prices?.find(
+          (up: any) => up.default_status,
+        );
+        const bDefaultUnit = b.unit_prices?.find(
+          (up: any) => up.default_status,
+        );
         const aCost =
           Number(a.average_cost_per_base_unit || 0) ||
           (aDefaultUnit?.harga_beli && aDefaultUnit?.faktor_konversi
-            ? Number(aDefaultUnit.harga_beli) / Number(aDefaultUnit.faktor_konversi)
+            ? Number(aDefaultUnit.harga_beli) /
+              Number(aDefaultUnit.faktor_konversi)
             : 0);
         const bCost =
           Number(b.average_cost_per_base_unit || 0) ||
           (bDefaultUnit?.harga_beli && bDefaultUnit?.faktor_konversi
-            ? Number(bDefaultUnit.harga_beli) / Number(bDefaultUnit.faktor_konversi)
+            ? Number(bDefaultUnit.harga_beli) /
+              Number(bDefaultUnit.faktor_konversi)
             : 0);
         const aValue = a.jumlah_stok * aCost;
         const bValue = b.jumlah_stok * bCost;
@@ -400,7 +474,7 @@ export default function MaterialsPage() {
       const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
       const end = Math.min(
         filteredMaterials.length,
-        start + visibleRows + buffer * 2
+        start + visibleRows + buffer * 2,
       );
 
       setVisibleRange({ start, end });
@@ -437,7 +511,14 @@ export default function MaterialsPage() {
 
     window.addEventListener("keydown", handleEscKey);
     return () => window.removeEventListener("keydown", handleEscKey);
-  }, [showModal, movementMaterial, adjustMaterial, wasteMaterial, convertMaterial, confirmDialog]);
+  }, [
+    showModal,
+    movementMaterial,
+    adjustMaterial,
+    wasteMaterial,
+    convertMaterial,
+    confirmDialog,
+  ]);
 
   const loadMaterials = async () => {
     try {
@@ -453,7 +534,7 @@ export default function MaterialsPage() {
       setNotice({ type, message });
       setTimeout(() => setNotice(null), 3000);
     },
-    []
+    [],
   );
 
   const handleSuccess = async (message: string, updatedMaterial?: any) => {
@@ -505,11 +586,11 @@ export default function MaterialsPage() {
         try {
           await deleteMaterialAction(material.id);
           setMaterials((prev: any[]) =>
-            prev.filter((m) => m.id !== material.id)
+            prev.filter((m) => m.id !== material.id),
           );
           showNotification(
             "success",
-            `Barang "${material.nama}" berhasil dihapus`
+            `Barang "${material.nama}" berhasil dihapus`,
           );
         } catch (error) {
           console.error("Error deleting material:", error);
@@ -523,7 +604,9 @@ export default function MaterialsPage() {
     setMovementMaterial(material);
     setLoadingMovements(true);
     try {
-      const rows = await getInventoryMovementsAction({ barang_id: material.id });
+      const rows = await getInventoryMovementsAction({
+        barang_id: material.id,
+      });
       setMovementRows(rows || []);
     } catch (error) {
       console.error("Error loading inventory movements:", error);
@@ -536,40 +619,8 @@ export default function MaterialsPage() {
 
   const handleAdjustStock = (material: any) => {
     setAdjustMaterial(material);
-    setAdjustQty("");
-    setAdjustReason("");
   };
 
-  const submitAdjustment = async () => {
-    if (!adjustMaterial) return;
-    const qty = Number(adjustQty);
-    if (!Number.isFinite(qty) || qty === 0) {
-      showNotification("error", "Qty adjustment tidak boleh 0");
-      return;
-    }
-    if (!adjustReason.trim()) {
-      showNotification("error", "Alasan adjustment wajib diisi");
-      return;
-    }
-    setSavingAdjustment(true);
-    try {
-      await createInventoryAdjustmentAction({
-        barang_id: adjustMaterial.id,
-        qty_delta: qty,
-        reason: adjustReason.trim(),
-      });
-      setAdjustMaterial(null);
-      await loadMaterials();
-      showNotification("success", "Adjustment stok berhasil disimpan");
-    } catch (error: any) {
-      console.error("Error creating adjustment:", error);
-      showNotification("error", error.message || "Gagal menyimpan adjustment");
-    } finally {
-      setSavingAdjustment(false);
-    }
-  };
-
-  // Trigger modal — state form & loading dimiliki komponen modal masing-masing.
   const handleWasteMaterial = (material: any) => setWasteMaterial(material);
 
   const handleConvertRoll = (material: any) => setConvertMaterial(material);
@@ -600,7 +651,7 @@ export default function MaterialsPage() {
     return sum + m.jumlah_stok * price;
   }, 0);
   const lowStockItems = materials.filter(
-    (m) => m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum
+    (m) => m.lacak_inventori_status && m.jumlah_stok <= m.level_stok_minimum,
   ).length;
 
   return (
@@ -853,7 +904,9 @@ export default function MaterialsPage() {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      <span className="text-gray-500 dark:text-slate-400">Memuat data...</span>
+                      <span className="text-gray-500 dark:text-slate-400">
+                        Memuat data...
+                      </span>
                     </div>
                   </td>
                 </tr>
@@ -995,7 +1048,7 @@ export default function MaterialsPage() {
                         <td className="px-4 py-3 text-right">
                           Rp{" "}
                           {Number(row.avg_cost_after || 0).toLocaleString(
-                            "id-ID"
+                            "id-ID",
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
@@ -1012,56 +1065,15 @@ export default function MaterialsPage() {
       )}
 
       {adjustMaterial && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
-                Adjustment Stok
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400">{adjustMaterial.nama}</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Qty Delta
-                </label>
-                <input
-                  type="number"
-                  value={adjustQty}
-                  onChange={(e) => setAdjustQty(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="Contoh: -2 atau 10"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Alasan
-                </label>
-                <textarea
-                  value={adjustReason}
-                  onChange={(e) => setAdjustReason(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 dark:bg-slate-800">
-              <button
-                onClick={() => setAdjustMaterial(null)}
-                className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 rounded-lg"
-              >
-                Batal
-              </button>
-              <button
-                onClick={submitAdjustment}
-                disabled={savingAdjustment}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {savingAdjustment ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ModalAdjustStok
+          material={adjustMaterial as MaterialAdjust}
+          onClose={() => setAdjustMaterial(null)}
+          onSuccess={async () => {
+            await loadMaterials();
+            setAdjustMaterial(null);
+          }}
+          showNotification={showNotification}
+        />
       )}
 
       {/* Catat Material Rusak modal */}
@@ -1084,7 +1096,6 @@ export default function MaterialsPage() {
         />
       )}
 
-      
       {/* Confirm Dialog */}
       {confirmDialog?.show && (
         <DialogKonfirmasi
