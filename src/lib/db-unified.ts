@@ -1525,6 +1525,32 @@ class UnifiedDatabase {
       }
     }
 
+    // Migrasi: barang.muncul_di_pos_status
+    {
+      const cols = (
+        db.prepare("PRAGMA table_info(barang)").all() as Array<{ name: string }>
+      ).map((c) => c.name);
+      if (!cols.includes("muncul_di_pos_status")) {
+        db.exec(
+          "ALTER TABLE barang ADD COLUMN muncul_di_pos_status INTEGER NOT NULL DEFAULT 1"
+        );
+      }
+    }
+
+    // Migrasi: harga_barang_satuan.nama_produk_jual
+    {
+      const cols = (
+        db
+          .prepare("PRAGMA table_info(harga_barang_satuan)")
+          .all() as Array<{ name: string }>
+      ).map((c) => c.name);
+      if (!cols.includes("nama_produk_jual")) {
+        db.exec(
+          "ALTER TABLE harga_barang_satuan ADD COLUMN nama_produk_jual TEXT"
+        );
+      }
+    }
+
     // Tabel laporan_bulanan: riwayat laporan bulanan digenerate
     db.exec(`
       CREATE TABLE IF NOT EXISTS laporan_bulanan (
