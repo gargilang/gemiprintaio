@@ -1,4 +1,7 @@
 /**
+ * @deprecated Pakai `generatePurchaseOrderHTML` / `patchQuotationHTML` di
+ * `faktur-print.ts` — layout branded Gemiprint (landscape, logo, font).
+ *
  * Generator HTML untuk dokumen cetak Penawaran dan Pesanan Pembelian.
  * Desain mengikuti gaya faktur penjualan (faktur-print.ts): logo, kop, tabel dimensi.
  */

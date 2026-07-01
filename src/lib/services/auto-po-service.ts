@@ -26,6 +26,8 @@ export interface ReorderSuggestion {
   last_harga_satuan_id: string | null;
   last_nama_satuan: string | null;
   last_faktor_konversi: number;
+  last_panjang: number | null;
+  last_lebar: number | null;
 }
 
 export interface ReorderSuggestionGroup {
@@ -47,6 +49,9 @@ function pickLatestPurchase(rows: Array<{
   harga_satuan_id: string | null;
   nama_satuan: string;
   faktor_konversi: number;
+  panjang?: number | null;
+  lebar?: number | null;
+  jumlah_roll?: number | null;
   pembelian: {
     vendor_id: string | null;
     tanggal: string | null;
@@ -69,6 +74,35 @@ function pickLatestPurchase(rows: Array<{
     if (rowDate > bestDate) best = row;
   }
   return best;
+}
+
+/** Hitung qty roll + dimensi dari kebutuhan m² dan referensi pembelian/variant. */
+function resolveRollOrder(
+  needM2: number,
+  last: { panjang: number; lebar: number } | null,
+  rollVariants: Array<{ lebar_m: number; aktif_status?: number | null }>
+): { panjang: number; lebar: number; jumlah_roll: number; jumlah: number } | null {
+  let lebar = last?.lebar || 0;
+  let panjang = last?.panjang || 0;
+
+  if ((!lebar || !panjang) && rollVariants.length > 0) {
+    const active =
+      rollVariants.find((v) => Number(v.aktif_status) !== 0) || rollVariants[0];
+    lebar = numeric(active.lebar_m);
+  }
+
+  if (!lebar || !panjang) return null;
+
+  const m2PerRoll = lebar * panjang;
+  if (m2PerRoll <= 0) return null;
+
+  const rolls = Math.max(1, Math.ceil(needM2 / m2PerRoll));
+  return {
+    lebar,
+    panjang,
+    jumlah_roll: rolls,
+    jumlah: Number((rolls * m2PerRoll).toFixed(4)),
+  };
 }
 
 /**
@@ -170,6 +204,9 @@ export async function getReorderSuggestions(): Promise<ReorderSuggestion[]> {
       harga_satuan_id: ip.harga_satuan_id || null,
       nama_satuan: ip.nama_satuan || barang.satuan_dasar,
       faktor_konversi: positiveNumber(ip.faktor_konversi) || 1,
+      panjang: numeric(ip.panjang) || null,
+      lebar: numeric(ip.lebar) || null,
+      jumlah_roll: numeric(ip.jumlah_roll) || null,
       pembelian: pembelianById.get(ip.pembelian_id) || null,
     }));
     const latest = pickLatestPurchase(ipRows);
@@ -196,6 +233,9 @@ export async function getReorderSuggestions(): Promise<ReorderSuggestion[]> {
       last_harga_satuan_id: latest?.harga_satuan_id || null,
       last_nama_satuan: latest?.nama_satuan || barang.satuan_dasar,
       last_faktor_konversi: latest?.faktor_konversi || 1,
+      last_panjang:
+        latest?.panjang && latest.panjang > 0 ? latest.panjang : null,
+      last_lebar: latest?.lebar && latest.lebar > 0 ? latest.lebar : null,
     });
   }
 
@@ -271,6 +311,16 @@ export async function generateDraftPurchaseOrders(
   const suggestions = await getReorderSuggestions();
   const groups = groupSuggestionsByVendor(suggestions);
 
+  const rollVariantsRes = await db.query<any>("barang_roll_variants", {});
+  if (rollVariantsRes.error) throw rollVariantsRes.error;
+  const rollVariantsByBarang = new Map<string, any[]>();
+  for (const rv of rollVariantsRes.data || []) {
+    if (Number(rv.is_deleted) === 1) continue;
+    const list = rollVariantsByBarang.get(rv.barang_id) || [];
+    list.push(rv);
+    rollVariantsByBarang.set(rv.barang_id, list);
+  }
+
   const filterIds = input.vendor_ids
     ? new Set(input.vendor_ids.filter(Boolean))
     : null;
@@ -285,21 +335,46 @@ export async function generateDraftPurchaseOrders(
     }
     if (filterIds && !filterIds.has(group.vendor_id)) continue;
 
-    const items: PurchaseOrderItemInput[] = group.items.map((item) => ({
-      barang_id: item.barang_id,
-      harga_satuan_id: item.last_harga_satuan_id,
-      jumlah: item.suggested_qty,
-      nama_satuan: item.last_nama_satuan || item.satuan_dasar,
-      faktor_konversi: item.last_faktor_konversi || 1,
-      harga_satuan: item.last_unit_price,
-    }));
+    const items: PurchaseOrderItemInput[] = group.items.map((item) => {
+      const base = {
+        barang_id: item.barang_id,
+        harga_satuan_id: item.last_harga_satuan_id,
+        nama_satuan: item.last_nama_satuan || item.satuan_dasar,
+        faktor_konversi: item.last_faktor_konversi || 1,
+        harga_satuan: item.last_unit_price,
+      };
+
+      if (Number(item.butuh_dimensi_status) === 1) {
+        const resolved = resolveRollOrder(
+          item.suggested_qty,
+          item.last_lebar && item.last_panjang
+            ? { lebar: item.last_lebar, panjang: item.last_panjang }
+            : null,
+          rollVariantsByBarang.get(item.barang_id) || []
+        );
+        if (resolved) {
+          return {
+            ...base,
+            jumlah: resolved.jumlah,
+            panjang: resolved.panjang,
+            lebar: resolved.lebar,
+            jumlah_roll: resolved.jumlah_roll,
+            nama_satuan: "m²",
+          };
+        }
+      }
+
+      return {
+        ...base,
+        jumlah: item.suggested_qty,
+      };
+    });
 
     if (items.length === 0) continue;
 
     const result = await createPurchaseOrder({
       vendor_id: group.vendor_id,
       status: "DRAFT",
-      catatan: "Auto-PO dari par level inventori",
       dibuat_oleh: input.dibuat_oleh || null,
       items,
     });

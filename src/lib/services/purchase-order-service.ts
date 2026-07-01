@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db, generateId } from "@/lib/db-unified";
+import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
 import { hitungPpn } from "@/lib/ppn-helpers";
 import { createPurchase, payDebt } from "@/lib/services/purchases-service";
 import {
@@ -100,11 +100,13 @@ async function enrichPurchaseOrders(rows: any[]) {
     vendor_name: row.vendor_id
       ? vendorMap.get(row.vendor_id)?.nama_perusahaan || null
       : null,
-    items: (itemsByPo.get(row.id) || []).map((item) => ({
-      ...item,
-      barang_nama: barangMap.get(item.barang_id)?.nama || "",
-      jumlah_roll: item.jumlah_roll ?? null,
-    })),
+    items: (itemsByPo.get(row.id) || [])
+      .filter((item) => Number(item.is_deleted) !== 1)
+      .map((item) => ({
+        ...item,
+        barang_nama: barangMap.get(item.barang_id)?.nama || "",
+        jumlah_roll: item.jumlah_roll ?? null,
+      })),
   }));
 }
 
@@ -114,7 +116,8 @@ export async function getPurchaseOrders(limit = 200) {
     limit,
   });
   if (result.error) throw result.error;
-  return enrichPurchaseOrders(result.data || []);
+  const rows = (result.data || []).filter((row) => Number(row.is_deleted) !== 1);
+  return enrichPurchaseOrders(rows);
 }
 
 export async function getPurchaseOrderById(id: string) {
@@ -188,6 +191,116 @@ export async function createPurchaseOrder(input: UpsertPurchaseOrderInput) {
 export async function updatePurchaseOrderStatus(id: string, status: PurchaseOrderStatus) {
   const upd = await db.update("purchase_orders", id, { status });
   if (upd.error) throw upd.error;
+}
+
+export async function updatePurchaseOrder(id: string, input: UpsertPurchaseOrderInput) {
+  const existing = await getPurchaseOrderById(id);
+  if (!existing) throw new Error("Pesanan pembelian tidak ditemukan");
+  if (existing.status !== "DRAFT") {
+    throw new Error("Hanya pesanan berstatus DRAFT yang bisa diedit");
+  }
+  const hasReceived = (existing.items || []).some(
+    (item: any) => numeric(item.qty_received) > 0
+  );
+  if (hasReceived) {
+    throw new Error("Pesanan pembelian yang sudah pernah diterima sebagian tidak bisa diedit");
+  }
+  if (!input.items?.length) throw new Error("Minimal satu item PO");
+
+  const items = normalizeItems(input);
+  const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const headerBreakdown =
+    input.kena_ppn && numeric(input.ppn_persen) > 0
+      ? hitungPpn(
+          total,
+          numeric(input.ppn_persen),
+          input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF"
+        )
+      : { dpp: total, ppn: 0, total };
+
+  await db.transaction(async () => {
+    const oldItems = await db.query<any>("purchase_order_items", {
+      where: { purchase_order_id: id },
+    });
+    if (oldItems.error) throw oldItems.error;
+    for (const item of oldItems.data || []) {
+      const del = await db.delete("purchase_order_items", item.id);
+      if (del.error) throw del.error;
+    }
+
+    const upd = await db.update("purchase_orders", id, {
+      vendor_id: input.vendor_id ?? existing.vendor_id ?? null,
+      tanggal: input.tanggal || existing.tanggal,
+      expected_date: input.expected_date ?? existing.expected_date ?? null,
+      status: "DRAFT",
+      total_jumlah: total,
+      kena_ppn: input.kena_ppn ? 1 : 0,
+      ppn_persen: input.kena_ppn ? numeric(input.ppn_persen) : 0,
+      ppn_metode: input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF",
+      dpp_total: headerBreakdown.dpp,
+      ppn_total: headerBreakdown.ppn,
+      catatan: input.catatan?.trim() || null,
+    });
+    if (upd.error) throw upd.error;
+
+    for (const item of items) {
+      const res = await db.insert("purchase_order_items", {
+        id: generateId(),
+        purchase_order_id: id,
+        barang_id: item.barang_id,
+        harga_satuan_id: item.harga_satuan_id || null,
+        jumlah: item.jumlah,
+        qty_received: 0,
+        nama_satuan: item.nama_satuan,
+        faktor_konversi: item.faktor_konversi,
+        harga_satuan: item.harga_satuan,
+        subtotal: item.subtotal,
+        panjang: item.panjang ?? null,
+        lebar: item.lebar ?? null,
+        jumlah_roll: item.jumlah_roll ?? null,
+        dpp_satuan: item.dpp_satuan,
+        ppn_satuan: item.ppn_satuan,
+        dpp_total: item.dpp_total,
+        ppn_total: item.ppn_total,
+      });
+      if (res.error) throw res.error;
+    }
+  });
+
+  return { id, nomor_po: existing.nomor_po };
+}
+
+/** Hapus draf PO (soft delete). Hanya status DRAFT tanpa penerimaan. */
+export async function deletePurchaseOrderDraft(id: string) {
+  const existing = await getPurchaseOrderById(id);
+  if (!existing || Number(existing.is_deleted) === 1) {
+    throw new Error("Pesanan pembelian tidak ditemukan");
+  }
+  if (existing.status !== "DRAFT") {
+    throw new Error("Hanya draf yang bisa dihapus");
+  }
+  const hasReceived = (existing.items || []).some(
+    (item: any) => numeric(item.qty_received) > 0
+  );
+  if (hasReceived) {
+    throw new Error("Draf yang sudah pernah diterima sebagian tidak bisa dihapus");
+  }
+
+  const ts = getCurrentTimestamp();
+  await db.transaction(async () => {
+    for (const item of existing.items || []) {
+      const upd = await db.update("purchase_order_items", item.id, {
+        is_deleted: 1,
+        deleted_at: ts,
+      });
+      if (upd.error) throw upd.error;
+    }
+    const upd = await db.update("purchase_orders", id, {
+      is_deleted: 1,
+      deleted_at: ts,
+    });
+    if (upd.error) throw upd.error;
+  });
 }
 
 export async function receivePurchaseOrder(input: {

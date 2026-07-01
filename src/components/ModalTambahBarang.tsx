@@ -892,10 +892,13 @@ export default function ModalTambahBarang({
               </div>
             </div>
 
-            {/* Komponen Rakitan — hanya tampil saat edit barang yang dilacak */}
+            {/* Section 4: Komponen Rakitan — hanya tampil saat edit barang yang dilacak */}
             {editData?.id && formData.track_inventory && (
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              <div className="bg-purple-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-800/50">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-purple-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                    4
+                  </span>
                   Komponen Rakitan
                 </h3>
                 <PanelKomponenRakitan

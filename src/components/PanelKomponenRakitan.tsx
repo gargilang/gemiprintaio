@@ -39,22 +39,66 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
     [allBarang, parentBarangId]
   );
 
-  async function load() {
+  useEffect(() => {
+    const ac = new AbortController();
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(
+          `/api/barang-komponen?parent_barang_id=${encodeURIComponent(parentBarangId)}`,
+          { signal: ac.signal }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(
+            typeof data.error === "string" && data.error
+              ? data.error
+              : "Gagal memuat komponen."
+          );
+          setRows([]);
+          return;
+        }
+        setRows(data.komponen || []);
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError("Gagal memuat komponen.");
+        setRows([]);
+      } finally {
+        if (!ac.signal.aborted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => ac.abort();
+  }, [parentBarangId]);
+
+  async function reload() {
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`/api/barang-komponen?parent_barang_id=${parentBarangId}`);
-      const data = await res.json();
+      const res = await fetch(
+        `/api/barang-komponen?parent_barang_id=${encodeURIComponent(parentBarangId)}`
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          typeof data.error === "string" && data.error
+            ? data.error
+            : "Gagal memuat komponen."
+        );
+        setRows([]);
+        return;
+      }
       setRows(data.komponen || []);
     } catch {
       setError("Gagal memuat komponen.");
+      setRows([]);
     } finally {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    load();
-  }, [parentBarangId]);
 
   async function handleTambah() {
     if (!selectedKomponenId) return setError("Pilih barang komponen.");
@@ -78,7 +122,7 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
       }
       setSelectedKomponenId("");
       setQty("1");
-      await load();
+      await reload();
     } finally {
       setSaving(false);
     }
@@ -86,7 +130,7 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
 
   async function handleHapus(id: string) {
     const res = await fetch(`/api/barang-komponen?id=${id}`, { method: "DELETE" });
-    if (res.ok) await load();
+    if (res.ok) await reload();
   }
 
   return (
@@ -94,6 +138,10 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
       <p className="text-sm text-slate-500 dark:text-slate-400">
         Saat SPK barang ini diselesaikan, stok komponen di bawah akan berkurang otomatis.
       </p>
+
+      {!loading && error && (
+        <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Memuat...</p>
@@ -183,8 +231,6 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
           {saving ? "Menyimpan..." : "+ Tambah"}
         </button>
       </div>
-
-      {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
     </div>
   );
 }

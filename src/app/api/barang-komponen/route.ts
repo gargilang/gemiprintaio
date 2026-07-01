@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
 import { requireAdminOrManager, requireSession } from "@/lib/auth-guard-server";
 import { AuthGuardError } from "@/lib/auth-guard-error";
+import { friendlyPgError } from "@/lib/pg-error";
 import { z } from "zod";
 
 const KomponenSchema = z.object({
@@ -44,8 +45,14 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (e) {
-    if (e instanceof AuthGuardError) return NextResponse.json({ error: e.message }, { status: e.status });
-    throw e;
+    if (e instanceof AuthGuardError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    console.error("GET /api/barang-komponen:", e);
+    return NextResponse.json(
+      { error: friendlyPgError(e, "barang_komponen") },
+      { status: 500 }
+    );
   }
 }
 
@@ -79,8 +86,14 @@ export async function POST(req: NextRequest) {
     if (res.error) throw res.error;
     return NextResponse.json({ id: (res.data as any)?.id }, { status: 201 });
   } catch (e) {
-    if (e instanceof AuthGuardError) return NextResponse.json({ error: e.message }, { status: e.status });
-    throw e;
+    if (e instanceof AuthGuardError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    console.error("POST /api/barang-komponen:", e);
+    return NextResponse.json(
+      { error: friendlyPgError(e, "barang_komponen") },
+      { status: 500 }
+    );
   }
 }
 
@@ -99,7 +112,13 @@ export async function DELETE(req: NextRequest) {
     if (res.error) throw res.error;
     return NextResponse.json({ ok: true });
   } catch (e) {
-    if (e instanceof AuthGuardError) return NextResponse.json({ error: e.message }, { status: e.status });
-    throw e;
+    if (e instanceof AuthGuardError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    console.error("DELETE /api/barang-komponen:", e);
+    return NextResponse.json(
+      { error: friendlyPgError(e, "barang_komponen") },
+      { status: 500 }
+    );
   }
 }

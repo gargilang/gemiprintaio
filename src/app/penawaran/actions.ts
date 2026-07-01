@@ -6,6 +6,7 @@ import { getShopSettings } from "@/lib/services/shop-settings-service";
 import {
   convertQuotationToSale,
   createQuotation,
+  deleteQuotationDraft,
   getQuotations,
   updateQuotation,
   updateQuotationStatus,
@@ -36,6 +37,11 @@ export async function createQuotationAction(input: UpsertQuotationInput) {
 export async function updateQuotationAction(id: string, input: UpsertQuotationInput) {
   await requireAdminOrManager();
   return updateQuotation(id, input);
+}
+
+export async function deleteQuotationDraftAction(id: string) {
+  await requireAdminOrManager();
+  return deleteQuotationDraft(id);
 }
 
 export async function updateQuotationStatusAction(id: string, status: QuotationStatus) {

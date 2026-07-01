@@ -29,8 +29,10 @@ jest.mock("@/lib/services/purchases-service", () => ({
 
 import {
   createPurchaseOrder,
+  deletePurchaseOrderDraft,
   getPurchaseOrders,
   receivePurchaseOrder,
+  updatePurchaseOrder,
   updatePurchaseOrderStatus,
 } from "../services/purchase-order-service";
 
@@ -73,6 +75,51 @@ describe("purchase-order-service", () => {
     const items = Array.from(mockTable("purchase_order_items").values());
     expect(items).toHaveLength(1);
     expect(items[0].qty_received).toBe(0);
+  });
+
+  it("updatePurchaseOrder mengganti item draf", async () => {
+    const created = await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
+    await updatePurchaseOrder(created.id, {
+      vendor_id: "vendor-1",
+      status: "DRAFT",
+      items: [
+        {
+          barang_id: "barang-1",
+          jumlah: 5,
+          nama_satuan: "kg",
+          faktor_konversi: 1,
+          harga_satuan: 30000,
+        },
+      ],
+    });
+    const po = mockTable("purchase_orders").get(created.id)!;
+    expect(po.total_jumlah).toBe(150000);
+    const items = Array.from(mockTable("purchase_order_items").values());
+    expect(items).toHaveLength(1);
+    expect(items[0].jumlah).toBe(5);
+  });
+
+  it("updatePurchaseOrder menolak status non-DRAFT", async () => {
+    const created = await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
+    await updatePurchaseOrderStatus(created.id, "SENT");
+    await expect(
+      updatePurchaseOrder(created.id, baseInput)
+    ).rejects.toThrow(/Hanya pesanan berstatus DRAFT/);
+  });
+
+  it("deletePurchaseOrderDraft menghapus draf (soft delete)", async () => {
+    const created = await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
+    await deletePurchaseOrderDraft(created.id);
+    const po = mockTable("purchase_orders").get(created.id)!;
+    expect(po.is_deleted).toBe(1);
+    const list = await getPurchaseOrders();
+    expect(list.find((p) => p.id === created.id)).toBeUndefined();
+  });
+
+  it("deletePurchaseOrderDraft menolak status non-DRAFT", async () => {
+    const created = await createPurchaseOrder({ ...baseInput, tanggal: "2026-05-25" });
+    await updatePurchaseOrderStatus(created.id, "SENT");
+    await expect(deletePurchaseOrderDraft(created.id)).rejects.toThrow(/Hanya draf/);
   });
 
   it("penerimaan parsial menyetel PARTIAL_RECEIVED dan menambah qty_received", async () => {

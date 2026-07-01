@@ -17,6 +17,7 @@ import {
 } from "@/lib/format-id";
 import { openPrintDocument } from "@/lib/print-fonts";
 import { preparePrintHtml } from "@/lib/print-embed-client";
+import { catatanUntukPihakLuar } from "@/lib/dokumen-item-display";
 
 export interface FakturItem {
   /** Item name (line 1 in NAMA BARANG cell). */
@@ -817,6 +818,82 @@ export function patchQuotationHTML(html: string): string {
       /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
       ""
     );
+}
+
+/** Hilangkan baris BAYAR/SISA dari layout faktur (PO, penawaran, dll.). */
+export function stripBayarSisaRows(html: string): string {
+  return html
+    .replace(
+      /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+      ""
+    )
+    .replace(
+      /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+      ""
+    );
+}
+
+/** Ubah layout faktur penjualan menjadi Pesanan Pembelian untuk vendor. */
+export function patchPurchaseOrderHTML(html: string): string {
+  return stripBayarSisaRows(html)
+    .replace(/FAKTUR PENJUALAN/g, "PESANAN PEMBELIAN")
+    .replace(/<title>Faktur[^<]*<\/title>/, "<title>Pesanan Pembelian</title>")
+    .replace(/Kepada Yth\./g, "Vendor")
+    .replace(/No\. Faktur\s*:/g, "No. PO :")
+    // Vendor tidak perlu rekening toko atau catatan legal faktur penjualan
+    .replace(
+      /<div class="payment-section">[\s\S]*?<\/div>\s*(?=<div class="totals-box">)/,
+      ""
+    )
+    .replace(
+      /<div class="footer">/,
+      '<div class="footer" style="grid-template-columns:220px 1fr;justify-items:end;">'
+    );
+}
+
+export type PurchaseOrderPrintData = {
+  nomor_po: string;
+  tanggal: string;
+  vendor_nama: string;
+  expected_date?: string | null;
+  items: FakturItem[];
+  total: number;
+  catatan?: string | null;
+  shop?: FakturData["shop"];
+};
+
+/** HTML cetak Pesanan Pembelian — layout sama dengan faktur penjualan Gemiprint. */
+export function generatePurchaseOrderHTML(data: PurchaseOrderPrintData): string {
+  const vendorDetail: string[] = [];
+  if (data.expected_date) {
+    vendorDetail.push(
+      `Estimasi tiba: ${formatJakartaDate(data.expected_date)}`
+    );
+  }
+  const catatanVendor = catatanUntukPihakLuar(data.catatan);
+
+  const html = generateFakturHTML({
+    nomor_faktur: data.nomor_po,
+    tanggal: data.tanggal,
+    pelanggan_nama: data.vendor_nama || "—",
+    pelanggan_detail: vendorDetail.length ? vendorDetail : undefined,
+    items: data.items,
+    total: data.total,
+    bayar: 0,
+    sisa: 0,
+    catatan: catatanVendor || undefined,
+    shop: data.shop,
+  });
+
+  return patchPurchaseOrderHTML(html);
+}
+
+/** Buka dialog cetak Pesanan Pembelian (popup + font embedded). */
+export async function printPurchaseOrder(
+  data: PurchaseOrderPrintData
+): Promise<boolean> {
+  const html = await preparePrintHtml(generatePurchaseOrderHTML(data));
+  return openPrintDocument(html, "Cetak Pesanan Pembelian");
 }
 
 /**

@@ -5,11 +5,24 @@ import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { QuotationIcon } from "@/components/icons/PageIcons";
 import MenuAksi from "@/components/MenuAksi";
-import { generateHtmlPenawaran } from "@/lib/penawaran-po-print";
+import { TrashIcon } from "@/components/icons/ContentIcons";
+import {
+  formatTampilanQtyItem,
+  mapPenawaranItemKeFaktur,
+  catatanUntukPihakLuar,
+} from "@/lib/dokumen-item-display";
+import {
+  generateFakturHTML,
+  patchQuotationHTML,
+} from "@/lib/faktur-print";
+import { preparePrintHtml } from "@/lib/print-embed-client";
+import { openPrintDocument } from "@/lib/print-fonts";
 import {
   convertQuotationToSaleAction,
   createQuotationAction,
+  deleteQuotationDraftAction,
   getPenawaranInitAction,
+  updateQuotationAction,
   updateQuotationStatusAction,
 } from "./actions";
 
@@ -51,6 +64,7 @@ export default function PenawaranPage() {
   const [catatan, setCatatan] = useState("");
   const [status, setStatus] = useState<"DRAFT" | "SENT">("DRAFT");
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
   const [convertTarget, setConvertTarget] = useState<any>(null);
   const [convertForm, setConvertForm] = useState({
     metode_pembayaran: "NET30" as "CASH" | "TRANSFER" | "NET30",
@@ -87,12 +101,47 @@ export default function PenawaranPage() {
     ]);
   }
 
+  function resetForm() {
+    setCustomerId("");
+    setItems([]);
+    setCatatan("");
+    setStatus("DRAFT");
+    setEditingQuoteId(null);
+  }
+
+  function loadQuoteForEdit(quote: any) {
+    if (quote.status === "CONVERTED" || quote.status === "CANCELLED") return;
+    setEditingQuoteId(quote.id);
+    setCustomerId(quote.pelanggan_id || "");
+    setCatatan(quote.catatan || "");
+    setStatus(quote.status === "SENT" ? "SENT" : "DRAFT");
+    setItems(
+      (quote.items || []).map((item: any) => {
+        const material = data.materials.find((m: any) => m.id === item.barang_id);
+        const isDim = Number(material?.butuh_dimensi_status) === 1;
+        return {
+          barang_id: item.barang_id,
+          harga_satuan_id: item.harga_satuan_id || undefined,
+          jumlah: Number(item.jumlah || 0),
+          nama_satuan: item.nama_satuan || (isDim ? "m²" : "pcs"),
+          faktor_konversi: Number(item.faktor_konversi || 1),
+          harga_satuan: Number(item.harga_satuan || 0),
+          butuh_dimensi: isDim,
+          panjang: item.panjang ?? (isDim ? 0 : null),
+          lebar: item.lebar ?? (isDim ? 0 : null),
+          jumlah_lembar: item.jumlah_lembar ?? (isDim ? 1 : null),
+        };
+      })
+    );
+    setNotice(`Mengedit ${quote.nomor_penawaran}.`);
+  }
+
   async function submit() {
     if (items.length === 0) return setNotice("Tambahkan item dulu.");
     setSaving(true);
     try {
       const customer = data.customers.find((c: any) => c.id === customerId);
-      await createQuotationAction({
+      const payload = {
         pelanggan_id: customerId || null,
         pelanggan_nama_snapshot: customer?.nama || null,
         pelanggan_kota: customer?.alamat || null,
@@ -105,10 +154,15 @@ export default function PenawaranPage() {
           jumlah_lembar: item.jumlah_lembar || null,
           subtotal: Number(item.jumlah || 0) * Number(item.harga_satuan || 0),
         })),
-      });
-      setItems([]);
-      setCatatan("");
-      setNotice("Penawaran tersimpan.");
+      };
+      if (editingQuoteId) {
+        await updateQuotationAction(editingQuoteId, payload);
+        setNotice("Penawaran diperbarui.");
+      } else {
+        await createQuotationAction(payload);
+        setNotice("Penawaran tersimpan.");
+      }
+      resetForm();
       await reload();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan penawaran");
@@ -156,31 +210,60 @@ export default function PenawaranPage() {
     }
   }
 
-  function printQuote(quote: any) {
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) return;
-    const html = generateHtmlPenawaran({
-      nomor: quote.nomor_penawaran,
-      tanggal: quote.tanggal || new Date().toLocaleDateString("id-ID"),
-      berlaku_sampai: quote.berlaku_sampai,
-      kepada_nama: quote.pelanggan_nama_snapshot || "Pelanggan Umum",
-      kepada_kota: quote.pelanggan_kota,
-      items: (quote.items || []).map((item: any) => ({
-        nama: item.barang_nama || item.barang_id,
-        lebar: item.lebar,
-        panjang: item.panjang,
-        jumlah_lembar: item.jumlah_lembar,
-        jumlah: Number(item.jumlah || 0),
-        nama_satuan: item.nama_satuan || "",
-        harga_satuan: Number(item.harga_satuan || 0),
-        subtotal: Number(item.subtotal || 0),
-      })),
-      total: Number(quote.total_jumlah || 0),
-      catatan: quote.catatan,
-      shop: data.shop,
-    });
-    win.document.write(html);
-    win.document.close();
+  async function confirmDeleteQuote(quote: any) {
+    if (
+      !window.confirm(
+        `Hapus draf ${quote.nomor_penawaran}?\nTindakan ini tidak bisa dibatalkan.`
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await deleteQuotationDraftAction(quote.id);
+      if (editingQuoteId === quote.id) resetForm();
+      setNotice(`Draf ${quote.nomor_penawaran} dihapus.`);
+      await reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function printQuote(quote: any) {
+    try {
+      const html = patchQuotationHTML(
+        generateFakturHTML({
+          nomor_faktur: quote.nomor_penawaran,
+          tanggal: quote.tanggal || new Date().toISOString(),
+          pelanggan_nama: quote.pelanggan_nama_snapshot || "Pelanggan Umum",
+          pelanggan_detail: quote.pelanggan_kota
+            ? [String(quote.pelanggan_kota)]
+            : undefined,
+          items: (quote.items || []).map((item: any) =>
+            mapPenawaranItemKeFaktur({
+              ...item,
+              barang_nama: item.barang_nama || item.barang_id,
+            })
+          ),
+          total: Number(quote.total_jumlah || 0),
+          bayar: 0,
+          sisa: 0,
+          catatan: catatanUntukPihakLuar(quote.catatan) || undefined,
+          shop: {
+            ...data.shop,
+            catatan_faktur:
+              "Penawaran ini berlaku 7 hari sejak tanggal tertera. Harga dapat berubah sewaktu-waktu.",
+          },
+        })
+      );
+      const ready = await preparePrintHtml(html);
+      openPrintDocument(ready, "Cetak Penawaran");
+    } catch (error) {
+      console.error("printQuote error:", error);
+      setNotice("Gagal menyiapkan dokumen cetak.");
+    }
   }
 
   return (
@@ -201,7 +284,9 @@ export default function PenawaranPage() {
 
       <section className="grid gap-4 lg:grid-cols-[420px_1fr]">
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">Buat Penawaran</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">
+            {editingQuoteId ? "Edit Penawaran" : "Buat Penawaran"}
+          </h2>
           <div className="space-y-3">
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               <option value="">Pelanggan Umum</option>
@@ -379,9 +464,20 @@ export default function PenawaranPage() {
               <span>Total</span>
               <span>{money(total)}</span>
             </div>
-            <button disabled={saving} className="w-full rounded-md bg-cyan-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-cyan-700 transition-colors" onClick={submit}>
-              Simpan Penawaran
-            </button>
+            <div className="flex gap-2">
+              {editingQuoteId ? (
+                <button
+                  type="button"
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  onClick={resetForm}
+                >
+                  Batal Edit
+                </button>
+              ) : null}
+              <button disabled={saving} className="w-full rounded-md bg-cyan-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-cyan-700 transition-colors" onClick={submit}>
+                {editingQuoteId ? "Simpan Perubahan" : "Simpan Penawaran"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -409,8 +505,21 @@ export default function PenawaranPage() {
                   <td className="p-3 text-right">{money(quote.total_jumlah)}</td>
                   <td className="p-3">
                     <MenuAksi
+                      ambangInline={0}
                       labelMenu={`Aksi untuk ${quote.nomor_penawaran}`}
                       aksi={[
+                        {
+                          label: "Edit",
+                          judul: "Edit penawaran",
+                          tampil: quote.status === "DRAFT" || quote.status === "SENT",
+                          disabled: saving,
+                          onClick: () => loadQuoteForEdit(quote),
+                          ikon: (
+                            <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          ),
+                        },
                         {
                           label: "Cetak",
                           judul: "Cetak penawaran",
@@ -442,6 +551,15 @@ export default function PenawaranPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           ),
+                        },
+                        {
+                          label: "Hapus Draf",
+                          judul: "Hapus draf penawaran",
+                          varian: "bahaya",
+                          tampil: quote.status === "DRAFT",
+                          disabled: saving,
+                          onClick: () => confirmDeleteQuote(quote),
+                          ikon: <TrashIcon size={20} className="text-red-500" />,
                         },
                       ]}
                     />

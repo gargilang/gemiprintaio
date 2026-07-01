@@ -101,11 +101,13 @@ async function enrichQuotations(rows: any[]) {
 
   return rows.map((row) => ({
     ...row,
-    items: (itemsByQuote.get(row.id) || []).map((item) => ({
-      ...item,
-      barang_nama: barangMap.get(item.barang_id)?.nama || "",
-      jumlah_lembar: item.jumlah_lembar ?? null,
-    })),
+    items: (itemsByQuote.get(row.id) || [])
+      .filter((item) => Number(item.is_deleted) !== 1)
+      .map((item) => ({
+        ...item,
+        barang_nama: barangMap.get(item.barang_id)?.nama || "",
+        jumlah_lembar: item.jumlah_lembar ?? null,
+      })),
   }));
 }
 
@@ -115,7 +117,8 @@ export async function getQuotations(limit = 200) {
     limit,
   });
   if (result.error) throw result.error;
-  return enrichQuotations(result.data || []);
+  const rows = (result.data || []).filter((row) => Number(row.is_deleted) !== 1);
+  return enrichQuotations(rows);
 }
 
 export async function getQuotationById(id: string) {
@@ -267,6 +270,33 @@ export async function updateQuotation(id: string, input: UpsertQuotationInput) {
 export async function updateQuotationStatus(id: string, status: QuotationStatus) {
   const upd = await db.update("penawaran", id, { status });
   if (upd.error) throw upd.error;
+}
+
+/** Hapus draf penawaran (soft delete). Hanya status DRAFT. */
+export async function deleteQuotationDraft(id: string) {
+  const existing = await getQuotationById(id);
+  if (!existing || Number(existing.is_deleted) === 1) {
+    throw new Error("Penawaran tidak ditemukan");
+  }
+  if (existing.status !== "DRAFT") {
+    throw new Error("Hanya draf yang bisa dihapus");
+  }
+
+  const ts = getCurrentTimestamp();
+  await db.transaction(async () => {
+    for (const item of existing.items || []) {
+      const upd = await db.update("item_penawaran", item.id, {
+        is_deleted: 1,
+        deleted_at: ts,
+      });
+      if (upd.error) throw upd.error;
+    }
+    const upd = await db.update("penawaran", id, {
+      is_deleted: 1,
+      deleted_at: ts,
+    });
+    if (upd.error) throw upd.error;
+  });
 }
 
 export async function convertQuotationToSale(

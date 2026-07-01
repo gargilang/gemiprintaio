@@ -6,8 +6,10 @@ import { getShopSettings } from "@/lib/services/shop-settings-service";
 import { getVendors } from "@/lib/services/vendors-service";
 import {
   createPurchaseOrder,
+  deletePurchaseOrderDraft,
   getPurchaseOrders,
   receivePurchaseOrder,
+  updatePurchaseOrder,
   updatePurchaseOrderStatus,
   type PurchaseOrderStatus,
   type UpsertPurchaseOrderInput,
@@ -26,6 +28,19 @@ export async function getPurchaseOrdersInitAction() {
 export async function createPurchaseOrderAction(input: UpsertPurchaseOrderInput) {
   const s = await requireAdminOrManager();
   return createPurchaseOrder({ ...input, dibuat_oleh: s.uid });
+}
+
+export async function updatePurchaseOrderAction(
+  id: string,
+  input: UpsertPurchaseOrderInput
+) {
+  const s = await requireAdminOrManager();
+  return updatePurchaseOrder(id, { ...input, dibuat_oleh: s.uid });
+}
+
+export async function deletePurchaseOrderDraftAction(id: string) {
+  await requireAdminOrManager();
+  return deletePurchaseOrderDraft(id);
 }
 
 export async function updatePurchaseOrderStatusAction(

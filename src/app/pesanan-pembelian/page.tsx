@@ -5,11 +5,16 @@ import Link from "next/link";
 import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { PurchaseOrderFlowIcon } from "@/components/icons/PageIcons";
-import { generateHtmlPO } from "@/lib/penawaran-po-print";
+import { TrashIcon } from "@/components/icons/ContentIcons";
+import MenuAksi from "@/components/MenuAksi";
+import { formatTampilanQtyItem, formatQtyAngkaItem, mapPoItemKeFaktur } from "@/lib/dokumen-item-display";
+import { printPurchaseOrder } from "@/lib/faktur-print";
 import {
   createPurchaseOrderAction,
+  deletePurchaseOrderDraftAction,
   getPurchaseOrdersInitAction,
   receivePurchaseOrderAction,
+  updatePurchaseOrderAction,
   updatePurchaseOrderStatusAction,
 } from "./actions";
 
@@ -58,6 +63,7 @@ export default function PurchaseOrdersPage() {
   const [catatan, setCatatan] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingPoId, setEditingPoId] = useState<string | null>(null);
   const [receiveModal, setReceiveModal] = useState<ReceiveModalState | null>(null);
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.jumlah * item.harga_satuan, 0),
@@ -88,14 +94,47 @@ export default function PurchaseOrdersPage() {
     ]);
   }
 
+  function resetForm() {
+    setVendorId("");
+    setItems([]);
+    setCatatan("");
+    setEditingPoId(null);
+  }
+
+  function loadPoForEdit(po: any) {
+    if (po.status !== "DRAFT") return;
+    setEditingPoId(po.id);
+    setVendorId(po.vendor_id || "");
+    setCatatan(po.catatan || "");
+    setItems(
+      (po.items || []).map((item: any) => {
+        const material = data.materials.find((m: any) => m.id === item.barang_id);
+        const isDim = Number(material?.butuh_dimensi_status) === 1;
+        return {
+          barang_id: item.barang_id,
+          harga_satuan_id: item.harga_satuan_id || undefined,
+          jumlah: Number(item.jumlah || 0),
+          nama_satuan: item.nama_satuan || (isDim ? "m²" : "pcs"),
+          faktor_konversi: Number(item.faktor_konversi || 1),
+          harga_satuan: Number(item.harga_satuan || 0),
+          butuh_dimensi: isDim,
+          panjang: item.panjang ?? (isDim ? 0 : null),
+          lebar: item.lebar ?? (isDim ? 0 : null),
+          jumlah_roll: item.jumlah_roll ?? (isDim ? 1 : null),
+        };
+      })
+    );
+    setNotice(`Mengedit draf ${po.nomor_po}.`);
+  }
+
   async function submit() {
     if (!vendorId) return setNotice("Vendor wajib dipilih.");
     if (items.length === 0) return setNotice("Tambahkan item dulu.");
     setSaving(true);
     try {
-      await createPurchaseOrderAction({
+      const payload = {
         vendor_id: vendorId,
-        status: "DRAFT",
+        status: "DRAFT" as const,
         catatan,
         items: items.map((item) => ({
           ...item,
@@ -104,10 +143,15 @@ export default function PurchaseOrdersPage() {
           jumlah_roll: item.jumlah_roll || null,
           subtotal: item.jumlah * item.harga_satuan,
         })),
-      });
-      setItems([]);
-      setCatatan("");
-      setNotice("Pesanan pembelian tersimpan.");
+      };
+      if (editingPoId) {
+        await updatePurchaseOrderAction(editingPoId, payload);
+        setNotice("Draf pesanan pembelian diperbarui.");
+      } else {
+        await createPurchaseOrderAction(payload);
+        setNotice("Pesanan pembelian tersimpan.");
+      }
+      resetForm();
       await reload();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan pesanan pembelian");
@@ -165,31 +209,61 @@ export default function PurchaseOrdersPage() {
     }
   }
 
-  function printPo(po: any) {
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) return;
+  async function confirmDeletePo(po: any) {
+    if (
+      !window.confirm(
+        `Hapus draf ${po.nomor_po}?\nTindakan ini tidak bisa dibatalkan.`
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await deletePurchaseOrderDraftAction(po.id);
+      if (editingPoId === po.id) resetForm();
+      setNotice(`Draf ${po.nomor_po} dihapus.`);
+      await reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function markSent(po: any) {
+    setSaving(true);
+    try {
+      await updatePurchaseOrderStatusAction(po.id, "SENT");
+      await reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Gagal memperbarui status");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function printPo(po: any) {
     const vendor = data.vendors.find((v: any) => v.id === po.vendor_id);
-    const html = generateHtmlPO({
-      nomor: po.nomor_po,
-      tanggal: po.tanggal || new Date().toLocaleDateString("id-ID"),
-      expected_date: po.expected_date,
-      vendor_nama: vendor?.nama_perusahaan || po.vendor_name || po.vendor_id || "Vendor",
-      items: (po.items || []).map((item: any) => ({
-        nama: item.barang_nama || item.barang_id,
-        lebar: item.lebar,
-        panjang: item.panjang,
-        jumlah_roll: item.jumlah_roll,
-        jumlah: Number(item.jumlah || 0),
-        nama_satuan: item.nama_satuan || "",
-        harga_satuan: Number(item.harga_satuan || 0),
-        subtotal: Number(item.subtotal || 0),
-      })),
-      total: Number(po.total_jumlah || 0),
-      catatan: po.catatan,
-      shop: data.shop,
-    });
-    win.document.write(html);
-    win.document.close();
+    try {
+      await printPurchaseOrder({
+        nomor_po: po.nomor_po,
+        tanggal: po.tanggal || new Date().toISOString(),
+        expected_date: po.expected_date,
+        vendor_nama: vendor?.nama_perusahaan || po.vendor_name || po.vendor_id || "Vendor",
+        items: (po.items || []).map((item: any) =>
+          mapPoItemKeFaktur({
+            ...item,
+            barang_nama: item.barang_nama || item.barang_id,
+          })
+        ),
+        total: Number(po.total_jumlah || 0),
+        catatan: po.catatan,
+        shop: data.shop,
+      });
+    } catch (error) {
+      console.error("printPo error:", error);
+      setNotice("Gagal menyiapkan dokumen cetak.");
+    }
   }
 
   return (
@@ -210,7 +284,9 @@ export default function PurchaseOrdersPage() {
 
       <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">Buat Pesanan Pembelian</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">
+            {editingPoId ? "Edit Draf Pesanan Pembelian" : "Buat Pesanan Pembelian"}
+          </h2>
           <div className="space-y-3">
             <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={vendorId} onChange={(e) => setVendorId(e.target.value)} disabled={saving}>
               <option value="">Pilih vendor</option>
@@ -377,7 +453,21 @@ export default function PurchaseOrdersPage() {
             })}
             <textarea className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2" placeholder="Catatan" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
             <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-100"><span>Total</span><span>{money(total)}</span></div>
-            <button disabled={saving} className="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-indigo-700 transition-colors" onClick={submit}>Simpan Pesanan Pembelian</button>
+            <div className="flex gap-2">
+              {editingPoId ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  onClick={resetForm}
+                >
+                  Batal Edit
+                </button>
+              ) : null}
+              <button disabled={saving} className="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-indigo-700 transition-colors" onClick={submit}>
+                {editingPoId ? "Simpan Perubahan" : "Simpan Pesanan Pembelian"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -395,16 +485,72 @@ export default function PurchaseOrdersPage() {
                     <div className="font-semibold text-slate-800 dark:text-slate-100">{po.nomor_po}</div>
                     <div className="text-sm text-slate-500 dark:text-slate-400">{po.vendor_name || "Vendor"} - {po.status}</div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => printPo(po)}>Cetak</button>
-                    <button disabled={saving || po.status === "CANCELLED" || po.status === "RECEIVED"} className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors" onClick={() => updatePurchaseOrderStatusAction(po.id, "SENT").then(() => reload())}>Tandai Terkirim</button>
-                    <button disabled={saving || po.status === "CANCELLED" || allReceived} className="rounded bg-emerald-600 px-2 py-1 text-sm text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors" onClick={() => openReceive(po)}>Terima</button>
-                  </div>
+                  <MenuAksi
+                    ambangInline={0}
+                    labelMenu={`Aksi untuk ${po.nomor_po}`}
+                    aksi={[
+                      {
+                        label: "Edit Draf",
+                        judul: "Edit draf pesanan pembelian",
+                        tampil: po.status === "DRAFT",
+                        disabled: saving,
+                        onClick: () => loadPoForEdit(po),
+                        ikon: (
+                          <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Cetak PO",
+                        judul: "Cetak pesanan pembelian (A4)",
+                        onClick: () => printPo(po),
+                        ikon: (
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Tandai Terkirim",
+                        judul: "Tandai PO sudah dikirim ke vendor",
+                        tampil: po.status !== "CANCELLED" && po.status !== "RECEIVED",
+                        disabled: saving || po.status === "SENT" || po.status === "PARTIAL_RECEIVED",
+                        onClick: () => markSent(po),
+                        ikon: (
+                          <svg className="w-5 h-5 text-violet-600 dark:text-violet-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Terima Barang",
+                        judul: "Posting penerimaan barang dari PO",
+                        tampil: po.status !== "CANCELLED" && !allReceived,
+                        disabled: saving,
+                        onClick: () => openReceive(po),
+                        ikon: (
+                          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        label: "Hapus Draf",
+                        judul: "Hapus draf pesanan pembelian",
+                        varian: "bahaya",
+                        tampil: po.status === "DRAFT",
+                        disabled: saving,
+                        onClick: () => confirmDeletePo(po),
+                        ikon: <TrashIcon size={20} className="text-red-500" />,
+                      },
+                    ]}
+                  />
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
-                      <tr><th className="p-2">Barang</th><th className="p-2 text-right">Dipesan</th><th className="p-2 text-right">Diterima</th><th className="p-2 text-right">Sisa</th></tr>
+                      <tr><th className="p-2">Barang</th><th className="p-2">Dipesan</th><th className="p-2 text-right">Diterima</th><th className="p-2 text-right">Sisa</th></tr>
                     </thead>
                     <tbody>
                       {(po.items || []).map((item: any) => (
@@ -414,9 +560,9 @@ export default function PurchaseOrdersPage() {
                               <Link className="text-cyan-600 dark:text-cyan-400 underline-offset-2 hover:underline" href={`/barang?id=${item.barang_id}`}>{item.barang_nama || item.barang_id}</Link>
                             ) : (item.barang_nama || "-")}
                           </td>
-                          <td className="p-2 text-right">{item.jumlah} {item.nama_satuan}</td>
-                          <td className="p-2 text-right">{item.qty_received || 0}</td>
-                          <td className="p-2 text-right">{Math.max(0, Number(item.jumlah || 0) - Number(item.qty_received || 0))}</td>
+                          <td className="p-2 text-sm">{formatTampilanQtyItem(item)}</td>
+                          <td className="p-2 text-right">{formatQtyAngkaItem(item, Number(item.qty_received || 0))}</td>
+                          <td className="p-2 text-right">{formatQtyAngkaItem(item, Math.max(0, Number(item.jumlah || 0) - Number(item.qty_received || 0)))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -472,8 +618,8 @@ export default function PurchaseOrdersPage() {
                     return (
                       <tr key={item.id} className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                         <td className="p-2">{item.barang_nama || item.barang_id}</td>
-                        <td className="p-2 text-right">{item.jumlah} {item.nama_satuan}</td>
-                        <td className="p-2 text-right">{item.qty_received || 0}</td>
+                        <td className="p-2 text-sm">{formatTampilanQtyItem(item)}</td>
+                        <td className="p-2 text-right">{formatQtyAngkaItem(item, Number(item.qty_received || 0))}</td>
                         <td className="p-2 text-right">
                           <input
                             className="w-24 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-right"
