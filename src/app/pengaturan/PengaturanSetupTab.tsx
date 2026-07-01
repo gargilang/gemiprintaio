@@ -3,17 +3,29 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BoxIcon } from "@/components/icons/ContentIcons";
-import { HashIcon, PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
+import {
+  HashIcon,
+  PriceTagIcon,
+  SparklesIcon,
+} from "@/components/icons/PageIcons";
 import NomorUrutTab from "./NomorUrutTab";
 import { type Category } from "./setup/sortables";
 import { CategoriesView } from "./setup/CategoriesView";
 import { SubcategoriesView } from "./setup/SubcategoriesView";
 import { UnitsSection } from "./setup/UnitsSection";
-import { PricingTab, RollSizesTab, FinishingOptionsTab } from "./PengaturanHargaTab";
-
+import {
+  PricingTab,
+  RollSizesTab,
+  FinishingOptionsTab,
+} from "./PengaturanHargaTab";
 
 function SetupTab() {
-  type SetupSubTab = "materials" | "pricing" | "finishing" | "rollsizes" | "nomorurut";
+  type SetupSubTab =
+    | "materials"
+    | "pricing"
+    | "finishing"
+    | "rollsizes"
+    | "nomorurut";
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const subtabParam = searchParams.get("subtab");
@@ -25,8 +37,8 @@ function SetupTab() {
       subtabParam === "nomorurut"
       ? (subtabParam as SetupSubTab)
       : tabParam === "materials"
-      ? "materials"
-      : "nomorurut"
+        ? "materials"
+        : "nomorurut",
   );
 
   const setupTabs = [
@@ -79,7 +91,7 @@ function SetupTab() {
                   ${
                     activeSetupTab === tab.id
                       ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md`
-                      : "bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-100"
+                      : "bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                   }
                 `}
               >
@@ -109,10 +121,10 @@ function MaterialsTab() {
   const openCategoryManager = manageParam === "category";
   const openUnitManager = manageParam === "unit";
   const [view, setView] = useState<"categories" | "subcategories">(
-    "categories"
+    "categories",
   );
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
+    null,
   );
 
   const handleCategoryClick = (category: Category) => {
@@ -196,9 +208,7 @@ function MaterialsTab() {
             autoOpenModal={openCategoryManager}
           />
         ) : (
-          <SubcategoriesView
-            category={selectedCategory!}
-          />
+          <SubcategoriesView category={selectedCategory!} />
         )}
       </div>
 
@@ -207,13 +217,6 @@ function MaterialsTab() {
     </div>
   );
 }
-
-
-
-
-
-
-
 
 export { SetupTab };
 export default SetupTab;

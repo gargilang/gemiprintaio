@@ -244,7 +244,7 @@ export function SortableSubcategory({
         </button>
 
         {/* Number Badge */}
-        <span className="w-8 h-8 bg-blue-50 dark:bg-slate-8000 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+        <span className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-sm">
           {index + 1}
         </span>
 
@@ -360,7 +360,9 @@ export function SortableUnit({
         </span>
 
         {/* Unit Name */}
-        <span className="font-semibold text-gray-800 dark:text-slate-100 flex-1">{unit.nama}</span>
+        <span className="font-semibold text-gray-800 dark:text-slate-100 flex-1">
+          {unit.nama}
+        </span>
       </div>
 
       {/* Action Buttons */}

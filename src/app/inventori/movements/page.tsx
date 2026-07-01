@@ -335,12 +335,10 @@ export default function MovementLedgerPage() {
             <tr>
               <th className="p-3">Tanggal</th>
               <th className="p-3">Barang</th>
-              <th className="p-3">Tipe</th>
               <th className="p-3 text-right">Qty / Delta</th>
               <th className="p-3 text-right">Saldo</th>
               <th className="p-3 text-right">Nilai</th>
-              <th className="p-3">Source</th>
-              <th className="p-3">Catatan</th>
+              <th className="p-3">Sumber</th>
             </tr>
           </thead>
           <tbody>
@@ -348,7 +346,7 @@ export default function MovementLedgerPage() {
               <tr>
                 <td
                   className="p-4 text-slate-500 dark:text-slate-400"
-                  colSpan={8}
+                  colSpan={6}
                 >
                   Memuat...
                 </td>
@@ -357,7 +355,7 @@ export default function MovementLedgerPage() {
               <tr>
                 <td
                   className="p-4 text-slate-500 dark:text-slate-400"
-                  colSpan={8}
+                  colSpan={6}
                 >
                   Tidak ada mutasi yang cocok.
                 </td>
@@ -372,7 +370,6 @@ export default function MovementLedgerPage() {
                   >
                     <td className="p-3">{row.tanggal}</td>
                     <td className="p-3">{row.barang_nama}</td>
-                    <td className="p-3">{row.movement_type}</td>
                     <td
                       className={`p-3 text-right tabular-nums ${Number(row.qty_delta || 0) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}
                     >
@@ -402,7 +399,6 @@ export default function MovementLedgerPage() {
                         {row.source_id}
                       </div>
                     </td>
-                    <td className="p-3">{row.catatan}</td>
                   </tr>
                 );
               })

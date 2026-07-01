@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import type { KategoriTransaksi } from "@/types/database";
 import ModalFormShell from "@/components/ModalFormShell";
 import { parseLocalizedAmount } from "@/lib/format-id";
+import { PencilIcon } from "@/components/icons/ContentIcons";
 
 // Modal tambah/edit transaksi buku kas. Diekstrak dari page.tsx (Fase 6 C1 step 2).
 // Murni presentational: induk pegang state form + submit (jalur uang tetap di induk).
@@ -54,8 +55,9 @@ export default function ModalTransaksiKeuangan({
       maxWidthClass="max-w-md"
       header={
         <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-gradient-to-r from-orange-500 to-pink-600 flex items-center justify-between shrink-0 gap-3 rounded-t-2xl">
-          <h3 className="text-xl font-bold text-white min-w-0">
-            {isEditing ? "✏️ Edit Transaksi" : "Tambah Transaksi Baru"}
+          <h3 className="text-xl font-bold text-white min-w-0 flex items-center gap-2">
+            {isEditing && <PencilIcon size={20} className="text-white" />}
+            {isEditing ? "Edit Transaksi" : "Tambah Transaksi Baru"}
           </h3>
           <button
             type="button"
