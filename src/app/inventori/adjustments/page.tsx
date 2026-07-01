@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { StockAdjustmentIcon } from "@/components/icons/PageIcons";
 import { formatQtyMutasi, formatStokDimensi } from "@/lib/format-dimensi";
+import InputDimensiRoll, {
+  type RollInputVal,
+} from "@/components/InputDimensiRoll";
 import {
   createInventoryAdjustmentAction,
   createWasteMovementAction,
@@ -33,32 +36,84 @@ export default function StockAdjustmentsPage() {
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [rollInput, setRollInput] = useState<RollInputVal | null>(null);
+
+  // Derived: material yang sedang dipilih
+  const selectedMaterial = useMemo(
+    () => data.materials.find((m: any) => m.id === barangId) ?? null,
+    [data.materials, barangId],
+  );
+  const isDimensi = Number(selectedMaterial?.butuh_dimensi_status ?? 0) === 1;
+  const rollVariants = useMemo(
+    () =>
+      isDimensi
+        ? (selectedMaterial?.roll_variants ?? []).filter(
+            (v: any) => Number(v.aktif_status) !== 0,
+          )
+        : [],
+    [isDimensi, selectedMaterial],
+  );
+
+  // Reset form saat barang berubah
+  const handleBarangChange = (id: string) => {
+    setBarangId(id);
+    setQty(0);
+    setRollInput(null);
+  };
 
   async function submit() {
-    if (!barangId || !qty || !reason.trim())
-      return setNotice("Barang, qty, dan alasan wajib diisi.");
+    if (!barangId || !reason.trim())
+      return setNotice("Barang dan alasan wajib diisi.");
+
     setSaving(true);
     try {
-      if (mode === "WASTE") {
-        await createWasteMovementAction({
-          barang_id: barangId,
-          qty: Math.abs(qty),
-          reason,
-        });
+      if (isDimensi) {
+        if (!rollInput) return setNotice("Pilih variant roll dan isi panjang.");
+        if (mode === "WASTE") {
+          await createWasteMovementAction({
+            barang_id: barangId,
+            qty: rollInput.qty_m2,
+            reason,
+            roll_variant_id: rollInput.roll_variant_id,
+            roll_width_m: rollInput.lebar_m,
+            linear_delta_m: rollInput.panjang_m,
+          });
+        } else {
+          await createInventoryAdjustmentAction({
+            barang_id: barangId,
+            qty_delta: rollInput.qty_m2,
+            reason,
+            adjustment_reason: adjReason,
+            roll_variant_id: rollInput.roll_variant_id,
+            roll_width_m: rollInput.lebar_m,
+            linear_delta_m: rollInput.panjang_m,
+          });
+        }
       } else {
-        await createInventoryAdjustmentAction({
-          barang_id: barangId,
-          qty_delta: qty,
-          reason,
-          adjustment_reason: adjReason,
-        });
+        if (!qty) return setNotice("Qty wajib diisi.");
+        if (mode === "WASTE") {
+          await createWasteMovementAction({
+            barang_id: barangId,
+            qty: Math.abs(qty),
+            reason,
+          });
+        } else {
+          await createInventoryAdjustmentAction({
+            barang_id: barangId,
+            qty_delta: qty,
+            reason,
+            adjustment_reason: adjReason,
+          });
+        }
       }
+
       setQty(0);
+      setRollInput(null);
       setReason("");
       setNotice("Mutasi stok tersimpan.");
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal adjustment");
+      setNotice(error instanceof Error ? error.message : "Gagal menyimpan");
     } finally {
       setSaving(false);
     }
@@ -122,7 +177,7 @@ export default function StockAdjustmentsPage() {
             <select
               className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
               value={barangId}
-              onChange={(e) => setBarangId(e.target.value)}
+              onChange={(e) => handleBarangChange(e.target.value)}
               disabled={saving}
             >
               <option value="">Pilih barang</option>
@@ -132,17 +187,27 @@ export default function StockAdjustmentsPage() {
                 </option>
               ))}
             </select>
-            <input
-              className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2"
-              type="number"
-              value={qty || ""}
-              onChange={(e) => setQty(Number(e.target.value))}
-              placeholder={
-                mode === "WASTE"
-                  ? "Qty waste (akan dikurangi)"
-                  : "Delta stok (+/-)"
-              }
-            />
+            {isDimensi ? (
+              <InputDimensiRoll
+                variants={rollVariants}
+                onChange={setRollInput}
+                disabled={saving}
+                mode={mode === "WASTE" ? "waste" : "adjustment"}
+              />
+            ) : (
+              <input
+                className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2"
+                type="number"
+                value={qty || ""}
+                onChange={(e) => setQty(Number(e.target.value))}
+                placeholder={
+                  mode === "WASTE"
+                    ? "Qty waste (akan dikurangi)"
+                    : "Delta stok (+/-)"
+                }
+                disabled={saving}
+              />
+            )}
             <textarea
               className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2"
               placeholder="Alasan / catatan (wajib)"
