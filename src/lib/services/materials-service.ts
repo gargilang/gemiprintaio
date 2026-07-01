@@ -40,6 +40,7 @@ export interface Material {
   category_name?: string;
   subcategory_name?: string;
   unit_prices?: UnitPrice[];
+  muncul_di_pos_status?: boolean | number;
   roll_variants?: Array<{
     id: string;
     lebar_m: number;
@@ -59,6 +60,7 @@ export interface UnitPrice {
   harga_beli?: number;
   default_status: boolean | number;
   urutan_tampilan?: number;
+  nama_produk_jual?: string | null;
 }
 
 /**
@@ -229,6 +231,10 @@ export async function createMaterial(
       roll_inventory_status: isDimensional
         ? 1
         : toDbIntBoolean(materialData.roll_inventory_status),
+      muncul_di_pos_status:
+        materialData.muncul_di_pos_status !== undefined
+          ? toDbIntBoolean(materialData.muncul_di_pos_status)
+          : 1,
       average_cost_per_base_unit:
         materialData.average_cost_per_base_unit ?? initialAverageCostPerBaseUnit,
       dibuat_pada: new Date().toISOString(),
@@ -356,6 +362,13 @@ export async function updateMaterial(
               toDbIntBoolean(materialData.butuh_dimensi_status),
           }
         : {}),
+      ...(materialData.muncul_di_pos_status !== undefined
+        ? {
+            muncul_di_pos_status: toDbIntBoolean(
+              materialData.muncul_di_pos_status,
+            ),
+          }
+        : {}),
     };
 
     const materialResult = await db.update("barang", id, {
@@ -378,6 +391,7 @@ export async function updateMaterial(
           harga_member: unitPrice.harga_member ?? 0,
           default_status: toDbIntBoolean(unitPrice.default_status),
           urutan_tampilan: unitPrice.urutan_tampilan,
+          nama_produk_jual: unitPrice.nama_produk_jual ?? null,
           diperbarui_pada: new Date().toISOString(),
         });
 
