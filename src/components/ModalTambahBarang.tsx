@@ -56,6 +56,7 @@ export default function ModalTambahBarang({
     min_stock_level: "0",
     track_inventory: true,
     requires_dimension: false,
+    show_in_pos: true,
   });
 
   const [unitPrices, setUnitPrices] = useState<UnitPrice[]>([]);
@@ -119,7 +120,7 @@ export default function ModalTambahBarang({
   const handleManageUnit = () => {
     localStorage.setItem(
       "materialFormDraft",
-      JSON.stringify({ formData, unitPrices })
+      JSON.stringify({ formData, unitPrices }),
     );
     router.push("/pengaturan?tab=setup&subtab=materials&manage=unit");
   };
@@ -139,6 +140,7 @@ export default function ModalTambahBarang({
         min_stock_level: editData.level_stok_minimum?.toString() || "0",
         track_inventory: editData.lacak_inventori_status !== 0,
         requires_dimension: editData.butuh_dimensi_status === 1,
+        show_in_pos: editData.muncul_di_pos_status !== 0,
       });
 
       setUnitPrices(editData.unit_prices || []);
@@ -146,12 +148,10 @@ export default function ModalTambahBarang({
       // Mode tambah baru
       const firstCategory = categoriesData[0]?.nama || "";
       const firstSubcat = subcategoriesData.find(
-        (s) => s.category_name === firstCategory
+        (s) => s.category_name === firstCategory,
       );
       const isMediaCetak = firstCategory === "Media Cetak";
-      const firstUnit = isMediaCetak
-        ? "m²"
-        : unitsData[0]?.nama || "pcs";
+      const firstUnit = isMediaCetak ? "m²" : unitsData[0]?.nama || "pcs";
 
       setFormData({
         name: "",
@@ -164,6 +164,7 @@ export default function ModalTambahBarang({
         min_stock_level: "0",
         track_inventory: true,
         requires_dimension: isMediaCetak, // Auto-check for Media Cetak
+        show_in_pos: true,
       });
 
       // Inisialisasi dengan satu baris harga satuan default
@@ -186,7 +187,7 @@ export default function ModalTambahBarang({
 
   const handleCategoryChange = (category: string) => {
     const firstSubcat = subcategoriesData.find(
-      (s) => s.category_name === category
+      (s) => s.category_name === category,
     );
 
     const isMediaCetak = category === "Media Cetak";
@@ -206,10 +207,8 @@ export default function ModalTambahBarang({
         prev.length === 0
           ? prev
           : prev.map((up) =>
-              up.faktor_konversi === 1
-                ? { ...up, nama_satuan: "m²" }
-                : up
-            )
+              up.faktor_konversi === 1 ? { ...up, nama_satuan: "m²" } : up,
+            ),
       );
     }
   };
@@ -229,10 +228,8 @@ export default function ModalTambahBarang({
         prev.length === 0
           ? prev
           : prev.map((up) =>
-              up.faktor_konversi === 1
-                ? { ...up, nama_satuan: "m²" }
-                : up
-            )
+              up.faktor_konversi === 1 ? { ...up, nama_satuan: "m²" } : up,
+            ),
       );
     }
   };
@@ -279,7 +276,7 @@ export default function ModalTambahBarang({
   const updateUnitPrice = (
     index: number,
     field: keyof UnitPrice,
-    value: any
+    value: any,
   ) => {
     const updated = [...unitPrices];
     const defaultUnit = unitPrices.find((up) => up.default_status);
@@ -361,7 +358,7 @@ export default function ModalTambahBarang({
         let kategori_id = null;
         if (formData.category && formData.category.trim()) {
           const foundCategory = categoriesData.find(
-            (c) => c.nama === formData.category
+            (c) => c.nama === formData.category,
           );
           if (foundCategory) {
             kategori_id = foundCategory.id;
@@ -372,7 +369,7 @@ export default function ModalTambahBarang({
         let subkategori_id = null;
         if (formData.subcategory && formData.subcategory.trim()) {
           const foundSubcategory = subcategoriesData.find(
-            (s) => s.nama === formData.subcategory
+            (s) => s.nama === formData.subcategory,
           );
           if (foundSubcategory) {
             subkategori_id = foundSubcategory.id;
@@ -404,6 +401,7 @@ export default function ModalTambahBarang({
           level_stok_minimum: minStokFinal,
           lacak_inventori_status: formData.track_inventory,
           butuh_dimensi_status: formData.requires_dimension,
+          muncul_di_pos_status: formData.show_in_pos,
           unit_prices: unitPrices,
         };
 
@@ -426,19 +424,17 @@ export default function ModalTambahBarang({
         onClose();
 
         // Untuk edit, kembalikan barang yang diperbarui beserta ID; untuk item baru kirim null
-        const updatedMaterial = editData
-          ? { id: editData.id }
-          : null;
+        const updatedMaterial = editData ? { id: editData.id } : null;
         onSuccess(
           `Barang berhasil ${editData ? "diupdate" : "ditambahkan"}!`,
-          updatedMaterial
+          updatedMaterial,
         );
       } catch (err) {
         console.error(err);
         onClose();
         showNotification(
           "error",
-          `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`
+          `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`,
         );
       } finally {
         setLoading(false);
@@ -455,7 +451,7 @@ export default function ModalTambahBarang({
       onCreateMaterial,
       onUpdateMaterial,
       showNotification,
-    ]
+    ],
   );
 
   // Handler keyboard - Enter untuk submit, ESC untuk tutup
@@ -483,13 +479,13 @@ export default function ModalTambahBarang({
   if (!isOpen) return null;
 
   const currentSubcategories = subcategoriesData.filter(
-    (sub) => sub.category_name === formData.category
+    (sub) => sub.category_name === formData.category,
   );
 
   const currentSpecs = specsData.filter(
     (spec) =>
       categoriesData.find((cat) => cat.nama === formData.category)?.id ===
-      spec.kategori_id
+      spec.kategori_id,
   );
 
   return (
@@ -582,10 +578,10 @@ export default function ModalTambahBarang({
                       onClick={() => {
                         localStorage.setItem(
                           "materialFormDraft",
-                          JSON.stringify({ formData, unitPrices })
+                          JSON.stringify({ formData, unitPrices }),
                         );
                         router.push(
-                          "/pengaturan?tab=setup&subtab=materials&manage=category"
+                          "/pengaturan?tab=setup&subtab=materials&manage=category",
                         );
                       }}
                       className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
@@ -679,6 +675,23 @@ export default function ModalTambahBarang({
                     Pengaturan POS
                   </label>
                   <div className="space-y-2 mt-3">
+                    {/* Munculkan di POS — harus di paling atas */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_in_pos}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            show_in_pos: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-slate-300">
+                        Munculkan di POS
+                      </span>
+                    </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -710,11 +723,13 @@ export default function ModalTambahBarang({
                     </label>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                    • Track stok: Nonaktifkan untuk barang konsumsi (lem, tinta,
-                    dll)
-                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi.
-                    Stok dihitung dalam <strong>m²</strong>; pembelian akan
-                    meminta panjang × lebar tiap roll dari faktur.
+                    • Munculkan di POS: Nonaktifkan agar barang tidak muncul di
+                    grid POS (stok tetap terlacak)
+                    <br />• Track stok: Nonaktifkan untuk barang konsumsi (lem,
+                    tinta, dll)
+                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi. Stok
+                    dihitung dalam <strong>m²</strong>; pembelian akan meminta
+                    panjang × lebar tiap roll dari faktur.
                   </p>
                 </div>
 
@@ -739,8 +754,8 @@ export default function ModalTambahBarang({
                               acc[spec.tipe_spesifikasi].push(spec);
                               return acc;
                             },
-                            {} as Record<string, any[]>
-                          )
+                            {} as Record<string, any[]>,
+                          ),
                         ).map(([type, specs]) => (
                           <select
                             key={type}
@@ -832,11 +847,11 @@ export default function ModalTambahBarang({
                 editData.butuh_dimensi_status !== 1 && (
                   <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-800/50 rounded-lg">
                     <p className="text-sm text-amber-900">
-                      <strong>⚠ Perhatian:</strong> Mengaktifkan tracking dimensi
-                      mengubah satuan stok ke <strong>m²</strong>. Saat
-                      disimpan, stok saat ini akan{" "}
-                      <strong>direset ke 0</strong>. Catat ulang stok dari
-                      faktur terakhir lewat halaman Pembelian.
+                      <strong>⚠ Perhatian:</strong> Mengaktifkan tracking
+                      dimensi mengubah satuan stok ke <strong>m²</strong>. Saat
+                      disimpan, stok saat ini akan <strong>direset ke 0</strong>
+                      . Catat ulang stok dari faktur terakhir lewat halaman
+                      Pembelian.
                     </p>
                   </div>
                 )}
