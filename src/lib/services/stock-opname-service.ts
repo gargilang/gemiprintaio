@@ -2,7 +2,10 @@ import "server-only";
 
 import { db, generateId } from "@/lib/db-unified";
 import { getMaterials } from "@/lib/services/materials-service";
-import { postInventoryMovement } from "@/lib/services/inventory-service";
+import {
+  postInventoryMovement,
+  getRollVariants,
+} from "@/lib/services/inventory-service";
 import {
   generateDailyDocumentNumber,
   numeric,
@@ -99,17 +102,73 @@ export async function createStockOpname(input: {
     if (header.error) throw header.error;
 
     for (const material of tracked) {
-      const row = await db.insert("stock_opname_items", {
-        id: generateId(),
-        stock_opname_id: id,
-        barang_id: material.id,
-        system_qty: numeric(material.jumlah_stok),
-        counted_qty: null,
-        delta_qty: 0,
-        unit_cost: numeric(material.average_cost_per_base_unit),
-        delta_value: 0,
-      });
-      if (row.error) throw row.error;
+      const isDimensi = Number(material.butuh_dimensi_status) === 1;
+
+      if (isDimensi) {
+        // Untuk barang dimensi: satu baris per variant aktif
+        const variants = await getRollVariants(material.id);
+        const aktif = variants.filter((v) => Number(v.aktif_status) !== 0);
+
+        if (aktif.length === 0) {
+          // Fallback: satu baris agregat tanpa roll detail
+          const row = await db.insert("stock_opname_items", {
+            id: generateId(),
+            stock_opname_id: id,
+            barang_id: material.id,
+            system_qty: numeric(material.jumlah_stok),
+            counted_qty: null,
+            delta_qty: 0,
+            unit_cost: numeric(material.average_cost_per_base_unit),
+            delta_value: 0,
+            roll_variant_id: null,
+            roll_width_m: null,
+            system_linear_m: null,
+            counted_linear_m: null,
+            delta_linear_m: null,
+          });
+          if (row.error) throw row.error;
+        } else {
+          for (const variant of aktif) {
+            const lebar = Number(variant.lebar_m);
+            const panjang = Number(variant.panjang_tersedia_m);
+            const systemQty = panjang * lebar; // m²
+            const row = await db.insert("stock_opname_items", {
+              id: generateId(),
+              stock_opname_id: id,
+              barang_id: material.id,
+              system_qty: systemQty,
+              counted_qty: null,
+              delta_qty: 0,
+              unit_cost: numeric(material.average_cost_per_base_unit),
+              delta_value: 0,
+              roll_variant_id: variant.id,
+              roll_width_m: lebar,
+              system_linear_m: panjang,
+              counted_linear_m: null,
+              delta_linear_m: null,
+            });
+            if (row.error) throw row.error;
+          }
+        }
+      } else {
+        // Non-dimensi: unchanged
+        const row = await db.insert("stock_opname_items", {
+          id: generateId(),
+          stock_opname_id: id,
+          barang_id: material.id,
+          system_qty: numeric(material.jumlah_stok),
+          counted_qty: null,
+          delta_qty: 0,
+          unit_cost: numeric(material.average_cost_per_base_unit),
+          delta_value: 0,
+          roll_variant_id: null,
+          roll_width_m: null,
+          system_linear_m: null,
+          counted_linear_m: null,
+          delta_linear_m: null,
+        });
+        if (row.error) throw row.error;
+      }
     }
   });
 
@@ -120,7 +179,9 @@ export async function updateStockOpnameCounts(
   id: string,
   items: Array<{
     stock_opname_item_id: string;
-    counted_qty: number;
+    counted_qty?: number;
+    /** Untuk item dimensi (roll_variant_id != null): panjang fisik dalam meter. */
+    counted_linear_m?: number;
     catatan?: string | null;
   }>,
 ) {
@@ -136,12 +197,31 @@ export async function updateStockOpnameCounts(
       (item: any) => item.id === input.stock_opname_item_id,
     );
     if (!existing) continue;
-    const countedQty = numeric(input.counted_qty);
+
+    let countedQty: number;
+    let deltaLinearM: number | null = null;
+    let countedLinearMVal: number | null = null;
+
+    if (existing.roll_variant_id && input.counted_linear_m !== undefined) {
+      // Item dimensi: hitung m² dari panjang meter
+      const lebar = Number(existing.roll_width_m) || 1;
+      countedLinearMVal = numeric(input.counted_linear_m);
+      countedQty = countedLinearMVal * lebar;
+      deltaLinearM = countedLinearMVal - numeric(existing.system_linear_m);
+    } else {
+      countedQty = numeric(
+        input.counted_qty ?? input.counted_linear_m ?? existing.system_qty,
+      );
+    }
+
     const deltaQty = countedQty - numeric(existing.system_qty);
     const deltaValue = deltaQty * numeric(existing.unit_cost);
+
     const upd = await db.update("stock_opname_items", existing.id, {
       counted_qty: countedQty,
+      counted_linear_m: countedLinearMVal,
       delta_qty: deltaQty,
+      delta_linear_m: deltaLinearM,
       delta_value: deltaValue,
       catatan: input.catatan?.trim() || null,
     });
@@ -168,6 +248,33 @@ export async function postStockOpname(id: string, actorId?: string | null) {
 
   let totalDeltaQty = 0;
   let totalDeltaValue = 0;
+
+  // Validasi: tidak ada delta yang menyebabkan panjang_tersedia_m negatif
+  for (const item of session.items || []) {
+    if (!item.roll_variant_id) continue;
+    const deltaLinear = numeric(item.delta_linear_m);
+    if (Math.abs(deltaLinear) < 0.000001) continue;
+    if (deltaLinear < 0) {
+      // Pengurangan — cek apakah variant cukup stok
+      const variantResult = await db.queryOne<any>("barang_roll_variants", {
+        where: { id: item.roll_variant_id },
+      });
+      if (variantResult.error) throw variantResult.error;
+      const variant = variantResult.data;
+      if (!variant) continue;
+      const setelahPosting = numeric(variant.panjang_tersedia_m) + deltaLinear;
+      if (setelahPosting < -0.001) {
+        const lebar = Number(item.roll_width_m).toFixed(2);
+        const tersedia = Number(variant.panjang_tersedia_m).toFixed(2);
+        const butuh = Math.abs(deltaLinear).toFixed(2);
+        throw new Error(
+          `Roll lebar ${lebar}m: stok tersedia ${tersedia}m, dibutuhkan ${butuh}m — ` +
+            `periksa kembali hitungan fisik untuk barang ini.`,
+        );
+      }
+    }
+  }
+
   await db.transaction(async () => {
     for (const item of session.items || []) {
       const deltaQty = numeric(item.delta_qty);
@@ -184,6 +291,11 @@ export async function postStockOpname(id: string, actorId?: string | null) {
         source_line_id: item.id,
         catatan: item.catatan || `Stock opname ${session.nomor_opname}`,
         dibuat_oleh: actorId || null,
+        roll_variant_id: item.roll_variant_id || null,
+        roll_width_m: item.roll_width_m ? Number(item.roll_width_m) : null,
+        linear_delta_m: item.delta_linear_m
+          ? numeric(item.delta_linear_m)
+          : null,
       });
       const upd = await db.update("stock_opname_items", item.id, {
         movement_id: movement?.id || null,
