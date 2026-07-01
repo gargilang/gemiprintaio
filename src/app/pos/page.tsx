@@ -63,6 +63,7 @@ import {
   type BiayaTambahanItem,
   type SubkontraktorOption,
   type POSInitData,
+  type ProdukJualFlat,
   EMPTY_POS_INIT,
   KATEGORI_ORDER,
 } from "./pos-types";
@@ -272,20 +273,6 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    if (
-      !selectedMaterial ||
-      editingCartIndex !== null ||
-      selectedMaterial.unit_prices.length === 0
-    ) {
-      return;
-    }
-    const defaultUnit = selectedMaterial.unit_prices.find(
-      (u) => u.default_status === 1
-    );
-    setSelectedUnit(defaultUnit || selectedMaterial.unit_prices[0]);
-  }, [selectedMaterial, editingCartIndex]);
-
-  useEffect(() => {
     setRollSizes(getStoredRollSizes());
   }, []);
 
@@ -385,29 +372,51 @@ export default function POSPage() {
     });
   }, [materials]);
 
-  const filteredMaterials = useMemo(() => {
+  // Flatten semua unit_prices dari barang visible menjadi daftar Produk Jual.
+  // Placeholder maklon dilewati — bukan barang katalog, alur maklon lewat
+  // tombol "+ Maklon" yang terpisah (sama seperti filteredMaterials lama).
+  const produkJualList = useMemo<ProdukJualFlat[]>(() => {
+    const result: ProdukJualFlat[] = [];
+    for (const m of materials) {
+      if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) continue;
+      for (const up of m.unit_prices) {
+        result.push({
+          id: up.id,
+          nama: up.nama_produk_jual?.trim() || up.nama_satuan,
+          nama_satuan: up.nama_satuan,
+          nama_produk_jual: up.nama_produk_jual ?? null,
+          harga_jual: up.harga_jual,
+          harga_member: up.harga_member,
+          faktor_konversi: up.faktor_konversi,
+          default_status: up.default_status,
+          barang_id: m.id,
+          barang_nama: m.nama,
+          butuh_dimensi_status: m.butuh_dimensi_status,
+          kategori_nama: m.kategori_nama ?? null,
+          frekuensi_terjual: m.frekuensi_terjual,
+        });
+      }
+    }
+    return result;
+  }, [materials]);
+
+  const filteredProdukJual = useMemo<ProdukJualFlat[]>(() => {
     const q = materialSearch.trim().toLowerCase();
-    return materials.filter((m) => {
-      // Placeholder sistem untuk pekerjaan maklon — bukan barang katalog.
-      // Sembunyikan dari grid Pilih Barang (sama seperti di halaman Barang)
-      // supaya kasir tidak bingung / tidak menambahkannya manual. Alur maklon
-      // yang benar lewat tombol "+ Maklon". Tetap ada di `materials` agar
-      // lookup internal tidak rusak.
-      if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) return false;
+    return produkJualList.filter((p) => {
       if (
         materialCategoryFilter !== "ALL" &&
-        m.kategori_nama !== materialCategoryFilter
+        p.kategori_nama !== materialCategoryFilter
       ) {
         return false;
       }
       if (!q) return true;
       return (
-        m.nama.toLowerCase().includes(q) ||
-        m.kategori_nama?.toLowerCase().includes(q) ||
-        false
+        p.nama.toLowerCase().includes(q) ||
+        p.barang_nama.toLowerCase().includes(q) ||
+        p.nama_satuan.toLowerCase().includes(q)
       );
     });
-  }, [materials, materialSearch, materialCategoryFilter]);
+  }, [produkJualList, materialSearch, materialCategoryFilter]);
 
   const handlePilihPelanggan = (customer: Customer) => {
     setSelectedPelanggan(customer);
@@ -562,32 +571,38 @@ export default function POSPage() {
     };
   };
 
-  const handleMaterialGridClick = (material: Material) => {
-    if (selectedMaterial?.id === material.id) {
-      resetProductForm();
-      return;
-    }
+  const handleProdukJualClick = useCallback(
+    (produk: ProdukJualFlat) => {
+      const material = materials.find((m) => m.id === produk.barang_id);
+      if (!material) return;
+      const unit = material.unit_prices.find((u) => u.id === produk.id);
+      if (!unit) return;
 
-    setEditingCartIndex(null);
-    setSelectedMaterial(material);
-    setPanjang("");
-    setLebar("");
-    setQuantity("1");
-    setUseRounding(material.butuh_dimensi_status === 1);
-    setSelectedRollSize(null);
-    setFormFinishing([]);
-    setFormHargaSatuan(null);
-    setFormBiayaTambahan([]);
+      // Klik produk yang sama saat bukan mode edit → batalkan pilihan
+      if (
+        selectedMaterial?.id === material.id &&
+        selectedUnit?.id === unit.id &&
+        editingCartIndex === null
+      ) {
+        setSelectedMaterial(null);
+        setSelectedUnit(null);
+        return;
+      }
 
-    const defaultUnit = material.unit_prices.find(
-      (u) => u.default_status === 1
-    );
-    if (defaultUnit) {
-      setSelectedUnit(defaultUnit);
-    } else if (material.unit_prices.length > 0) {
-      setSelectedUnit(material.unit_prices[0]);
-    }
-  };
+      setEditingCartIndex(null);
+      setSelectedMaterial(material);
+      setSelectedUnit(unit);
+      setPanjang("");
+      setLebar("");
+      setQuantity("1");
+      setUseRounding(material.butuh_dimensi_status === 1);
+      setSelectedRollSize(null);
+      setFormFinishing([]);
+      setFormHargaSatuan(null);
+      setFormBiayaTambahan([]);
+    },
+    [materials, selectedMaterial, selectedUnit, editingCartIndex]
+  );
 
   const handleEditCartItem = (index: number) => {
     const item = cart[index];
@@ -1473,14 +1488,15 @@ export default function POSPage() {
                   }`}
                 >
                   <div className="grid grid-cols-2 gap-2">
-                    {filteredMaterials.map((material) => (
+                    {filteredProdukJual.map((produk) => (
                       <button
-                        key={material.id}
+                        key={produk.id}
                         type="button"
-                        title="Klik untuk memilih barang; klik lagi pada barang yang sama untuk membatalkan pilihan"
-                        onClick={() => handleMaterialGridClick(material)}
+                        title="Klik untuk memilih produk; klik lagi untuk membatalkan pilihan"
+                        onClick={() => handleProdukJualClick(produk)}
                         className={`cursor-pointer p-3 rounded-lg border-2 transition-all text-left select-none ${
-                          selectedMaterial?.id === material.id
+                          selectedMaterial?.id === produk.barang_id &&
+                          selectedUnit?.id === produk.id
                             ? "border-[#00afef] bg-cyan-50 dark:bg-slate-800 shadow-md scale-[1.02] ring-2 ring-[#00afef]/30"
                             : "border-gray-200 dark:border-slate-700 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5 dark:hover:bg-slate-700/50 hover:shadow-sm active:scale-[0.98]"
                         }`}
@@ -1488,23 +1504,22 @@ export default function POSPage() {
                         <div className="flex-1 min-w-0">
                           <div
                             className={`font-bold text-sm truncate ${
-                              selectedMaterial?.id === material.id
+                              selectedMaterial?.id === produk.barang_id &&
+                              selectedUnit?.id === produk.id
                                 ? "text-[#00afef]"
                                 : "text-gray-800 dark:text-slate-100"
                             }`}
                           >
-                            {material.nama}
+                            {produk.nama}
                           </div>
-                          {material.kategori_nama && (
-                            <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">
-                              {material.kategori_nama}
-                            </div>
-                          )}
+                          <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">
+                            {produk.barang_nama}
+                          </div>
                         </div>
                       </button>
                     ))}
                   </div>
-                  {filteredMaterials.length === 0 && (
+                  {filteredProdukJual.length === 0 && (
                     <div className="text-center py-8 text-gray-500 dark:text-slate-400">
                       <svg
                         className="w-12 h-12 mx-auto mb-2 opacity-50"
@@ -1519,7 +1534,7 @@ export default function POSPage() {
                           d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      <p className="font-semibold">Tidak ada barang</p>
+                      <p className="font-semibold">Tidak ada produk jual</p>
                       <p className="text-sm">
                         Coba ubah pencarian atau pilih kategori lain
                       </p>
