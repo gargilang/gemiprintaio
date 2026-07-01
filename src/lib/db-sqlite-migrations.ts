@@ -29,42 +29,90 @@ const ENGLISH_TO_INDONESIAN_TABLE_RENAMES: ReadonlyArray<{
     oldTable: "actor_roles",
     newTable: "peran_pegawai",
     indexes: [
-      { oldName: "idx_actor_roles_group", newName: "idx_peran_pegawai_group", column: "role_group" },
-      { oldName: "idx_actor_roles_order", newName: "idx_peran_pegawai_order", column: "display_order" },
+      {
+        oldName: "idx_actor_roles_group",
+        newName: "idx_peran_pegawai_group",
+        column: "role_group",
+      },
+      {
+        oldName: "idx_actor_roles_order",
+        newName: "idx_peran_pegawai_order",
+        column: "display_order",
+      },
     ],
   },
   {
     oldTable: "business_actors",
     newTable: "pegawai",
     indexes: [
-      { oldName: "idx_business_actors_role", newName: "idx_pegawai_role", column: "role_code" },
-      { oldName: "idx_business_actors_active", newName: "idx_pegawai_active", column: "is_active" },
-      { oldName: "idx_business_actors_order", newName: "idx_pegawai_order", column: "display_order" },
+      {
+        oldName: "idx_business_actors_role",
+        newName: "idx_pegawai_role",
+        column: "role_code",
+      },
+      {
+        oldName: "idx_business_actors_active",
+        newName: "idx_pegawai_active",
+        column: "is_active",
+      },
+      {
+        oldName: "idx_business_actors_order",
+        newName: "idx_pegawai_order",
+        column: "display_order",
+      },
     ],
   },
   {
     oldTable: "transaction_computed",
     newTable: "transaksi_terhitung",
     indexes: [
-      { oldName: "idx_tc_formula_key", newName: "idx_transaksi_terhitung_formula_key", column: "formula_key" },
-      { oldName: "idx_tc_transaction", newName: "idx_transaksi_terhitung_transaction", column: "transaction_id" },
+      {
+        oldName: "idx_tc_formula_key",
+        newName: "idx_transaksi_terhitung_formula_key",
+        column: "formula_key",
+      },
+      {
+        oldName: "idx_tc_transaction",
+        newName: "idx_transaksi_terhitung_transaction",
+        column: "transaction_id",
+      },
     ],
   },
   {
     oldTable: "transaction_overrides",
     newTable: "transaksi_penggantian",
     indexes: [
-      { oldName: "idx_to_formula_key", newName: "idx_transaksi_penggantian_formula_key", column: "formula_key" },
+      {
+        oldName: "idx_to_formula_key",
+        newName: "idx_transaksi_penggantian_formula_key",
+        column: "formula_key",
+      },
     ],
   },
   {
     oldTable: "cashbook_formula",
     newTable: "rumus_buku_kas",
     indexes: [
-      { oldName: "idx_cashbook_formula_order", newName: "idx_rumus_buku_kas_order", column: "display_order" },
-      { oldName: "idx_cashbook_formula_key", newName: "idx_rumus_buku_kas_key", column: "formula_key" },
-      { oldName: "idx_cashbook_formula_actor", newName: "idx_rumus_buku_kas_actor", column: "actor_id" },
-      { oldName: "idx_cashbook_formula_group", newName: "idx_rumus_buku_kas_group", column: "formula_group" },
+      {
+        oldName: "idx_cashbook_formula_order",
+        newName: "idx_rumus_buku_kas_order",
+        column: "display_order",
+      },
+      {
+        oldName: "idx_cashbook_formula_key",
+        newName: "idx_rumus_buku_kas_key",
+        column: "formula_key",
+      },
+      {
+        oldName: "idx_cashbook_formula_actor",
+        newName: "idx_rumus_buku_kas_actor",
+        column: "actor_id",
+      },
+      {
+        oldName: "idx_cashbook_formula_group",
+        newName: "idx_rumus_buku_kas_group",
+        column: "formula_group",
+      },
     ],
   },
 ];
@@ -91,11 +139,15 @@ export function migrateEnglishTablesToIndonesian(db: {
   const tableExists = (name: string): boolean =>
     db
       .prepare(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
       )
       .get(name) !== undefined;
 
-  for (const { oldTable, newTable, indexes } of ENGLISH_TO_INDONESIAN_TABLE_RENAMES) {
+  for (const {
+    oldTable,
+    newTable,
+    indexes,
+  } of ENGLISH_TO_INDONESIAN_TABLE_RENAMES) {
     // Already migrated — the Indonesian-named table exists (Req 5.2).
     if (tableExists(newTable)) continue;
     // Fresh install from the updated schema — nothing to rename (Req 5.5).
@@ -116,13 +168,13 @@ export function migrateEnglishTablesToIndonesian(db: {
           db.prepare(`PRAGMA table_info(${newTable})`).all() as Array<{
             name: string;
           }>
-        ).map((c) => c.name)
+        ).map((c) => c.name),
       );
       for (const { oldName, newName, column } of indexes) {
         db.exec(`DROP INDEX IF EXISTS ${oldName};`);
         if (cols.has(column)) {
           db.exec(
-            `CREATE INDEX IF NOT EXISTS ${newName} ON ${newTable}(${column});`
+            `CREATE INDEX IF NOT EXISTS ${newName} ON ${newTable}(${column});`,
           );
         }
       }
@@ -147,7 +199,7 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
 }): void {
   const row = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rumus_buku_kas'"
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rumus_buku_kas'",
     )
     .get();
   // Detect the legacy NOT NULL constraint. Match both `db_column TEXT NOT NULL`
@@ -189,11 +241,11 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
   for (const col of extraCols) {
     if (col === "formula_group") {
       db.exec(
-        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`,
       );
     } else if (col === "is_visible_in_summary") {
       db.exec(
-        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+        `ALTER TABLE rumus_buku_kas_v2 ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`,
       );
     } else {
       db.exec(`ALTER TABLE rumus_buku_kas_v2 ADD COLUMN ${col} TEXT`);
@@ -223,21 +275,21 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
     ALTER TABLE rumus_buku_kas_v2 RENAME TO rumus_buku_kas;
   `);
   db.exec(
-    `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_order ON rumus_buku_kas(display_order);`
+    `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_order ON rumus_buku_kas(display_order);`,
   );
   if (extraCols.includes("formula_key")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_key ON rumus_buku_kas(formula_key);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_key ON rumus_buku_kas(formula_key);`,
     );
   }
   if (extraCols.includes("actor_id")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_actor ON rumus_buku_kas(actor_id);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_actor ON rumus_buku_kas(actor_id);`,
     );
   }
   if (extraCols.includes("formula_group")) {
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_group ON rumus_buku_kas(formula_group);`
+      `CREATE INDEX IF NOT EXISTS idx_rumus_buku_kas_group ON rumus_buku_kas(formula_group);`,
     );
   }
   db.pragma("foreign_keys = ON");
@@ -252,7 +304,9 @@ export function migrateCashbookFormulaDbColumnNullable(db: {
 function migratePinjamanKaryawanJenisConstraint(db: any) {
   const tableSql = (
     db
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = 'pinjaman_karyawan'")
+      .prepare(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name = 'pinjaman_karyawan'",
+      )
       .get() as { sql?: string } | undefined
   )?.sql;
   if (!tableSql || tableSql.includes("'POTONG_BAGI_HASIL'")) return;
@@ -289,12 +343,16 @@ function migratePinjamanKaryawanJenisConstraint(db: any) {
       );
     `);
     const targetCols = (
-      db.prepare("PRAGMA table_info(pinjaman_karyawan)").all() as Array<{ name: string }>
+      db.prepare("PRAGMA table_info(pinjaman_karyawan)").all() as Array<{
+        name: string;
+      }>
     ).map((c) => c.name);
     const oldCols = new Set(
       (
-        db.prepare(`PRAGMA table_info(${oldName})`).all() as Array<{ name: string }>
-      ).map((c) => c.name)
+        db.prepare(`PRAGMA table_info(${oldName})`).all() as Array<{
+          name: string;
+        }>
+      ).map((c) => c.name),
     );
     const commonCols = targetCols.filter((name) => oldCols.has(name));
     if (commonCols.length > 0) {
@@ -556,14 +614,16 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   if (cashbookFormulaCols.length > 0) {
     if (!cashbookFormulaCols.includes("formula_key")) {
       db.exec(`ALTER TABLE rumus_buku_kas ADD COLUMN formula_key TEXT`);
-      db.exec(`UPDATE rumus_buku_kas SET formula_key = db_column WHERE formula_key IS NULL`);
+      db.exec(
+        `UPDATE rumus_buku_kas SET formula_key = db_column WHERE formula_key IS NULL`,
+      );
     }
     if (!cashbookFormulaCols.includes("actor_id")) {
       db.exec(`ALTER TABLE rumus_buku_kas ADD COLUMN actor_id TEXT`);
     }
     if (!cashbookFormulaCols.includes("formula_group")) {
       db.exec(
-        `ALTER TABLE rumus_buku_kas ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`
+        `ALTER TABLE rumus_buku_kas ADD COLUMN formula_group TEXT NOT NULL DEFAULT 'custom'`,
       );
       db.exec(`UPDATE rumus_buku_kas
                  SET formula_group = 'summary'
@@ -580,7 +640,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     }
     if (!cashbookFormulaCols.includes("is_visible_in_summary")) {
       db.exec(
-        `ALTER TABLE rumus_buku_kas ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`
+        `ALTER TABLE rumus_buku_kas ADD COLUMN is_visible_in_summary INTEGER NOT NULL DEFAULT 0`,
       );
       // Mirror the Supabase default: actor-driven groups visible, others hidden.
       db.exec(`UPDATE rumus_buku_kas
@@ -609,14 +669,22 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   // Add metric_contributions column to finance_category_definitions if missing
   const catCols = (
-    db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{ name: string }>
+    db
+      .prepare("PRAGMA table_info(finance_category_definitions)")
+      .all() as Array<{ name: string }>
   ).map((c) => c.name);
   if (catCols.length > 0 && !catCols.includes("metric_contributions")) {
-    db.exec(`ALTER TABLE finance_category_definitions ADD COLUMN metric_contributions TEXT`);
+    db.exec(
+      `ALTER TABLE finance_category_definitions ADD COLUMN metric_contributions TEXT`,
+    );
   }
 
   // Seed column rules if table is empty
-  const ruleCount = (db.prepare("SELECT COUNT(*) AS c FROM finance_metric_column_rules").get() as { c: number }).c;
+  const ruleCount = (
+    db
+      .prepare("SELECT COUNT(*) AS c FROM finance_metric_column_rules")
+      .get() as { c: number }
+  ).c;
   if (ruleCount === 0) {
     db.exec(`
       INSERT OR IGNORE INTO finance_metric_column_rules (id, column_name, display_name, rule_type, formula_expression, kasbon_conditions, is_system, display_order) VALUES
@@ -716,7 +784,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const inventoryMovementSql = (
     db
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = 'inventory_movements'")
+      .prepare(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name = 'inventory_movements'",
+      )
       .get() as { sql?: string } | undefined
   )?.sql;
   if (
@@ -769,12 +839,16 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         );
       `);
       const targetCols = (
-        db.prepare("PRAGMA table_info(inventory_movements)").all() as Array<{ name: string }>
+        db.prepare("PRAGMA table_info(inventory_movements)").all() as Array<{
+          name: string;
+        }>
       ).map((c) => c.name);
       const oldCols = new Set(
         (
-          db.prepare(`PRAGMA table_info(${oldName})`).all() as Array<{ name: string }>
-        ).map((c) => c.name)
+          db.prepare(`PRAGMA table_info(${oldName})`).all() as Array<{
+            name: string;
+          }>
+        ).map((c) => c.name),
       );
       const commonCols = targetCols.filter((name) => oldCols.has(name));
       if (commonCols.length > 0) {
@@ -810,7 +884,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   ];
   for (const { table, statuses } of lifecycleTables) {
     const exists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(table);
     if (!exists) continue;
     const cols = (
@@ -818,7 +894,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     ).map((c) => c.name);
     if (!cols.includes("status_transaksi")) {
       db.exec(
-        `ALTER TABLE ${table} ADD COLUMN status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN (${statuses}))`
+        `ALTER TABLE ${table} ADD COLUMN status_transaksi TEXT NOT NULL DEFAULT 'POSTED' CHECK(status_transaksi IN (${statuses}))`,
       );
     }
     if (!cols.includes("voided_at")) {
@@ -831,7 +907,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN void_reason TEXT`);
     }
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_${table}_status_transaksi ON ${table}(status_transaksi)`
+      `CREATE INDEX IF NOT EXISTS idx_${table}_status_transaksi ON ${table}(status_transaksi)`,
     );
   }
 
@@ -896,50 +972,189 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   `);
 
   // PPN columns on existing tables — additive, idempotent.
-  const ppnAdditiveCols: Array<{ table: string; column: string; ddl: string }> = [
-    { table: "pelanggan", column: "alamat_npwp", ddl: "ALTER TABLE pelanggan ADD COLUMN alamat_npwp TEXT" },
-    { table: "pelanggan", column: "nama_di_npwp", ddl: "ALTER TABLE pelanggan ADD COLUMN nama_di_npwp TEXT" },
-    { table: "vendor", column: "npwp", ddl: "ALTER TABLE vendor ADD COLUMN npwp TEXT" },
-    { table: "vendor", column: "alamat_npwp", ddl: "ALTER TABLE vendor ADD COLUMN alamat_npwp TEXT" },
-    { table: "vendor", column: "nama_di_npwp", ddl: "ALTER TABLE vendor ADD COLUMN nama_di_npwp TEXT" },
+  const ppnAdditiveCols: Array<{ table: string; column: string; ddl: string }> =
+    [
+      {
+        table: "pelanggan",
+        column: "alamat_npwp",
+        ddl: "ALTER TABLE pelanggan ADD COLUMN alamat_npwp TEXT",
+      },
+      {
+        table: "pelanggan",
+        column: "nama_di_npwp",
+        ddl: "ALTER TABLE pelanggan ADD COLUMN nama_di_npwp TEXT",
+      },
+      {
+        table: "vendor",
+        column: "npwp",
+        ddl: "ALTER TABLE vendor ADD COLUMN npwp TEXT",
+      },
+      {
+        table: "vendor",
+        column: "alamat_npwp",
+        ddl: "ALTER TABLE vendor ADD COLUMN alamat_npwp TEXT",
+      },
+      {
+        table: "vendor",
+        column: "nama_di_npwp",
+        ddl: "ALTER TABLE vendor ADD COLUMN nama_di_npwp TEXT",
+      },
 
-    { table: "penjualan", column: "kena_ppn", ddl: "ALTER TABLE penjualan ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0" },
-    { table: "penjualan", column: "ppn_persen", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0" },
-    { table: "penjualan", column: "ppn_metode", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))" },
-    { table: "penjualan", column: "dpp_total", ddl: "ALTER TABLE penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
-    { table: "penjualan", column: "ppn_total", ddl: "ALTER TABLE penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
-    { table: "penjualan", column: "nsfp_kode_transaksi", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_kode_transaksi TEXT" },
-    { table: "penjualan", column: "nsfp_tahun", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_tahun TEXT" },
-    { table: "penjualan", column: "nsfp_nomor_seri", ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_nomor_seri TEXT" },
-    { table: "penjualan", column: "tanggal_faktur_pajak", ddl: "ALTER TABLE penjualan ADD COLUMN tanggal_faktur_pajak TEXT" },
-    { table: "penjualan", column: "pelanggan_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_npwp_snapshot TEXT" },
-    { table: "penjualan", column: "pelanggan_alamat_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_alamat_npwp_snapshot TEXT" },
-    { table: "penjualan", column: "pelanggan_nama_npwp_snapshot", ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_nama_npwp_snapshot TEXT" },
+      {
+        table: "penjualan",
+        column: "kena_ppn",
+        ddl: "ALTER TABLE penjualan ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0",
+      },
+      {
+        table: "penjualan",
+        column: "ppn_persen",
+        ddl: "ALTER TABLE penjualan ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "penjualan",
+        column: "ppn_metode",
+        ddl: "ALTER TABLE penjualan ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))",
+      },
+      {
+        table: "penjualan",
+        column: "dpp_total",
+        ddl: "ALTER TABLE penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "penjualan",
+        column: "ppn_total",
+        ddl: "ALTER TABLE penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "penjualan",
+        column: "nsfp_kode_transaksi",
+        ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_kode_transaksi TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "nsfp_tahun",
+        ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_tahun TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "nsfp_nomor_seri",
+        ddl: "ALTER TABLE penjualan ADD COLUMN nsfp_nomor_seri TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "tanggal_faktur_pajak",
+        ddl: "ALTER TABLE penjualan ADD COLUMN tanggal_faktur_pajak TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "pelanggan_npwp_snapshot",
+        ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_npwp_snapshot TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "pelanggan_alamat_npwp_snapshot",
+        ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_alamat_npwp_snapshot TEXT",
+      },
+      {
+        table: "penjualan",
+        column: "pelanggan_nama_npwp_snapshot",
+        ddl: "ALTER TABLE penjualan ADD COLUMN pelanggan_nama_npwp_snapshot TEXT",
+      },
 
-    { table: "item_penjualan", column: "dpp_satuan", ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0" },
-    { table: "item_penjualan", column: "ppn_satuan", ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0" },
-    { table: "item_penjualan", column: "dpp_total", ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
-    { table: "item_penjualan", column: "ppn_total", ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
+      {
+        table: "item_penjualan",
+        column: "dpp_satuan",
+        ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_penjualan",
+        column: "ppn_satuan",
+        ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_penjualan",
+        column: "dpp_total",
+        ddl: "ALTER TABLE item_penjualan ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_penjualan",
+        column: "ppn_total",
+        ddl: "ALTER TABLE item_penjualan ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+      },
 
-    { table: "pembelian", column: "kena_ppn", ddl: "ALTER TABLE pembelian ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0" },
-    { table: "pembelian", column: "ppn_persen", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0" },
-    { table: "pembelian", column: "ppn_metode", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))" },
-    { table: "pembelian", column: "dpp_total", ddl: "ALTER TABLE pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
-    { table: "pembelian", column: "ppn_total", ddl: "ALTER TABLE pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
-    { table: "pembelian", column: "dapat_dikreditkan", ddl: "ALTER TABLE pembelian ADD COLUMN dapat_dikreditkan INTEGER NOT NULL DEFAULT 1" },
-    { table: "pembelian", column: "nomor_faktur_pajak_vendor", ddl: "ALTER TABLE pembelian ADD COLUMN nomor_faktur_pajak_vendor TEXT" },
-    { table: "pembelian", column: "tanggal_faktur_pajak", ddl: "ALTER TABLE pembelian ADD COLUMN tanggal_faktur_pajak TEXT" },
-    { table: "pembelian", column: "vendor_npwp_snapshot", ddl: "ALTER TABLE pembelian ADD COLUMN vendor_npwp_snapshot TEXT" },
+      {
+        table: "pembelian",
+        column: "kena_ppn",
+        ddl: "ALTER TABLE pembelian ADD COLUMN kena_ppn INTEGER NOT NULL DEFAULT 0",
+      },
+      {
+        table: "pembelian",
+        column: "ppn_persen",
+        ddl: "ALTER TABLE pembelian ADD COLUMN ppn_persen REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "pembelian",
+        column: "ppn_metode",
+        ddl: "ALTER TABLE pembelian ADD COLUMN ppn_metode TEXT NOT NULL DEFAULT 'EKSKLUSIF' CHECK(ppn_metode IN ('EKSKLUSIF','INKLUSIF'))",
+      },
+      {
+        table: "pembelian",
+        column: "dpp_total",
+        ddl: "ALTER TABLE pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "pembelian",
+        column: "ppn_total",
+        ddl: "ALTER TABLE pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "pembelian",
+        column: "dapat_dikreditkan",
+        ddl: "ALTER TABLE pembelian ADD COLUMN dapat_dikreditkan INTEGER NOT NULL DEFAULT 1",
+      },
+      {
+        table: "pembelian",
+        column: "nomor_faktur_pajak_vendor",
+        ddl: "ALTER TABLE pembelian ADD COLUMN nomor_faktur_pajak_vendor TEXT",
+      },
+      {
+        table: "pembelian",
+        column: "tanggal_faktur_pajak",
+        ddl: "ALTER TABLE pembelian ADD COLUMN tanggal_faktur_pajak TEXT",
+      },
+      {
+        table: "pembelian",
+        column: "vendor_npwp_snapshot",
+        ddl: "ALTER TABLE pembelian ADD COLUMN vendor_npwp_snapshot TEXT",
+      },
 
-    { table: "item_pembelian", column: "dpp_satuan", ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0" },
-    { table: "item_pembelian", column: "ppn_satuan", ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0" },
-    { table: "item_pembelian", column: "dpp_total", ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0" },
-    { table: "item_pembelian", column: "ppn_total", ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0" },
-  ];
+      {
+        table: "item_pembelian",
+        column: "dpp_satuan",
+        ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_satuan REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_pembelian",
+        column: "ppn_satuan",
+        ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_satuan REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_pembelian",
+        column: "dpp_total",
+        ddl: "ALTER TABLE item_pembelian ADD COLUMN dpp_total REAL NOT NULL DEFAULT 0",
+      },
+      {
+        table: "item_pembelian",
+        column: "ppn_total",
+        ddl: "ALTER TABLE item_pembelian ADD COLUMN ppn_total REAL NOT NULL DEFAULT 0",
+      },
+    ];
 
   for (const { table, column, ddl } of ppnAdditiveCols) {
     const exists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(table);
     if (!exists) continue;
     const cols = (
@@ -996,15 +1211,37 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   `);
 
   const hardeningCols: Array<{ table: string; column: string; ddl: string }> = [
-    { table: "inventory_movements", column: "location_id", ddl: "ALTER TABLE inventory_movements ADD COLUMN location_id TEXT DEFAULT 'main'" },
-    { table: "barang", column: "default_location_id", ddl: "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'" },
-    { table: "keuangan", column: "reference_type", ddl: "ALTER TABLE keuangan ADD COLUMN reference_type TEXT" },
-    { table: "keuangan", column: "reference_id", ddl: "ALTER TABLE keuangan ADD COLUMN reference_id TEXT" },
-    { table: "keuangan", column: "periode_id", ddl: "ALTER TABLE keuangan ADD COLUMN periode_id TEXT REFERENCES accounting_periods(id)" },
+    {
+      table: "inventory_movements",
+      column: "location_id",
+      ddl: "ALTER TABLE inventory_movements ADD COLUMN location_id TEXT DEFAULT 'main'",
+    },
+    {
+      table: "barang",
+      column: "default_location_id",
+      ddl: "ALTER TABLE barang ADD COLUMN default_location_id TEXT DEFAULT 'main'",
+    },
+    {
+      table: "keuangan",
+      column: "reference_type",
+      ddl: "ALTER TABLE keuangan ADD COLUMN reference_type TEXT",
+    },
+    {
+      table: "keuangan",
+      column: "reference_id",
+      ddl: "ALTER TABLE keuangan ADD COLUMN reference_id TEXT",
+    },
+    {
+      table: "keuangan",
+      column: "periode_id",
+      ddl: "ALTER TABLE keuangan ADD COLUMN periode_id TEXT REFERENCES accounting_periods(id)",
+    },
   ];
   for (const { table, column, ddl } of hardeningCols) {
     const exists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(table);
     if (!exists) continue;
     const cols = (
@@ -1090,25 +1327,112 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       ON production_material_consumptions(roll_variant_id, dibuat_pada);
   `);
 
-  const rollInventoryCols: Array<{ table: string; column: string; ddl: string }> = [
-    { table: "barang", column: "roll_inventory_status", ddl: "ALTER TABLE barang ADD COLUMN roll_inventory_status INTEGER NOT NULL DEFAULT 0" },
-    { table: "inventory_movements", column: "roll_variant_id", ddl: "ALTER TABLE inventory_movements ADD COLUMN roll_variant_id TEXT" },
-    { table: "inventory_movements", column: "roll_width_m", ddl: "ALTER TABLE inventory_movements ADD COLUMN roll_width_m REAL" },
-    { table: "inventory_movements", column: "linear_delta_m", ddl: "ALTER TABLE inventory_movements ADD COLUMN linear_delta_m REAL" },
-    { table: "item_penjualan", column: "billed_panjang", ddl: "ALTER TABLE item_penjualan ADD COLUMN billed_panjang REAL" },
-    { table: "item_penjualan", column: "billed_lebar", ddl: "ALTER TABLE item_penjualan ADD COLUMN billed_lebar REAL" },
-    { table: "item_penjualan", column: "recommended_roll_width_m", ddl: "ALTER TABLE item_penjualan ADD COLUMN recommended_roll_width_m REAL" },
-    { table: "item_penjualan", column: "roll_inventory_deferred", ddl: "ALTER TABLE item_penjualan ADD COLUMN roll_inventory_deferred INTEGER NOT NULL DEFAULT 0" },
-    { table: "item_produksi", column: "barang_id", ddl: "ALTER TABLE item_produksi ADD COLUMN barang_id TEXT" },
-    { table: "item_produksi", column: "billed_panjang", ddl: "ALTER TABLE item_produksi ADD COLUMN billed_panjang REAL" },
-    { table: "item_produksi", column: "billed_lebar", ddl: "ALTER TABLE item_produksi ADD COLUMN billed_lebar REAL" },
-    { table: "item_produksi", column: "recommended_roll_width_m", ddl: "ALTER TABLE item_produksi ADD COLUMN recommended_roll_width_m REAL" },
-    { table: "item_produksi", column: "roll_inventory_status", ddl: "ALTER TABLE item_produksi ADD COLUMN roll_inventory_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED'" },
-    { table: "order_produksi", column: "status_override_manual", ddl: "ALTER TABLE order_produksi ADD COLUMN status_override_manual INTEGER NOT NULL DEFAULT 0" },
+  const rollInventoryCols: Array<{
+    table: string;
+    column: string;
+    ddl: string;
+  }> = [
+    {
+      table: "barang",
+      column: "roll_inventory_status",
+      ddl: "ALTER TABLE barang ADD COLUMN roll_inventory_status INTEGER NOT NULL DEFAULT 0",
+    },
+    {
+      table: "inventory_movements",
+      column: "roll_variant_id",
+      ddl: "ALTER TABLE inventory_movements ADD COLUMN roll_variant_id TEXT",
+    },
+    {
+      table: "inventory_movements",
+      column: "roll_width_m",
+      ddl: "ALTER TABLE inventory_movements ADD COLUMN roll_width_m REAL",
+    },
+    {
+      table: "inventory_movements",
+      column: "linear_delta_m",
+      ddl: "ALTER TABLE inventory_movements ADD COLUMN linear_delta_m REAL",
+    },
+    {
+      table: "item_penjualan",
+      column: "billed_panjang",
+      ddl: "ALTER TABLE item_penjualan ADD COLUMN billed_panjang REAL",
+    },
+    {
+      table: "item_penjualan",
+      column: "billed_lebar",
+      ddl: "ALTER TABLE item_penjualan ADD COLUMN billed_lebar REAL",
+    },
+    {
+      table: "item_penjualan",
+      column: "recommended_roll_width_m",
+      ddl: "ALTER TABLE item_penjualan ADD COLUMN recommended_roll_width_m REAL",
+    },
+    {
+      table: "item_penjualan",
+      column: "roll_inventory_deferred",
+      ddl: "ALTER TABLE item_penjualan ADD COLUMN roll_inventory_deferred INTEGER NOT NULL DEFAULT 0",
+    },
+    {
+      table: "item_produksi",
+      column: "barang_id",
+      ddl: "ALTER TABLE item_produksi ADD COLUMN barang_id TEXT",
+    },
+    {
+      table: "item_produksi",
+      column: "billed_panjang",
+      ddl: "ALTER TABLE item_produksi ADD COLUMN billed_panjang REAL",
+    },
+    {
+      table: "item_produksi",
+      column: "billed_lebar",
+      ddl: "ALTER TABLE item_produksi ADD COLUMN billed_lebar REAL",
+    },
+    {
+      table: "item_produksi",
+      column: "recommended_roll_width_m",
+      ddl: "ALTER TABLE item_produksi ADD COLUMN recommended_roll_width_m REAL",
+    },
+    {
+      table: "item_produksi",
+      column: "roll_inventory_status",
+      ddl: "ALTER TABLE item_produksi ADD COLUMN roll_inventory_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED'",
+    },
+    {
+      table: "order_produksi",
+      column: "status_override_manual",
+      ddl: "ALTER TABLE order_produksi ADD COLUMN status_override_manual INTEGER NOT NULL DEFAULT 0",
+    },
+    {
+      table: "stock_opname_items",
+      column: "roll_variant_id",
+      ddl: "ALTER TABLE stock_opname_items ADD COLUMN roll_variant_id TEXT",
+    },
+    {
+      table: "stock_opname_items",
+      column: "roll_width_m",
+      ddl: "ALTER TABLE stock_opname_items ADD COLUMN roll_width_m REAL",
+    },
+    {
+      table: "stock_opname_items",
+      column: "system_linear_m",
+      ddl: "ALTER TABLE stock_opname_items ADD COLUMN system_linear_m REAL",
+    },
+    {
+      table: "stock_opname_items",
+      column: "counted_linear_m",
+      ddl: "ALTER TABLE stock_opname_items ADD COLUMN counted_linear_m REAL",
+    },
+    {
+      table: "stock_opname_items",
+      column: "delta_linear_m",
+      ddl: "ALTER TABLE stock_opname_items ADD COLUMN delta_linear_m REAL",
+    },
   ];
   for (const { table, column, ddl } of rollInventoryCols) {
     const exists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(table);
     if (!exists) continue;
     const cols = (
@@ -1123,32 +1447,39 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // Rebuild tabel sekali; di-skip bila CHECK sudah tidak ada. Validasi status
   // sekarang di aplikasi (Zod) — lihat src/lib/produksi/status-produksi.ts.
   const itemProduksiExists = db
-    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='item_produksi' LIMIT 1")
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='item_produksi' LIMIT 1",
+    )
     .get();
   if (itemProduksiExists) {
     const itemProduksiDDL = (
       db
         .prepare(
-          "SELECT sql FROM sqlite_master WHERE type='table' AND name='item_produksi'"
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name='item_produksi'",
         )
         .get() as { sql?: string } | undefined
     )?.sql;
     if (itemProduksiDDL && /CHECK\s*\(\s*status\s+IN/i.test(itemProduksiDDL)) {
       const itemCols = (
-        db.prepare("PRAGMA table_info(item_produksi)").all() as Array<{ name: string }>
+        db.prepare("PRAGMA table_info(item_produksi)").all() as Array<{
+          name: string;
+        }>
       ).map((c) => c.name);
       const colNames = itemCols.join(", ");
       const newDDL = itemProduksiDDL
-        .replace(/CREATE TABLE\s+("?item_produksi"?)/i, "CREATE TABLE item_produksi__new")
+        .replace(
+          /CREATE TABLE\s+("?item_produksi"?)/i,
+          "CREATE TABLE item_produksi__new",
+        )
         .replace(
           /status\s+TEXT\s+DEFAULT\s+'MENUNGGU'\s+CHECK\s*\(\s*status\s+IN\s*\([^)]*\)\)/i,
-          "status TEXT DEFAULT 'MENUNGGU'"
+          "status TEXT DEFAULT 'MENUNGGU'",
         );
       const rebuild = db.transaction(() => {
         db.pragma("foreign_keys = OFF");
         db.exec(newDDL);
         db.exec(
-          `INSERT INTO item_produksi__new (${colNames}) SELECT ${colNames} FROM item_produksi`
+          `INSERT INTO item_produksi__new (${colNames}) SELECT ${colNames} FROM item_produksi`,
         );
         db.exec("DROP TABLE item_produksi");
         db.exec("ALTER TABLE item_produksi__new RENAME TO item_produksi");
@@ -1163,14 +1494,32 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       ON inventory_movements(roll_variant_id, dibuat_pada);
   `);
 
-  const commercialWorkflowCols: Array<{ table: string; column: string; ddl: string }> = [
-    { table: "penjualan", column: "penawaran_id", ddl: "ALTER TABLE penjualan ADD COLUMN penawaran_id TEXT" },
-    { table: "pembelian", column: "purchase_order_id", ddl: "ALTER TABLE pembelian ADD COLUMN purchase_order_id TEXT" },
-    { table: "item_pembelian", column: "purchase_order_item_id", ddl: "ALTER TABLE item_pembelian ADD COLUMN purchase_order_item_id TEXT" },
+  const commercialWorkflowCols: Array<{
+    table: string;
+    column: string;
+    ddl: string;
+  }> = [
+    {
+      table: "penjualan",
+      column: "penawaran_id",
+      ddl: "ALTER TABLE penjualan ADD COLUMN penawaran_id TEXT",
+    },
+    {
+      table: "pembelian",
+      column: "purchase_order_id",
+      ddl: "ALTER TABLE pembelian ADD COLUMN purchase_order_id TEXT",
+    },
+    {
+      table: "item_pembelian",
+      column: "purchase_order_item_id",
+      ddl: "ALTER TABLE item_pembelian ADD COLUMN purchase_order_item_id TEXT",
+    },
   ];
   for (const { table, column, ddl } of commercialWorkflowCols) {
     const exists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(table);
     if (!exists) continue;
     const cols = (
@@ -1518,12 +1867,14 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const financeCategoryExistsForReturns = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'finance_category_definitions' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'finance_category_definitions' LIMIT 1",
     )
     .get();
   if (financeCategoryExistsForReturns) {
     const catCols = (
-      db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
+      db
+        .prepare("PRAGMA table_info(finance_category_definitions)")
+        .all() as Array<{
         name: string;
       }>
     ).map((c) => c.name);
@@ -1568,7 +1919,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   for (const tableName of SYNC_V2_TABLES) {
     const tableExists = db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
+      )
       .get(tableName);
     if (!tableExists) continue;
 
@@ -1586,19 +1939,23 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
           ? "dibuat_pada"
           : "datetime('now')";
       db.exec(
-        `UPDATE ${tableName} SET updated_at_server = COALESCE(updated_at_server, ${fallbackTimestampExpr})`
+        `UPDATE ${tableName} SET updated_at_server = COALESCE(updated_at_server, ${fallbackTimestampExpr})`,
       );
     }
     if (!columns.includes("updated_by_device")) {
       db.exec(
-        `ALTER TABLE ${tableName} ADD COLUMN updated_by_device TEXT DEFAULT 'server'`
+        `ALTER TABLE ${tableName} ADD COLUMN updated_by_device TEXT DEFAULT 'server'`,
       );
     }
     if (!columns.includes("change_version")) {
-      db.exec(`ALTER TABLE ${tableName} ADD COLUMN change_version INTEGER DEFAULT 1`);
+      db.exec(
+        `ALTER TABLE ${tableName} ADD COLUMN change_version INTEGER DEFAULT 1`,
+      );
     }
     if (!columns.includes("is_deleted")) {
-      db.exec(`ALTER TABLE ${tableName} ADD COLUMN is_deleted INTEGER DEFAULT 0`);
+      db.exec(
+        `ALTER TABLE ${tableName} ADD COLUMN is_deleted INTEGER DEFAULT 0`,
+      );
     }
     if (!columns.includes("deleted_at")) {
       db.exec(`ALTER TABLE ${tableName} ADD COLUMN deleted_at TEXT`);
@@ -1608,13 +1965,13 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     }
 
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_${tableName}_updated_at_server ON ${tableName}(updated_at_server)`
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_updated_at_server ON ${tableName}(updated_at_server)`,
     );
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_${tableName}_change_version ON ${tableName}(change_version)`
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_change_version ON ${tableName}(change_version)`,
     );
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_${tableName}_is_deleted ON ${tableName}(is_deleted)`
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_is_deleted ON ${tableName}(is_deleted)`,
     );
   }
 
@@ -1624,7 +1981,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // need to record the physical roll dimensions of each invoice line.
   const itemPembelianExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_pembelian' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_pembelian' LIMIT 1",
     )
     .get();
   if (itemPembelianExists) {
@@ -1641,7 +1998,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     }
     if (!ipCols.includes("jumlah_roll")) {
       db.exec(
-        `ALTER TABLE item_pembelian ADD COLUMN jumlah_roll INTEGER NOT NULL DEFAULT 1`
+        `ALTER TABLE item_pembelian ADD COLUMN jumlah_roll INTEGER NOT NULL DEFAULT 1`,
       );
     }
   }
@@ -1650,7 +2007,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // Mirror of supabase migration 20260630200000_penawaran_dimensi.sql.
   const itemPenawaranExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penawaran' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penawaran' LIMIT 1",
     )
     .get();
   if (itemPenawaranExists) {
@@ -1666,7 +2023,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const poItemsExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'purchase_order_items' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'purchase_order_items' LIMIT 1",
     )
     .get();
   if (poItemsExists) {
@@ -1676,7 +2033,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       }>
     ).map((c) => c.name);
     if (!poiCols.includes("jumlah_roll")) {
-      db.exec(`ALTER TABLE purchase_order_items ADD COLUMN jumlah_roll INTEGER`);
+      db.exec(
+        `ALTER TABLE purchase_order_items ADD COLUMN jumlah_roll INTEGER`,
+      );
     }
   }
 
@@ -1684,7 +2043,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // existing local SQLite installs; new template schemas already include these.
   const barangExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang' LIMIT 1",
     )
     .get();
   if (barangExists) {
@@ -1692,7 +2051,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       db.prepare("PRAGMA table_info(barang)").all() as Array<{ name: string }>
     ).map((c) => c.name);
     if (!barangCols.includes("average_cost_per_base_unit")) {
-      db.exec(`ALTER TABLE barang ADD COLUMN average_cost_per_base_unit REAL DEFAULT 0`);
+      db.exec(
+        `ALTER TABLE barang ADD COLUMN average_cost_per_base_unit REAL DEFAULT 0`,
+      );
       db.exec(`
         UPDATE barang
         SET average_cost_per_base_unit = COALESCE(
@@ -1711,7 +2072,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const itemPenjualanExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penjualan' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'item_penjualan' LIMIT 1",
     )
     .get();
   if (itemPenjualanExists) {
@@ -1721,16 +2082,22 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       }>
     ).map((c) => c.name);
     if (!ijCols.includes("hpp_satuan")) {
-      db.exec(`ALTER TABLE item_penjualan ADD COLUMN hpp_satuan REAL DEFAULT 0`);
+      db.exec(
+        `ALTER TABLE item_penjualan ADD COLUMN hpp_satuan REAL DEFAULT 0`,
+      );
     }
     if (!ijCols.includes("hpp_total")) {
       db.exec(`ALTER TABLE item_penjualan ADD COLUMN hpp_total REAL DEFAULT 0`);
     }
     if (!ijCols.includes("gross_profit")) {
-      db.exec(`ALTER TABLE item_penjualan ADD COLUMN gross_profit REAL DEFAULT 0`);
+      db.exec(
+        `ALTER TABLE item_penjualan ADD COLUMN gross_profit REAL DEFAULT 0`,
+      );
     }
     if (!ijCols.includes("gross_margin")) {
-      db.exec(`ALTER TABLE item_penjualan ADD COLUMN gross_margin REAL DEFAULT 0`);
+      db.exec(
+        `ALTER TABLE item_penjualan ADD COLUMN gross_margin REAL DEFAULT 0`,
+      );
     }
     // Maklon support: per-line subcontract metadata. Mirror of supabase
     // migration 20260523230000_maklon_support.sql. Lines with tipe_item='MAKLON'
@@ -1738,12 +2105,12 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     // auto-created pembelian.
     if (!ijCols.includes("tipe_item")) {
       db.exec(
-        `ALTER TABLE item_penjualan ADD COLUMN tipe_item TEXT NOT NULL DEFAULT 'BARANG'`
+        `ALTER TABLE item_penjualan ADD COLUMN tipe_item TEXT NOT NULL DEFAULT 'BARANG'`,
       );
     }
     if (!ijCols.includes("vendor_subkontrak_id")) {
       db.exec(
-        `ALTER TABLE item_penjualan ADD COLUMN vendor_subkontrak_id TEXT`
+        `ALTER TABLE item_penjualan ADD COLUMN vendor_subkontrak_id TEXT`,
       );
     }
     if (!ijCols.includes("biaya_subkontrak")) {
@@ -1754,23 +2121,23 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     }
     if (!ijCols.includes("pembelian_id_terkait")) {
       db.exec(
-        `ALTER TABLE item_penjualan ADD COLUMN pembelian_id_terkait TEXT`
+        `ALTER TABLE item_penjualan ADD COLUMN pembelian_id_terkait TEXT`,
       );
     }
     if (!ijCols.includes("deskripsi_pekerjaan")) {
       db.exec(`ALTER TABLE item_penjualan ADD COLUMN deskripsi_pekerjaan TEXT`);
     }
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_item_penjualan_tipe_item ON item_penjualan(tipe_item)`
+      `CREATE INDEX IF NOT EXISTS idx_item_penjualan_tipe_item ON item_penjualan(tipe_item)`,
     );
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_item_penjualan_pembelian_terkait ON item_penjualan(pembelian_id_terkait)`
+      `CREATE INDEX IF NOT EXISTS idx_item_penjualan_pembelian_terkait ON item_penjualan(pembelian_id_terkait)`,
     );
   }
 
   const pengaturanTokoExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pengaturan_toko' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pengaturan_toko' LIMIT 1",
     )
     .get();
   if (pengaturanTokoExists) {
@@ -1794,7 +2161,11 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     }> = [
       { name: "website", sql: "website TEXT" },
       { name: "bank_nama", sql: "bank_nama TEXT", defaultValue: "BCA" },
-      { name: "bank_nomor", sql: "bank_nomor TEXT", defaultValue: "6881276507" },
+      {
+        name: "bank_nomor",
+        sql: "bank_nomor TEXT",
+        defaultValue: "6881276507",
+      },
       {
         name: "bank_atas_nama",
         sql: "bank_atas_nama TEXT",
@@ -1803,7 +2174,8 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       {
         name: "catatan_faktur",
         sql: "catatan_faktur TEXT",
-        defaultValue: "Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.",
+        defaultValue:
+          "Barang yang sudah dibawa tidak bisa ditukar/dikembalikan.",
       },
       {
         name: "catatan_struk",
@@ -1822,7 +2194,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         sql: "inv_reset TEXT NOT NULL DEFAULT 'daily' CHECK(inv_reset IN ('daily', 'monthly', 'yearly', 'never'))",
       },
       { name: "inv_padding", sql: "inv_padding INTEGER NOT NULL DEFAULT 3" },
-      { name: "inv_start_seq", sql: "inv_start_seq INTEGER NOT NULL DEFAULT 1" },
+      {
+        name: "inv_start_seq",
+        sql: "inv_start_seq INTEGER NOT NULL DEFAULT 1",
+      },
       { name: "spk_prefix", sql: "spk_prefix TEXT NOT NULL DEFAULT 'SPK'" },
       {
         name: "spk_format",
@@ -1833,7 +2208,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         sql: "spk_reset TEXT NOT NULL DEFAULT 'never' CHECK(spk_reset IN ('daily', 'monthly', 'yearly', 'never'))",
       },
       { name: "spk_padding", sql: "spk_padding INTEGER NOT NULL DEFAULT 4" },
-      { name: "spk_start_seq", sql: "spk_start_seq INTEGER NOT NULL DEFAULT 1" },
+      {
+        name: "spk_start_seq",
+        sql: "spk_start_seq INTEGER NOT NULL DEFAULT 1",
+      },
     ];
     for (const column of pengaturanTokoExtraColumns) {
       if (!pengaturanTokoCols.includes(column.name)) {
@@ -1853,7 +2231,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // Maklon: pembelian back-link to the sale that triggered it.
   const pembelianExistsForMaklon = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pembelian' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pembelian' LIMIT 1",
     )
     .get();
   if (pembelianExistsForMaklon) {
@@ -1864,24 +2242,24 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     ).map((c) => c.name);
     if (!pemCols.includes("tipe_pembelian")) {
       db.exec(
-        `ALTER TABLE pembelian ADD COLUMN tipe_pembelian TEXT NOT NULL DEFAULT 'BARANG'`
+        `ALTER TABLE pembelian ADD COLUMN tipe_pembelian TEXT NOT NULL DEFAULT 'BARANG'`,
       );
     }
     if (!pemCols.includes("penjualan_id_sumber")) {
       db.exec(`ALTER TABLE pembelian ADD COLUMN penjualan_id_sumber TEXT`);
     }
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_pembelian_penjualan_sumber ON pembelian(penjualan_id_sumber)`
+      `CREATE INDEX IF NOT EXISTS idx_pembelian_penjualan_sumber ON pembelian(penjualan_id_sumber)`,
     );
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_pembelian_tipe ON pembelian(tipe_pembelian)`
+      `CREATE INDEX IF NOT EXISTS idx_pembelian_tipe ON pembelian(tipe_pembelian)`,
     );
   }
 
   // Maklon: vendor classification (SUPPLIER / SUBKONTRAKTOR / KEDUANYA).
   const vendorExistsForMaklon = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'vendor' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'vendor' LIMIT 1",
     )
     .get();
   if (vendorExistsForMaklon) {
@@ -1890,11 +2268,11 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     ).map((c) => c.name);
     if (!venCols.includes("tipe_vendor")) {
       db.exec(
-        `ALTER TABLE vendor ADD COLUMN tipe_vendor TEXT NOT NULL DEFAULT 'SUPPLIER'`
+        `ALTER TABLE vendor ADD COLUMN tipe_vendor TEXT NOT NULL DEFAULT 'SUPPLIER'`,
       );
     }
     db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_vendor_tipe ON vendor(tipe_vendor)`
+      `CREATE INDEX IF NOT EXISTS idx_vendor_tipe ON vendor(tipe_vendor)`,
     );
   }
 
@@ -1903,12 +2281,14 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   const saldoReturnAst = `{"type":"if","cond":{"type":"or","left":{"type":"or","left":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"HPP"}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"RETUR_HPP"}}},"right":{"type":"binaryOp","op":"=","left":{"type":"columnRef","column":"C"},"right":{"type":"literal","value":"RETUR_PENJUALAN_NONCASH"}}},"then":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"literal","value":0},"else":{"type":"prevOutput","column":"J"}},"else":{"type":"if","cond":{"type":"binaryOp","op":"=","left":{"type":"row"},"right":{"type":"literal","value":2}},"then":{"type":"binaryOp","op":"-","left":{"type":"columnRef","column":"D"},"right":{"type":"columnRef","column":"E"}},"else":{"type":"binaryOp","op":"-","left":{"type":"binaryOp","op":"+","left":{"type":"prevOutput","column":"J"},"right":{"type":"columnRef","column":"D"}},"right":{"type":"columnRef","column":"E"}}}}`;
   const financeCategoryExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'finance_category_definitions' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'finance_category_definitions' LIMIT 1",
     )
     .get();
   if (financeCategoryExists) {
     const catCols = (
-      db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
+      db
+        .prepare("PRAGMA table_info(finance_category_definitions)")
+        .all() as Array<{
         name: string;
       }>
     ).map((c) => c.name);
@@ -1954,7 +2334,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // GAJI → biaya_operasional; PINJAMAN_KARYAWAN → [] (hanya kas/saldo bergerak).
   if (financeCategoryExists) {
     const gajiCatCols = (
-      db.prepare("PRAGMA table_info(finance_category_definitions)").all() as Array<{
+      db
+        .prepare("PRAGMA table_info(finance_category_definitions)")
+        .all() as Array<{
         name: string;
       }>
     ).map((c) => c.name);
@@ -1982,7 +2364,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // via biaya_subkontrak / harga_satuan instead.
   const barangExistsForMaklon = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang' LIMIT 1",
     )
     .get();
   if (barangExistsForMaklon) {
@@ -2004,24 +2386,24 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   const cashbookFormulaExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'rumus_buku_kas' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'rumus_buku_kas' LIMIT 1",
     )
     .get();
   if (cashbookFormulaExists) {
     db.prepare(
       `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi penjualan + piutang dikurangi retur penjualan kas dan non-kas.'
-       WHERE db_column = 'omzet' OR formula_key = 'omzet'`
+       WHERE db_column = 'omzet' OR formula_key = 'omzet'`,
     ).run(omzetReturnAst);
     db.prepare(
       `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi HPP dikurangi HPP barang yang diretur.'
-       WHERE db_column = 'biaya_bahan' OR formula_key = 'biaya_bahan'`
+       WHERE db_column = 'biaya_bahan' OR formula_key = 'biaya_bahan'`,
     ).run(hppAst);
     db.prepare(
       `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Saldo kas berjalan; HPP, retur HPP, dan retur penjualan non-kas tidak mengubah kas.'
-       WHERE db_column = 'saldo' OR formula_key = 'saldo'`
+       WHERE db_column = 'saldo' OR formula_key = 'saldo'`,
     ).run(saldoReturnAst);
 
     // Beban gaji ikut mengurangi laba: tambahkan GAJI ke akumulasi
@@ -2031,13 +2413,13 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     db.prepare(
       `UPDATE rumus_buku_kas
        SET ast = ?, description = 'Akumulasi BIAYA + TABUNGAN + GAJI (beban gaji ikut mengurangi laba).'
-       WHERE db_column = 'biaya_operasional' OR formula_key = 'biaya_operasional'`
+       WHERE db_column = 'biaya_operasional' OR formula_key = 'biaya_operasional'`,
     ).run(biayaOpsGajiAst);
   }
 
   const satuanExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'satuan_barang' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'satuan_barang' LIMIT 1",
     )
     .get();
   if (satuanExists) {
@@ -2229,7 +2611,7 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   // ── barang_komponen — BOM komponen rakitan (20260630100000_barang_komponen.sql)
   const barangKomponenExists = db
     .prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang_komponen' LIMIT 1"
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'barang_komponen' LIMIT 1",
     )
     .get();
   if (barangKomponenExists) {
@@ -2247,14 +2629,26 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         column: "komponen_id",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN komponen_id TEXT",
       },
-      { column: "qty", ddl: "ALTER TABLE barang_komponen ADD COLUMN qty REAL NOT NULL DEFAULT 1" },
-      { column: "satuan", ddl: "ALTER TABLE barang_komponen ADD COLUMN satuan TEXT" },
-      { column: "catatan", ddl: "ALTER TABLE barang_komponen ADD COLUMN catatan TEXT" },
+      {
+        column: "qty",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN qty REAL NOT NULL DEFAULT 1",
+      },
+      {
+        column: "satuan",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN satuan TEXT",
+      },
+      {
+        column: "catatan",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN catatan TEXT",
+      },
       {
         column: "dibuat_oleh",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN dibuat_oleh TEXT",
       },
-      { column: "dibuat_pada", ddl: "ALTER TABLE barang_komponen ADD COLUMN dibuat_pada TEXT" },
+      {
+        column: "dibuat_pada",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN dibuat_pada TEXT",
+      },
       {
         column: "diperbarui_pada",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN diperbarui_pada TEXT",
@@ -2287,7 +2681,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         column: "is_deleted",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN is_deleted INTEGER DEFAULT 0",
       },
-      { column: "deleted_at", ddl: "ALTER TABLE barang_komponen ADD COLUMN deleted_at TEXT" },
+      {
+        column: "deleted_at",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN deleted_at TEXT",
+      },
       {
         column: "client_mutation_id",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN client_mutation_id TEXT",
@@ -2327,4 +2724,3 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
 
   serverSqliteColumnsCache.clear();
 }
-
