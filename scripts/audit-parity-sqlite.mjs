@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
 const pgSql = readFileSync(
-  join(root, "supabase/migrations/20260615000000_baseline_checkpoint.sql"),
+  join(root, "supabase/migrations/20260703000000_barang_komponen_dimensi.sql"),
   "utf8",
 );
 const liteSql = readFileSync(join(root, "database/sqlite-schema.sql"), "utf8");

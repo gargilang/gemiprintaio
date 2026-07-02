@@ -104,7 +104,7 @@ class _PosPageState extends ConsumerState<PosPage> {
 
   List<String> get _categories {
     final names = <String>{};
-    for (final m in _materials) {
+    for (final m in _posMaterials) {
       final k = m.kategoriNama;
       if (k != null && k.isNotEmpty) names.add(k);
     }
@@ -120,8 +120,14 @@ class _PosPageState extends ConsumerState<PosPage> {
     return list;
   }
 
+  List<MaterialItem> get _posMaterials => _materials.where((m) {
+        // Produk Jual (harga satuan) selalu tampil; barang induk hanya jika
+        // muncul_di_pos_status aktif.
+        return m.harga.isNotEmpty || m.munculDiPos;
+      }).toList();
+
   List<MaterialItem> get _filtered {
-    var list = _materials;
+    var list = _posMaterials;
     if (_categoryFilter != 'ALL') {
       list = list.where((m) => m.kategoriNama == _categoryFilter).toList();
     }

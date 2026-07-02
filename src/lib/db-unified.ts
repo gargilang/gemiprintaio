@@ -1551,6 +1551,31 @@ class UnifiedDatabase {
       }
     }
 
+    // Migrasi: barang_komponen dimensi (jumlah_roll, panjang, lebar)
+    {
+      const tableExists = db
+        .prepare(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='barang_komponen' LIMIT 1"
+        )
+        .get();
+      if (tableExists) {
+        const cols = (
+          db
+            .prepare("PRAGMA table_info(barang_komponen)")
+            .all() as Array<{ name: string }>
+        ).map((c) => c.name);
+        if (!cols.includes("jumlah_roll")) {
+          db.exec("ALTER TABLE barang_komponen ADD COLUMN jumlah_roll INTEGER");
+        }
+        if (!cols.includes("panjang")) {
+          db.exec("ALTER TABLE barang_komponen ADD COLUMN panjang REAL");
+        }
+        if (!cols.includes("lebar")) {
+          db.exec("ALTER TABLE barang_komponen ADD COLUMN lebar REAL");
+        }
+      }
+    }
+
     // Tabel laporan_bulanan: riwayat laporan bulanan digenerate
     db.exec(`
       CREATE TABLE IF NOT EXISTS laporan_bulanan (

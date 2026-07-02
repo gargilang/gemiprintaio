@@ -2689,6 +2689,18 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         column: "client_mutation_id",
         ddl: "ALTER TABLE barang_komponen ADD COLUMN client_mutation_id TEXT",
       },
+      {
+        column: "jumlah_roll",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN jumlah_roll INTEGER",
+      },
+      {
+        column: "panjang",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN panjang REAL",
+      },
+      {
+        column: "lebar",
+        ddl: "ALTER TABLE barang_komponen ADD COLUMN lebar REAL",
+      },
     ];
     for (const { column, ddl } of barangKomponenAdditiveCols) {
       if (!bkCols.includes(column)) {
@@ -2702,6 +2714,9 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         parent_barang_id TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
         komponen_id TEXT NOT NULL REFERENCES barang(id),
         qty REAL NOT NULL DEFAULT 1,
+        jumlah_roll INTEGER,
+        panjang REAL,
+        lebar REAL,
         satuan TEXT,
         catatan TEXT,
         dibuat_oleh TEXT,

@@ -33,6 +33,7 @@ const TABLES = [
   "accounting_posting_rules",
   "audit_log",
   "barang",
+  "barang_komponen",
   "barang_roll_variants",
   "biaya_tambahan_penjualan",
   "chart_of_accounts",

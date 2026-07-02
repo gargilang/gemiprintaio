@@ -10,6 +10,7 @@ class MaterialItem {
   final String? satuanNama;
   final bool trackStock;
   final bool dimensiRequired;
+  final bool munculDiPos;
   final double stok;
   final double averageCostPerBaseUnit;
   final String? createdAt;
@@ -28,6 +29,7 @@ class MaterialItem {
     this.satuanNama,
     this.trackStock = false,
     this.dimensiRequired = false,
+    this.munculDiPos = true,
     this.stok = 0,
     this.averageCostPerBaseUnit = 0,
     this.createdAt,
@@ -53,6 +55,10 @@ class MaterialItem {
       ),
       dimensiRequired: _boolFromJson(
         json['dimensi_required'] ?? json['butuh_dimensi_status'],
+      ),
+      munculDiPos: _boolFromJson(
+        json['muncul_di_pos_status'],
+        defaultValue: true,
       ),
       stok:
           (json['stok'] as num?)?.toDouble() ??
@@ -85,6 +91,7 @@ class MaterialPrice {
   final String id;
   final String barangId;
   final String label;
+  final String? namaProdukJual;
   final double hargaBeli;
   final double hargaJual;
   final double hargaMember;
@@ -95,12 +102,19 @@ class MaterialPrice {
     required this.id,
     required this.barangId,
     required this.label,
+    this.namaProdukJual,
     this.hargaBeli = 0,
     this.hargaJual = 0,
     this.hargaMember = 0,
     this.faktorKonversi = 1,
     this.isDefault = false,
   });
+
+  /// Label tampilan di POS: nama produk jual jika ada, fallback ke satuan.
+  String get displayLabel =>
+      (namaProdukJual?.trim().isNotEmpty ?? false)
+          ? namaProdukJual!.trim()
+          : label;
 
   double hargaUntuk({bool isMember = false}) {
     if (isMember && hargaMember > 0) return hargaMember;
@@ -113,6 +127,7 @@ class MaterialPrice {
       id: json['id'] as String,
       barangId: (json['barang_id'] ?? '') as String,
       label: (json['nama_satuan'] ?? json['label'] ?? '') as String,
+      namaProdukJual: json['nama_produk_jual'] as String?,
       hargaBeli: (json['harga_beli'] as num?)?.toDouble() ?? 0,
       hargaJual: (json['harga_jual'] as num?)?.toDouble() ?? 0,
       hargaMember: (json['harga_member'] as num?)?.toDouble() ?? 0,
@@ -131,6 +146,7 @@ class MaterialPrice {
   };
 }
 
-bool _boolFromJson(Object? value) {
+bool _boolFromJson(Object? value, {bool defaultValue = false}) {
+  if (value == null) return defaultValue;
   return value == true || value == 1 || value == '1';
 }

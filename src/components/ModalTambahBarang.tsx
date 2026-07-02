@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import PanelHargaSatuan from "./barang/PanelHargaSatuan";
 import PanelKomponenRakitan from "@/components/PanelKomponenRakitan";
 import type { UnitPrice } from "./barang/types-barang";
+import {
+  getReferensiUnitPrice,
+  normalizeDefaultStatusForSave,
+} from "@/lib/barang-unit-utils";
 
 interface AddMaterialModalProps {
   isOpen: boolean;
@@ -175,7 +179,6 @@ export default function ModalTambahBarang({
           harga_beli: 0,
           harga_jual: 0,
           harga_member: 0,
-          default_status: true,
         },
       ]);
     }
@@ -249,18 +252,16 @@ export default function ModalTambahBarang({
   };
 
   const addUnitPrice = () => {
-    // Ambil satuan utama untuk referensi pricing
-    const defaultUnit = unitPrices.find((up) => up.default_status);
+    const refUnit = getReferensiUnitPrice(unitPrices);
 
     setUnitPrices([
       ...unitPrices,
       {
         nama_satuan: "",
         faktor_konversi: 1,
-        harga_beli: defaultUnit?.harga_beli || 0,
-        harga_jual: defaultUnit?.harga_jual || 0,
-        harga_member: defaultUnit?.harga_member || 0,
-        default_status: false,
+        harga_beli: refUnit?.harga_beli || 0,
+        harga_jual: refUnit?.harga_jual || 0,
+        harga_member: refUnit?.harga_member || 0,
       },
     ]);
   };
@@ -279,34 +280,28 @@ export default function ModalTambahBarang({
     value: any,
   ) => {
     const updated = [...unitPrices];
-    const defaultUnit = unitPrices.find((up) => up.default_status);
+    const refUnit = getReferensiUnitPrice(unitPrices);
+    const refIndex = refUnit ? unitPrices.indexOf(refUnit) : 0;
 
-    // Kalau faktor konversi diubah, hitung otomatis harga berdasar satuan utama
+    // Kalau faktor konversi diubah, hitung otomatis harga berdasar satuan referensi
     if (
       field === "faktor_konversi" &&
-      defaultUnit &&
-      index !== unitPrices.indexOf(defaultUnit)
+      refUnit &&
+      index !== refIndex
     ) {
       const newConversion = parseFloat(value) || 1;
       updated[index] = {
         ...updated[index],
         faktor_konversi: newConversion,
-        harga_beli: Math.round(defaultUnit.harga_beli * newConversion),
-        harga_jual: Math.round(defaultUnit.harga_jual * newConversion),
+        harga_beli: Math.round(refUnit.harga_beli * newConversion),
+        harga_jual: Math.round(refUnit.harga_jual * newConversion),
         harga_member:
-          defaultUnit.harga_member > 0
-            ? Math.round(defaultUnit.harga_member * newConversion)
+          refUnit.harga_member > 0
+            ? Math.round(refUnit.harga_member * newConversion)
             : 0,
       };
     } else {
       updated[index] = { ...updated[index], [field]: value };
-    }
-
-    // Kalau di-set sebagai utama, batalkan utama yang lain
-    if (field === "default_status" && value === true) {
-      updated.forEach((up, i) => {
-        if (i !== index) up.default_status = false;
-      });
     }
 
     setUnitPrices(updated);
@@ -328,18 +323,11 @@ export default function ModalTambahBarang({
       }
 
       if (unitPrices.length === 0) {
-        alert("Minimal harus ada 1 harga satuan");
+        alert("Minimal harus ada 1 produk jual");
         return;
       }
 
-      // Pastikan setidaknya satu harga satuan ditetapkan sebagai utama
-      const hasDefault = unitPrices.some((up) => up.default_status);
-      if (!hasDefault) {
-        alert("Minimal harus ada 1 satuan yang dijadikan default");
-        return;
-      }
-
-      // Validasi harga satuan
+      // Validasi produk jual
       for (const up of unitPrices) {
         if (!up.nama_satuan || !up.nama_satuan.trim()) {
           alert("Nama satuan tidak boleh kosong");
@@ -402,7 +390,12 @@ export default function ModalTambahBarang({
           lacak_inventori_status: formData.track_inventory,
           butuh_dimensi_status: formData.requires_dimension,
           muncul_di_pos_status: formData.show_in_pos,
-          unit_prices: unitPrices,
+          unit_prices: normalizeDefaultStatusForSave(
+            unitPrices.map((up, index) => ({
+              ...up,
+              urutan_tampilan: index,
+            })),
+          ),
         };
 
         let result;
@@ -723,8 +716,9 @@ export default function ModalTambahBarang({
                     </label>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                    • Munculkan di POS: Nonaktifkan agar barang tidak muncul di
-                    grid POS (stok tetap terlacak)
+                    • Munculkan di POS: Mengontrol visibilitas barang induk di
+                    POS. <strong>Produk Jual</strong> di bagian bawah selalu
+                    muncul di POS (stok tetap terlacak).
                     <br />• Track stok: Nonaktifkan untuk barang konsumsi (lem,
                     tinta, dll)
                     <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi. Stok
@@ -922,6 +916,7 @@ export default function ModalTambahBarang({
                     id: m.id,
                     nama: m.nama,
                     satuan_dasar: m.satuan_dasar || "",
+                    butuh_dimensi_status: m.butuh_dimensi_status ?? 0,
                   }))}
                 />
               </div>

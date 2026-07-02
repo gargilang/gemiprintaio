@@ -128,7 +128,6 @@ export interface ProdukJualFlat {
   harga_jual: number;
   harga_member: number;
   faktor_konversi: number;
-  default_status: number;
   /** ID barang induk */
   barang_id: string;
   /** Nama barang induk — ditampilkan sebagai label sekunder di kartu */

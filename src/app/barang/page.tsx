@@ -26,6 +26,7 @@ import {
 } from "./actions";
 import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
+import { getHppPerSatuanDasar } from "@/lib/barang-unit-utils";
 
 // Memoized Material Row Component — avoids unnecessary re-renders
 const MaterialRow = memo(
@@ -48,17 +49,16 @@ const MaterialRow = memo(
     onWasteMaterial: (material: any) => void;
     onConvertRoll: (material: any) => void;
   }) => {
-    const defaultUnit = material.unit_prices?.find(
-      (up: any) => up.default_status,
+    const unitPrices = material.unit_prices ?? [];
+    const visibleUnits = unitPrices.slice(0, 2);
+    const hiddenUnits = unitPrices.slice(2);
+    const averageCostPerBaseUnit = getHppPerSatuanDasar(
+      unitPrices,
+      material.average_cost_per_base_unit,
     );
-    const otherUnits = material.unit_prices?.filter(
-      (up: any) => !up.default_status,
-    );
-    const averageCostPerBaseUnit =
-      Number(material.average_cost_per_base_unit || 0) ||
-      (defaultUnit?.harga_beli && defaultUnit?.faktor_konversi
-        ? Number(defaultUnit.harga_beli) / Number(defaultUnit.faktor_konversi)
-        : 0);
+
+    const labelProduk = (up: any) =>
+      up.nama_produk_jual?.trim() || up.nama_satuan;
 
     return (
       <tr
@@ -101,34 +101,34 @@ const MaterialRow = memo(
         </td>
         <td className="px-4 py-3">
           <div className="space-y-1">
-            {defaultUnit && (
-              <div className="text-xs">
+            {visibleUnits.map((up: any) => (
+              <div key={up.id ?? up.nama_satuan} className="text-xs">
                 <span className="font-semibold text-emerald-600 dark:text-emerald-300">
-                  {defaultUnit.nama_satuan}
+                  {labelProduk(up)}
                 </span>
-                : Rp {defaultUnit.harga_jual.toLocaleString("id-ID")}
-                {defaultUnit.harga_member > 0 && (
+                : Rp {Number(up.harga_jual || 0).toLocaleString("id-ID")}
+                {Number(up.harga_member || 0) > 0 && (
                   <span className="text-blue-600 dark:text-blue-300">
                     {" "}
-                    / Rp {defaultUnit.harga_member.toLocaleString("id-ID")}
+                    / Rp {Number(up.harga_member).toLocaleString("id-ID")}
                   </span>
                 )}
               </div>
-            )}
-            {otherUnits && otherUnits.length > 0 && (
+            ))}
+            {hiddenUnits.length > 0 && (
               <details className="text-xs text-gray-600 dark:text-slate-300">
                 <summary className="cursor-pointer hover:text-emerald-600 dark:text-emerald-300">
-                  +{otherUnits.length} satuan lainnya
+                  +{hiddenUnits.length} produk jual lainnya
                 </summary>
                 <div className="mt-1 ml-2 space-y-0.5">
-                  {otherUnits.map((up: any) => (
-                    <div key={up.id}>
-                      <span className="font-semibold">{up.nama_satuan}</span>:
-                      Rp {up.harga_jual.toLocaleString("id-ID")}
-                      {up.harga_member > 0 && (
+                  {hiddenUnits.map((up: any) => (
+                    <div key={up.id ?? up.nama_satuan}>
+                      <span className="font-semibold">{labelProduk(up)}</span>:
+                      Rp {Number(up.harga_jual || 0).toLocaleString("id-ID")}
+                      {Number(up.harga_member || 0) > 0 && (
                         <span className="text-blue-600 dark:text-blue-300">
                           {" "}
-                          / Rp {up.harga_member.toLocaleString("id-ID")}
+                          / Rp {Number(up.harga_member).toLocaleString("id-ID")}
                         </span>
                       )}
                     </div>
@@ -422,24 +422,14 @@ export default function MaterialsPage() {
       } else if (sortBy === "stock") {
         comparison = a.jumlah_stok - b.jumlah_stok;
       } else if (sortBy === "value") {
-        const aDefaultUnit = a.unit_prices?.find(
-          (up: any) => up.default_status,
+        const aCost = getHppPerSatuanDasar(
+          a.unit_prices,
+          a.average_cost_per_base_unit,
         );
-        const bDefaultUnit = b.unit_prices?.find(
-          (up: any) => up.default_status,
+        const bCost = getHppPerSatuanDasar(
+          b.unit_prices,
+          b.average_cost_per_base_unit,
         );
-        const aCost =
-          Number(a.average_cost_per_base_unit || 0) ||
-          (aDefaultUnit?.harga_beli && aDefaultUnit?.faktor_konversi
-            ? Number(aDefaultUnit.harga_beli) /
-              Number(aDefaultUnit.faktor_konversi)
-            : 0);
-        const bCost =
-          Number(b.average_cost_per_base_unit || 0) ||
-          (bDefaultUnit?.harga_beli && bDefaultUnit?.faktor_konversi
-            ? Number(bDefaultUnit.harga_beli) /
-              Number(bDefaultUnit.faktor_konversi)
-            : 0);
         const aValue = a.jumlah_stok * aCost;
         const bValue = b.jumlah_stok * bCost;
         comparison = aValue - bValue;
@@ -642,12 +632,10 @@ export default function MaterialsPage() {
   // Calculate totals
   const totalItems = materials.length;
   const totalStockValue = materials.reduce((sum, m) => {
-    const defaultUnit = m.unit_prices?.find((up: any) => up.default_status);
-    const price =
-      Number(m.average_cost_per_base_unit || 0) ||
-      (defaultUnit?.harga_beli && defaultUnit?.faktor_konversi
-        ? Number(defaultUnit.harga_beli) / Number(defaultUnit.faktor_konversi)
-        : 0);
+    const price = getHppPerSatuanDasar(
+      m.unit_prices,
+      m.average_cost_per_base_unit,
+    );
     return sum + m.jumlah_stok * price;
   }, 0);
   const lowStockItems = materials.filter(

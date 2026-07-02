@@ -7,7 +7,8 @@ export interface UnitPrice {
   harga_beli: number;
   harga_jual: number;
   harga_member: number;
-  default_status: boolean;
+  /** Legacy DB — diisi otomatis saat simpan, bukan input pengguna. */
+  default_status?: boolean;
   urutan_tampilan?: number;
   nama_produk_jual?: string | null;
 }

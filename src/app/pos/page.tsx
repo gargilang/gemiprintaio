@@ -53,6 +53,7 @@ import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
 } from "@/lib/barang-placeholder";
+import { getReferensiUnitPrice } from "@/lib/barang-unit-utils";
 import {
   type User,
   type Customer,
@@ -372,9 +373,8 @@ export default function POSPage() {
     });
   }, [materials]);
 
-  // Flatten semua unit_prices dari barang visible menjadi daftar Produk Jual.
-  // Placeholder maklon dilewati — bukan barang katalog, alur maklon lewat
-  // tombol "+ Maklon" yang terpisah (sama seperti filteredMaterials lama).
+  // Flatten semua unit_prices menjadi daftar Produk Jual — selalu tampil di POS
+  // terlepas dari muncul_di_pos_status barang induk. Placeholder maklon dilewati.
   const produkJualList = useMemo<ProdukJualFlat[]>(() => {
     const result: ProdukJualFlat[] = [];
     for (const m of materials) {
@@ -388,7 +388,6 @@ export default function POSPage() {
           harga_jual: up.harga_jual,
           harga_member: up.harga_member,
           faktor_konversi: up.faktor_konversi,
-          default_status: up.default_status,
           barang_id: m.id,
           barang_nama: m.nama,
           butuh_dimensi_status: m.butuh_dimensi_status,
@@ -623,8 +622,7 @@ export default function POSPage() {
 
     const unit =
       material.unit_prices.find((u) => u.id === item.harga_satuan_id) ??
-      material.unit_prices.find((u) => u.default_status === 1) ??
-      material.unit_prices[0] ??
+      getReferensiUnitPrice(material.unit_prices) ??
       null;
 
     setEditingCartIndex(index);

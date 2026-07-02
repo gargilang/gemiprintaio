@@ -15,6 +15,7 @@ import {
 import { getShopSettings } from "./shop-settings-service";
 import { deriveOrderStatus } from "@/lib/produksi/status-produksi";
 import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
+import { hitungQtyKomponenDimensiM2 } from "../bom-utils";
 
 export interface ProductionOrder {
   id: string;
@@ -943,7 +944,21 @@ export async function deductBomComponents({
   if (komponen.length === 0) return;
 
   for (const k of komponen) {
-    const totalQty = Number(k.qty) * qtySPK;
+    let perUnitQty = Number(k.qty);
+    if (
+      k.jumlah_roll != null &&
+      k.panjang != null &&
+      k.lebar != null &&
+      Number(k.panjang) > 0 &&
+      Number(k.lebar) > 0
+    ) {
+      perUnitQty = hitungQtyKomponenDimensiM2(
+        Number(k.jumlah_roll),
+        Number(k.panjang),
+        Number(k.lebar)
+      );
+    }
+    const totalQty = perUnitQty * qtySPK;
     if (!Number.isFinite(totalQty) || totalQty <= 0) continue;
     try {
       await postInventoryMovement({

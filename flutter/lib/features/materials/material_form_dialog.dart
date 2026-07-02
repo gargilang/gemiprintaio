@@ -61,7 +61,6 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
             faktorCtrl: TextEditingController(
               text: p.faktorKonversi.toStringAsFixed(2),
             ),
-            isDefault: p.isDefault,
           ),
         );
       }
@@ -108,10 +107,16 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
           hargaBeliCtrl: TextEditingController(),
           hargaMemberCtrl: TextEditingController(),
           faktorCtrl: TextEditingController(text: '1'),
-          isDefault: _prices.isEmpty,
         ),
       ),
     );
+  }
+
+  int _referensiPriceIndex() {
+    final idx = _prices.indexWhere(
+      (r) => (double.tryParse(r.faktorCtrl.text) ?? 1) == 1,
+    );
+    return idx >= 0 ? idx : 0;
   }
 
   Future<void> _save() async {
@@ -143,19 +148,19 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
         'satuan_dasar': satuanDasar,
         'butuh_dimensi_status': _dimensiRequired,
         'lacak_inventori_status': _trackStock,
-        'unit_prices': _prices
-            .map(
-              (r) => {
-                if (r.id != null) 'id': r.id,
-                'nama_satuan': r.labelCtrl.text.trim(),
-                'harga_jual': double.tryParse(r.hargaJualCtrl.text) ?? 0,
-                'harga_beli': double.tryParse(r.hargaBeliCtrl.text) ?? 0,
-                'harga_member': double.tryParse(r.hargaMemberCtrl.text) ?? 0,
-                'faktor_konversi': double.tryParse(r.faktorCtrl.text) ?? 1,
-                'default_status': r.isDefault ? 1 : 0,
-              },
-            )
-            .toList(),
+        'unit_prices': _prices.asMap().entries.map((e) {
+          final r = e.value;
+          final defaultIdx = _referensiPriceIndex();
+          return {
+            if (r.id != null) 'id': r.id,
+            'nama_satuan': r.labelCtrl.text.trim(),
+            'harga_jual': double.tryParse(r.hargaJualCtrl.text) ?? 0,
+            'harga_beli': double.tryParse(r.hargaBeliCtrl.text) ?? 0,
+            'harga_member': double.tryParse(r.hargaMemberCtrl.text) ?? 0,
+            'faktor_konversi': double.tryParse(r.faktorCtrl.text) ?? 1,
+            'default_status': e.key == defaultIdx ? 1 : 0,
+          };
+        }).toList(),
       };
 
       if (widget.existing == null) {
@@ -318,7 +323,7 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
                   // Harga satuan
                   Row(
                     children: [
-                      Expanded(child: _sectionHeader('Harga Satuan')),
+                      Expanded(child: _sectionHeader('Produk Jual')),
                       TextButton.icon(
                         onPressed: _addPriceRow,
                         icon: const Icon(Icons.add, size: 16),
@@ -340,46 +345,13 @@ class _MaterialFormDialogState extends ConsumerState<MaterialFormDialog> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Harga ${i + 1}',
+                                    'Produk ${i + 1}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
                                     ),
                                   ),
                                 ),
-                                if (r.isDefault)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Default',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                if (!r.isDefault)
-                                  TextButton(
-                                    onPressed: () => setState(() {
-                                      for (final p in _prices) {
-                                        p.isDefault = false;
-                                      }
-                                      r.isDefault = true;
-                                    }),
-                                    child: const Text(
-                                      'Set Default',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ),
                                 if (_prices.length > 1)
                                   IconButton(
                                     icon: const Icon(
@@ -488,7 +460,6 @@ class _PriceRow {
   final TextEditingController hargaBeliCtrl;
   final TextEditingController hargaMemberCtrl;
   final TextEditingController faktorCtrl;
-  bool isDefault;
 
   _PriceRow({
     this.id,
@@ -497,7 +468,6 @@ class _PriceRow {
     required this.hargaBeliCtrl,
     required this.hargaMemberCtrl,
     required this.faktorCtrl,
-    this.isDefault = false,
   });
 
   void dispose() {

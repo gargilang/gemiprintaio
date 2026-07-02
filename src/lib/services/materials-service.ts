@@ -12,6 +12,10 @@ import "server-only";
 
 import { db, getServerSupabaseClient } from "../db-unified";
 import { getReferencedHargaSatuanIds } from "../server-data-supabase";
+import {
+  getReferensiUnitPrice,
+  normalizeDefaultStatusForSave,
+} from "../barang-unit-utils";
 
 function toDbIntBoolean(value: unknown): 0 | 1 {
   return value === true || value === 1 ? 1 : 0;
@@ -201,15 +205,16 @@ export async function createMaterial(
     const materialId = crypto.randomUUID();
 
     // Separate unit_prices from material data
-    const { unit_prices, ...materialData } = material as any;
+    const { unit_prices: rawUnitPrices, ...materialData } = material as any;
+    const unit_prices = Array.isArray(rawUnitPrices)
+      ? normalizeDefaultStatusForSave(rawUnitPrices)
+      : rawUnitPrices;
 
     // Insert material
     const isDimensional = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
     const defaultUnitPrice =
       Array.isArray(unit_prices) && unit_prices.length > 0
-        ? unit_prices.find((up: UnitPrice) => toDbIntBoolean(up.default_status) === 1) ??
-          unit_prices.find((up: UnitPrice) => Number(up.faktor_konversi) === 1) ??
-          unit_prices[0]
+        ? getReferensiUnitPrice(unit_prices)
         : null;
     const initialAverageCostPerBaseUnit =
       defaultUnitPrice && Number(defaultUnitPrice.faktor_konversi || 0) > 0
@@ -312,8 +317,16 @@ export async function updateMaterial(
 ): Promise<boolean> {
   try {
     // Separate unit_prices from material data
-    const { unit_prices, category_name, subcategory_name, ...materialData } =
-      material as any;
+    const {
+      unit_prices: rawUnitPrices,
+      category_name,
+      subcategory_name,
+      ...materialData
+    } = material as any;
+    const unit_prices =
+      rawUnitPrices !== undefined && Array.isArray(rawUnitPrices)
+        ? normalizeDefaultStatusForSave(rawUnitPrices)
+        : rawUnitPrices;
 
     if (unit_prices !== undefined && Array.isArray(unit_prices)) {
       const keepIds = unit_prices

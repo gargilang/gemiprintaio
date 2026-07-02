@@ -10,8 +10,12 @@ jest.mock("@/lib/auth-guard-server", () => ({
 jest.mock("@/lib/db-unified", () => ({
   db: {
     query: jest.fn().mockResolvedValue({ data: [], error: null }),
+    queryOne: jest.fn().mockResolvedValue({
+      data: { id: "k1", butuh_dimensi_status: 0, satuan_dasar: "pcs" },
+      error: null,
+    }),
     insert: jest.fn().mockResolvedValue({ data: { id: "new-id" }, error: null }),
-    delete: jest.fn().mockResolvedValue({ data: null, error: null }),
+    update: jest.fn().mockResolvedValue({ data: null, error: null }),
     generateId: jest.fn().mockReturnValue("test-id"),
   },
   generateId: jest.fn().mockReturnValue("test-id"),

@@ -378,9 +378,10 @@ export async function getPOSInitData(): Promise<POSInitData> {
       orderBy: { column: "nama", ascending: true },
     });
 
-    // Ambil barang beserta kategori (hanya yang tampil di POS)
+    // Ambil semua barang katalog (Produk Jual selalu tampil di POS meski
+    // muncul_di_pos_status barang induk = 0). Flag muncul_di_pos_status hanya
+    // mengontrol kartu barang induk (mis. mobile / barang tanpa satuan jual).
     const materialsResult = await db.query("barang", {
-      where: { muncul_di_pos_status: 1 },
       orderBy: { column: "frekuensi_terjual", ascending: false },
     });
 

@@ -352,6 +352,18 @@ fn ensure_sync_v2_schema(conn: &Connection) -> SqlResult<()> {
         CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
         CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);",
     );
+    let _ = conn.execute(
+        "ALTER TABLE barang_komponen ADD COLUMN jumlah_roll INTEGER",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE barang_komponen ADD COLUMN panjang REAL",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE barang_komponen ADD COLUMN lebar REAL",
+        [],
+    );
 
     // ── Long-term hardening ──────────────────────────────────────────────
     let _ = conn.execute_batch(

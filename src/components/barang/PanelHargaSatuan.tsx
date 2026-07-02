@@ -76,23 +76,9 @@ export default function PanelHargaSatuan({
             className="bg-white dark:bg-slate-900 rounded-lg p-4 border-2 border-gray-200 dark:border-slate-800"
           >
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
-                  #{index + 1}
-                </span>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="default_unit"
-                    checked={up.default_status}
-                    onChange={() => onUpdate(index, "default_status", true)}
-                    className="w-4 h-4 text-blue-500"
-                  />
-                  <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
-                    Utama
-                  </span>
-                </label>
-              </div>
+              <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
+                Produk #{index + 1}
+              </span>
               {unitPrices.length > 1 && (
                 <button
                   type="button"
@@ -269,11 +255,15 @@ export default function PanelHargaSatuan({
             </div>
           </div>
         ))}
+        <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+          Setiap satuan di bawah selalu muncul sebagai kartu terpisah di POS,
+          terlepas dari centang &quot;Munculkan di POS&quot; pada barang induk.
+        </p>
       </div>
 
       <div className="mt-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 rounded-lg p-3">
         <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold mb-1">
-          💡 Contoh Penggunaan:
+          Contoh Penggunaan:
         </p>
         <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4">
           <li>

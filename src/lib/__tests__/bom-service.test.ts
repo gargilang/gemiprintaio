@@ -97,4 +97,35 @@ describe("deductBomComponents", () => {
       expect.objectContaining({ barang_id: "b-sekrup", qty_delta: -8 })
     );
   });
+
+  it("memanggil postInventoryMovement untuk komponen berdimensi (m²)", async () => {
+    mockQuery.mockResolvedValue({
+      data: [
+        {
+          id: "bk-dim",
+          komponen_id: "b-vinyl",
+          qty: 6,
+          jumlah_roll: 1,
+          lebar: 2,
+          panjang: 3,
+          is_deleted: 0,
+        },
+      ],
+      error: null,
+    });
+    await deductBomComponents({
+      barangId: "b-xbanner",
+      qtySPK: 2,
+      spkId: "spk-003",
+      nomorSpk: "SPK-003",
+      dibuatOleh: "user-1",
+      itemProduksiId: "item-3",
+    });
+    expect(mockPostInventoryMovement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        barang_id: "b-vinyl",
+        qty_delta: -12,
+      })
+    );
+  });
 });
