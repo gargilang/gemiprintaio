@@ -17,7 +17,7 @@ import {
   getRollVariantsForProductionItemAction,
   postProductionMaterialConsumptionAction,
   voidProductionMaterialConsumptionAction,
-  setOrderStatusSelesaiCascadeAction,
+  setOrderStatusSiapDiambilCascadeAction,
   updateSaleCustomerAction,
   getPelangganRingkasAction,
 } from "./actions";
@@ -212,19 +212,29 @@ export default function ProductionPage() {
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       if (newStatus === "SELESAI") {
-        const ok = window.confirm(
-          "Tandai semua item produksi sebagai Selesai?"
+        showMsg(
+          "error",
+          "Status Selesai hanya bisa ditandai lewat halaman Pengambilan (Sudah Diambil).",
         );
+        return;
+      }
+      if (newStatus === "SIAP_AMBIL") {
+        const ok = window.confirm("Tandai SPK siap diambil pelanggan?");
         if (!ok) return;
-        const hasil = await setOrderStatusSelesaiCascadeAction(orderId);
+        const hasil = await setOrderStatusSiapDiambilCascadeAction(orderId);
         if (hasil.terhalang.length > 0) {
           const nama = hasil.terhalang.map((t) => t.nama).join(", ");
           showMsg(
             "error",
-            `Item berikut belum bisa diselesaikan karena bahan roll belum dikonfirmasi: ${nama}. Konfirmasi bahannya dulu di item tersebut.`
+            `Item berikut belum bisa diselesaikan: ${nama}. Konfirmasi bahan roll dulu jika perlu.`,
           );
+        } else if (hasil.statusOrderAkhir === "SIAP_AMBIL") {
+          showMsg("success", "SPK ditandai Siap Diambil");
         } else {
-          showMsg("success", "Semua item ditandai selesai");
+          showMsg(
+            "error",
+            "SPK belum bisa ditandai Siap Diambil — periksa status item.",
+          );
         }
       } else {
         await updateProductionStatusAction(orderId, newStatus);
@@ -234,7 +244,10 @@ export default function ProductionPage() {
       await refreshSelectedOrder();
     } catch (error) {
       console.error("Error updating status:", error);
-      showMsg("error", "Gagal memperbarui status");
+      showMsg(
+        "error",
+        error instanceof Error ? error.message : "Gagal memperbarui status",
+      );
     }
   };
 
@@ -378,7 +391,7 @@ export default function ProductionPage() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
         <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -423,6 +436,35 @@ export default function ProductionPage() {
             {visibleOrders.filter((o) => o.status === "PROSES").length}
           </p>
           <p className="text-sm mt-2 text-blue-100">Sedang dikerjakan</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold uppercase tracking-wide">
+                Siap Diambil
+              </h3>
+            </div>
+          </div>
+          <p className="text-3xl font-bold">
+            {visibleOrders.filter((o) => o.status === "SIAP_AMBIL").length}
+          </p>
+          <p className="text-sm mt-2 text-teal-100">Menunggu pelanggan</p>
         </div>
 
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
@@ -522,6 +564,7 @@ export default function ProductionPage() {
             <option value="ALL">Semua Status</option>
             <option value="MENUNGGU">Menunggu</option>
             <option value="PROSES">Proses</option>
+            <option value="SIAP_AMBIL">Siap Diambil</option>
             <option value="SELESAI">Selesai</option>
             <option value="DIBATALKAN">Dibatalkan</option>
           </select>

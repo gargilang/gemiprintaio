@@ -14,7 +14,7 @@ import {
 } from "@/lib/penjualan-cetak-utils";
 import {
   STATUS_ORDER,
-  daftarStatusUntukItem,
+  daftarStatusManualUntukItem,
   labelStatus,
 } from "@/lib/produksi/status-produksi";
 
@@ -195,7 +195,7 @@ export default function SpkDetailModal({
                   order.status,
                 )}`}
               >
-                {STATUS_ORDER.map((s) => (
+                {STATUS_ORDER.filter((s) => s !== "SELESAI").map((s) => (
                   <option
                     key={s}
                     value={s}
@@ -260,7 +260,7 @@ export default function SpkDetailModal({
                       item.status,
                     )}`}
                   >
-                    {daftarStatusUntukItem({ is_maklon: item.is_maklon }).map(
+                    {daftarStatusManualUntukItem({ is_maklon: item.is_maklon }).map(
                       (s) => (
                         <option
                           key={s}
