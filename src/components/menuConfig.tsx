@@ -114,6 +114,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FRONT_OF_HOUSE,
       },
       {
+        href: "/katalog-maklon",
+        icon: <PrinterIcon size={18} />,
+        label: "Katalog Maklon",
+        color: "from-fuchsia-500 to-purple-600",
+        allowedRoles: FULL_STAFF,
+      },
+      {
         href: "/retur-penjualan",
         icon: <SalesReturnIcon size={18} />,
         label: "Retur Penjualan",
@@ -309,6 +316,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/pos": "POS / Kasir",
   "/surat-jalan": "Surat Jalan",
   "/penawaran": "Penawaran",
+  "/katalog-maklon": "Katalog Maklon",
   "/retur-penjualan": "Retur Penjualan",
   "/produksi": "Produksi",
   "/produksi/spk": "SPK",
