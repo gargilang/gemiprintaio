@@ -20,8 +20,10 @@ export interface KatalogMaklon {
   diperbarui_pada: string;
 }
 
+type KatalogMaklonRow = KatalogMaklon & { is_deleted?: number };
+
 export async function listKatalogMaklon(onlyAktif = true): Promise<KatalogMaklon[]> {
-  const result = await db.query<KatalogMaklon>("katalog_maklon", {
+  const result = await db.query<KatalogMaklonRow>("katalog_maklon", {
     orderBy: { column: "urutan", ascending: true },
   });
   if (result.error) throw friendlyPgError(result.error, "katalog_maklon");
