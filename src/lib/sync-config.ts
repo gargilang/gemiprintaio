@@ -47,6 +47,8 @@ export const MASTER_SYNC_TABLES = [
   "nsfp_pool",
   "lokasi",
   "accounting_periods",
+  "keranjang_tersimpan",
+  "katalog_maklon",
 ] as const;
 
 // Modul Penggajian. Urutan: master komponen dulu, lalu run sebelum

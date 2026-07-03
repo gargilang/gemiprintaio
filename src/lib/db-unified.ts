@@ -1712,6 +1712,67 @@ class UnifiedDatabase {
       }
     }
 
+    // Keranjang tersimpan (parkir cart di POS). IF NOT EXISTS menangani
+    // instalasi existing sekaligus fresh-install.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS keranjang_tersimpan (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        pelanggan_id TEXT,
+        pelanggan_nama_snapshot TEXT,
+        pelanggan_kota TEXT,
+        prioritas TEXT NOT NULL DEFAULT 'NORMAL',
+        ppn_snapshot TEXT,
+        cart_snapshot TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'AKTIF',
+        penawaran_id TEXT,
+        kedaluwarsa_pada TEXT,
+        dibuat_oleh TEXT,
+        dibuat_pada TEXT NOT NULL DEFAULT (datetime('now')),
+        diperbarui_pada TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_status TEXT NOT NULL DEFAULT 'pending',
+        last_synced_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 1,
+        updated_at_server TEXT,
+        updated_by_device TEXT NOT NULL DEFAULT 'server',
+        change_version INTEGER NOT NULL DEFAULT 1,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT
+      )
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_keranjang_tersimpan_status ON keranjang_tersimpan(status, kedaluwarsa_pada)`);
+
+    // Katalog produk maklon berulang.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS katalog_maklon (
+        id TEXT PRIMARY KEY,
+        nama_produk TEXT NOT NULL,
+        nama_satuan TEXT NOT NULL DEFAULT 'pcs',
+        harga_jual_default REAL NOT NULL DEFAULT 0,
+        biaya_subkontrak_default REAL NOT NULL DEFAULT 0,
+        vendor_subkontrak_id_default TEXT,
+        metode_bayar_vendor_default TEXT NOT NULL DEFAULT 'CASH',
+        kategori TEXT,
+        catatan_internal TEXT,
+        is_aktif INTEGER NOT NULL DEFAULT 1,
+        urutan INTEGER NOT NULL DEFAULT 0,
+        dibuat_oleh TEXT,
+        dibuat_pada TEXT NOT NULL DEFAULT (datetime('now')),
+        diperbarui_pada TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_status TEXT NOT NULL DEFAULT 'pending',
+        last_synced_at TEXT,
+        sync_version INTEGER NOT NULL DEFAULT 1,
+        updated_at_server TEXT,
+        updated_by_device TEXT NOT NULL DEFAULT 'server',
+        change_version INTEGER NOT NULL DEFAULT 1,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT
+      )
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan)`);
+
     // Tabel laporan_bulanan: riwayat laporan bulanan digenerate
     db.exec(`
       CREATE TABLE IF NOT EXISTS laporan_bulanan (
