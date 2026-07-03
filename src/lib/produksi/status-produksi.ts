@@ -10,7 +10,12 @@
  * Label SELALU ditampilkan ramah manusia (tanpa underscore) di UI.
  */
 
-export type OrderStatus = "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN";
+export type OrderStatus =
+  | "MENUNGGU"
+  | "PROSES"
+  | "SIAP_AMBIL"
+  | "SELESAI"
+  | "DIBATALKAN";
 
 /** Status item cetak-sendiri, terurut atas (awal) -> bawah (akhir). */
 export const STATUS_ITEM_CETAK = [
@@ -43,6 +48,7 @@ export const STATUS_ITEM_MAKLON = [
 export const STATUS_ORDER = [
   "MENUNGGU",
   "PROSES",
+  "SIAP_AMBIL",
   "SELESAI",
   "DIBATALKAN",
 ] as const;
@@ -91,6 +97,32 @@ export function daftarStatusUntukItem(item: {
   is_maklon?: boolean | null;
 }): readonly string[] {
   return item.is_maklon ? STATUS_ITEM_MAKLON : STATUS_ITEM_CETAK;
+}
+
+/** Status item yang boleh dipilih manual di SPK (tanpa pickup). */
+export function daftarStatusManualUntukItem(item: {
+  is_maklon?: boolean | null;
+}): readonly string[] {
+  return daftarStatusUntukItem(item).filter(
+    (s) => s !== "SIAP_AMBIL" && s !== "SELESAI",
+  );
+}
+
+/** Target status item saat SPK ditandai Siap Diambil. */
+export function statusProduksiSelesaiUntukItem(item: {
+  is_maklon?: boolean | null;
+}): string {
+  return item.is_maklon ? "DIKERJAKAN_VENDOR" : "FINISHING";
+}
+
+export function adalahStatusProduksiSelesai(
+  item: { is_maklon?: boolean | null },
+  status: string,
+): boolean {
+  if (item.is_maklon) {
+    return ["DIKERJAKAN_VENDOR", "SEDANG_DIAMBIL"].includes(status);
+  }
+  return status === "FINISHING";
 }
 
 /** Status terminal (tidak bergerak lagi). */

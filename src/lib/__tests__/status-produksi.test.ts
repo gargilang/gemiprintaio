@@ -1,10 +1,13 @@
 import {
   STATUS_ITEM_CETAK,
   STATUS_ITEM_MAKLON,
+  STATUS_ORDER,
   labelStatus,
   daftarStatusUntukItem,
+  daftarStatusManualUntukItem,
   deriveOrderStatus,
   adalahStatusTerminal,
+  statusProduksiSelesaiUntukItem,
 } from "@/lib/produksi/status-produksi";
 import { itemStatusSchema, orderStatusSchema } from "@/lib/schemas/produksi";
 
@@ -89,5 +92,31 @@ describe("schema produksi", () => {
   it("orderStatusSchema valid/invalid", () => {
     expect(orderStatusSchema.safeParse("PROSES").success).toBe(true);
     expect(orderStatusSchema.safeParse("PRINTING").success).toBe(false);
+  });
+});
+
+describe("SIAP_AMBIL per order", () => {
+  it("STATUS_ORDER memuat SIAP_AMBIL sebelum SELESAI", () => {
+    expect(STATUS_ORDER).toEqual([
+      "MENUNGGU",
+      "PROSES",
+      "SIAP_AMBIL",
+      "SELESAI",
+      "DIBATALKAN",
+    ]);
+  });
+
+  it("dropdown item cetak tidak memuat SIAP_AMBIL atau SELESAI", () => {
+    const list = daftarStatusManualUntukItem({ is_maklon: false });
+    expect(list).not.toContain("SIAP_AMBIL");
+    expect(list).not.toContain("SELESAI");
+    expect(list[list.length - 2]).toBe("FINISHING"); // sebelum DIBATALKAN
+  });
+
+  it("status produksi selesai maklon vs cetak", () => {
+    expect(statusProduksiSelesaiUntukItem({ is_maklon: false })).toBe("FINISHING");
+    expect(statusProduksiSelesaiUntukItem({ is_maklon: true })).toBe(
+      "DIKERJAKAN_VENDOR",
+    );
   });
 });
