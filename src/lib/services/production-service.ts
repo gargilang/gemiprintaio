@@ -13,7 +13,7 @@ import {
   type RollVariant,
 } from "./inventory-service";
 import { getShopSettings } from "./shop-settings-service";
-import { deriveOrderStatus } from "@/lib/produksi/status-produksi";
+import { deriveOrderStatus, statusProduksiSelesaiUntukItem } from "@/lib/produksi/status-produksi";
 import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 import { hitungQtyKomponenDimensiM2 } from "../bom-utils";
 
@@ -633,9 +633,15 @@ export async function createProductionOrder(data: {
  */
 export async function updateProductionOrderStatus(
   id: string,
-  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN",
+  status: "MENUNGGU" | "PROSES" | "SIAP_AMBIL" | "SELESAI" | "DIBATALKAN",
 ): Promise<boolean> {
   try {
+    if (status === "SELESAI") {
+      throw new Error(
+        "Status SELESAI hanya bisa ditandai lewat Pengambilan (Sudah Diambil), bukan manual di SPK.",
+      );
+    }
+
     // Guard: SPK yang DIBATALKAN karena penjualannya VOID tidak boleh
     // dihidupkan lagi. Void penjualan men-soft-cancel SPK; mengubah balik
     // statusnya akan men-desinkronkan SPK dengan penjualan yang sudah batal.
@@ -659,10 +665,6 @@ export async function updateProductionOrderStatus(
       status,
       status_override_manual: 1,
     };
-
-    if (status === "SELESAI") {
-      updateData.diselesaikan_pada = new Date().toISOString();
-    }
 
     const result = await db.update("order_produksi", id, updateData);
 
@@ -1051,7 +1053,13 @@ export async function deductBomComponents({
 export async function updateProductionItemStatus(
   itemId: string,
   data: {
-    status: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI";
+    status:
+      | "MENUNGGU"
+      | "PRINTING"
+      | "FINISHING"
+      | "DIKERJAKAN_VENDOR"
+      | "SEDANG_DIAMBIL"
+      | "SELESAI";
     operator_id?: string;
   },
 ): Promise<boolean> {
@@ -1170,13 +1178,13 @@ export async function updateProductionItemStatus(
 }
 
 /**
- * Set order = SELESAI manual dengan cascade ke item.
- * Tiap item non-terminal dicoba di-SELESAI-kan via updateProductionItemStatus
- * (menghormati aturan roll PENDING). Item yang terhalang dilewati & dilaporkan.
- * Setelah cascade, status order dihitung ulang (bisa jatuh ke PROSES bila masih
- * ada item belum selesai) — mencegah SELESAI palsu.
+ * Set order = SIAP_AMBIL manual dengan cascade ke item.
+ * Tiap item non-terminal dicoba diselesaikan via updateProductionItemStatus
+ * (status FINISHING / DIKERJAKAN_VENDOR, menghormati aturan roll PENDING).
+ * Item yang terhalang dilewati & dilaporkan.
+ * Setelah cascade, order di-set SIAP_AMBIL dengan override manual.
  */
-export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
+export async function setOrderStatusSiapDiambilCascade(orderId: string): Promise<{
   selesai: string[];
   terhalang: { id: string; nama: string }[];
   statusOrderAkhir: string;
@@ -1192,7 +1200,13 @@ export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
   for (const item of items) {
     if (item.status === "SELESAI" || item.status === "DIBATALKAN") continue;
     try {
-      await updateProductionItemStatus(item.id, { status: "SELESAI" });
+      const targetStatus = statusProduksiSelesaiUntukItem(item);
+      await updateProductionItemStatus(item.id, {
+        status: targetStatus as
+          | "FINISHING"
+          | "DIKERJAKAN_VENDOR"
+          | "SEDANG_DIAMBIL",
+      });
       selesai.push(item.id);
     } catch {
       // Terhalang (mis. roll PENDING belum dikonfirmasi).
@@ -1202,6 +1216,11 @@ export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
       });
     }
   }
+
+  await db.update("order_produksi", orderId, {
+    status: "SIAP_AMBIL",
+    status_override_manual: 1,
+  });
 
   // updateProductionItemStatus sudah memanggil recompute per item, tapi panggil
   // sekali lagi untuk memastikan status order final konsisten.
@@ -1213,6 +1232,62 @@ export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
     selesai,
     terhalang,
     statusOrderAkhir: String(orderRes.data?.status || "MENUNGGU"),
+  };
+}
+
+/** @deprecated Gunakan setOrderStatusSiapDiambilCascade */
+export const setOrderStatusSelesaiCascade = setOrderStatusSiapDiambilCascade;
+
+/**
+ * Tandai order SIAP_AMBIL sebagai sudah diambil pelanggan (SELESAI).
+ */
+export async function markOrderSudahDiambil(orderId: string): Promise<{
+  selesai: string[];
+  terhalang: { id: string; nama: string }[];
+  statusOrderAkhir: string;
+}> {
+  const orderRes = await db.queryOne<any>("order_produksi", {
+    where: { id: orderId },
+  });
+  const order = orderRes.data;
+  if (!order || order.status !== "SIAP_AMBIL") {
+    throw new Error("SPK belum siap diambil.");
+  }
+
+  const itemsRes = await db.query<any>("item_produksi", {
+    where: { order_produksi_id: orderId },
+  });
+  const items = itemsRes.data || [];
+
+  const selesai: string[] = [];
+  const terhalang: { id: string; nama: string }[] = [];
+
+  for (const item of items) {
+    if (item.status === "SELESAI" || item.status === "DIBATALKAN") continue;
+    try {
+      await updateProductionItemStatus(item.id, { status: "SELESAI" });
+      selesai.push(item.id);
+    } catch {
+      terhalang.push({
+        id: item.id,
+        nama: String(item.barang_nama || item.id),
+      });
+    }
+  }
+
+  await db.update("order_produksi", orderId, {
+    status: "SELESAI",
+    diselesaikan_pada: new Date().toISOString(),
+    status_override_manual: 0,
+  });
+
+  const finalOrder = await db.queryOne<any>("order_produksi", {
+    where: { id: orderId },
+  });
+  return {
+    selesai,
+    terhalang,
+    statusOrderAkhir: String(finalOrder.data?.status || "SELESAI"),
   };
 }
 

@@ -13,7 +13,9 @@ import {
   postProductionMaterialConsumption,
   voidProductionMaterialConsumption,
   deleteProductionOrder,
+  setOrderStatusSiapDiambilCascade,
   setOrderStatusSelesaiCascade,
+  markOrderSudahDiambil,
   updateSaleCustomer,
 } from "@/lib/services/production-service";
 import {
@@ -87,6 +89,26 @@ export async function setOrderStatusSelesaiCascadeAction(orderId: string) {
   } catch (error) {
     if (error instanceof AuthGuardError) throw error;
     console.error("Error in setOrderStatusSelesaiCascadeAction:", error);
+    throw error;
+  }
+}
+
+export async function setOrderStatusSiapDiambilCascadeAction(orderId: string) {
+  try {
+    await requireProductionInventoryRole();
+    return await setOrderStatusSiapDiambilCascade(orderId);
+  } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
+    throw error;
+  }
+}
+
+export async function markOrderSudahDiambilAction(orderId: string) {
+  try {
+    await requireProductionInventoryRole();
+    return await markOrderSudahDiambil(orderId);
+  } catch (error) {
+    if (error instanceof AuthGuardError) throw error;
     throw error;
   }
 }
