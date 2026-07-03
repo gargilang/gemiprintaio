@@ -22,8 +22,8 @@ export default function SettingsPage() {
     tabParam === "period"
       ? (tabParam as TabType)
       : tabParam === "materials"
-      ? "setup"
-      : "system";
+        ? "setup"
+        : "system";
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
@@ -33,7 +33,7 @@ export default function SettingsPage() {
   // tidak hilang ketika pindah tab. Ditandai lewat onClick, bukan useEffect,
   // agar tidak memicu warning set-state-in-effect.
   const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(
-    () => new Set<TabType>([initialTab])
+    () => new Set<TabType>([initialTab]),
   );
 
   const selectTab = (id: TabType) => {
@@ -66,7 +66,7 @@ export default function SettingsPage() {
               className={`
                 flex-1 px-4 h-12 rounded-lg font-semibold transition-all duration-200
                 flex items-center justify-center gap-2
-                whitespace-nowrap text-sm
+                whitespace-nowrap text-base
                 ${
                   activeTab === tab.id
                     ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"

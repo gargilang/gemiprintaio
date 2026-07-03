@@ -44,13 +44,10 @@ export default function SuratJalanPage() {
   } | null>(null);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
 
-  const showMsg = useCallback(
-    (type: "success" | "error", message: string) => {
-      setNotice({ type, message });
-      setTimeout(() => setNotice(null), 3000);
-    },
-    []
-  );
+  const showMsg = useCallback((type: "success" | "error", message: string) => {
+    setNotice({ type, message });
+    setTimeout(() => setNotice(null), 3000);
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -91,7 +88,7 @@ export default function SuratJalanPage() {
 
   const { data, isLoading, mutate } = useCachedData<SuratJalan[]>(
     "surat-jalan-list",
-    async () => listSuratJalanAction(200)
+    async () => listSuratJalanAction(200),
   );
   const list = data ?? [];
 
@@ -159,11 +156,13 @@ export default function SuratJalanPage() {
     });
   };
 
-  const handlePreviewOrPrint = async (sj: SuratJalan, mode: "preview" | "print") => {
+  const handlePreviewOrPrint = async (
+    sj: SuratJalan,
+    mode: "preview" | "print",
+  ) => {
     try {
-      const { generateSuratJalanHTML, printSuratJalan } = await import(
-        "@/lib/surat-jalan-print"
-      );
+      const { generateSuratJalanHTML, printSuratJalan } =
+        await import("@/lib/surat-jalan-print");
       const shop = await getShopSettingsForSJAction();
       const payload = {
         nomor_sj: sj.nomor_sj,
@@ -187,7 +186,8 @@ export default function SuratJalanPage() {
       };
       if (mode === "print") {
         const ok = printSuratJalan(payload);
-        if (!ok) showMsg("error", "Tidak bisa membuka jendela cetak. Izinkan pop-up.");
+        if (!ok)
+          showMsg("error", "Tidak bisa membuka jendela cetak. Izinkan pop-up.");
       } else {
         const html = generateSuratJalanHTML(payload);
         window.dispatchEvent(
@@ -197,7 +197,7 @@ export default function SuratJalanPage() {
               title: `Surat Jalan ${sj.nomor_sj}`,
               orientation: "portrait",
             },
-          })
+          }),
         );
       }
     } catch (e: any) {
@@ -213,8 +213,12 @@ export default function SuratJalanPage() {
           <div className="flex items-center gap-3">
             <PurchaseOrderIcon size={28} className="text-white" />
             <div>
-              <h2 className="text-2xl font-bold uppercase tracking-wide">Surat Jalan</h2>
-              <p className="text-white/90 text-sm">Dokumen pengantar barang dari toko ke pelanggan</p>
+              <h2 className="text-2xl font-bold uppercase tracking-wide">
+                Surat Jalan
+              </h2>
+              <p className="text-white/90 text-base">
+                Dokumen pengantar barang dari toko ke pelanggan
+              </p>
             </div>
           </div>
         </div>
@@ -225,10 +229,20 @@ export default function SuratJalanPage() {
                 setEditTarget(null);
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md hover:shadow-lg"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Buat Surat Jalan
             </button>
@@ -293,7 +307,9 @@ export default function SuratJalanPage() {
         />
       )}
 
-      {notice && <ToastNotifikasi type={notice.type} message={notice.message} />}
+      {notice && (
+        <ToastNotifikasi type={notice.type} message={notice.message} />
+      )}
     </>
   );
 }

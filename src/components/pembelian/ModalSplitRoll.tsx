@@ -119,7 +119,7 @@ export default function ModalSplitRoll({
             <h3 className="text-lg font-bold text-purple-700 dark:text-purple-300">
               Atur Potongan Roll
             </h3>
-            <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
+            <p className="text-base text-gray-600 dark:text-slate-300 mt-1">
               {namaBarang || "Item"} · {qty} roll @ {lebar}m × {panjang}m
             </p>
           </div>
@@ -144,14 +144,14 @@ export default function ModalSplitRoll({
             </svg>
           </button>
         </div>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
+        <p className="text-base text-gray-500 dark:text-slate-400">
           Tiap pola = N roll dengan lebar potongan yang sama. Total lebar
           tiap pola harus sama dengan {lebar}m. Roll yang tidak masuk
           pola manapun akan dibiarkan utuh.
         </p>
         <div className="space-y-2">
           {draft.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-slate-400 italic text-center py-4">
+            <p className="text-base text-gray-500 dark:text-slate-400 italic text-center py-4">
               Belum ada pola. Klik &quot;Tambah pola&quot; di bawah.
             </p>
           ) : null}
@@ -166,7 +166,7 @@ export default function ModalSplitRoll({
                 className="grid grid-cols-12 gap-2 items-start p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded border border-purple-200 dark:border-purple-900/40"
               >
                 <div className="col-span-2">
-                  <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-sm text-gray-500 dark:text-slate-400 mb-0.5">
                     Roll
                   </label>
                   <input
@@ -177,11 +177,11 @@ export default function ModalSplitRoll({
                     onChange={(e) =>
                       handleChange(bIdx, "count", e.target.value)
                     }
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
                 <div className="col-span-9">
-                  <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-sm text-gray-500 dark:text-slate-400 mb-0.5">
                     Lebar potongan (dipisah koma)
                   </label>
                   <input
@@ -191,10 +191,10 @@ export default function ModalSplitRoll({
                       handleChange(bIdx, "targets_text", e.target.value)
                     }
                     placeholder="contoh: 1.5, 1"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                   <p
-                    className={`text-[11px] mt-0.5 ${
+                    className={`text-sm mt-0.5 ${
                       valid
                         ? "text-emerald-600 dark:text-emerald-300"
                         : "text-amber-600 dark:text-amber-300"
@@ -218,7 +218,7 @@ export default function ModalSplitRoll({
               </div>
             );
           })}
-          <div className="flex items-center justify-between text-xs pt-1">
+          <div className="flex items-center justify-between text-base pt-1">
             <span className="text-gray-600 dark:text-slate-400">
               {usedRolls} / {qty} roll dipotong
               {remaining > 0
@@ -242,7 +242,7 @@ export default function ModalSplitRoll({
           <button
             type="button"
             onClick={onClear}
-            className="px-4 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-sm font-medium"
+            className="px-4 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-base font-medium"
           >
             Hapus semua pola
           </button>
@@ -250,14 +250,14 @@ export default function ModalSplitRoll({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
+              className="px-4 py-2.5 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+              className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
             >
               Simpan
             </button>

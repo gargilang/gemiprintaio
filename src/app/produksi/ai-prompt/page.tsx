@@ -513,7 +513,7 @@ export default function AiPromptPage() {
           <SparklesIcon size={28} className="text-white" />
           <div>
             <h2 className="text-2xl font-bold uppercase tracking-wide">Prompt AI</h2>
-            <p className="text-white/90 text-sm">Ubah imajinasi pelanggan menjadi prompt gambar siap pakai untuk Generative AI</p>
+            <p className="text-white/90 text-base">Ubah imajinasi pelanggan menjadi prompt gambar siap pakai untuk Generative AI</p>
           </div>
         </div>
       </div>
@@ -523,14 +523,14 @@ export default function AiPromptPage() {
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Reset
             </button>
             <button
               type="button"
               onClick={copyPrompt}
-              className="rounded-lg bg-gradient-to-r from-[#00afef] to-[#dc2626] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
+              className="rounded-lg bg-gradient-to-r from-[#00afef] to-[#dc2626] px-4 py-2.5 text-base font-semibold text-white shadow-sm transition-all hover:shadow-md"
             >
               {copyState === "copied"
                 ? "Copied"
@@ -545,12 +545,12 @@ export default function AiPromptPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
         <div className="space-y-6">
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+            <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
               Arah Desain & Spesifikasi Cetak
             </h3>
             <div className="mt-4 grid gap-4">
               <label className="block">
-                <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+                <span className="text-base font-semibold text-gray-700 dark:text-slate-300">
                   Brief mentah pelanggan
                 </span>
                 <textarea
@@ -558,7 +558,7 @@ export default function AiPromptPage() {
                   onChange={(event) => setRawBrief(event.target.value)}
                   rows={4}
                   placeholder="Contoh: bang buatin spanduk dagang Mbok Galak, ada gambar ibu-ibu marah, tema oranye, menu ayam geprek dan seblak"
-                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
               </label>
               <div className="grid gap-4 md:grid-cols-2">
@@ -601,16 +601,16 @@ export default function AiPromptPage() {
                   className="mt-0.5 h-4 w-4 shrink-0 accent-[#00afef]"
                 />
                 <div>
-                  <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+                  <span className="text-base font-semibold text-gray-700 dark:text-slate-300">
                     Ada gambar referensi yang diupload
                   </span>
-                  <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+                  <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">
                     Centang jika kamu akan melampirkan gambar referensi bersama prompt ini. AI akan diarahkan untuk menggunakannya sebagai acuan.
                   </p>
                 </div>
               </label>
               <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">Spesifikasi Cetak</p>
+                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">Spesifikasi Cetak</p>
                 <div className="grid gap-4 md:grid-cols-4">
                   <TextInput label="Lebar" value={width} onChange={setWidth} placeholder="Contoh: 300" />
                   <TextInput label="Tinggi" value={height} onChange={setHeight} placeholder="Contoh: 100" />
@@ -627,7 +627,7 @@ export default function AiPromptPage() {
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+              <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 Teks desain
               </h3>
               <button
@@ -656,7 +656,7 @@ export default function AiPromptPage() {
                       )
                     }
                     placeholder={`Baris ${index + 1}, contoh: MBOK GALAK`}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   />
                   <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(140px,1fr)_minmax(160px,1fr)_40px]">
                     <select
@@ -670,7 +670,7 @@ export default function AiPromptPage() {
                           )
                         )
                       }
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     >
                       {textRoles.map((role) => (
                         <option key={role.value} value={role.value}>
@@ -692,7 +692,7 @@ export default function AiPromptPage() {
                           )
                         )
                       }
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     >
                       {emphasisOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -723,7 +723,7 @@ export default function AiPromptPage() {
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+              <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 Warna & visual
               </h3>
               <div className="flex items-center gap-2">
@@ -738,7 +738,7 @@ export default function AiPromptPage() {
                           setColors((current) => [...current, makeColorStop("#dc2626")]);
                         }
                       }}
-                      className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize transition-colors ${
+                      className={`rounded-md px-3 py-1.5 text-base font-semibold capitalize transition-colors ${
                         colorMode === mode
                           ? "bg-[#00afef] text-white"
                           : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -787,7 +787,7 @@ export default function AiPromptPage() {
                       )
                     }
                     placeholder="Nama warna, contoh: oranye utama"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   />
                   <button
                     type="button"
@@ -807,7 +807,7 @@ export default function AiPromptPage() {
             </div>
             <div className="mt-6">
               <div className="flex items-center justify-between gap-3">
-                <h4 className="text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-slate-300">
+                <h4 className="text-base font-bold uppercase tracking-wide text-gray-700 dark:text-slate-300">
                   Visual
                 </h4>
                 <button
@@ -842,7 +842,7 @@ export default function AiPromptPage() {
                           )
                         )
                       }
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     >
                       {visualRoles.map((role) => (
                         <option key={role.value} value={role.value}>
@@ -862,7 +862,7 @@ export default function AiPromptPage() {
                         )
                       }
                       placeholder="Contoh: ibu warung ekspresi galak lucu memegang spatula"
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     />
                     <button
                       type="button"
@@ -887,7 +887,7 @@ export default function AiPromptPage() {
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+              <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 Kontak
               </h3>
               <button
@@ -915,7 +915,7 @@ export default function AiPromptPage() {
                         )
                       )
                     }
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   >
                     {(Object.keys(contactLabels) as ContactType[]).map((key) => (
                       <option key={key} value={key}>
@@ -933,7 +933,7 @@ export default function AiPromptPage() {
                       )
                     }
                     placeholder={contactPlaceholders[item.type]}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   />
                   <button
                     type="button"
@@ -954,11 +954,11 @@ export default function AiPromptPage() {
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+            <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
               Negative Prompt
             </h3>
             <label className="mt-4 block">
-              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+              <span className="text-base font-semibold text-gray-700 dark:text-slate-300">
                 Hal yang ingin dihindari
               </span>
               <textarea
@@ -966,7 +966,7 @@ export default function AiPromptPage() {
                 onChange={(event) => setNegativePrompt(event.target.value)}
                 rows={3}
                 placeholder="Contoh: jangan pakai foto realistis, jangan terlalu ramai, tanpa watermark"
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               />
             </label>
           </section>
@@ -975,23 +975,23 @@ export default function AiPromptPage() {
         <aside className="xl:sticky xl:top-28 xl:self-start">
           <section className="rounded-lg border border-[#00afef]/25 bg-white p-5 shadow-sm dark:border-cyan-900/60 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0a1b3d] dark:text-slate-100">
+              <h3 className="text-xl font-bold text-[#0a1b3d] dark:text-slate-100">
                 Hasil Prompt
               </h3>
-              <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-[#007db0] dark:bg-cyan-950/40 dark:text-cyan-300">
+              <span className="rounded-full bg-cyan-50 px-3 py-1 text-sm font-bold text-[#007db0] dark:bg-cyan-950/40 dark:text-cyan-300">
                 {MODELS.find((m) => m.id === modelId)?.badge ?? "Universal"}
               </span>
             </div>
             {/* Language toggle */}
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Bahasa:</span>
+              <span className="text-sm font-semibold text-gray-500 dark:text-slate-400">Bahasa:</span>
               <div className="flex rounded-lg border border-gray-300 p-0.5 dark:border-slate-700">
                 {(["id", "en"] as Language[]).map((lang) => (
                   <button
                     key={lang}
                     type="button"
                     onClick={() => setLanguage(lang)}
-                    className={`rounded-md px-3 py-1 text-xs font-bold uppercase transition-colors ${
+                    className={`rounded-md px-3 py-1 text-sm font-bold uppercase transition-colors ${
                       language === lang
                         ? "bg-[#00afef] text-white"
                         : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -1004,11 +1004,11 @@ export default function AiPromptPage() {
             </div>
             {/* Model selector */}
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 shrink-0">Model AI:</span>
+              <span className="text-sm font-semibold text-gray-500 dark:text-slate-400 shrink-0">Model AI:</span>
               <select
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value as ModelId)}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-base text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               >
                 {MODELS.map((model) => (
                   <option key={model.id} value={model.id}>
@@ -1017,7 +1017,7 @@ export default function AiPromptPage() {
                 ))}
               </select>
             </div>
-            <pre className="mt-4 max-h-[calc(100vh-220px)] min-h-[520px] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm leading-relaxed text-gray-900 shadow-inner dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            <pre className="mt-4 max-h-[calc(100vh-220px)] min-h-[520px] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-base leading-relaxed text-gray-900 shadow-inner dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
               {generatedPrompt}
             </pre>
           </section>
@@ -1040,14 +1040,14 @@ function TextInput({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+      <span className="text-base font-semibold text-gray-700 dark:text-slate-300">
         {label}
       </span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       />
     </label>
   );
@@ -1066,13 +1066,13 @@ function SelectInput({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+      <span className="text-base font-semibold text-gray-700 dark:text-slate-300">
         {label}
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none transition focus:border-[#00afef] focus:ring-2 focus:ring-[#00afef]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       >
         {options.map((option) => (
           <option key={option} value={option}>

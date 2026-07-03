@@ -1461,7 +1461,7 @@ export default function POSPage() {
                     onFocus={() => setShowDropdownPelanggan(true)}
                     onKeyDown={handlePelangganKeyDown}
                     placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
-                    className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full pl-4 pr-36 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                   />
 
                   {showDropdownPelanggan && filteredPelanggan.length > 0 && (
@@ -1487,7 +1487,7 @@ export default function POSPage() {
                           </div>
                           {customer.member_status === 1 && (
                             <span
-                              className={`text-xs px-2 py-1 rounded ${
+                              className={`text-sm px-2 py-1 rounded ${
                                 index === indexPelangganTerpilih
                                   ? "bg-white dark:bg-slate-900 text-[#00afef]"
                                   : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
@@ -1518,7 +1518,7 @@ export default function POSPage() {
                         {selectedPelanggan.nama}
                       </div>
                       {selectedPelanggan.telepon && (
-                        <div className="text-sm text-gray-600 dark:text-slate-300">
+                        <div className="text-base text-gray-600 dark:text-slate-300">
                           {selectedPelanggan.telepon}
                         </div>
                       )}
@@ -1588,7 +1588,7 @@ export default function POSPage() {
                     value={materialSearch}
                     onChange={(e) => setMaterialSearch(e.target.value)}
                     placeholder="Filter barang..."
-                    className="w-full pl-9 pr-8 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full pl-9 pr-8 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                   />
                   {materialSearch && (
                     <button
@@ -1616,7 +1616,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setShowTambahItemLainnya(true)}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-bold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-lg text-sm font-bold hover:from-violet-700 hover:to-purple-800 transition-all shadow-sm"
                   title="Tambah item khusus tanpa katalog"
                 >
                   <svg
@@ -1659,7 +1659,7 @@ export default function POSPage() {
                       <button
                         type="button"
                         onClick={() => setMaterialCategoryFilter("ALL")}
-                        className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                        className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${
                           materialCategoryFilter === "ALL"
                             ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
                             : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
@@ -1672,7 +1672,7 @@ export default function POSPage() {
                           key={cat}
                           type="button"
                           onClick={() => setMaterialCategoryFilter(cat)}
-                          className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                          className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${
                             materialCategoryFilter === cat
                               ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
                               : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
@@ -1707,7 +1707,7 @@ export default function POSPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div
-                            className={`font-bold text-sm truncate ${
+                            className={`font-bold text-base truncate ${
                               selectedMaterial?.id === produk.barang_id &&
                               selectedUnit?.id === produk.id
                                 ? "text-[#00afef]"
@@ -1716,7 +1716,7 @@ export default function POSPage() {
                           >
                             {produk.nama}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">
+                          <div className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 truncate">
                             {produk.barang_nama}
                           </div>
                         </div>
@@ -1757,19 +1757,19 @@ export default function POSPage() {
                   >
                     {editingCartIndex !== null && (
                       <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-amber-200 dark:border-amber-800/50">
-                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
                           Mengedit item keranjang
                         </p>
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="text-xs font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
+                          className="text-sm font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
                         >
                           Batal
                         </button>
                       </div>
                     )}
-                    <div className="font-bold text-gray-800 dark:text-slate-100 text-sm mb-3">
+                    <div className="font-bold text-gray-800 dark:text-slate-100 text-base mb-3">
                       {selectedMaterial.nama}
                     </div>
 
@@ -1777,7 +1777,7 @@ export default function POSPage() {
                       {/* Left: Material Details & Unit */}
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
+                          <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                             Satuan & Harga
                           </label>
                           <select
@@ -1788,7 +1788,7 @@ export default function POSPage() {
                               );
                               setSelectedUnit(unit || null);
                             }}
-                            className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                            className="w-full px-3 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                           >
                             {selectedMaterial.unit_prices.map((unit) => (
                               <option key={unit.id} value={unit.id}>
@@ -1805,7 +1805,7 @@ export default function POSPage() {
                         {/* Dimensions for materials that need it */}
                         {selectedMaterial.butuh_dimensi_status === 1 && (
                           <div className="space-y-2">
-                            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                               Ukuran (Lebar × Panjang, m)
                             </label>
                             <div className="grid grid-cols-2 gap-2">
@@ -1821,7 +1821,7 @@ export default function POSPage() {
                                       handleAddToCart();
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                                  className="w-full px-3 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="Lebar"
                                 />
                               </div>
@@ -1837,7 +1837,7 @@ export default function POSPage() {
                                       handleAddToCart();
                                     }
                                   }}
-                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                                  className="w-full px-3 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="Panjang"
                                 />
                               </div>
@@ -1846,7 +1846,7 @@ export default function POSPage() {
                             {/* Roll billing — show when both dimensions have values */}
                             {panjang && lebar && (
                               <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer">
+                                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer">
                                   <input
                                     type="checkbox"
                                     checked={useRounding}
@@ -1870,7 +1870,7 @@ export default function POSPage() {
                             <button
                               type="button"
                               onClick={() => setShowFormFinishingModal(true)}
-                              className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
+                              className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
                                 formFinishing.length > 0
                                   ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
                                   : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
@@ -1896,7 +1896,7 @@ export default function POSPage() {
                             <button
                               type="button"
                               onClick={() => setShowFormHargaModal(true)}
-                              className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
+                              className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
                                 formHargaSatuan !== null
                                   ? "border-[#2266ff] bg-blue-50 dark:bg-blue-900/30 text-[#2266ff] dark:text-blue-300"
                                   : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-[#2266ff]/50"
@@ -1923,7 +1923,7 @@ export default function POSPage() {
 
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                              <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
                                 Biaya Tambahan
                                 {formBiayaTambahan.length > 0 && (
                                   <span className="ml-1 text-[#00afef]">
@@ -1939,13 +1939,13 @@ export default function POSPage() {
                                     { label: "", nominal: 0 },
                                   ])
                                 }
-                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors"
+                                className="text-xs font-semibold px-1.5 py-0.5 rounded bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors"
                               >
                                 + Tambah
                               </button>
                             </div>
                             {formBiayaTambahan.length === 0 ? (
-                              <p className="text-[10px] text-gray-400 dark:text-slate-500">
+                              <p className="text-xs text-gray-400 dark:text-slate-500">
                                 Ongkir, biaya pasang, dll (opsional)
                               </p>
                             ) : (
@@ -1967,7 +1967,7 @@ export default function POSPage() {
                                         setFormBiayaTambahan(next);
                                       }}
                                       placeholder="Ongkir, pasang, dll"
-                                      className="flex-1 min-w-0 px-2 py-1 text-[11px] bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef]"
+                                      className="flex-1 min-w-0 px-2 py-1 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef]"
                                     />
                                     <input
                                       type="number"
@@ -1984,7 +1984,7 @@ export default function POSPage() {
                                         setFormBiayaTambahan(next);
                                       }}
                                       placeholder="0"
-                                      className="w-20 px-1.5 py-1 text-[11px] text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
+                                      className="w-20 px-1.5 py-1 text-xs text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
                                     />
                                     <button
                                       type="button"
@@ -2023,7 +2023,7 @@ export default function POSPage() {
                       {/* Right: quantity, roll, add button */}
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
+                          <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                             {selectedMaterial.butuh_dimensi_status === 1
                               ? "Jumlah lembar"
                               : "Jumlah"}
@@ -2051,7 +2051,7 @@ export default function POSPage() {
                                   handleAddToCart();
                                 }
                               }}
-                              className="flex-1 px-3 py-2 text-sm text-center border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold dark:bg-slate-800 dark:text-slate-100"
+                              className="flex-1 px-3 py-2 text-base text-center border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] font-semibold dark:bg-slate-800 dark:text-slate-100"
                               placeholder="1"
                             />
                             <button
@@ -2070,7 +2070,7 @@ export default function POSPage() {
                           useRounding &&
                           hasValidDimensions && (
                             <div className="space-y-1.5">
-                              <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300">
+                              <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300">
                                 Roll yang dipakai
                               </label>
                               <select
@@ -2080,7 +2080,7 @@ export default function POSPage() {
                                     parseFloat(e.target.value),
                                   )
                                 }
-                                className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
+                                className="w-full px-3 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
                               >
                                 {rollSizes
                                   .filter((size) =>
@@ -2125,7 +2125,7 @@ export default function POSPage() {
                               </select>
                               {rollBillingPreview &&
                                 selectedRollSize != null && (
-                                  <p className="text-xs text-gray-500 dark:text-slate-400 leading-snug">
+                                  <p className="text-sm text-gray-500 dark:text-slate-400 leading-snug">
                                     Tagih:{" "}
                                     <span className="font-semibold text-[#00afef]">
                                       Rp{" "}
@@ -2141,7 +2141,7 @@ export default function POSPage() {
                         <button
                           type="button"
                           onClick={handleAddToCart}
-                          className={`w-full py-2.5 text-white rounded-lg font-bold transition-all shadow-md text-sm ${
+                          className={`w-full py-3 text-white rounded-lg font-bold transition-all shadow-md text-base ${
                             editingCartIndex !== null
                               ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
                               : "bg-gradient-to-r from-[#00afef] to-[#0088cc] hover:from-[#0099dd] hover:to-[#0077bb]"
@@ -2165,7 +2165,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setShowPpnModal(true)}
-                className={`w-full px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                className={`w-full px-4 py-2.5 rounded-lg border-2 text-base font-semibold transition-all ${
                   ppnFaktur
                     ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
                     : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
@@ -2225,7 +2225,7 @@ export default function POSPage() {
               <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
                 Riwayat Penjualan
               </h2>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-base text-gray-500 dark:text-slate-400">
                 Riwayat semua transaksi penjualan
               </p>
             </div>

@@ -42,12 +42,12 @@ export default function PilihanCari({
       setIsOpen(false);
       setSearchQuery("");
     },
-    isOpen
+    isOpen,
   );
 
   // Filter opsi berdasarkan pencarian
   const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+    opt.label.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Ambil label opsi yang dipilih
@@ -84,7 +84,7 @@ export default function PilihanCari({
       } else if (filteredOptions.length > 0) {
         const nextIndex = Math.min(
           highlightedIndex + 1,
-          filteredOptions.length - 1
+          filteredOptions.length - 1,
         );
         setHighlightedIndex(nextIndex);
         // Scroll opsi ke dalam view
@@ -194,12 +194,12 @@ export default function PilihanCari({
                   aria-selected={option.value === value}
                   onClick={() => handleSelect(option.value)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`px-4 py-2 text-sm cursor-pointer transition-colors ${
+                  className={`px-4 py-2 text-base cursor-pointer transition-colors ${
                     option.value === value
                       ? "bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-semibold dark:bg-indigo-500/20 dark:text-indigo-200"
                       : index === highlightedIndex
-                      ? "bg-gray-200 dark:bg-slate-700"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                        ? "bg-gray-200 dark:bg-slate-700"
+                        : "text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
                   {option.label}

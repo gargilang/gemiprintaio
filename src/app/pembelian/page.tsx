@@ -30,10 +30,7 @@ import {
   getDebtsAction,
   payDebtAction,
 } from "./actions";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
 interface User {
@@ -99,10 +96,10 @@ export default function PurchasesPage() {
           ...(prev ?? EMPTY_INIT_DATA),
           ...partial,
         }),
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutateInit]
+    [mutateInit],
   );
   const setPurchases = useCallback<
     (next: any[] | ((prev: any[]) => any[])) => void
@@ -117,10 +114,10 @@ export default function PurchasesPage() {
               : next;
           return { ...base, purchases: nextPurchases };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutateInit]
+    [mutateInit],
   );
   const setMaterials = (m: any[]) => patchInit({ materials: m });
   const setVendors = (v: any[]) => patchInit({ vendors: v });
@@ -255,8 +252,8 @@ export default function PurchasesPage() {
     if (editingPurchase && updatedPurchase) {
       setPurchases((prev: any[]) =>
         prev.map((p) =>
-          p.id === updatedPurchase.id ? { ...p, ...updatedPurchase } : p
-        )
+          p.id === updatedPurchase.id ? { ...p, ...updatedPurchase } : p,
+        ),
       );
     } else {
       // For new purchases, reload the list
@@ -299,7 +296,7 @@ export default function PurchasesPage() {
       }"?\n\nVendor: ${
         purchase.vendor_name || "Tanpa Vendor"
       }\nTotal: Rp ${purchase.total_harga.toLocaleString(
-        "id-ID"
+        "id-ID",
       )}\n\nTindakan ini akan:\n- Menyimpan dokumen sebagai VOID, bukan menghapus permanen\n- Membuat jurnal pembalik stok dan menandai kas/buku besar sebagai VOID\n- Ditolak jika stok dari pembelian ini sudah terpakai atau tagihan sudah dilunasi\n\nJika ditolak, gunakan Retur/Adjustment atau batalkan transaksi penjualan terkait dulu.`,
       confirmText: "Ya, Batalkan",
       cancelText: "Batal",
@@ -308,7 +305,7 @@ export default function PurchasesPage() {
         try {
           await voidPurchaseAction(
             purchase.id,
-            "Pembelian dibatalkan dari Daftar Pembelian"
+            "Pembelian dibatalkan dari Daftar Pembelian",
           );
           await loadPurchases();
           showMsg("success", "Pembelian berhasil dibatalkan.");
@@ -331,7 +328,7 @@ export default function PurchasesPage() {
       }" ke status TAGIHAN?\n\nVendor: ${
         purchase.vendor_name || "Tanpa Vendor"
       }\nTotal: Rp ${purchase.total_harga.toLocaleString(
-        "id-ID"
+        "id-ID",
       )}\n\nTindakan ini akan:\n- Mengubah status pembelian menjadi TAGIHAN\n- Menghapus semua catatan pembayaran tagihan\n- Menghapus catatan keuangan pembayaran\n- Menghitung ulang saldo dan laporan keuangan\n\nGunakan fitur ini jika salah memilih tagihan yang dibayar.`,
       confirmText: "Ya, Kembalikan ke TAGIHAN",
       cancelText: "Batal",
@@ -345,13 +342,13 @@ export default function PurchasesPage() {
 
           showMsg(
             "success",
-            "Pembelian berhasil dikembalikan ke status TAGIHAN!"
+            "Pembelian berhasil dikembalikan ke status TAGIHAN!",
           );
         } catch (error: any) {
           console.error("Error reverting purchase:", error);
           showMsg(
             "error",
-            error.message || "Gagal mengembalikan status pembelian"
+            error.message || "Gagal mengembalikan status pembelian",
           );
         } finally {
           setConfirmDialog(null);
@@ -382,12 +379,15 @@ export default function PurchasesPage() {
     <>
       <div className="space-y-8">
         {/* Form Section */}
-        <div ref={formSectionRef} className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
+        <div
+          ref={formSectionRef}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6"
+        >
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
               {editingPurchase ? "Edit Pembelian" : "Tambah Pembelian Baru"}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-base text-gray-500 dark:text-slate-400">
               {editingPurchase
                 ? "Update data pembelian yang sudah ada"
                 : "Input data pembelian barang dari vendor atau warung"}
@@ -410,19 +410,22 @@ export default function PurchasesPage() {
         </div>
 
         {/* Table Section */}
-        <div id="purchases-table" className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
+        <div
+          id="purchases-table"
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6"
+        >
           <div className="mb-6 flex items-start justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-1">
                 Daftar Pembelian
               </h2>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-base text-gray-500 dark:text-slate-400">
                 Riwayat semua transaksi pembelian bahan
               </p>
             </div>
             <button
               onClick={() => setShowPayDebtModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md hover:shadow-lg"
             >
               <svg
                 className="w-5 h-5"
@@ -475,7 +478,8 @@ export default function PurchasesPage() {
       {/* Pay Debt Modal */}
       <ModalBayarHutang
         isOpen={showPayDebtModal}
-        onClose={() => setShowPayDebtModal(false)}        onSuccess={() => {
+        onClose={() => setShowPayDebtModal(false)}
+        onSuccess={() => {
           showMsg("success", "Pembayaran tagihan berhasil dicatat!");
           loadPurchases();
         }}

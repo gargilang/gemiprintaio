@@ -133,7 +133,7 @@ export default function ModalEditManual({
               <h3 className="text-xl font-bold text-white truncate">
                 Edit Manual (Penggantian)
               </h3>
-              <p className="text-white/90 text-sm mt-1 truncate">
+              <p className="text-white/90 text-base mt-1 truncate">
                 Transaksi tgl: {cashBook.tanggal} | Kategori:{" "}
                 {cashBook.kategori_transaksi}
               </p>
@@ -168,7 +168,7 @@ export default function ModalEditManual({
             type="button"
             onClick={handleClose}
             disabled={saving}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -176,7 +176,7 @@ export default function ModalEditManual({
             type="submit"
             form="edit-manual-form"
             disabled={saving}
-            className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
           >
             {saving ? "Menyimpan..." : "Simpan"}
           </button>
@@ -186,7 +186,7 @@ export default function ModalEditManual({
         <form id="edit-manual-form" onSubmit={handleSubmit}>
           <div className="p-6 space-y-5">
             {/* Kotak info */}
-            <div className="bg-orange-50 dark:bg-slate-800 border-2 border-orange-200 dark:border-orange-800/50 rounded-xl p-4 text-sm text-orange-800 dark:text-orange-200">
+            <div className="bg-orange-50 dark:bg-slate-800 border-2 border-orange-200 dark:border-orange-800/50 rounded-xl p-4 text-base text-orange-800 dark:text-orange-200">
               <div className="font-bold mb-1">🔧 Fitur Penggantian Manual</div>
               <p>
                 Nilai yang Anda edit akan diganti manual dan tidak akan dihitung
@@ -196,7 +196,7 @@ export default function ModalEditManual({
             </div>
 
             {/* Info transaksi */}
-            <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm border-2 border-gray-200 dark:border-slate-800">
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-x-6 gap-y-3 text-base border-2 border-gray-200 dark:border-slate-800">
               <div>
                 <span className="text-gray-500 dark:text-slate-400">Debit:</span>{" "}
                 <span className="font-semibold text-green-600">
@@ -221,7 +221,7 @@ export default function ModalEditManual({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
               {EDITABLE_FIELDS.map(({ key, label }) => (
                 <div key={key}>
-                  <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2 flex items-center">
+                  <label className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2 flex items-center">
                     {label}
                     {isOverridden(key) && (
                       <span
@@ -248,11 +248,11 @@ export default function ModalEditManual({
                     value={formData[key] || ""}
                     onChange={(e) => handleChange(key, e.target.value)}
                     disabled={saving}
-                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition disabled:bg-gray-100 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="0"
                   />
                   {formData[key] && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                       {formatRupiah(parseFloat(formData[key]))}
                     </p>
                   )}
@@ -262,7 +262,7 @@ export default function ModalEditManual({
 
             {/* Pesan kesalahan */}
             {error && (
-              <div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-3 text-sm text-red-800 dark:text-red-200 font-medium">
+              <div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/50 rounded-xl p-3 text-base text-red-800 dark:text-red-200 font-medium">
                 {error}
               </div>
             )}

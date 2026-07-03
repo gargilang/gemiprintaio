@@ -51,7 +51,7 @@ export default function PeriodCloseTab() {
     mutate: mutatePeriods,
   } = useCachedData<Period[]>(
     "settings:accounting-periods",
-    () => listAccountingPeriodsAction() as Promise<Period[]>
+    () => listAccountingPeriodsAction() as Promise<Period[]>,
   );
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -69,7 +69,7 @@ export default function PeriodCloseTab() {
   const handleClose = async () => {
     if (
       !confirm(
-        `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, transaksi bertanggal bulan ini tidak bisa diubah/void/adjust tanpa membuka kembali periode. Data tetap bisa dilihat di Laporan.`
+        `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, transaksi bertanggal bulan ini tidak bisa diubah/void/adjust tanpa membuka kembali periode. Data tetap bisa dilihat di Laporan.`,
       )
     )
       return;
@@ -89,7 +89,7 @@ export default function PeriodCloseTab() {
 
   const handleReopen = async (period: Period) => {
     const alasan = prompt(
-      `Alasan buka kembali periode ${period.period_key} (akan tercatat permanen):`
+      `Alasan buka kembali periode ${period.period_key} (akan tercatat permanen):`,
     );
     if (!alasan?.trim()) return;
     try {
@@ -121,11 +121,13 @@ export default function PeriodCloseTab() {
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Tutup Periode</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
-            Tutup periode adalah workflow resmi untuk finalisasi bulan. Data lama tetap
-            terlihat di Laporan, tetapi transaksi di bulan tertutup tidak bisa diubah
-            tanpa membuka kembali periode.
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+            Tutup Periode
+          </h2>
+          <p className="text-base text-gray-500 dark:text-slate-400">
+            Tutup periode adalah workflow resmi untuk finalisasi bulan. Data
+            lama tetap terlihat di Laporan, tetapi transaksi di bulan tertutup
+            tidak bisa diubah tanpa membuka kembali periode.
           </p>
         </div>
       </div>
@@ -147,7 +149,9 @@ export default function PeriodCloseTab() {
           Alur tutup bulan
         </h3>
         <ol className="list-decimal list-inside space-y-1 text-sm text-indigo-800 dark:text-indigo-200">
-          <li>Cek Laporan Kas, Laba Rugi, Margin Penjualan, dan Hutang & Piutang.</li>
+          <li>
+            Cek Laporan Kas, Laba Rugi, Margin Penjualan, dan Hutang & Piutang.
+          </li>
           <li>Pastikan transaksi bulan tersebut sudah benar.</li>
           <li>Tutup periode untuk mengunci perubahan di bulan itu.</li>
           <li>Jika perlu koreksi, buka kembali periode dengan alasan.</li>
@@ -160,7 +164,7 @@ export default function PeriodCloseTab() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Bulan
             </label>
             <select
@@ -176,7 +180,7 @@ export default function PeriodCloseTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tahun
             </label>
             <input
@@ -187,7 +191,7 @@ export default function PeriodCloseTab() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Catatan (opsional)
             </label>
             <input
@@ -232,7 +236,7 @@ export default function PeriodCloseTab() {
                   <div className="font-medium text-gray-800 dark:text-slate-100">
                     {p.period_key}
                     <span
-                      className={`ml-2 inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      className={`ml-2 inline-block px-2 py-0.5 rounded text-sm font-medium ${
                         p.status === "CLOSED"
                           ? "bg-gray-200 text-gray-700 dark:text-slate-300"
                           : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
@@ -241,7 +245,7 @@ export default function PeriodCloseTab() {
                       {p.status}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
                     {p.start_date} → {p.end_date}
                     {p.closed_at && (
                       <>
@@ -251,7 +255,7 @@ export default function PeriodCloseTab() {
                     )}
                   </div>
                   {p.catatan && (
-                    <div className="text-xs italic text-gray-600 dark:text-slate-300 mt-1">
+                    <div className="text-sm italic text-gray-600 dark:text-slate-300 mt-1">
                       “{p.catatan}”
                     </div>
                   )}
@@ -260,7 +264,7 @@ export default function PeriodCloseTab() {
                   <button
                     type="button"
                     onClick={() => handleReopen(p)}
-                    className="text-xs px-3 py-1 rounded border border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800"
+                    className="text-sm px-3 py-1 rounded border border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800"
                   >
                     Buka kembali
                   </button>

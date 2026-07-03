@@ -42,14 +42,14 @@ export default function PanelPpnPembelian({
             onChange={(e) => onChange("kena_ppn", e.target.checked)}
             className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
           />
-          <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+          <span className="text-base font-semibold text-emerald-800 dark:text-emerald-200">
             Pembelian ini kena PPN (PPN masukan)
           </span>
         </label>
         {kenaPpn && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tarif PPN (%)
               </label>
               <input
@@ -59,11 +59,11 @@ export default function PanelPpnPembelian({
                 onChange={(e) =>
                   onChange("ppn_persen", parseFloat(e.target.value) || 0)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Metode harga
               </label>
               <select
@@ -74,14 +74,14 @@ export default function PanelPpnPembelian({
                     e.target.value as "EKSKLUSIF" | "INKLUSIF"
                   )
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
               >
                 <option value="EKSKLUSIF">Belum termasuk PPN</option>
                 <option value="INKLUSIF">Sudah termasuk PPN</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 No. Faktur Pajak Vendor
               </label>
               <input
@@ -91,11 +91,11 @@ export default function PanelPpnPembelian({
                   onChange("nomor_faktur_pajak_vendor", e.target.value)
                 }
                 placeholder="010.000-25.00000001"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg font-mono text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tanggal Faktur Pajak
               </label>
               <input
@@ -104,7 +104,7 @@ export default function PanelPpnPembelian({
                 onChange={(e) =>
                   onChange("tanggal_faktur_pajak", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
               />
             </div>
             <div className="md:col-span-4">
@@ -117,7 +117,7 @@ export default function PanelPpnPembelian({
                   }
                   className="w-4 h-4 rounded text-emerald-600 dark:text-emerald-300"
                 />
-                <span className="text-xs text-gray-700 dark:text-slate-300">
+                <span className="text-sm text-gray-700 dark:text-slate-300">
                   PPN masukan dapat dikreditkan (centang kalau faktur
                   pajak vendor lengkap dan vendor PKP)
                 </span>

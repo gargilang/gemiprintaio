@@ -39,40 +39,46 @@ const VendorRow = memo(
     return (
       <tr
         className={`hover:bg-indigo-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+          index % 2 === 0
+            ? "bg-white dark:bg-slate-900"
+            : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
           <div className="font-semibold text-gray-800 dark:text-slate-100">
             {vendor.nama_perusahaan}
           </div>
-          <div className="text-xs text-gray-800 dark:text-slate-100 mt-1 flex items-center gap-1.5 flex-wrap">
+          <div className="text-sm text-gray-800 dark:text-slate-100 mt-1 flex items-center gap-1.5 flex-wrap">
             <span>CP: {vendor.kontak_person || "-"}</span>
             {vendor.tipe_vendor === "SUBKONTRAKTOR" && (
-              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-fuchsia-100 text-fuchsia-800 font-bold rounded uppercase tracking-wide">
+              <span className="inline-block text-[11px] px-1.5 py-0.5 bg-fuchsia-100 text-fuchsia-800 font-bold rounded uppercase tracking-wide">
                 Subkontraktor
               </span>
             )}
             {vendor.tipe_vendor === "KEDUANYA" && (
-              <span className="inline-block text-[9px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 font-bold rounded uppercase tracking-wide">
+              <span className="inline-block text-[11px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 font-bold rounded uppercase tracking-wide">
                 Supplier + Maklon
               </span>
             )}
           </div>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{vendor.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{vendor.telepon}</td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">
+        <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
+          {vendor.email}
+        </td>
+        <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
+          {vendor.telepon}
+        </td>
+        <td className="px-4 py-3 text-base text-gray-600 dark:text-slate-300">
           {vendor.ketentuan_bayar || "-"}
         </td>
         <td className="px-4 py-3 text-center">
           {vendor.aktif_status === 1 ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded-full text-sm font-semibold">
               <CheckIcon size={14} />
               Aktif
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-sm font-semibold">
               Non-Aktif
             </span>
           )}
@@ -121,7 +127,7 @@ const VendorRow = memo(
         </td>
       </tr>
     );
-  }
+  },
 );
 
 VendorRow.displayName = "VendorRow";
@@ -134,7 +140,7 @@ export default function VendorsPage() {
   const initialUser =
     typeof window !== "undefined" ? getCachedSessionUser() : null;
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(
-    initialUser
+    initialUser,
   );
   const {
     data: vendorsData,
@@ -156,10 +162,10 @@ export default function VendorsPage() {
             ? (next as (p: Vendor[]) => Vendor[])(base)
             : next;
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutateVendors]
+    [mutateVendors],
   );
   const loading = currentUser === null && vendorsLoading;
   const [showModal, setShowModal] = useState(false);
@@ -199,7 +205,7 @@ export default function VendorsPage() {
   // Helper function to update a single vendor in state without reloading
   function updateVendorInState(updated: Vendor) {
     setVendors((prev: Vendor[]) =>
-      prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v))
+      prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v)),
     );
   }
 
@@ -215,7 +221,7 @@ export default function VendorsPage() {
           v.nama_perusahaan.toLowerCase().includes(query) ||
           v.email.toLowerCase().includes(query) ||
           v.telepon.includes(query) ||
-          (v.kontak_person && v.kontak_person.toLowerCase().includes(query))
+          (v.kontak_person && v.kontak_person.toLowerCase().includes(query)),
       );
     }
 
@@ -265,7 +271,7 @@ export default function VendorsPage() {
       const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
       const end = Math.min(
         filteredVendors.length,
-        start + visibleRows + buffer * 2
+        start + visibleRows + buffer * 2,
       );
 
       setVisibleRange({ start, end });
@@ -404,7 +410,7 @@ export default function VendorsPage() {
           await deleteVendorAction(vendor.id);
           // Remove from local state instead of reloading
           setVendors((prev: Vendor[]) =>
-            prev.filter((v) => v.id !== vendor.id)
+            prev.filter((v) => v.id !== vendor.id),
           );
           showMsg("success", "Vendor berhasil dihapus");
         } catch (error: any) {
@@ -439,7 +445,7 @@ export default function VendorsPage() {
               <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
                 Data Vendor
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Kelola informasi supplier dan status kerja sama
               </p>
             </div>
@@ -517,7 +523,7 @@ export default function VendorsPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAdd}
-                className="px-4 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold shadow-md flex items-center gap-2"
+                className="px-4 py-2.5 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold shadow-md flex items-center gap-2"
               >
                 <svg
                   className="w-5 h-5"
@@ -543,7 +549,7 @@ export default function VendorsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama, email, telepon..."
-                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
+                  className="px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <svg
                   className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -563,7 +569,7 @@ export default function VendorsPage() {
               <select
                 value={filterActive}
                 onChange={(e) => setFilterActive(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
               >
                 <option value="all">Semua Status</option>
                 <option value="active">Aktif</option>
@@ -710,215 +716,214 @@ export default function VendorsPage() {
           </div>
         }
       >
-            <form
-              id="vendors-modal-form"
-              onSubmit={handleSave}
-              className="p-6 space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Nama Perusahaan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama_perusahaan}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        nama_perusahaan: e.target.value,
-                      })
+        <form
+          id="vendors-modal-form"
+          onSubmit={handleSave}
+          className="p-6 space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Nama Perusahaan <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.nama_perusahaan}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nama_perusahaan: e.target.value,
+                  })
+                }
+                placeholder="Contoh: PT. Supplier Indonesia"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Contact Person
+              </label>
+              <input
+                type="text"
+                value={formData.kontak_person}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    kontak_person: e.target.value,
+                  })
+                }
+                placeholder="Nama PIC"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Telepon
+              </label>
+              <input
+                type="tel"
+                value={formData.telepon}
+                onChange={(e) =>
+                  setFormData({ ...formData, telepon: e.target.value })
+                }
+                placeholder="08xx-xxxx-xxxx"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="vendor@example.com"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Alamat
+              </label>
+              <textarea
+                value={formData.alamat}
+                onChange={(e) =>
+                  setFormData({ ...formData, alamat: e.target.value })
+                }
+                placeholder="Alamat lengkap vendor"
+                rows={3}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Tipe Vendor
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    {
+                      value: "SUPPLIER",
+                      label: "Supplier",
+                      hint: "Bahan / barang",
+                    },
+                    {
+                      value: "SUBKONTRAKTOR",
+                      label: "Subkontraktor",
+                      hint: "Maklon cetak",
+                    },
+                    {
+                      value: "KEDUANYA",
+                      label: "Keduanya",
+                      hint: "Bahan + maklon",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, tipe_vendor: opt.value })
                     }
-                    placeholder="Contoh: PT. Supplier Indonesia"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Contact Person
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.kontak_person}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        kontak_person: e.target.value,
-                      })
-                    }
-                    placeholder="Nama PIC"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Telepon
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.telepon}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telepon: e.target.value })
-                    }
-                    placeholder="08xx-xxxx-xxxx"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="vendor@example.com"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Alamat
-                  </label>
-                  <textarea
-                    value={formData.alamat}
-                    onChange={(e) =>
-                      setFormData({ ...formData, alamat: e.target.value })
-                    }
-                    placeholder="Alamat lengkap vendor"
-                    rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Tipe Vendor
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        {
-                          value: "SUPPLIER",
-                          label: "Supplier",
-                          hint: "Bahan / barang",
-                        },
-                        {
-                          value: "SUBKONTRAKTOR",
-                          label: "Subkontraktor",
-                          hint: "Maklon cetak",
-                        },
-                        {
-                          value: "KEDUANYA",
-                          label: "Keduanya",
-                          hint: "Bahan + maklon",
-                        },
-                      ] as const
-                    ).map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() =>
-                          setFormData({ ...formData, tipe_vendor: opt.value })
-                        }
-                        className={`px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
-                          formData.tipe_vendor === opt.value
-                            ? "bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white border-[#2266ff] shadow-sm"
-                            : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 hover:border-[#2266ff]"
-                        }`}
-                      >
-                        <div>{opt.label}</div>
-                        <div
-                          className={`text-[10px] ${
-                            formData.tipe_vendor === opt.value
-                              ? "text-white/80"
-                              : "text-gray-500 dark:text-slate-400"
-                          }`}
-                        >
-                          {opt.hint}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                    Subkontraktor muncul di POS sebagai pilihan vendor maklon.
-                  </p>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Ketentuan Bayar
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.ketentuan_bayar}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ketentuan_bayar: e.target.value,
-                      })
-                    }
-                    placeholder="Contoh: NET 30, COD, TOP 14 hari"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                    Syarat pembayaran (contoh: NET 30 = bayar 30 hari setelah
-                    faktur)
-                  </p>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Catatan
-                  </label>
-                  <textarea
-                    value={formData.catatan}
-                    onChange={(e) =>
-                      setFormData({ ...formData, catatan: e.target.value })
-                    }
-                    placeholder="Catatan tambahan (opsional)"
-                    rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-slate-800 rounded-lg border-2 border-green-200 dark:border-slate-700">
-                    <input
-                      type="checkbox"
-                      id="aktif_status"
-                      checked={formData.aktif_status === 1}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          aktif_status: e.target.checked ? 1 : 0,
-                        })
-                      }
-                      className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                    />
-                    <label
-                      htmlFor="aktif_status"
-                      className="flex-1 text-sm cursor-pointer"
+                    className={`px-3 py-2 rounded-lg border-2 text-base font-semibold transition-all ${
+                      formData.tipe_vendor === opt.value
+                        ? "bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white border-[#2266ff] shadow-sm"
+                        : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 hover:border-[#2266ff]"
+                    }`}
+                  >
+                    <div>{opt.label}</div>
+                    <div
+                      className={`text-xs ${
+                        formData.tipe_vendor === opt.value
+                          ? "text-white/80"
+                          : "text-gray-500 dark:text-slate-400"
+                      }`}
                     >
-                      <span className="font-semibold text-green-900 block">
-                        Vendor Aktif
-                      </span>
-                      <span className="text-xs text-green-700">
-                        Vendor aktif dapat dipilih saat melakukan pembelian
-                      </span>
-                    </label>
-                  </div>
-                </div>
+                      {opt.hint}
+                    </div>
+                  </button>
+                ))}
               </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                Subkontraktor muncul di POS sebagai pilihan vendor maklon.
+              </p>
+            </div>
 
-            </form>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Ketentuan Bayar
+              </label>
+              <input
+                type="text"
+                value={formData.ketentuan_bayar}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    ketentuan_bayar: e.target.value,
+                  })
+                }
+                placeholder="Contoh: NET 30, COD, TOP 14 hari"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                Syarat pembayaran (contoh: NET 30 = bayar 30 hari setelah
+                faktur)
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Catatan
+              </label>
+              <textarea
+                value={formData.catatan}
+                onChange={(e) =>
+                  setFormData({ ...formData, catatan: e.target.value })
+                }
+                placeholder="Catatan tambahan (opsional)"
+                rows={2}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-slate-800 rounded-lg border-2 border-green-200 dark:border-slate-700">
+                <input
+                  type="checkbox"
+                  id="aktif_status"
+                  checked={formData.aktif_status === 1}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      aktif_status: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <label
+                  htmlFor="aktif_status"
+                  className="flex-1 text-sm cursor-pointer"
+                >
+                  <span className="font-semibold text-green-900 block">
+                    Vendor Aktif
+                  </span>
+                  <span className="text-sm text-green-700">
+                    Vendor aktif dapat dipilih saat melakukan pembelian
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
       </ModalFormShell>
 
       {/* Notification Toast */}

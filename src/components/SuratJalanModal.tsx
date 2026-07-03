@@ -187,7 +187,7 @@ export default function SuratJalanModal({
               <h2 className="text-xl font-bold text-white truncate">
                 {isEditing ? "Edit Surat Jalan" : "Buat Surat Jalan"}
               </h2>
-              <p className="text-xs text-white/90">
+              <p className="text-base text-white/90">
                 Dokumen pengantar barang yang akan dikirim ke pelanggan
               </p>
             </div>
@@ -219,7 +219,7 @@ export default function SuratJalanModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold"
+            className="px-5 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold"
           >
             Batal
           </button>
@@ -227,7 +227,7 @@ export default function SuratJalanModal({
             type="submit"
             form="surat-jalan-form"
             disabled={submitting}
-            className="px-5 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold disabled:opacity-50"
+            className="px-5 py-2.5 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold disabled:opacity-50"
           >
             {submitting
               ? "Menyimpan..."
@@ -245,12 +245,12 @@ export default function SuratJalanModal({
       >
         {/* ── Penerima ─────────────────────────────────────────────────────── */}
         <div className="rounded-lg border-2 border-[#00afef]/30 bg-cyan-50/40 dark:bg-slate-800/60 p-4">
-          <div className="text-xs font-bold uppercase tracking-wide text-[#00afef] mb-3">
+          <div className="text-base font-bold uppercase tracking-wide text-[#00afef] mb-3">
             Penerima
           </div>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                 Nama / Perusahaan <span className="text-red-500">*</span>
               </label>
               <input
@@ -258,13 +258,13 @@ export default function SuratJalanModal({
                 value={pelangganNama}
                 onChange={(e) => setPelangganNama(e.target.value)}
                 placeholder="Nama penerima"
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                 required
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                   Alamat
                 </label>
                 <input
@@ -272,11 +272,11 @@ export default function SuratJalanModal({
                   value={pelangganAlamat}
                   onChange={(e) => setPelangganAlamat(e.target.value)}
                   placeholder="Alamat pengiriman"
-                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                   Telepon
                 </label>
                 <input
@@ -284,7 +284,7 @@ export default function SuratJalanModal({
                   value={pelangganTelepon}
                   onChange={(e) => setPelangganTelepon(e.target.value)}
                   placeholder="08..."
-                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
             </div>
@@ -294,19 +294,19 @@ export default function SuratJalanModal({
         {/* ── Logistik ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
               Tanggal <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
               value={tanggal}
               onChange={(e) => setTanggal(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
               No. Kendaraan
             </label>
             <input
@@ -314,11 +314,11 @@ export default function SuratJalanModal({
               value={nomorKendaraan}
               onChange={(e) => setNomorKendaraan(e.target.value)}
               placeholder="B 1234 ABC"
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
               Pengirim (Driver)
             </label>
             <input
@@ -326,7 +326,7 @@ export default function SuratJalanModal({
               value={pengirimNama}
               onChange={(e) => setPengirimNama(e.target.value)}
               placeholder="Nama driver / kurir"
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+              className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
             />
           </div>
         </div>
@@ -334,13 +334,13 @@ export default function SuratJalanModal({
         {/* ── Items ────────────────────────────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold uppercase tracking-wide text-[#0a1b3d] dark:text-slate-100">
+            <div className="text-base font-bold uppercase tracking-wide text-[#0a1b3d] dark:text-slate-100">
               Daftar Barang ({items.length})
             </div>
             <button
               type="button"
               onClick={addItem}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#00afef] hover:bg-[#0098d0] text-white transition-colors"
+              className="text-base font-semibold px-3 py-1.5 rounded-lg bg-[#00afef] hover:bg-[#0098d0] text-white transition-colors"
             >
               + Tambah Item
             </button>
@@ -353,14 +353,14 @@ export default function SuratJalanModal({
                 className="rounded-lg border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                  <span className="text-base font-bold text-gray-500 dark:text-slate-400">
                     Item #{idx + 1}
                   </span>
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItem(idx)}
-                      className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                      className="text-base font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                     >
                       Hapus
                     </button>
@@ -369,7 +369,7 @@ export default function SuratJalanModal({
 
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                       Nama Barang <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -379,13 +379,13 @@ export default function SuratJalanModal({
                         updateItem(idx, { nama_barang: e.target.value })
                       }
                       placeholder="Misal: Banner Flexi 280gr"
-                      className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                      className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                         Keterangan
                       </label>
                       <input
@@ -395,11 +395,11 @@ export default function SuratJalanModal({
                           updateItem(idx, { keterangan: e.target.value })
                         }
                         placeholder="(opsional)"
-                        className="w-full px-2 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-2 py-2.5 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                         Ukuran
                       </label>
                       <input
@@ -409,11 +409,11 @@ export default function SuratJalanModal({
                           updateItem(idx, { ukuran: e.target.value })
                         }
                         placeholder="2 × 3 m"
-                        className="w-full px-2 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-2 py-2.5 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                         Qty <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -426,11 +426,11 @@ export default function SuratJalanModal({
                             qty: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-full px-2 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-2 py-2.5 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                         Satuan
                       </label>
                       <input
@@ -440,7 +440,7 @@ export default function SuratJalanModal({
                           updateItem(idx, { satuan: e.target.value })
                         }
                         placeholder="pcs / m²"
-                        className="w-full px-2 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                        className="w-full px-2 py-2.5 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                       />
                     </div>
                   </div>
@@ -452,7 +452,7 @@ export default function SuratJalanModal({
 
         {/* ── Catatan ──────────────────────────────────────────────────────── */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
             Catatan
           </label>
           <textarea
@@ -460,7 +460,7 @@ export default function SuratJalanModal({
             onChange={(e) => setCatatan(e.target.value)}
             rows={2}
             placeholder="Catatan tambahan (opsional)"
-            className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+            className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
           />
         </div>
       </form>

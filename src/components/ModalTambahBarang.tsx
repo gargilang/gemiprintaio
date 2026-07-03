@@ -544,7 +544,7 @@ export default function ModalTambahBarang({
             {/* Section 1: Informasi Dasar */}
             <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-gray-200 dark:border-slate-800">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-emerald-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                <span className="w-8 h-8 bg-emerald-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-base font-bold">
                   1
                 </span>
                 Informasi Dasar
@@ -553,7 +553,7 @@ export default function ModalTambahBarang({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nama Bahan */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Nama Bahan <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -565,14 +565,14 @@ export default function ModalTambahBarang({
                       setFormData({ ...formData, name: e.target.value })
                     }
                     placeholder="Contoh: Pulpen Pilot"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 {/* Category */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
+                    <label className="block text-base font-semibold text-gray-700 dark:text-slate-300">
                       Kategori <span className="text-red-500">*</span>
                     </label>
                     <button
@@ -586,7 +586,7 @@ export default function ModalTambahBarang({
                           "/pengaturan?tab=setup&subtab=materials&manage=category",
                         );
                       }}
-                      className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
+                      className="text-base text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
                     >
                       Kelola
                     </button>
@@ -595,7 +595,7 @@ export default function ModalTambahBarang({
                     required
                     value={formData.category}
                     onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     disabled={loadingMaster}
                   >
                     {loadingMaster ? (
@@ -614,7 +614,7 @@ export default function ModalTambahBarang({
 
                 {/* Subcategory */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Subkategori
                   </label>
                   <select
@@ -622,7 +622,7 @@ export default function ModalTambahBarang({
                     onChange={(e) =>
                       setFormData({ ...formData, subcategory: e.target.value })
                     }
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     disabled={loadingMaster}
                   >
                     {loadingMaster ? (
@@ -641,7 +641,7 @@ export default function ModalTambahBarang({
 
                 {/* Satuan Dasar (Base Unit) */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Satuan Dasar (untuk tracking stok){" "}
                     <span className="text-red-500">*</span>
                   </label>
@@ -649,7 +649,7 @@ export default function ModalTambahBarang({
                     required
                     value={formData.base_unit}
                     onChange={(e) => handleBaseUnitChange(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
                     disabled={loadingMaster || formData.requires_dimension}
                   >
                     {loadingMaster ? (
@@ -664,7 +664,7 @@ export default function ModalTambahBarang({
                       ))
                     )}
                   </select>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                     {formData.requires_dimension
                       ? "Dikunci ke m² karena dimensi diaktifkan. Stok dihitung total area."
                       : "Satuan terkecil untuk menghitung stok (contoh: pcs, meter, lembar)"}
@@ -673,7 +673,7 @@ export default function ModalTambahBarang({
 
                 {/* Track Inventory */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Pengaturan POS
                   </label>
                   <div className="space-y-2 mt-3">
@@ -690,7 +690,7 @@ export default function ModalTambahBarang({
                         }
                         className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-slate-300">
+                      <span className="text-base text-gray-700 dark:text-slate-300">
                         Munculkan di POS
                       </span>
                     </label>
@@ -706,7 +706,7 @@ export default function ModalTambahBarang({
                         }
                         className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-slate-300">
+                      <span className="text-base text-gray-700 dark:text-slate-300">
                         Track stok barang ini
                       </span>
                     </label>
@@ -719,12 +719,12 @@ export default function ModalTambahBarang({
                         }
                         className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-slate-300">
+                      <span className="text-base text-gray-700 dark:text-slate-300">
                         Perlu input dimensi (Panjang × Lebar) saat penjualan
                       </span>
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+                  <p className="text-base text-gray-500 dark:text-slate-400 mt-2">
                     • Munculkan di POS: Mengontrol visibilitas barang induk di
                     POS. <strong>Produk Jual</strong> di bagian bawah selalu
                     muncul di POS (stok tetap terlacak).
@@ -738,14 +738,14 @@ export default function ModalTambahBarang({
 
                 {/* Spesifikasi */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Spesifikasi
                   </label>
 
                   {/* Quick Specs Helper - Pindah ke ATAS */}
                   {currentSpecs.length > 0 && (
                     <div className="mb-3 p-3 bg-emerald-50 dark:bg-slate-800 rounded-lg border border-emerald-200 dark:border-slate-700">
-                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200 mb-2">
+                      <p className="text-base font-semibold text-emerald-800 dark:text-emerald-200 mb-2">
                         Pilih Spesifikasi Cepat:
                       </p>
                       <div className="flex gap-2 flex-wrap">
@@ -775,7 +775,7 @@ export default function ModalTambahBarang({
                               }
                             }}
                             tabIndex={0}
-                            className="px-3 py-1.5 text-sm border-2 border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-900 hover:border-emerald-400 transition-colors"
+                            className="px-3 py-1.5 text-base border-2 border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-slate-900 hover:border-emerald-400 transition-colors"
                           >
                             <option value="">+ {type}</option>
                             {specs.map((spec: any) => (
@@ -802,13 +802,13 @@ export default function ModalTambahBarang({
                     }
                     placeholder="Contoh: Warna hitam | Grip karet | Tinta gel"
                     rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
 
                 {/* Deskripsi */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Deskripsi
                   </label>
                   <textarea
@@ -818,7 +818,7 @@ export default function ModalTambahBarang({
                     }
                     placeholder="Catatan tambahan tentang bahan ini..."
                     rows={2}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none dark:bg-slate-800 dark:text-slate-100"
                   />
                 </div>
               </div>
@@ -839,7 +839,7 @@ export default function ModalTambahBarang({
             {/* Section 3: Stock */}
             <div className="bg-orange-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-orange-200 dark:border-orange-800/50">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-orange-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                <span className="w-8 h-8 bg-orange-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-base font-bold">
                   3
                 </span>
                 Stok & Inventory
@@ -849,7 +849,7 @@ export default function ModalTambahBarang({
                 editData &&
                 editData.butuh_dimensi_status !== 1 && (
                   <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-800/50 rounded-lg">
-                    <p className="text-sm text-amber-900">
+                    <p className="text-base text-amber-900">
                       <strong>⚠ Perhatian:</strong> Mengaktifkan tracking
                       dimensi mengubah satuan stok ke <strong>m²</strong>. Saat
                       disimpan, stok saat ini akan <strong>direset ke 0</strong>
@@ -862,7 +862,7 @@ export default function ModalTambahBarang({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Current stock */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Stok Saat Ini ({formData.base_unit})
                   </label>
                   <input
@@ -876,9 +876,9 @@ export default function ModalTambahBarang({
                       })
                     }
                     placeholder="0"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                   />
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                     Jumlah stok dalam satuan dasar ({formData.base_unit})
                   </p>
                 </div>
@@ -886,7 +886,7 @@ export default function ModalTambahBarang({
                 {/* Min Stock Level - Hidden if tracking is off */}
                 {formData.track_inventory && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                    <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                       Min. Stok Alert ({formData.base_unit})
                     </label>
                     <input
@@ -900,9 +900,9 @@ export default function ModalTambahBarang({
                         })
                       }
                       placeholder="0"
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     />
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                       Warning jika stok di bawah nilai ini
                     </p>
                   </div>
@@ -914,7 +914,7 @@ export default function ModalTambahBarang({
             {editData?.id && formData.track_inventory && (
               <div className="bg-purple-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-800/50">
                 <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-purple-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                  <span className="w-8 h-8 bg-purple-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-base font-bold">
                     4
                   </span>
                   Komponen Rakitan
@@ -939,14 +939,14 @@ export default function ModalTambahBarang({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold shadow-lg disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all font-semibold shadow-lg disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? (
               <>

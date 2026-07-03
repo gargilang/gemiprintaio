@@ -169,14 +169,14 @@ export default function PpnFakturModal({
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 rounded text-sm">
+            <div className="px-3 py-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-700 rounded text-base">
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tarif PPN (%)
               </label>
               <input
@@ -186,11 +186,11 @@ export default function PpnFakturModal({
                 onChange={(e) =>
                   setData((d) => ({ ...d, ppn_persen: parseFloat(e.target.value) || 0 }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Metode harga
               </label>
               <select
@@ -201,7 +201,7 @@ export default function PpnFakturModal({
                     ppn_metode: e.target.value as "EKSKLUSIF" | "INKLUSIF",
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="EKSKLUSIF" className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Belum termasuk PPN</option>
                 <option value="INKLUSIF" className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Sudah termasuk PPN</option>
@@ -211,7 +211,7 @@ export default function PpnFakturModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Kode transaksi
               </label>
               <select
@@ -219,7 +219,7 @@ export default function PpnFakturModal({
                 onChange={(e) =>
                   setData((d) => ({ ...d, nsfp_kode_transaksi: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               >
                 <option value="01" className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">01</option>
                 <option value="02" className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">02</option>
@@ -232,7 +232,7 @@ export default function PpnFakturModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Tahun
               </label>
               <input
@@ -242,11 +242,11 @@ export default function PpnFakturModal({
                 onChange={(e) =>
                   setData((d) => ({ ...d, nsfp_tahun: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+              <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Nomor seri
               </label>
               <input
@@ -260,13 +260,13 @@ export default function PpnFakturModal({
                   }))
                 }
                 placeholder="00000001"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
               />
             </div>
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500 dark:text-slate-400">
+            <p className="text-base text-gray-500 dark:text-slate-400">
               {data.nsfp_kode_transaksi && data.nsfp_tahun && data.nsfp_nomor_seri
                 ? `NSFP: ${formatNsfpString(
                     data.nsfp_kode_transaksi,
@@ -278,7 +278,7 @@ export default function PpnFakturModal({
             <button
               type="button"
               onClick={pickFirstAvailable}
-              className="text-sm px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              className="text-base px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
               disabled={loadingNsfp}
             >
               {loadingNsfp ? "Memuat..." : "Pakai NSFP berikutnya"}
@@ -286,7 +286,7 @@ export default function PpnFakturModal({
           </div>
 
           {available.length > 0 && (
-            <details className="text-xs text-gray-600 dark:text-slate-300">
+            <details className="text-base text-gray-600 dark:text-slate-300">
               <summary className="cursor-pointer">
                 Daftar NSFP tersedia ({available.length})
               </summary>
@@ -313,7 +313,7 @@ export default function PpnFakturModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tanggal faktur pajak
             </label>
             <input
@@ -322,17 +322,17 @@ export default function PpnFakturModal({
               onChange={(e) =>
                 setData((d) => ({ ...d, tanggal_faktur_pajak: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 dark:[color-scheme:dark]"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 dark:[color-scheme:dark]"
             />
           </div>
 
           <div className="border-t border-gray-200 dark:border-slate-800 pt-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+            <h3 className="text-base font-semibold text-gray-700 dark:text-slate-300">
               Data pelanggan untuk faktur pajak
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label className="block text-base text-gray-600 dark:text-slate-300 mb-1">
                   Nama (sesuai NPWP)
                 </label>
                 <input
@@ -344,11 +344,11 @@ export default function PpnFakturModal({
                       pelanggan_nama_npwp_snapshot: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+                <label className="block text-base text-gray-600 dark:text-slate-300 mb-1">
                   NPWP pelanggan
                 </label>
                 <input
@@ -361,17 +361,17 @@ export default function PpnFakturModal({
                     }))
                   }
                   placeholder="01.234.567.8-901.234"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-mono"
                 />
                 {data.pelanggan_npwp_snapshot && (
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-base text-gray-400 mt-1">
                     {formatNpwp(data.pelanggan_npwp_snapshot)}
                   </p>
                 )}
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-600 dark:text-slate-300 mb-1">
+              <label className="block text-base text-gray-600 dark:text-slate-300 mb-1">
                 Alamat sesuai NPWP
               </label>
               <textarea
@@ -383,7 +383,7 @@ export default function PpnFakturModal({
                   }))
                 }
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function PpnFakturModal({
               onClear();
               onClose();
             }}
-            className="text-sm text-red-600 hover:text-red-800 dark:text-red-200"
+            className="text-base text-red-600 hover:text-red-800 dark:text-red-200"
           >
             Hapus PPN dari transaksi
           </button>
@@ -404,14 +404,14 @@ export default function PpnFakturModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
+              className="px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
+              className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
             >
               Simpan ke transaksi
             </button>

@@ -158,7 +158,7 @@ export default function StockOpnamePage() {
               <h2 className="text-2xl font-bold uppercase tracking-wide">
                 Opname Stok
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Snapshot stok sistem, input fisik, pratinjau selisih, lalu
                 posting penyesuaian.
               </p>
@@ -172,7 +172,7 @@ export default function StockOpnamePage() {
             ) : null}
             <button
               disabled={saving}
-              className="rounded-md bg-white/20 hover:bg-white/30 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 transition-colors"
+              className="rounded-md bg-white/20 hover:bg-white/30 px-4 py-2.5 text-base font-medium text-white disabled:opacity-60 transition-colors"
               onClick={createSession}
             >
               + Sesi Baru
@@ -195,7 +195,7 @@ export default function StockOpnamePage() {
               sessions.map((session) => (
                 <button
                   key={session.id}
-                  className={`w-full rounded-md border p-3 text-left text-sm transition-colors ${
+                  className={`w-full rounded-md border p-3 text-left text-base transition-colors ${
                     session.id === selectedId
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 dark:border-emerald-500"
                       : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -229,21 +229,21 @@ export default function StockOpnamePage() {
                 <div className="flex gap-2">
                   <button
                     disabled={saving || selected.status !== "DRAFT"}
-                    className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                    className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-base text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
                     onClick={() => saveCounts()}
                   >
                     Simpan
                   </button>
                   <button
                     disabled={saving || selected.status !== "DRAFT"}
-                    className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors"
+                    className="rounded bg-emerald-600 px-3 py-2.5 text-base text-white disabled:opacity-50 hover:bg-emerald-700 transition-colors"
                     onClick={post}
                   >
                     Posting
                   </button>
                   <button
                     disabled={saving || selected.status !== "DRAFT"}
-                    className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                    className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-base text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
                     onClick={cancel}
                   >
                     Batal
@@ -251,7 +251,7 @@ export default function StockOpnamePage() {
                 </div>
               </div>
               <div className="max-h-[70vh] overflow-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-base">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
                     <tr>
                       <th className="p-3">Barang</th>
@@ -295,7 +295,7 @@ export default function StockOpnamePage() {
                               colSpan={4}
                             >
                               {variantItems[0].barang_nama || barangId}
-                              <span className="ml-2 text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                              <span className="ml-2 text-sm font-normal text-emerald-600 dark:text-emerald-400">
                                 ({totalSistem.toFixed(2)} m² sistem)
                               </span>
                             </td>
@@ -317,12 +317,12 @@ export default function StockOpnamePage() {
                               key={item.id}
                               className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                             >
-                              <td className="p-3 pl-8 text-sm text-slate-500 dark:text-slate-400">
+                              <td className="p-3 pl-8 text-base text-slate-500 dark:text-slate-400">
                                 ↳ Lebar {Number(item.roll_width_m).toFixed(2)} m
                               </td>
-                              <td className="p-3 text-right tabular-nums text-sm">
+                              <td className="p-3 text-right tabular-nums text-base">
                                 {Number(item.system_linear_m ?? 0).toFixed(2)} m
-                                <span className="ml-1 text-xs text-slate-400">
+                                <span className="ml-1 text-sm text-slate-400">
                                   (= {Number(item.system_qty || 0).toFixed(2)}{" "}
                                   m²)
                                 </span>
@@ -332,7 +332,7 @@ export default function StockOpnamePage() {
                                   disabled={
                                     saving || selected.status !== "DRAFT"
                                   }
-                                  className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right text-sm"
+                                  className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-1 text-right text-base"
                                   type="number"
                                   step="0.01"
                                   value={countedLinear}
@@ -345,12 +345,12 @@ export default function StockOpnamePage() {
                                     }))
                                   }
                                 />
-                                <span className="ml-1 text-xs text-slate-400">
+                                <span className="ml-1 text-sm text-slate-400">
                                   m
                                 </span>
                               </td>
                               <td
-                                className={`p-3 text-right tabular-nums text-sm ${
+                                className={`p-3 text-right tabular-nums text-base ${
                                   delta === 0
                                     ? "text-slate-400 dark:text-slate-500"
                                     : delta < 0
@@ -384,7 +384,7 @@ export default function StockOpnamePage() {
                               <span>{item.barang_nama || item.barang_id}</span>
                               {Number(item.butuh_dimensi_status) === 1 &&
                                 !item.roll_variant_id && (
-                                  <span className="ml-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                  <span className="ml-1 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                                     (dimensi)
                                   </span>
                                 )}

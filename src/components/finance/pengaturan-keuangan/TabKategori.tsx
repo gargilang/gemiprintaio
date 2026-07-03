@@ -93,38 +93,38 @@ export default function TabKategori({
       <div className="p-4 space-y-4">
         {/* Add form */}
         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 p-4">
-          <p className="text-sm font-semibold text-slate-700 mb-2">Tambah kategori baru</p>
-          <p className="text-xs text-slate-500 mb-3">
+          <p className="text-base font-semibold text-slate-700 mb-2">Tambah kategori baru</p>
+          <p className="text-sm text-slate-500 mb-3">
             Kategori muncul saat mencatat transaksi. Cara kategori mempengaruhi omzet, laba, dan
             kasbon diatur di tab <strong>Rumus</strong>, bukan di sini.
           </p>
           <div className="flex gap-2 max-w-lg">
-            <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void addCategory(); }} placeholder='Contoh: Asuransi (tanpa menggunakan ")' className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-            <button type="button" disabled={katSaving || !newCatName.trim()} onClick={addCategory} className="px-4 py-2 bg-slate-700 text-white text-sm rounded-lg disabled:opacity-50">Tambah</button>
+            <input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void addCategory(); }} placeholder='Contoh: Asuransi (tanpa menggunakan ")' className="flex-1 px-3 py-2.5 text-base border border-slate-300 rounded-lg dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+            <button type="button" disabled={katSaving || !newCatName.trim()} onClick={addCategory} className="px-4 py-2.5 bg-slate-700 text-white text-base rounded-lg disabled:opacity-50">Tambah</button>
           </div>
         </div>
 
         {/* Search */}
-        <input type="search" value={katSearch} onChange={(e) => setKatSearch(e.target.value)} placeholder="Cari kategori…" className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-56 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+        <input type="search" value={katSearch} onChange={(e) => setKatSearch(e.target.value)} placeholder="Cari kategori…" className="px-3 py-1.5 text-base border border-slate-300 rounded-md w-56 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
 
         {/* List */}
-        {katLoading && <div className="py-8 text-center text-slate-500 text-sm">Memuat…</div>}
+        {katLoading && <div className="py-8 text-center text-slate-500 text-base">Memuat…</div>}
         {!katLoading && (
           <div className="space-y-2 max-h-[420px] overflow-y-auto">
             {filteredCats.length === 0 && (
-              <p className="py-8 text-center text-slate-500 text-sm">{categories.length === 0 ? "Belum ada kategori." : "Tidak ada yang cocok."}</p>
+              <p className="py-8 text-center text-slate-500 text-base">{categories.length === 0 ? "Belum ada kategori." : "Tidak ada yang cocok."}</p>
             )}
             {filteredCats.map((cat) => {
               return (
               <div
                 key={cat.id || cat.category_code}
-                className="flex items-center justify-between gap-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3"
+                className="flex items-center justify-between gap-2 text-base bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3"
               >
                 <div className="flex flex-col min-w-0">
                   <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                     {cat.display_name}
                   </span>
-                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono truncate mt-0.5">
+                  <span className="text-sm text-amber-600 dark:text-amber-400 font-mono truncate mt-0.5">
                     &quot;{cat.category_code}&quot;
                   </span>
                 </div>

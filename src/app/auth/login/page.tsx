@@ -132,7 +132,7 @@ export default function LoginPage() {
               setError("");
               setSuccess("");
             }}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all ${
               mode === "login"
                 ? "bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white shadow-md"
                 : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200"
@@ -147,7 +147,7 @@ export default function LoginPage() {
               setError("");
               setSuccess("");
             }}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-all ${
               mode === "register"
                 ? "bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white shadow-md"
                 : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200"
@@ -171,7 +171,7 @@ export default function LoginPage() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="text-sm">{success}</span>
+              <span className="text-base">{success}</span>
             </div>
           </div>
         )}
@@ -190,7 +190,7 @@ export default function LoginPage() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="text-sm">{error}</span>
+              <span className="text-base">{error}</span>
             </div>
           </div>
         )}
@@ -200,7 +200,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Username
               </label>
@@ -236,7 +236,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Password
               </label>
@@ -352,7 +352,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-fullname"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Nama Lengkap
               </label>
@@ -370,7 +370,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-username"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Username
               </label>
@@ -388,7 +388,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-email"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Email{" "}
                 <span className="text-gray-500 dark:text-slate-400 font-normal">(opsional)</span>
@@ -406,7 +406,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="reg-password"
-                className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
+                className="block text-base font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2"
               >
                 Password
               </label>
@@ -501,7 +501,7 @@ export default function LoginPage() {
         )}
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-[#6b7280] dark:text-slate-400">
+          <p className="text-sm text-[#6b7280] dark:text-slate-400">
             © 2025 gemiprint. All rights reserved.
           </p>
         </div>

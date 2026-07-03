@@ -164,7 +164,7 @@ export default function ModalTambahCepatVendor({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nama Perusahaan <span className="text-red-500">*</span>
           </label>
           <input
@@ -177,14 +177,14 @@ export default function ModalTambahCepatVendor({
               }))
             }
             placeholder="PT. Contoh Vendor"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
             required
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Kontak Person
           </label>
           <input
@@ -197,12 +197,12 @@ export default function ModalTambahCepatVendor({
               }))
             }
             placeholder="Nama contact person"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nomor Telepon <span className="text-red-500">*</span>
           </label>
           <input
@@ -212,13 +212,13 @@ export default function ModalTambahCepatVendor({
               setFormData((prev) => ({ ...prev, telepon: e.target.value }))
             }
             placeholder="08123456789"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Email
           </label>
           <input
@@ -228,12 +228,12 @@ export default function ModalTambahCepatVendor({
               setFormData((prev) => ({ ...prev, email: e.target.value }))
             }
             placeholder="vendor@email.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Alamat
           </label>
           <textarea
@@ -243,7 +243,7 @@ export default function ModalTambahCepatVendor({
             }
             placeholder="Alamat lengkap vendor"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
       </form>

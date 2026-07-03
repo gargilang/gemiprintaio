@@ -84,10 +84,10 @@ export default function HutangPage() {
             <DebtIcon size={28} className="text-white" />
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-wide">Hutang</h2>
-              <p className="text-white/90 text-sm">Daftar payable vendor, pembayaran, dan revert pembayaran.</p>
+              <p className="text-white/90 text-base">Daftar payable vendor, pembayaran, dan revert pembayaran.</p>
             </div>
           </div>
-          {notice ? <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">{notice}</div> : null}
+          {notice ? <div className="rounded-md bg-white/20 px-3 py-2.5 text-base text-white">{notice}</div> : null}
         </div>
       </div>
       <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-sm">
@@ -99,7 +99,7 @@ export default function HutangPage() {
         </select>
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
             <tr><th className="p-3">Pembelian</th><th className="p-3">Vendor</th><th className="p-3">Status</th><th className="p-3 text-right">Sisa</th><th className="p-3">Bayar</th></tr>
           </thead>

@@ -81,7 +81,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${colors[status] || "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"}`}
+      className={`inline-block px-2 py-0.5 rounded-full text-sm font-semibold ${colors[status] || "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"}`}
     >
       {status}
     </span>
@@ -96,7 +96,7 @@ function DashboardHeader({ user }: { user: User | null }) {
           Selamat Datang,{" "}
           {user?.nama_lengkap || user?.nama_pengguna || "Pengguna"}!
         </h2>
-        <p className="text-white/90 text-sm">
+        <p className="text-white/90 text-base">
           <span className="font-bauhaus italic">
             <span className="text-white">gemi</span>
             <span className="text-white/80">print</span>
@@ -275,7 +275,7 @@ export default function DashboardPage() {
                     <button
                       key={d}
                       onClick={() => setTrendDays(d)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
                         trendDays === d
                           ? "bg-[#00afef] text-white shadow"
                           : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
@@ -307,13 +307,13 @@ export default function DashboardPage() {
                 </h3>
                 <Link
                   href="/pos"
-                  className="text-sm text-[#00afef] hover:underline font-semibold"
+                  className="text-base text-[#00afef] hover:underline font-semibold"
                 >
                   Lihat Semua
                 </Link>
               </div>
               {stats.recentSales.length === 0 ? (
-                <p className="text-gray-400 text-sm py-4 text-center">
+                <p className="text-gray-400 text-base py-4 text-center">
                   Belum ada penjualan hari ini
                 </p>
               ) : (
@@ -324,15 +324,15 @@ export default function DashboardPage() {
                       className="flex items-center justify-between py-2 px-3 rounded-lg bg-white dark:bg-slate-900/60 border border-white/20"
                     >
                       <div>
-                        <p className="font-semibold text-sm text-gray-800 dark:text-slate-100">
+                        <p className="font-semibold text-base text-gray-800 dark:text-slate-100">
                           {s.pelangganNama}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">
+                        <p className="text-sm text-gray-500 dark:text-slate-400">
                           {fmtTime(s.dibuatPada)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-sm text-gray-800 dark:text-slate-100">
+                        <p className="font-bold text-base text-gray-800 dark:text-slate-100">
                           {fmtCurrency(s.totalJumlah)}
                         </p>
                         <StatusBadge status={s.statusPembayaran} />
@@ -356,13 +356,13 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   href="/produksi"
-                  className="text-sm text-[#00afef] hover:underline font-semibold"
+                  className="text-base text-[#00afef] hover:underline font-semibold"
                 >
                   Lihat Semua
                 </Link>
               </div>
               {stats.recentOrders.length === 0 ? (
-                <p className="text-gray-400 text-sm py-4 text-center">
+                <p className="text-gray-400 text-base py-4 text-center">
                   Tidak ada order aktif
                 </p>
               ) : (

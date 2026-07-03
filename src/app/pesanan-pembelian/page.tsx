@@ -7,7 +7,11 @@ import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
 import { PurchaseOrderFlowIcon } from "@/components/icons/PageIcons";
 import { TrashIcon } from "@/components/icons/ContentIcons";
 import MenuAksi from "@/components/MenuAksi";
-import { formatTampilanQtyItem, formatQtyAngkaItem, mapPoItemKeFaktur } from "@/lib/dokumen-item-display";
+import {
+  formatTampilanQtyItem,
+  formatQtyAngkaItem,
+  mapPoItemKeFaktur,
+} from "@/lib/dokumen-item-display";
 import { printPurchaseOrder } from "@/lib/faktur-print";
 import {
   createPurchaseOrderAction,
@@ -49,10 +53,11 @@ const money = (value: number) =>
 const initial = { purchaseOrders: [], materials: [], vendors: [], shop: null };
 
 export default function PurchaseOrdersPage() {
-  const { data: rawData, isLoading, mutate } = useCachedData<any>(
-    "purchase-orders-init",
-    getPurchaseOrdersInitAction
-  );
+  const {
+    data: rawData,
+    isLoading,
+    mutate,
+  } = useCachedData<any>("purchase-orders-init", getPurchaseOrdersInitAction);
   const data = rawData ?? initial;
   const loading = isLoading && !rawData;
   const reload = async () => {
@@ -64,10 +69,12 @@ export default function PurchaseOrdersPage() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
-  const [receiveModal, setReceiveModal] = useState<ReceiveModalState | null>(null);
+  const [receiveModal, setReceiveModal] = useState<ReceiveModalState | null>(
+    null,
+  );
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.jumlah * item.harga_satuan, 0),
-    [items]
+    [items],
   );
 
   function addItem(materialId: string) {
@@ -83,7 +90,7 @@ export default function PurchaseOrdersPage() {
         barang_id: material.id,
         harga_satuan_id: unit.id,
         jumlah: isDim ? 0 : 1,
-        nama_satuan: isDim ? "m²" : (unit.nama_satuan || "pcs"),
+        nama_satuan: isDim ? "m²" : unit.nama_satuan || "pcs",
         faktor_konversi: Number(unit.faktor_konversi || 1),
         harga_satuan: Number(unit.harga_beli || 0),
         butuh_dimensi: isDim,
@@ -108,7 +115,9 @@ export default function PurchaseOrdersPage() {
     setCatatan(po.catatan || "");
     setItems(
       (po.items || []).map((item: any) => {
-        const material = data.materials.find((m: any) => m.id === item.barang_id);
+        const material = data.materials.find(
+          (m: any) => m.id === item.barang_id,
+        );
         const isDim = Number(material?.butuh_dimensi_status) === 1;
         return {
           barang_id: item.barang_id,
@@ -122,7 +131,7 @@ export default function PurchaseOrdersPage() {
           lebar: item.lebar ?? (isDim ? 0 : null),
           jumlah_roll: item.jumlah_roll ?? (isDim ? 1 : null),
         };
-      })
+      }),
     );
     setNotice(`Mengedit draf ${po.nomor_po}.`);
   }
@@ -154,7 +163,11 @@ export default function PurchaseOrdersPage() {
       resetForm();
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal menyimpan pesanan pembelian");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyimpan pesanan pembelian",
+      );
     } finally {
       setSaving(false);
     }
@@ -182,9 +195,11 @@ export default function PurchaseOrdersPage() {
       setNotice("Isi qty terima minimal satu item.");
       return;
     }
-    if (!window.confirm(
-      `Posting penerimaan pesanan pembelian ${receiveModal.po.nomor_po}?\nIni akan membuat pembelian dan menambah stok.`
-    )) {
+    if (
+      !window.confirm(
+        `Posting penerimaan pesanan pembelian ${receiveModal.po.nomor_po}?\nIni akan membuat pembelian dan menambah stok.`,
+      )
+    ) {
       return;
     }
     setSaving(true);
@@ -212,7 +227,7 @@ export default function PurchaseOrdersPage() {
   async function confirmDeletePo(po: any) {
     if (
       !window.confirm(
-        `Hapus draf ${po.nomor_po}?\nTindakan ini tidak bisa dibatalkan.`
+        `Hapus draf ${po.nomor_po}?\nTindakan ini tidak bisa dibatalkan.`,
       )
     ) {
       return;
@@ -224,7 +239,9 @@ export default function PurchaseOrdersPage() {
       setNotice(`Draf ${po.nomor_po} dihapus.`);
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal menghapus draf",
+      );
     } finally {
       setSaving(false);
     }
@@ -236,7 +253,9 @@ export default function PurchaseOrdersPage() {
       await updatePurchaseOrderStatusAction(po.id, "SENT");
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal memperbarui status");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal memperbarui status",
+      );
     } finally {
       setSaving(false);
     }
@@ -249,12 +268,13 @@ export default function PurchaseOrdersPage() {
         nomor_po: po.nomor_po,
         tanggal: po.tanggal || new Date().toISOString(),
         expected_date: po.expected_date,
-        vendor_nama: vendor?.nama_perusahaan || po.vendor_name || po.vendor_id || "Vendor",
+        vendor_nama:
+          vendor?.nama_perusahaan || po.vendor_name || po.vendor_id || "Vendor",
         items: (po.items || []).map((item: any) =>
           mapPoItemKeFaktur({
             ...item,
             barang_nama: item.barang_nama || item.barang_id,
-          })
+          }),
         ),
         total: Number(po.total_jumlah || 0),
         catatan: po.catatan,
@@ -274,42 +294,72 @@ export default function PurchaseOrdersPage() {
           <div className="flex items-center gap-3">
             <PurchaseOrderFlowIcon size={28} className="text-white" />
             <div>
-              <h2 className="text-2xl font-bold uppercase tracking-wide">Pesanan Pembelian</h2>
-              <p className="text-white/90 text-sm">Draf, kirim, cetak, dan penerimaan parsial.</p>
+              <h2 className="text-2xl font-bold uppercase tracking-wide">
+                Pesanan Pembelian
+              </h2>
+              <p className="text-white/90 text-base">
+                Draf, kirim, cetak, dan penerimaan parsial.
+              </p>
             </div>
           </div>
-          {notice ? <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">{notice}</div> : null}
+          {notice ? (
+            <div className="rounded-md bg-white/20 px-3 py-2 text-base text-white">
+              {notice}
+            </div>
+          ) : null}
         </div>
       </div>
 
       <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
           <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-100">
-            {editingPoId ? "Edit Draf Pesanan Pembelian" : "Buat Pesanan Pembelian"}
+            {editingPoId
+              ? "Edit Draf Pesanan Pembelian"
+              : "Buat Pesanan Pembelian"}
           </h2>
           <div className="space-y-3">
-            <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" value={vendorId} onChange={(e) => setVendorId(e.target.value)} disabled={saving}>
+            <select
+              className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
+              disabled={saving}
+            >
               <option value="">Pilih vendor</option>
               {data.vendors.map((v: any) => (
-                <option key={v.id} value={v.id}>{v.nama_perusahaan}</option>
+                <option key={v.id} value={v.id}>
+                  {v.nama_perusahaan}
+                </option>
               ))}
             </select>
-            <select className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2" onChange={(e) => { addItem(e.target.value); e.currentTarget.value = ""; }} disabled={saving}>
+            <select
+              className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
+              onChange={(e) => {
+                addItem(e.target.value);
+                e.currentTarget.value = "";
+              }}
+              disabled={saving}
+            >
               <option value="">Tambah barang</option>
               {sembunyikanPlaceholderBarang(data.materials).map((m: any) => (
-                <option key={m.id} value={m.id}>{m.nama}</option>
+                <option key={m.id} value={m.id}>
+                  {m.nama}
+                </option>
               ))}
             </select>
             {items.length === 0 ? (
-              <div className="rounded-md border border-dashed border-slate-300 dark:border-slate-600 p-3 text-center text-xs text-slate-500 dark:text-slate-400">Belum ada item</div>
+              <div className="rounded-md border border-dashed border-slate-300 dark:border-slate-600 p-3 text-center text-sm text-slate-500 dark:text-slate-400">
+                Belum ada item
+              </div>
             ) : null}
             {items.map((item, index) => {
-              const material = data.materials.find((m: any) => m.id === item.barang_id);
+              const material = data.materials.find(
+                (m: any) => m.id === item.barang_id,
+              );
               const isDim = item.butuh_dimensi;
 
               const updateDim = (
                 field: "lebar" | "panjang" | "jumlah_roll",
-                val: number
+                val: number,
               ) => {
                 setItems((prev) =>
                   prev.map((row, i) => {
@@ -322,14 +372,14 @@ export default function PurchaseOrdersPage() {
                       ...updated,
                       jumlah: isDim ? l * p * roll : row.jumlah,
                     };
-                  })
+                  }),
                 );
               };
 
               return (
                 <div
                   key={`${item.barang_id}-${index}`}
-                  className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-sm space-y-2"
+                  className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-base space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
@@ -348,11 +398,11 @@ export default function PurchaseOrdersPage() {
                   {isDim ? (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                           Lebar roll (m)
                         </label>
                         <input
-                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                           type="number"
                           min="0"
                           step="0.01"
@@ -363,11 +413,11 @@ export default function PurchaseOrdersPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                           Panjang roll (m)
                         </label>
                         <input
-                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                           type="number"
                           min="0"
                           step="0.01"
@@ -378,11 +428,11 @@ export default function PurchaseOrdersPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                           Jml Roll
                         </label>
                         <input
-                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                           type="number"
                           min="1"
                           step="1"
@@ -392,14 +442,14 @@ export default function PurchaseOrdersPage() {
                           }
                         />
                       </div>
-                      <div className="col-span-3 text-xs text-slate-400 dark:text-slate-500">
+                      <div className="col-span-3 text-sm text-slate-400 dark:text-slate-500">
                         = {Number(item.jumlah).toFixed(2)} m²
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-[70px_100px] gap-2">
                       <input
-                        className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                        className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                         type="number"
                         min="0"
                         value={item.jumlah}
@@ -408,13 +458,13 @@ export default function PurchaseOrdersPage() {
                             prev.map((row, i) =>
                               i === index
                                 ? { ...row, jumlah: Number(e.target.value) }
-                                : row
-                            )
+                                : row,
+                            ),
                           )
                         }
                       />
                       <input
-                        className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                        className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                         type="number"
                         min="0"
                         value={item.harga_satuan}
@@ -422,9 +472,12 @@ export default function PurchaseOrdersPage() {
                           setItems((prev) =>
                             prev.map((row, i) =>
                               i === index
-                                ? { ...row, harga_satuan: Number(e.target.value) }
-                                : row
-                            )
+                                ? {
+                                    ...row,
+                                    harga_satuan: Number(e.target.value),
+                                  }
+                                : row,
+                            ),
                           )
                         }
                       />
@@ -432,7 +485,7 @@ export default function PurchaseOrdersPage() {
                   )}
                   {isDim ? (
                     <input
-                      className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                      className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                       type="number"
                       min="0"
                       placeholder="Harga per m²"
@@ -442,8 +495,8 @@ export default function PurchaseOrdersPage() {
                           prev.map((row, i) =>
                             i === index
                               ? { ...row, harga_satuan: Number(e.target.value) }
-                              : row
-                          )
+                              : row,
+                          ),
                         )
                       }
                     />
@@ -451,8 +504,16 @@ export default function PurchaseOrdersPage() {
                 </div>
               );
             })}
-            <textarea className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2" placeholder="Catatan" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
-            <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-100"><span>Total</span><span>{money(total)}</span></div>
+            <textarea
+              className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2"
+              placeholder="Catatan"
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+            />
+            <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-100">
+              <span>Total</span>
+              <span>{money(total)}</span>
+            </div>
             <div className="flex gap-2">
               {editingPoId ? (
                 <button
@@ -464,7 +525,11 @@ export default function PurchaseOrdersPage() {
                   Batal Edit
                 </button>
               ) : null}
-              <button disabled={saving} className="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-indigo-700 transition-colors" onClick={submit}>
+              <button
+                disabled={saving}
+                className="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-indigo-700 transition-colors"
+                onClick={submit}
+              >
                 {editingPoId ? "Simpan Perubahan" : "Simpan Pesanan Pembelian"}
               </button>
             </div>
@@ -473,104 +538,199 @@ export default function PurchaseOrdersPage() {
 
         <div className="space-y-3">
           {loading ? (
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-400 shadow-sm">Memuat...</div>
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-400 shadow-sm">
+              Memuat...
+            </div>
           ) : data.purchaseOrders.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-400 shadow-sm">Belum ada pesanan pembelian.</div>
-          ) : data.purchaseOrders.map((po: any) => {
-            const allReceived = (po.items || []).every((it: any) => Number(it.qty_received || 0) >= Number(it.jumlah || 0) - 0.000001);
-            return (
-              <div key={po.id} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="font-semibold text-slate-800 dark:text-slate-100">{po.nomor_po}</div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400">{po.vendor_name || "Vendor"} - {po.status}</div>
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500 dark:text-slate-400 shadow-sm">
+              Belum ada pesanan pembelian.
+            </div>
+          ) : (
+            data.purchaseOrders.map((po: any) => {
+              const allReceived = (po.items || []).every(
+                (it: any) =>
+                  Number(it.qty_received || 0) >=
+                  Number(it.jumlah || 0) - 0.000001,
+              );
+              return (
+                <div
+                  key={po.id}
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-slate-800 dark:text-slate-100">
+                        {po.nomor_po}
+                      </div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        {po.vendor_name || "Vendor"} - {po.status}
+                      </div>
+                    </div>
+                    <MenuAksi
+                      ambangInline={0}
+                      labelMenu={`Aksi untuk ${po.nomor_po}`}
+                      aksi={[
+                        {
+                          label: "Edit Draf",
+                          judul: "Edit draf pesanan pembelian",
+                          tampil: po.status === "DRAFT",
+                          disabled: saving,
+                          onClick: () => loadPoForEdit(po),
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-indigo-600 dark:text-indigo-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Cetak PO",
+                          judul: "Cetak pesanan pembelian (A4)",
+                          onClick: () => printPo(po),
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-blue-600 dark:text-blue-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Tandai Terkirim",
+                          judul: "Tandai PO sudah dikirim ke vendor",
+                          tampil:
+                            po.status !== "CANCELLED" &&
+                            po.status !== "RECEIVED",
+                          disabled:
+                            saving ||
+                            po.status === "SENT" ||
+                            po.status === "PARTIAL_RECEIVED",
+                          onClick: () => markSent(po),
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-violet-600 dark:text-violet-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Terima Barang",
+                          judul: "Posting penerimaan barang dari PO",
+                          tampil: po.status !== "CANCELLED" && !allReceived,
+                          disabled: saving,
+                          onClick: () => openReceive(po),
+                          ikon: (
+                            <svg
+                              className="w-5 h-5 text-emerald-600 dark:text-emerald-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          ),
+                        },
+                        {
+                          label: "Hapus Draf",
+                          judul: "Hapus draf pesanan pembelian",
+                          varian: "bahaya",
+                          tampil: po.status === "DRAFT",
+                          disabled: saving,
+                          onClick: () => confirmDeletePo(po),
+                          ikon: (
+                            <TrashIcon size={20} className="text-red-500" />
+                          ),
+                        },
+                      ]}
+                    />
                   </div>
-                  <MenuAksi
-                    ambangInline={0}
-                    labelMenu={`Aksi untuk ${po.nomor_po}`}
-                    aksi={[
-                      {
-                        label: "Edit Draf",
-                        judul: "Edit draf pesanan pembelian",
-                        tampil: po.status === "DRAFT",
-                        disabled: saving,
-                        onClick: () => loadPoForEdit(po),
-                        ikon: (
-                          <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        ),
-                      },
-                      {
-                        label: "Cetak PO",
-                        judul: "Cetak pesanan pembelian (A4)",
-                        onClick: () => printPo(po),
-                        ikon: (
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        ),
-                      },
-                      {
-                        label: "Tandai Terkirim",
-                        judul: "Tandai PO sudah dikirim ke vendor",
-                        tampil: po.status !== "CANCELLED" && po.status !== "RECEIVED",
-                        disabled: saving || po.status === "SENT" || po.status === "PARTIAL_RECEIVED",
-                        onClick: () => markSent(po),
-                        ikon: (
-                          <svg className="w-5 h-5 text-violet-600 dark:text-violet-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                        ),
-                      },
-                      {
-                        label: "Terima Barang",
-                        judul: "Posting penerimaan barang dari PO",
-                        tampil: po.status !== "CANCELLED" && !allReceived,
-                        disabled: saving,
-                        onClick: () => openReceive(po),
-                        ikon: (
-                          <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ),
-                      },
-                      {
-                        label: "Hapus Draf",
-                        judul: "Hapus draf pesanan pembelian",
-                        varian: "bahaya",
-                        tampil: po.status === "DRAFT",
-                        disabled: saving,
-                        onClick: () => confirmDeletePo(po),
-                        ikon: <TrashIcon size={20} className="text-red-500" />,
-                      },
-                    ]}
-                  />
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
-                      <tr><th className="p-2">Barang</th><th className="p-2">Dipesan</th><th className="p-2 text-right">Diterima</th><th className="p-2 text-right">Sisa</th></tr>
-                    </thead>
-                    <tbody>
-                      {(po.items || []).map((item: any) => (
-                        <tr key={item.id} className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                          <td className="p-2">
-                            {item.barang_id ? (
-                              <Link className="text-cyan-600 dark:text-cyan-400 underline-offset-2 hover:underline" href={`/barang?id=${item.barang_id}`}>{item.barang_nama || item.barang_id}</Link>
-                            ) : (item.barang_nama || "-")}
-                          </td>
-                          <td className="p-2 text-sm">{formatTampilanQtyItem(item)}</td>
-                          <td className="p-2 text-right">{formatQtyAngkaItem(item, Number(item.qty_received || 0))}</td>
-                          <td className="p-2 text-right">{formatQtyAngkaItem(item, Math.max(0, Number(item.jumlah || 0) - Number(item.qty_received || 0)))}</td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="p-2">Barang</th>
+                          <th className="p-2">Dipesan</th>
+                          <th className="p-2 text-right">Diterima</th>
+                          <th className="p-2 text-right">Sisa</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {(po.items || []).map((item: any) => (
+                          <tr
+                            key={item.id}
+                            className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          >
+                            <td className="p-2">
+                              {item.barang_id ? (
+                                <Link
+                                  className="text-cyan-600 dark:text-cyan-400 underline-offset-2 hover:underline"
+                                  href={`/barang?id=${item.barang_id}`}
+                                >
+                                  {item.barang_nama || item.barang_id}
+                                </Link>
+                              ) : (
+                                item.barang_nama || "-"
+                              )}
+                            </td>
+                            <td className="p-2 text-sm">
+                              {formatTampilanQtyItem(item)}
+                            </td>
+                            <td className="p-2 text-right">
+                              {formatQtyAngkaItem(
+                                item,
+                                Number(item.qty_received || 0),
+                              )}
+                            </td>
+                            <td className="p-2 text-right">
+                              {formatQtyAngkaItem(
+                                item,
+                                Math.max(
+                                  0,
+                                  Number(item.jumlah || 0) -
+                                    Number(item.qty_received || 0),
+                                ),
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -578,21 +738,47 @@ export default function PurchaseOrdersPage() {
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-2xl rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Penerimaan Pesanan {receiveModal.po.nomor_po}</h2>
-              <button className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => setReceiveModal(null)}>x</button>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                Penerimaan Pesanan {receiveModal.po.nomor_po}
+              </h2>
+              <button
+                className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                onClick={() => setReceiveModal(null)}
+              >
+                x
+              </button>
             </div>
             <div className="grid gap-3 text-sm md:grid-cols-2">
               <label className="block">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Tanggal</span>
-                <input type="date" className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Tanggal
+                </span>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
                   value={receiveModal.tanggal}
-                  onChange={(e) => setReceiveModal((prev) => prev ? { ...prev, tanggal: e.target.value } : prev)} />
+                  onChange={(e) =>
+                    setReceiveModal((prev) =>
+                      prev ? { ...prev, tanggal: e.target.value } : prev,
+                    )
+                  }
+                />
               </label>
               <label className="block">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Metode bayar vendor</span>
-                <select className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Metode bayar vendor
+                </span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
                   value={receiveModal.metode_pembayaran}
-                  onChange={(e) => setReceiveModal((prev) => prev ? { ...prev, metode_pembayaran: e.target.value as any } : prev)}>
+                  onChange={(e) =>
+                    setReceiveModal((prev) =>
+                      prev
+                        ? { ...prev, metode_pembayaran: e.target.value as any }
+                        : prev,
+                    )
+                  }
+                >
                   <option value="CASH">CASH (lunas)</option>
                   <option value="TRANSFER">TRANSFER (lunas)</option>
                   <option value="NET30">NET30 (jadi hutang)</option>
@@ -600,26 +786,61 @@ export default function PurchaseOrdersPage() {
               </label>
               {receiveModal.metode_pembayaran === "NET30" ? (
                 <label className="block md:col-span-2">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">DP yang dibayar (opsional)</span>
-                  <input type="number" min={0} className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    DP yang dibayar (opsional)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
                     value={receiveModal.jumlah_dibayar || ""}
-                    onChange={(e) => setReceiveModal((prev) => prev ? { ...prev, jumlah_dibayar: Number(e.target.value || 0) } : prev)} />
+                    onChange={(e) =>
+                      setReceiveModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              jumlah_dibayar: Number(e.target.value || 0),
+                            }
+                          : prev,
+                      )
+                    }
+                  />
                 </label>
               ) : null}
             </div>
             <div className="mt-4 max-h-72 overflow-auto rounded-md border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
-                  <tr><th className="p-2">Barang</th><th className="p-2 text-right">Dipesan</th><th className="p-2 text-right">Sudah</th><th className="p-2 text-right">Terima</th></tr>
+                  <tr>
+                    <th className="p-2">Barang</th>
+                    <th className="p-2 text-right">Dipesan</th>
+                    <th className="p-2 text-right">Sudah</th>
+                    <th className="p-2 text-right">Terima</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {(receiveModal.po.items || []).map((item: any) => {
-                    const remaining = Math.max(0, Number(item.jumlah || 0) - Number(item.qty_received || 0));
+                    const remaining = Math.max(
+                      0,
+                      Number(item.jumlah || 0) - Number(item.qty_received || 0),
+                    );
                     return (
-                      <tr key={item.id} className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                        <td className="p-2">{item.barang_nama || item.barang_id}</td>
-                        <td className="p-2 text-sm">{formatTampilanQtyItem(item)}</td>
-                        <td className="p-2 text-right">{formatQtyAngkaItem(item, Number(item.qty_received || 0))}</td>
+                      <tr
+                        key={item.id}
+                        className="border-t border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                      >
+                        <td className="p-2">
+                          {item.barang_nama || item.barang_id}
+                        </td>
+                        <td className="p-2 text-sm">
+                          {formatTampilanQtyItem(item)}
+                        </td>
+                        <td className="p-2 text-right">
+                          {formatQtyAngkaItem(
+                            item,
+                            Number(item.qty_received || 0),
+                          )}
+                        </td>
                         <td className="p-2 text-right">
                           <input
                             className="w-24 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-right"
@@ -627,10 +848,19 @@ export default function PurchaseOrdersPage() {
                             min={0}
                             max={remaining}
                             value={receiveModal.qtyByItem[item.id] || ""}
-                            onChange={(e) => setReceiveModal((prev) => prev ? {
-                              ...prev,
-                              qtyByItem: { ...prev.qtyByItem, [item.id]: Number(e.target.value) },
-                            } : prev)}
+                            onChange={(e) =>
+                              setReceiveModal((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      qtyByItem: {
+                                        ...prev.qtyByItem,
+                                        [item.id]: Number(e.target.value),
+                                      },
+                                    }
+                                  : prev,
+                              )
+                            }
                           />
                         </td>
                       </tr>
@@ -640,8 +870,19 @@ export default function PurchaseOrdersPage() {
               </table>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => setReceiveModal(null)}>Batal</button>
-              <button disabled={saving} className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors" onClick={confirmReceive}>Posting Penerimaan</button>
+              <button
+                className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => setReceiveModal(null)}
+              >
+                Batal
+              </button>
+              <button
+                disabled={saving}
+                className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors"
+                onClick={confirmReceive}
+              >
+                Posting Penerimaan
+              </button>
             </div>
           </div>
         </div>

@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  getRollVariantsAction,
-  convertRollVariantAction,
-} from "./actions";
+import { getRollVariantsAction, convertRollVariantAction } from "./actions";
 
 export interface MaterialKonversi {
   id: string;
@@ -92,7 +89,7 @@ export default function ModalKonversiRoll({
   const changeBatch = (
     index: number,
     field: "count" | "targets_text" | "length_text",
-    value: string
+    value: string,
   ) =>
     setBatches((prev) => {
       const next = [...prev];
@@ -138,7 +135,7 @@ export default function ModalKonversiRoll({
       if (Math.abs(sum - sourceWidth) > 0.000001) {
         showNotification(
           "error",
-          `Pola ${b.targets.join(",")} = ${sum}m harus = ${sourceWidth}m (lebar roll sumber)`
+          `Pola ${b.targets.join(",")} = ${sum}m harus = ${sourceWidth}m (lebar roll sumber)`,
         );
         return;
       }
@@ -149,7 +146,7 @@ export default function ModalKonversiRoll({
     if (totalLength > sourceAvailable + 0.000001) {
       showNotification(
         "error",
-        `Total panjang dipotong (${totalLength}m) melebihi sisa roll (${sourceAvailable}m)`
+        `Total panjang dipotong (${totalLength}m) melebihi sisa roll (${sourceAvailable}m)`,
       );
       return;
     }
@@ -210,15 +207,25 @@ export default function ModalKonversiRoll({
             className="p-1 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded"
             title="Tutup"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
+        <p className="text-sm text-gray-500 dark:text-slate-400">
           Setiap pola = N roll dengan lebar potongan yang sama. Total lebar di
-          tiap pola harus sama dengan lebar roll sumber. Konversi netral terhadap
-          nilai stok (avg cost diturunkan ke roll baru).
+          tiap pola harus sama dengan lebar roll sumber. Konversi netral
+          terhadap nilai stok (avg cost diturunkan ke roll baru).
         </p>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
@@ -261,7 +268,7 @@ export default function ModalKonversiRoll({
                 className="grid grid-cols-12 gap-2 items-start p-2 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-700"
               >
                 <div className="col-span-2">
-                  <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">
                     Roll
                   </label>
                   <input
@@ -270,22 +277,24 @@ export default function ModalKonversiRoll({
                     step="1"
                     value={batch.count || ""}
                     onChange={(e) => changeBatch(idx, "count", e.target.value)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="col-span-5">
-                  <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">
                     Lebar potongan (m)
                   </label>
                   <input
                     type="text"
                     value={batch.targets_text}
-                    onChange={(e) => changeBatch(idx, "targets_text", e.target.value)}
+                    onChange={(e) =>
+                      changeBatch(idx, "targets_text", e.target.value)
+                    }
                     placeholder="contoh: 1.5, 1"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
                   />
                   <p
-                    className={`text-[10px] mt-0.5 ${
+                    className={`text-xs mt-0.5 ${
                       valid
                         ? "text-emerald-600 dark:text-emerald-300"
                         : "text-amber-600 dark:text-amber-300"
@@ -299,7 +308,7 @@ export default function ModalKonversiRoll({
                   </p>
                 </div>
                 <div className="col-span-4">
-                  <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">
                     Panjang (m, per roll)
                   </label>
                   <input
@@ -307,9 +316,13 @@ export default function ModalKonversiRoll({
                     min="0"
                     step="any"
                     value={batch.length_text}
-                    onChange={(e) => changeBatch(idx, "length_text", e.target.value)}
-                    placeholder={sourceAvailable ? `Maks ${sourceAvailable}m` : "Auto"}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
+                    onChange={(e) =>
+                      changeBatch(idx, "length_text", e.target.value)
+                    }
+                    placeholder={
+                      sourceAvailable ? `Maks ${sourceAvailable}m` : "Auto"
+                    }
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded dark:bg-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div className="col-span-1 flex items-end justify-end h-full">
@@ -320,15 +333,25 @@ export default function ModalKonversiRoll({
                     className="mt-4 p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Hapus pola"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                 </div>
               </div>
             );
           })}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500 dark:text-slate-400">
               {sourceAvailable
                 ? `Total dipakai ${totalLength}m / sisa ${sourceAvailable}m${
@@ -344,7 +367,7 @@ export default function ModalKonversiRoll({
               + Tambah pola
             </button>
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-slate-400">
+          <p className="text-xs text-gray-500 dark:text-slate-400">
             Panjang kosong = otomatis dibagi rata sisa roll antar pola.
           </p>
         </div>
@@ -367,4 +390,3 @@ export default function ModalKonversiRoll({
     </div>
   );
 }
-

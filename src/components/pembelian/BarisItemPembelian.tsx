@@ -41,7 +41,7 @@ export default function BarisItemPembelian({
         index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
       }`}
     >
-      <td className="px-3 py-2 align-top">
+      <td className="px-3 py-2.5 align-top">
         <PilihanCari
           options={sembunyikanPlaceholderBarang(materials).map((m) => ({
             value: m.id,
@@ -53,21 +53,21 @@ export default function BarisItemPembelian({
           }
           placeholder="Cari barang..."
           emptyText="Tidak ada barang"
-          inputClassName="!px-2 !py-1 !h-[30px] text-sm"
+          inputClassName="!px-2 !py-1 !h-[30px] text-base"
         />
         {isDimensional && (
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+          <p className="text-base text-amber-700 dark:text-amber-300 mt-1">
             Barang dimensi · stok dalam m²
           </p>
         )}
       </td>
-      <td className="px-3 py-2 align-top">
+      <td className="px-3 py-2.5 align-top">
         <select
           value={item.id_satuan}
           onChange={(e) =>
             onItemChange(index, "id_satuan", e.target.value)
           }
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 h-[30px] dark:bg-slate-800 dark:text-slate-100"
+          className="w-full px-2 py-1 text-base border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 h-[30px] dark:bg-slate-800 dark:text-slate-100"
           disabled={!item.id_barang}
           required
         >
@@ -79,7 +79,7 @@ export default function BarisItemPembelian({
           ))}
         </select>
       </td>
-      <td className="px-3 py-2 align-top">
+      <td className="px-3 py-2.5 align-top">
         {isDimensional ? (
           <div className="space-y-1">
             <div className="flex items-center justify-center gap-1">
@@ -105,11 +105,11 @@ export default function BarisItemPembelian({
                 inputMode="numeric"
                 placeholder="Qty"
                 title="Jumlah roll dengan dimensi yang sama"
-                className="w-12 px-1 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+                className="w-12 px-1 py-1 h-[30px] text-base text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
-              <span className="text-xs text-gray-500 dark:text-slate-400">roll</span>
-              <span className="text-xs text-gray-500 dark:text-slate-400 ml-0.5">·</span>
+              <span className="text-base text-gray-500 dark:text-slate-400">roll</span>
+              <span className="text-base text-gray-500 dark:text-slate-400 ml-0.5">·</span>
               <input
                 type="number"
                 value={item.lebar ?? ""}
@@ -128,10 +128,10 @@ export default function BarisItemPembelian({
                 inputMode="decimal"
                 placeholder="L"
                 title="Lebar roll (m)"
-                className="w-14 px-1 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+                className="w-14 px-1 py-1 h-[30px] text-base text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
-              <span className="text-xs text-gray-500 dark:text-slate-400">×</span>
+              <span className="text-base text-gray-500 dark:text-slate-400">×</span>
               <input
                 type="number"
                 value={item.panjang ?? ""}
@@ -150,11 +150,11 @@ export default function BarisItemPembelian({
                 inputMode="decimal"
                 placeholder="P"
                 title="Panjang per roll (m)"
-                className="w-14 px-1 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+                className="w-14 px-1 py-1 h-[30px] text-base text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
             </div>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400 text-center">
+            <p className="text-sm text-gray-500 dark:text-slate-400 text-center">
               {(item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : ""}
               L × P = {item.jumlah.toLocaleString("id-ID")} m²
             </p>
@@ -166,7 +166,7 @@ export default function BarisItemPembelian({
                 );
                 const used = sumBatchRolls(item.split_batches);
                 return (
-                  <div className="flex items-center justify-center gap-1 text-[10px] text-purple-700 dark:text-purple-300">
+                  <div className="flex items-center justify-center gap-1 text-sm text-purple-700 dark:text-purple-300">
                     <svg
                       className="w-3 h-3"
                       fill="none"
@@ -212,12 +212,12 @@ export default function BarisItemPembelian({
             min="0"
             step="any"
             inputMode="decimal"
-            className="w-full px-2 py-1 h-[30px] text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-2 py-1 h-[30px] text-base text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         )}
       </td>
-      <td className="px-3 py-2 align-top">
+      <td className="px-3 py-2.5 align-top">
         <input
           type="number"
           value={item.harga_beli}
@@ -235,19 +235,19 @@ export default function BarisItemPembelian({
               ? "Harga per m²"
               : "Harga per satuan"
           }
-          className="w-full px-2 py-1 h-[30px] text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+          className="w-full px-2 py-1 h-[30px] text-base text-right border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
           required
         />
         {isDimensional && (
-          <p className="text-[11px] text-gray-500 dark:text-slate-400 text-right mt-0.5">
+          <p className="text-sm text-gray-500 dark:text-slate-400 text-right mt-0.5">
             per m²
           </p>
         )}
       </td>
-      <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap">
+      <td className="px-3 py-2.5 align-top text-right text-base font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap">
         Rp {subtotal.toLocaleString("id-ID")}
       </td>
-      <td className="px-3 py-2 align-top text-center">
+      <td className="px-3 py-2.5 align-top text-center">
         <div className="flex items-center justify-center gap-1">
           {isDimensional && (
             <button

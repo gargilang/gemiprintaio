@@ -418,7 +418,7 @@ export default function ProductionPage() {
           <p className="text-3xl font-bold">
             {visibleOrders.filter((o) => o.status === "MENUNGGU").length}
           </p>
-          <p className="text-sm mt-2 text-yellow-100">Order baru</p>
+          <p className="text-base mt-2 text-yellow-100">Order baru</p>
         </div>
 
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
@@ -435,7 +435,7 @@ export default function ProductionPage() {
           <p className="text-3xl font-bold">
             {visibleOrders.filter((o) => o.status === "PROSES").length}
           </p>
-          <p className="text-sm mt-2 text-blue-100">Sedang dikerjakan</p>
+          <p className="text-base mt-2 text-blue-100">Sedang dikerjakan</p>
         </div>
 
         <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-lg p-6">
@@ -493,7 +493,7 @@ export default function ProductionPage() {
           <p className="text-3xl font-bold">
             {visibleOrders.filter((o) => o.status === "SELESAI").length}
           </p>
-          <p className="text-sm mt-2 text-green-100">Order selesai</p>
+          <p className="text-base mt-2 text-green-100">Order selesai</p>
         </div>
 
         <div className="bg-gradient-to-br from-amber-700 to-amber-900 text-white rounded-xl shadow-lg p-6">
@@ -522,7 +522,7 @@ export default function ProductionPage() {
           <p className="text-3xl font-bold">
             {visibleOrders.filter((o) => o.prioritas === "KILAT").length}
           </p>
-          <p className="text-sm mt-2 opacity-90">Prioritas tinggi</p>
+          <p className="text-base mt-2 opacity-90">Prioritas tinggi</p>
         </div>
       </div>
 
@@ -559,7 +559,7 @@ export default function ProductionPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
+            className="px-4 py-2.5 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="ALL">Semua Status</option>
             <option value="MENUNGGU">Menunggu</option>
@@ -573,7 +573,7 @@ export default function ProductionPage() {
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
+            className="px-4 py-2.5 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="ALL">Semua Prioritas</option>
             <option value="KILAT">Kilat</option>
@@ -583,7 +583,7 @@ export default function ProductionPage() {
           {/* Refresh Button */}
           <button
             onClick={loadOrders}
-            className="px-4 py-2 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -608,7 +608,7 @@ export default function ProductionPage() {
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <PrinterIcon size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 dark:text-slate-400 text-lg font-semibold">
+            <p className="text-gray-500 dark:text-slate-400 text-xl font-semibold">
               {searchQuery || filterStatus !== "ALL" || filterPriority !== "ALL"
                 ? "Tidak ada order yang sesuai filter"
                 : "Belum ada order produksi"}
@@ -619,28 +619,28 @@ export default function ProductionPage() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-amber-700 to-amber-900 text-white sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                     SPK
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                     Faktur
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                     Pelanggan
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-sm font-semibold uppercase tracking-wider">
                     Item
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-sm font-semibold uppercase tracking-wider">
                     Prioritas
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-sm font-semibold uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-sm font-semibold uppercase tracking-wider">
                     Tanggal
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-sm font-semibold uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
@@ -659,12 +659,12 @@ export default function ProductionPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 dark:text-slate-300">
+                      <div className="text-base text-gray-600 dark:text-slate-300">
                         {order.nomor_faktur}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                      <div className="text-base font-medium text-gray-900 dark:text-slate-100">
                         {order.pelanggan_nama || "Pelanggan Umum"}
                       </div>
                     </td>
@@ -675,7 +675,7 @@ export default function ProductionPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${getPriorityColor(
+                        className={`px-3 py-1 rounded-full text-sm font-bold ${getPriorityColor(
                           order.prioritas
                         )}`}
                       >
@@ -684,14 +684,14 @@ export default function ProductionPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(
                           order.status
                         )}`}
                       >
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-slate-300">
+                    <td className="px-6 py-4 text-center text-base text-gray-600 dark:text-slate-300">
                       {order.dibuat_pada
                         ? new Date(order.dibuat_pada).toLocaleDateString(
                             "id-ID"
@@ -769,10 +769,10 @@ export default function ProductionPage() {
           }}
         >
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-3">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-3">
               Ubah Nama Pelanggan
             </h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mb-2">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">
               Ketik nama bebas, atau pilih pelanggan terdaftar dari daftar.
             </p>
             <input
@@ -780,7 +780,7 @@ export default function ProductionPage() {
               value={customerNameInput}
               onChange={(e) => setCustomerNameInput(e.target.value)}
               placeholder="Nama pelanggan"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 mb-4"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 mb-4"
               autoFocus
             />
             <datalist id="spk-pelanggan-list">
@@ -792,7 +792,7 @@ export default function ProductionPage() {
               <button
                 type="button"
                 onClick={() => setShowCustomerEditor(false)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200"
+                className="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200"
               >
                 Batal
               </button>
@@ -808,7 +808,7 @@ export default function ProductionPage() {
                   }
                 }}
                 disabled={!customerNameInput.trim()}
-                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold disabled:opacity-50"
+                className="px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold disabled:opacity-50"
               >
                 Simpan
               </button>

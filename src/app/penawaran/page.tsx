@@ -275,10 +275,10 @@ export default function PenawaranPage() {
             <QuotationIcon size={28} className="text-white" />
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-wide">Penawaran</h2>
-              <p className="text-white/90 text-sm">Draf, kirim, cetak, dan konversi ke faktur.</p>
+              <p className="text-white/90 text-base">Draf, kirim, cetak, dan konversi ke faktur.</p>
             </div>
           </div>
-          {notice ? <div className="rounded-md bg-white/20 px-3 py-2 text-sm text-white">{notice}</div> : null}
+          {notice ? <div className="rounded-md bg-white/20 px-3 py-2.5 text-base text-white">{notice}</div> : null}
         </div>
       </div>
 
@@ -327,7 +327,7 @@ export default function PenawaranPage() {
                 return (
                   <div
                     key={`${item.barang_id}-${index}`}
-                    className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-sm space-y-2"
+                    className="rounded-md bg-slate-50 dark:bg-slate-800 p-2 text-base space-y-2"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
@@ -345,11 +345,11 @@ export default function PenawaranPage() {
                     {isDim ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                             Lebar (m)
                           </label>
                           <input
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                             type="number"
                             min="0"
                             step="0.01"
@@ -360,11 +360,11 @@ export default function PenawaranPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                             Panjang (m)
                           </label>
                           <input
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                             type="number"
                             min="0"
                             step="0.01"
@@ -375,11 +375,11 @@ export default function PenawaranPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
                             Lembar
                           </label>
                           <input
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                             type="number"
                             min="1"
                             step="1"
@@ -389,7 +389,7 @@ export default function PenawaranPage() {
                             }
                           />
                         </div>
-                        <div className="col-span-3 text-xs text-slate-400 dark:text-slate-500">
+                        <div className="col-span-3 text-sm text-slate-400 dark:text-slate-500">
                           = {Number(item.jumlah).toFixed(2)} m² @ Rp{" "}
                           {money(item.harga_satuan)}
                         </div>
@@ -397,7 +397,7 @@ export default function PenawaranPage() {
                     ) : (
                       <div className="grid grid-cols-[70px_100px] gap-2">
                         <input
-                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                           type="number"
                           min="0"
                           placeholder="Qty"
@@ -413,7 +413,7 @@ export default function PenawaranPage() {
                           }
                         />
                         <input
-                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                           type="number"
                           min="0"
                           placeholder="Harga"
@@ -435,7 +435,7 @@ export default function PenawaranPage() {
                     )}
                     {isDim ? (
                       <input
-                        className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-sm"
+                        className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 p-1 text-base"
                         type="number"
                         min="0"
                         placeholder="Harga per m²"
@@ -468,13 +468,13 @@ export default function PenawaranPage() {
               {editingQuoteId ? (
                 <button
                   type="button"
-                  className="w-full rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-600 px-4 py-2.5 text-base text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={resetForm}
                 >
                   Batal Edit
                 </button>
               ) : null}
-              <button disabled={saving} className="w-full rounded-md bg-cyan-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-cyan-700 transition-colors" onClick={submit}>
+              <button disabled={saving} className="w-full rounded-md bg-cyan-600 px-4 py-2.5 font-medium text-white disabled:opacity-60 hover:bg-cyan-700 transition-colors" onClick={submit}>
                 {editingQuoteId ? "Simpan Perubahan" : "Simpan Penawaran"}
               </button>
             </div>
@@ -482,7 +482,7 @@ export default function PenawaranPage() {
         </div>
 
         <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-base">
             <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="p-3">Nomor</th>
@@ -501,7 +501,7 @@ export default function PenawaranPage() {
                 <tr key={quote.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200">
                   <td className="p-3 font-medium">{quote.nomor_penawaran}</td>
                   <td className="p-3">{quote.pelanggan_nama_snapshot || "Umum"}</td>
-                  <td className="p-3">{quote.status}{quote.converted_penjualan_id ? <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">→ faktur</span> : null}</td>
+                  <td className="p-3">{quote.status}{quote.converted_penjualan_id ? <span className="ml-2 text-sm text-emerald-600 dark:text-emerald-400">→ faktur</span> : null}</td>
                   <td className="p-3 text-right">{money(quote.total_jumlah)}</td>
                   <td className="p-3">
                     <MenuAksi
@@ -575,16 +575,16 @@ export default function PenawaranPage() {
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-md rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Konversi {convertTarget.nomor_penawaran}</h2>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Konversi {convertTarget.nomor_penawaran}</h2>
               <button className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => setConvertTarget(null)}>x</button>
             </div>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-base">
               <div className="flex items-center justify-between rounded bg-slate-50 dark:bg-slate-800 p-3">
                 <span className="text-slate-600 dark:text-slate-300">Total faktur</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">{money(convertTarget.total_jumlah)}</span>
               </div>
               <label className="block">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Tanggal faktur</span>
+                <span className="text-sm text-slate-600 dark:text-slate-400">Tanggal faktur</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
@@ -593,7 +593,7 @@ export default function PenawaranPage() {
                 />
               </label>
               <label className="block">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Metode bayar</span>
+                <span className="text-sm text-slate-600 dark:text-slate-400">Metode bayar</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2"
                   value={convertForm.metode_pembayaran}
@@ -606,7 +606,7 @@ export default function PenawaranPage() {
               </label>
               {convertForm.metode_pembayaran === "NET30" ? (
                 <label className="block">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">DP (opsional)</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">DP (opsional)</span>
                   <input
                     type="number"
                     min={0}
@@ -616,13 +616,13 @@ export default function PenawaranPage() {
                   />
                 </label>
               ) : null}
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 CASH/TRANSFER: penjualan langsung lunas, masuk kas. NET30: tagihan jatuh ke piutang.
               </p>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => setConvertTarget(null)}>Batal</button>
-              <button disabled={saving} className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors" onClick={confirmConvert}>Konversi</button>
+              <button className="rounded border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-base text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onClick={() => setConvertTarget(null)}>Batal</button>
+              <button disabled={saving} className="rounded bg-emerald-600 px-3 py-2.5 text-base text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors" onClick={confirmConvert}>Konversi</button>
             </div>
           </div>
         </div>

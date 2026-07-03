@@ -175,7 +175,7 @@ export default function PenggajianPage() {
               <h1 className="text-2xl font-bold uppercase tracking-wide">
                 Karyawan
               </h1>
-              <p className="text-indigo-100 dark:text-indigo-200 text-sm">
+              <p className="text-indigo-100 dark:text-indigo-200 text-base">
                 Kelola komponen gaji, kasbon, dan proses penggajian tiap
                 karyawan.
               </p>
@@ -185,14 +185,14 @@ export default function PenggajianPage() {
             <button
               type="button"
               onClick={() => setShowProsesGaji(true)}
-              className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-base font-semibold transition-colors"
             >
               Proses Penggajian
             </button>
             <button
               type="button"
               onClick={() => setShowTambah(true)}
-              className="px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 text-base font-semibold transition-colors"
             >
               + Tambah Karyawan
             </button>
@@ -213,7 +213,7 @@ export default function PenggajianPage() {
             </h3>
           </div>
           <p className="text-3xl font-bold">{totalKaryawan}</p>
-          <p className="text-sm mt-2 text-indigo-100">Karyawan terdaftar</p>
+          <p className="text-base mt-2 text-indigo-100">Karyawan terdaftar</p>
         </div>
 
         {/* Saldo Kasbon */}
@@ -229,7 +229,7 @@ export default function PenggajianPage() {
           <p className="text-3xl font-bold tabular-nums">
             {formatRupiah(saldoKasbon)}
           </p>
-          <p className="text-sm mt-2 text-cyan-100">
+          <p className="text-base mt-2 text-cyan-100">
             Total pinjaman berjalan semua karyawan
           </p>
         </div>
@@ -245,7 +245,7 @@ export default function PenggajianPage() {
             </h3>
           </div>
           <p className="text-3xl font-bold tabular-nums">{formatRupiah(kas)}</p>
-          <p className="text-sm mt-2 text-emerald-100">
+          <p className="text-base mt-2 text-emerald-100">
             Modal Kas: {formatRupiah(modalKas)}
           </p>
         </div>
@@ -255,14 +255,14 @@ export default function PenggajianPage() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
               Daftar Karyawan
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-base text-slate-500 dark:text-slate-400">
               Komponen kompensasi aktif dan saldo kasbon tiap karyawan.
             </p>
           </div>
-          <label className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 select-none cursor-pointer">
+          <label className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2 select-none cursor-pointer">
             <input
               type="checkbox"
               checked={showInactive}
@@ -273,7 +273,7 @@ export default function PenggajianPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-10 text-center text-slate-500 dark:text-slate-400">
+          <div className="p-10 text-center text-slate-500 dark:text-slate-400 text-base">
             Memuat data karyawan...
           </div>
         ) : karyawan.length === 0 ? (
@@ -283,29 +283,29 @@ export default function PenggajianPage() {
               <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                 Belum ada karyawan
               </p>
-              <p className="text-sm mt-1">
+              <p className="text-base mt-1">
                 Tekan &quot;+ Tambah Karyawan&quot; di atas untuk memulai
               </p>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-base">
               <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
-                  <th className="text-center px-3 py-3 font-medium w-20">
+                  <th className="text-center px-3 py-3 font-medium w-20 text-sm uppercase tracking-wider">
                     Urutan
                   </th>
-                  <th className="text-left px-6 py-3 font-medium">Nama</th>
-                  <th className="text-left px-6 py-3 font-medium">Jabatan</th>
-                  <th className="text-left px-6 py-3 font-medium">
+                  <th className="text-left px-6 py-3 font-medium text-sm uppercase tracking-wider">Nama</th>
+                  <th className="text-left px-6 py-3 font-medium text-sm uppercase tracking-wider">Jabatan</th>
+                  <th className="text-left px-6 py-3 font-medium text-sm uppercase tracking-wider">
                     Bagi Hasil &amp; Komponen
                   </th>
-                  <th className="text-right px-6 py-3 font-medium">
+                  <th className="text-right px-6 py-3 font-medium text-sm uppercase tracking-wider">
                     Saldo Kasbon
                   </th>
-                  <th className="text-center px-6 py-3 font-medium">Status</th>
-                  <th className="text-right px-6 py-3 font-medium">Aksi</th>
+                  <th className="text-center px-6 py-3 font-medium text-sm uppercase tracking-wider">Status</th>
+                  <th className="text-right px-6 py-3 font-medium text-sm uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -318,7 +318,7 @@ export default function PenggajianPage() {
                   >
                     <td className="px-3 py-3">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 text-xs font-bold tabular-nums">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 text-sm font-bold tabular-nums">
                           {index + 1}
                         </span>
                         <div className="flex flex-col gap-0.5">
@@ -380,20 +380,20 @@ export default function PenggajianPage() {
                     <td className="px-6 py-3">
                       {k.profit_share_percent === null &&
                       k.tipe_komponen.length === 0 ? (
-                        <span className="text-slate-400 dark:text-slate-500 italic">
+                        <span className="text-slate-400 dark:text-slate-500 italic text-base">
                           Belum diatur
                         </span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
                           {k.profit_share_percent !== null && (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            <span className="px-2 py-0.5 rounded text-sm font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                               Bagi Hasil {k.profit_share_percent}%
                             </span>
                           )}
                           {k.tipe_komponen.map((t) => (
                             <span
                               key={t}
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              className={`px-2 py-0.5 rounded text-sm font-medium ${
                                 TIPE_CHIP[t] ??
                                 "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                               }`}
@@ -410,18 +410,18 @@ export default function PenggajianPage() {
                           {formatRupiah(k.saldo_pinjaman)}
                         </span>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500">
+                        <span className="text-slate-400 dark:text-slate-500 text-base">
                           {formatRupiah(0)}
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-3 text-center">
                       {k.is_active === 1 ? (
-                        <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                        <span className="text-sm text-emerald-700 dark:text-emerald-300">
                           Aktif
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                        <span className="text-sm text-slate-400 dark:text-slate-500">
                           Nonaktif
                         </span>
                       )}
@@ -433,7 +433,7 @@ export default function PenggajianPage() {
                           onClick={() =>
                             setKasbonTarget({ id: k.actor_id, nama: k.nama })
                           }
-                          className="px-3 py-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-sm font-semibold"
                         >
                           Kasbon
                         </button>
@@ -446,7 +446,7 @@ export default function PenggajianPage() {
                                 nama: k.nama,
                               })
                             }
-                            className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-xs font-semibold"
+                            className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-sm font-semibold"
                           >
                             Bagi Hasil
                           </button>
@@ -456,7 +456,7 @@ export default function PenggajianPage() {
                           onClick={() =>
                             setKomponenTarget({ id: k.actor_id, nama: k.nama })
                           }
-                          className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold"
+                          className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-sm font-semibold"
                         >
                           Atur Kompensasi
                         </button>

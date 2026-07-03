@@ -33,7 +33,7 @@ export default function ModalTambahFinishing({
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
   const [finishingList, setFinishingList] = useState<FinishingItem[]>(
-    existingFinishing.length > 0 ? existingFinishing : []
+    existingFinishing.length > 0 ? existingFinishing : [],
   );
   const [selectedType, setSelectedType] = useState("");
   const [keterangan, setKeterangan] = useState("");
@@ -152,7 +152,7 @@ export default function ModalTambahFinishing({
               </svg>
             </button>
           </div>
-          <p className="text-white/90 text-sm mt-2">{itemName}</p>
+          <p className="text-white/90 text-base mt-2">{itemName}</p>
         </div>
 
         <div className="p-6 flex-1 min-h-0 overflow-y-auto">
@@ -168,7 +168,7 @@ export default function ModalTambahFinishing({
                   onClick={() =>
                     router.push("/pengaturan?tab=setup&subtab=finishing")
                   }
-                  className="text-xs text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
+                  className="text-sm text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:text-blue-200 hover:underline font-semibold"
                 >
                   Kelola
                 </button>
@@ -228,7 +228,7 @@ export default function ModalTambahFinishing({
           {/* Finishing List */}
           {finishingList.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">
+              <h4 className="text-base font-semibold text-gray-700 dark:text-slate-300 mb-3">
                 Finishing yang ditambahkan:
               </h4>
               <div className="space-y-2">

@@ -148,7 +148,7 @@ export default function AktivitasPage() {
               key={tab.id}
               type="button"
               onClick={() => handleTabChange(tab.id)}
-              className={`flex-1 px-4 h-12 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-sm ${
+              className={`flex-1 px-4 h-12 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-base ${
                 activeTab === tab.id
                   ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md"
                   : "bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
@@ -184,7 +184,7 @@ export default function AktivitasPage() {
               <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
                 Aktivitas Audit
               </h1>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-base text-gray-500 dark:text-slate-400">
                 Catatan permanen pembatalan transaksi, penyesuaian stok, barang
                 rusak, dan pembatalan NSFP.
               </p>
@@ -194,13 +194,13 @@ export default function AktivitasPage() {
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Jenis
                 </label>
                 <select
                   value={filterKind}
                   onChange={(e) => setFilterKind(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
                 >
                   <option value="ALL">Semua</option>
                   <option value="PURCHASE_VOID">Pembelian dibatalkan</option>
@@ -211,38 +211,38 @@ export default function AktivitasPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Dari tanggal
                 </label>
                 <input
                   type="date"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Sampai tanggal
                 </label>
                 <input
                   type="date"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
                 />
               </div>
               <div className="flex items-end">
                 <button
                   type="button"
                   onClick={load}
-                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 w-full"
+                  className="px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-800 w-full"
                 >
                   Terapkan filter
                 </button>
               </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-gray-500 dark:text-slate-400">
               {filtered.length} event
               {from || to ? " dalam rentang tanggal" : ""}
             </p>
@@ -276,15 +276,15 @@ export default function AktivitasPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${meta.color}`}
+                              className={`inline-block px-2 py-0.5 rounded text-sm font-medium ${meta.color}`}
                             >
                               {meta.label}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-slate-400">
+                            <span className="text-sm text-gray-500 dark:text-slate-400">
                               {formatDateTime(event.occurred_at)}
                             </span>
                             {event.actor_id && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-sm text-gray-400">
                                 oleh {event.actor_id}
                               </span>
                             )}
@@ -293,7 +293,7 @@ export default function AktivitasPage() {
                             {event.title}
                           </p>
                           {event.amount_label && (
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
                               {event.amount_label}
                               {event.amount != null &&
                               (event.kind === "PURCHASE_VOID" ||
@@ -303,7 +303,7 @@ export default function AktivitasPage() {
                             </p>
                           )}
                           {event.reason && (
-                            <p className="text-sm text-gray-600 dark:text-slate-300 mt-1 italic border-l-4 border-gray-200 dark:border-slate-800 pl-3">
+                            <p className="text-base text-gray-600 dark:text-slate-300 mt-1 italic border-l-4 border-gray-200 dark:border-slate-800 pl-3">
                               “{event.reason}”
                             </p>
                           )}

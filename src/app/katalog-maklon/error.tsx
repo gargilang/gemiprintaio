@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Error boundary khusus area Katalog Maklon. */
+/** Error boundary khusus area Katalog Extra. */
 export default function Error({
   error,
   reset,
@@ -17,10 +17,10 @@ export default function Error({
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
       <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-        Gagal memuat halaman Katalog Maklon
+        Gagal memuat halaman Katalog Extra
       </h2>
       <p className="text-slate-600 dark:text-slate-400 max-w-md">
-        Terjadi masalah saat membuka Katalog Maklon. Coba lagi; jika
+        Terjadi masalah saat membuka Katalog Extra. Coba lagi; jika
         berlanjut, muat ulang halaman.
       </p>
       <button

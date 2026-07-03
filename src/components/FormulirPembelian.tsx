@@ -559,20 +559,20 @@ export default function FormulirPembelian({
       {/* Header Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Tanggal <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             value={formData.tanggal}
             onChange={(e) => handleInputChange("tanggal", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nomor Faktur <span className="text-red-500">*</span>
           </label>
           <input
@@ -580,18 +580,18 @@ export default function FormulirPembelian({
             value={formData.nomor_faktur}
             onChange={(e) => handleInputChange("nomor_faktur", e.target.value)}
             placeholder="INV-001"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Vendor
             <button
               type="button"
               onClick={onQuickAddVendor}
-              className="ml-2 text-xs text-[#2266ff] hover:text-[#0a1b3d] font-semibold"
+              className="ml-2 text-base text-[#2266ff] hover:text-[#0a1b3d] font-semibold"
             >
               + Tambah Vendor
             </button>
@@ -615,13 +615,13 @@ export default function FormulirPembelian({
       {/* Items Section */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+          <label className="text-base font-semibold text-gray-700 dark:text-slate-300">
             Item Pembelian <span className="text-red-500">*</span>
           </label>
           <button
             type="button"
             onClick={onQuickAddMaterial}
-            className="text-xs text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:text-emerald-300 font-semibold"
+            className="text-base text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:text-emerald-300 font-semibold"
           >
             + Tambah Barang Baru
           </button>
@@ -639,22 +639,22 @@ export default function FormulirPembelian({
             </colgroup>
             <thead className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 text-white z-10">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold">
+                <th className="px-3 py-2.5 text-left text-base font-semibold">
                   Barang
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold">
+                <th className="px-3 py-2.5 text-left text-base font-semibold">
                   Satuan
                 </th>
-                <th className="px-3 py-2 text-center text-xs font-semibold">
+                <th className="px-3 py-2.5 text-center text-base font-semibold">
                   {hasAnyDimensional ? "Jumlah & Dimensi" : "Jumlah"}
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold">
+                <th className="px-3 py-2.5 text-right text-base font-semibold">
                   Harga Beli
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold">
+                <th className="px-3 py-2.5 text-right text-base font-semibold">
                   Subtotal
                 </th>
-                <th className="px-3 py-2 text-center text-xs font-semibold">
+                <th className="px-3 py-2.5 text-center text-base font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -678,11 +678,11 @@ export default function FormulirPembelian({
               <tr className="border-t border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 dark:border-indigo-800/50 dark:from-slate-800 dark:via-indigo-950/40 dark:to-slate-800">
                 <td
                   colSpan={4}
-                  className="px-3 py-2 text-right font-bold text-gray-800 dark:text-slate-200"
+                  className="px-3 py-2.5 text-right font-bold text-gray-800 dark:text-slate-200"
                 >
                   TOTAL:
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-lg text-indigo-700 dark:text-cyan-300">
+                <td className="px-3 py-2.5 text-right font-bold text-lg text-indigo-700 dark:text-cyan-300">
                   Rp {totalHarga.toLocaleString("id-ID")}
                 </td>
                 <td></td>
@@ -690,7 +690,7 @@ export default function FormulirPembelian({
               {/* Payment Method Row */}
               <tr className="bg-white dark:bg-slate-900 border-t-2 border-gray-300">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     Metode Pembayaran <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-4">
@@ -705,7 +705,7 @@ export default function FormulirPembelian({
                         }
                         className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
+                      <span className="flex items-center gap-1.5 text-base text-gray-700 dark:text-slate-300">
                         <CashIcon size={16} className="text-green-600" />
                         Cash (Lunas Langsung)
                       </span>
@@ -721,7 +721,7 @@ export default function FormulirPembelian({
                         }
                         className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
+                      <span className="flex items-center gap-1.5 text-base text-gray-700 dark:text-slate-300">
                         <CalendarIcon size={16} className="text-amber-600 dark:text-amber-300" />
                         NET 30 (Jatuh Tempo 30 Hari)
                       </span>
@@ -737,7 +737,7 @@ export default function FormulirPembelian({
                         }
                         className="w-4 h-4 text-indigo-600 dark:text-indigo-300 focus:ring-indigo-500"
                       />
-                      <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-slate-300">
+                      <span className="flex items-center gap-1.5 text-base text-gray-700 dark:text-slate-300">
                         <PackageIcon size={16} className="text-blue-600 dark:text-blue-300" />
                         COD (Bayar Saat Terima)
                       </span>
@@ -745,7 +745,7 @@ export default function FormulirPembelian({
                   </div>
                   {formData.metode_pembayaran !== "CASH" && (
                     <div className="mt-2 p-3 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg">
-                      <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                      <p className="flex items-start gap-2 text-base text-amber-700 dark:text-amber-300">
                         <AlertIcon size={16} className="flex-shrink-0 mt-0.5" />
                         <span>
                           <strong>Catatan:</strong> Pembelian ini akan dicatat
@@ -760,7 +760,7 @@ export default function FormulirPembelian({
               {/* Catatan Row */}
               <tr className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                     Catatan
                   </label>
                   <textarea
@@ -770,7 +770,7 @@ export default function FormulirPembelian({
                     }
                     placeholder="Catatan tambahan (opsional)"
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </td>
               </tr>
@@ -787,9 +787,9 @@ export default function FormulirPembelian({
               {/* Diterima Oleh Row */}
               <tr className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
                 <td colSpan={6} className="px-4 py-3">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                     Diterima Oleh
-                    <span className="ml-1 text-xs font-normal text-gray-400">
+                    <span className="ml-1 text-base font-normal text-gray-400">
                       (nama penerima barang di gudang)
                     </span>
                   </label>
@@ -800,7 +800,7 @@ export default function FormulirPembelian({
                       handleInputChange("diterima_oleh", e.target.value)
                     }
                     placeholder="Nama penerima barang (opsional)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
                   />
                 </td>
               </tr>

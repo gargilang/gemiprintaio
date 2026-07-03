@@ -190,7 +190,7 @@ export default function TabelRiwayatPenjualan({
 
     return (
       <span
-        className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
+        className={`px-2 py-1 rounded-lg text-sm font-semibold border ${
           styles[status as keyof typeof styles] ||
           "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
         }`}
@@ -591,14 +591,14 @@ export default function TabelRiwayatPenjualan({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari faktur atau pelanggan..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-3">
           {totalPiutang > 0 && onPayReceivable && (
             <button
               onClick={onPayReceivable}
-              className="px-4 py-2 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md text-sm flex items-center gap-2"
+              className="px-4 py-2.5 bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white rounded-lg font-semibold hover:from-[#0099dd] hover:to-[#1955ee] transition-all shadow-md text-base flex items-center gap-2"
             >
               <svg
                 className="w-4 h-4"
@@ -617,28 +617,28 @@ export default function TabelRiwayatPenjualan({
             </button>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">
+            <div className="text-sm text-gray-500 dark:text-slate-400">
               Total Penjualan
             </div>
-            <div className="text-lg font-bold text-[#00afef]">
+            <div className="text-xl font-bold text-[#00afef]">
               Rp {totalPenjualan.toLocaleString("id-ID")}
             </div>
           </div>
           {totalPiutang > 0 && (
             <div className="text-right">
-              <div className="text-xs text-gray-500 dark:text-slate-400">
+              <div className="text-sm text-gray-500 dark:text-slate-400">
                 Total Piutang
               </div>
-              <div className="text-lg font-bold text-red-600">
+              <div className="text-xl font-bold text-red-600">
                 Rp {totalPiutang.toLocaleString("id-ID")}
               </div>
             </div>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">
+            <div className="text-sm text-gray-500 dark:text-slate-400">
               Transaksi
             </div>
-            <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
+            <div className="text-xl font-bold text-gray-800 dark:text-slate-100">
               {filteredSales.length}
             </div>
           </div>
@@ -648,7 +648,7 @@ export default function TabelRiwayatPenjualan({
       {/* Toggle tampilkan transaksi yang dibatalkan (VOID) */}
       {jumlahVoid > 0 && (
         <div className="flex items-center justify-end">
-          <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-slate-300 select-none">
+          <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-600 dark:text-slate-300 select-none">
             <input
               type="checkbox"
               checked={tampilkanVoid}
@@ -690,25 +690,25 @@ export default function TabelRiwayatPenjualan({
           <table className="w-full">
             <thead className="bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold">
+                <th className="px-4 py-3 text-left text-sm font-semibold">
                   Faktur
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">
+                <th className="px-4 py-3 text-left text-sm font-semibold">
                   Pelanggan
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold">
+                <th className="px-4 py-3 text-right text-sm font-semibold">
                   Total
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
+                <th className="px-4 py-3 text-center text-sm font-semibold">
                   Pembayaran
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
+                <th className="px-4 py-3 text-center text-sm font-semibold">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">
+                <th className="px-4 py-3 text-left text-sm font-semibold">
                   Tanggal
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
+                <th className="px-4 py-3 text-center text-sm font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -730,7 +730,7 @@ export default function TabelRiwayatPenjualan({
                   >
                     <td className="px-4 py-3">
                       <div
-                        className={`font-bold text-gray-800 dark:text-slate-100 ${
+                        className={`font-bold text-base text-gray-800 dark:text-slate-100 ${
                           isVoid(sale)
                             ? "line-through text-gray-500 dark:text-slate-400"
                             : ""
@@ -744,13 +744,13 @@ export default function TabelRiwayatPenjualan({
                         </span>
                       )}
                       {sale.kasir_nama && (
-                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                           Kasir: {sale.kasir_nama}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-gray-800 dark:text-slate-100">
+                      <div className="text-base text-gray-800 dark:text-slate-100">
                         {sale.pelanggan_nama ||
                           sale.pelanggan_nama_snapshot || (
                             <span className="text-gray-400 italic">Umum</span>
@@ -758,17 +758,17 @@ export default function TabelRiwayatPenjualan({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="font-bold text-gray-800 dark:text-slate-100">
+                      <div className="font-bold text-base text-gray-800 dark:text-slate-100">
                         {formatRupiah(sale.total_jumlah)}
                       </div>
                       {sale.sisa_piutang > 0 && (
-                        <div className="text-xs text-red-600 mt-1">
+                        <div className="text-sm text-red-600 mt-1">
                           Sisa: {formatRupiah(sale.sisa_piutang)}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs font-semibold text-gray-700 dark:text-slate-300">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 rounded-lg text-sm font-semibold text-gray-700 dark:text-slate-300">
                         {getPaymentMethodIcon(sale.metode_pembayaran)}
                         {sale.metode_pembayaran}
                       </span>
@@ -777,7 +777,7 @@ export default function TabelRiwayatPenjualan({
                       {getStatusBadge(sale.status_pembayaran)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700 dark:text-slate-300">
+                      <div className="text-base text-gray-700 dark:text-slate-300">
                         {formatDate(sale.dibuat_pada)}
                       </div>
                     </td>
@@ -948,7 +948,7 @@ export default function TabelRiwayatPenjualan({
                   {expandedSale === sale.id && sale.items && (
                     <tr className="bg-gradient-to-r from-cyan-50/50 to-blue-50/50">
                       <td colSpan={7} className="px-4 py-3">
-                        <div className="text-xs">
+                        <div className="text-sm">
                           <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                             Detail Item:
                           </div>
@@ -1034,7 +1034,7 @@ export default function TabelRiwayatPenjualan({
                                     </div>
                                   </div>
                                   {biayaItem.length > 0 && (
-                                    <div className="mt-1 pl-3 space-y-0.5 text-xs text-gray-600 dark:text-slate-300">
+                                    <div className="mt-1 pl-3 space-y-0.5 text-sm text-gray-600 dark:text-slate-300">
                                       {biayaItem.map((b, bIdx) => (
                                         <div
                                           key={bIdx}
@@ -1089,7 +1089,7 @@ export default function TabelRiwayatPenjualan({
 
       {/* Info Text */}
       {filteredSales.length > 0 && (
-        <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
+        <div className="text-sm text-gray-500 dark:text-slate-400 text-center">
           Klik baris untuk melihat detail item penjualan
         </div>
       )}
@@ -1128,7 +1128,7 @@ export default function TabelRiwayatPenjualan({
                   ? "Info untuk Pratinjau Faktur"
                   : "Info untuk Faktur"}
               </h3>
-              <p className="text-white/90 text-xs mt-0.5">
+              <p className="text-white/90 text-sm mt-0.5">
                 Transaksi {fakturPromptSale.nomor_faktur} tidak menyimpan data
                 pelanggan. Isi info untuk{" "}
                 {fakturPromptMode === "preview" ? "ditampilkan" : "dicetak"} di
@@ -1137,7 +1137,7 @@ export default function TabelRiwayatPenjualan({
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kepada Yth.
                 </label>
                 <input
@@ -1150,12 +1150,12 @@ export default function TabelRiwayatPenjualan({
                     }))
                   }
                   placeholder="Nama / nama perusahaan"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-bold text-gray-600 dark:text-slate-300 mb-1">
                   Kota
                 </label>
                 <input
@@ -1168,14 +1168,14 @@ export default function TabelRiwayatPenjualan({
                     }))
                   }
                   placeholder="Bekasi"
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
+                  className="w-full px-3 py-2.5 text-base bg-white dark:bg-slate-900 text-black dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={closeFakturPrompt}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200"
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-200 text-base"
                 >
                   Batal
                 </button>
@@ -1183,7 +1183,7 @@ export default function TabelRiwayatPenjualan({
                   type="button"
                   onClick={submitFakturPrompt}
                   disabled={!fakturPromptInput.nama.trim()}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed text-base"
                 >
                   {fakturPromptMode === "preview"
                     ? "Pratinjau"

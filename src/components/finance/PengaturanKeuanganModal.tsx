@@ -84,7 +84,7 @@ interface Notice { type: "success" | "error"; message: string; }
 function InlineNotice({ notice }: { notice: Notice | null }) {
   if (!notice) return null;
   return (
-    <div className={`mx-4 mt-3 px-3 py-2 rounded text-sm ${
+    <div className={`mx-4 mt-3 px-3 py-2.5 rounded text-base ${
       notice.type === "success"
         ? "bg-emerald-50 dark:bg-slate-800 border border-emerald-300 text-emerald-800 dark:text-emerald-200"
         : "bg-rose-50 border border-rose-300 text-rose-800"
@@ -304,7 +304,7 @@ export default function PengaturanKeuanganModal({
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-xl font-bold text-white">Pengaturan Keuangan</h3>
-              <p className="text-slate-300 text-sm mt-1">Kelola orang, kategori transaksi, dan rumus kalkulasi buku kas.</p>
+              <p className="text-slate-300 text-base mt-1">Kelola orang, kategori transaksi, dan rumus kalkulasi buku kas.</p>
             </div>
             <button
               type="button"
@@ -320,13 +320,13 @@ export default function PengaturanKeuanganModal({
         }
         footer={
           <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
-            <div className="text-xs text-slate-400">
+            <div className="text-base text-slate-400">
               {tab === "kolom" && `${formulas.length} kolom`}
               {tab === "pengurus" && `${pengurusAktif} pengurus aktif`}
               {tab === "kategori" && `${kategoriCount} kategori`}
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Tutup</button>
+              <button type="button" onClick={onClose} className="px-4 py-1.5 text-base rounded bg-slate-700 text-white hover:bg-slate-800">Tutup</button>
             </div>
           </div>
         }
@@ -338,7 +338,7 @@ export default function PengaturanKeuanganModal({
               key={t.id}
               type="button"
               onClick={() => { setTab(t.id); setEditingFormulaId(null); }}
-              className={`px-5 py-3 text-sm border-b-2 transition-colors ${
+              className={`px-5 py-3 text-base border-b-2 transition-colors ${
                 tab === t.id
                   ? "border-slate-700 dark:border-slate-300 text-slate-900 dark:text-white font-semibold bg-slate-50 dark:bg-slate-800"
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
@@ -406,7 +406,7 @@ export default function PengaturanKeuanganModal({
           header={
               <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wider">
+                <p className="text-sm text-slate-400 uppercase tracking-wider">
                   Konfigurasi Rumus
                 </p>
                 <h3 className="text-base font-bold text-white truncate">

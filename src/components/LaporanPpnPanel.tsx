@@ -197,7 +197,7 @@ export default function LaporanPpnPanel() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Laporan PPN</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-base text-gray-500 dark:text-slate-400">
             Rekap PPN keluaran (penjualan) dan masukan (pembelian) per bulan,
             untuk cross-check ke Coretax DJP.
           </p>
@@ -207,13 +207,13 @@ export default function LaporanPpnPanel() {
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
               Bulan
             </label>
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
             >
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
@@ -223,20 +223,20 @@ export default function LaporanPpnPanel() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tahun
             </label>
             <input
               type="number"
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg"
             />
           </div>
           <button
             type="button"
             onClick={load}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
           >
             Muat ulang
           </button>
@@ -244,7 +244,7 @@ export default function LaporanPpnPanel() {
             type="button"
             onClick={exportCsv}
             disabled={!report}
-            className="px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800 disabled:opacity-50"
+            className="px-4 py-2.5 border border-emerald-600 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-800 disabled:opacity-50"
           >
             Ekspor CSV
           </button>
@@ -297,22 +297,22 @@ export default function LaporanPpnPanel() {
               <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 PPN Keluaran ({report.keluaran.length})
               </h2>
-              <span className="text-sm text-gray-500 dark:text-slate-400">
+              <span className="text-base text-gray-500 dark:text-slate-400">
                 Total PPN: Rp {fmt(report.total_ppn_keluaran)}
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 dark:text-slate-400">
+              <table className="w-full text-base">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-base uppercase text-gray-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-3 py-2 text-left">Tgl Faktur</th>
-                    <th className="px-3 py-2 text-left">NSFP</th>
-                    <th className="px-3 py-2 text-left">Faktur</th>
-                    <th className="px-3 py-2 text-left">Pelanggan</th>
-                    <th className="px-3 py-2 text-left">NPWP</th>
-                    <th className="px-3 py-2 text-right">DPP</th>
-                    <th className="px-3 py-2 text-right">PPN</th>
-                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2.5 text-left">Tgl Faktur</th>
+                    <th className="px-3 py-2.5 text-left">NSFP</th>
+                    <th className="px-3 py-2.5 text-left">Faktur</th>
+                    <th className="px-3 py-2.5 text-left">Pelanggan</th>
+                    <th className="px-3 py-2.5 text-left">NPWP</th>
+                    <th className="px-3 py-2.5 text-right">DPP</th>
+                    <th className="px-3 py-2.5 text-right">PPN</th>
+                    <th className="px-3 py-2.5 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -328,18 +328,18 @@ export default function LaporanPpnPanel() {
                   ) : (
                     report.keluaran.map((r) => (
                       <tr key={r.penjualan_id} className="border-t border-gray-100 dark:border-slate-800">
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2.5">
                           {r.tanggal_faktur_pajak || r.tanggal_transaksi}
                         </td>
-                        <td className="px-3 py-2 font-mono text-xs">{r.nsfp || "—"}</td>
-                        <td className="px-3 py-2">{r.nomor_faktur}</td>
-                        <td className="px-3 py-2">{r.pelanggan_nama || "—"}</td>
-                        <td className="px-3 py-2 text-xs font-mono">
+                        <td className="px-3 py-2.5 font-mono text-base">{r.nsfp || "—"}</td>
+                        <td className="px-3 py-2.5">{r.nomor_faktur}</td>
+                        <td className="px-3 py-2.5">{r.pelanggan_nama || "—"}</td>
+                        <td className="px-3 py-2.5 text-base font-mono">
                           {r.pelanggan_npwp ? formatNpwp(r.pelanggan_npwp) : "—"}
                         </td>
-                        <td className="px-3 py-2 text-right">{fmt(r.dpp_total)}</td>
-                        <td className="px-3 py-2 text-right">{fmt(r.ppn_total)}</td>
-                        <td className="px-3 py-2 text-right font-medium">
+                        <td className="px-3 py-2.5 text-right">{fmt(r.dpp_total)}</td>
+                        <td className="px-3 py-2.5 text-right">{fmt(r.ppn_total)}</td>
+                        <td className="px-3 py-2.5 text-right font-medium">
                           {fmt(r.total_jumlah)}
                         </td>
                       </tr>
@@ -347,18 +347,18 @@ export default function LaporanPpnPanel() {
                   )}
                 </tbody>
                 {report.keluaran.length > 0 && (
-                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-sm font-semibold">
+                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-base font-semibold">
                     <tr>
-                      <td colSpan={5} className="px-3 py-2 text-right">
+                      <td colSpan={5} className="px-3 py-2.5 text-right">
                         Total
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         {fmt(report.total_dpp_keluaran)}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         {fmt(report.total_ppn_keluaran)}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         {fmt(
                           report.total_dpp_keluaran + report.total_ppn_keluaran
                         )}
@@ -376,23 +376,23 @@ export default function LaporanPpnPanel() {
               <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 PPN Masukan ({report.masukan.length})
               </h2>
-              <span className="text-sm text-gray-500 dark:text-slate-400">
+              <span className="text-base text-gray-500 dark:text-slate-400">
                 Kreditable: Rp {fmt(report.total_ppn_masukan_kreditable)} dari
                 total Rp {fmt(report.total_ppn_masukan)}
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 dark:text-slate-400">
+              <table className="w-full text-base">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-base uppercase text-gray-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-3 py-2 text-left">Tgl Faktur</th>
-                    <th className="px-3 py-2 text-left">No. Faktur Vendor</th>
-                    <th className="px-3 py-2 text-left">No. Pembelian</th>
-                    <th className="px-3 py-2 text-left">Vendor</th>
-                    <th className="px-3 py-2 text-left">NPWP</th>
-                    <th className="px-3 py-2 text-right">DPP</th>
-                    <th className="px-3 py-2 text-right">PPN</th>
-                    <th className="px-3 py-2 text-center">Status</th>
+                    <th className="px-3 py-2.5 text-left">Tgl Faktur</th>
+                    <th className="px-3 py-2.5 text-left">No. Faktur Vendor</th>
+                    <th className="px-3 py-2.5 text-left">No. Pembelian</th>
+                    <th className="px-3 py-2.5 text-left">Vendor</th>
+                    <th className="px-3 py-2.5 text-left">NPWP</th>
+                    <th className="px-3 py-2.5 text-right">DPP</th>
+                    <th className="px-3 py-2.5 text-right">PPN</th>
+                    <th className="px-3 py-2.5 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -408,26 +408,26 @@ export default function LaporanPpnPanel() {
                   ) : (
                     report.masukan.map((r) => (
                       <tr key={r.pembelian_id} className="border-t border-gray-100 dark:border-slate-800">
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2.5">
                           {r.tanggal_faktur_pajak || r.tanggal_transaksi}
                         </td>
-                        <td className="px-3 py-2 font-mono text-xs">
+                        <td className="px-3 py-2.5 font-mono text-base">
                           {r.nomor_faktur_pajak_vendor || "—"}
                         </td>
-                        <td className="px-3 py-2">{r.nomor_pembelian || "—"}</td>
-                        <td className="px-3 py-2">{r.vendor_nama || "—"}</td>
-                        <td className="px-3 py-2 text-xs font-mono">
+                        <td className="px-3 py-2.5">{r.nomor_pembelian || "—"}</td>
+                        <td className="px-3 py-2.5">{r.vendor_nama || "—"}</td>
+                        <td className="px-3 py-2.5 text-base font-mono">
                           {r.vendor_npwp ? formatNpwp(r.vendor_npwp) : "—"}
                         </td>
-                        <td className="px-3 py-2 text-right">{fmt(r.dpp_total)}</td>
-                        <td className="px-3 py-2 text-right">{fmt(r.ppn_total)}</td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-2.5 text-right">{fmt(r.dpp_total)}</td>
+                        <td className="px-3 py-2.5 text-right">{fmt(r.ppn_total)}</td>
+                        <td className="px-3 py-2.5 text-center">
                           {r.dapat_dikreditkan ? (
-                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200">
+                            <span className="inline-block px-2 py-0.5 rounded text-base bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200">
                               Kreditable
                             </span>
                           ) : (
-                            <span className="inline-block px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-700 dark:text-slate-300">
+                            <span className="inline-block px-2 py-0.5 rounded text-base bg-gray-200 text-gray-700 dark:text-slate-300">
                               Non-kreditable
                             </span>
                           )}
@@ -437,18 +437,18 @@ export default function LaporanPpnPanel() {
                   )}
                 </tbody>
                 {report.masukan.length > 0 && (
-                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-sm font-semibold">
+                  <tfoot className="bg-gray-50 dark:bg-slate-800 text-base font-semibold">
                     <tr>
-                      <td colSpan={5} className="px-3 py-2 text-right">
+                      <td colSpan={5} className="px-3 py-2.5 text-right">
                         Total
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         {fmt(report.total_dpp_masukan)}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         {fmt(report.total_ppn_masukan)}
                       </td>
-                      <td className="px-3 py-2"></td>
+                      <td className="px-3 py-2.5"></td>
                     </tr>
                   </tfoot>
                 )}
@@ -478,7 +478,7 @@ function SummaryCard({
   }[tone];
   return (
     <div className={`rounded-xl border-2 p-4 ${cls}`}>
-      <div className="text-xs uppercase tracking-wide opacity-70">{label}</div>
+      <div className="text-base uppercase tracking-wide opacity-70">{label}</div>
       <div className="text-xl font-bold mt-1">Rp {fmt(value)}</div>
     </div>
   );

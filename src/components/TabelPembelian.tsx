@@ -209,7 +209,7 @@ const PurchaseRow = memo(
           }`}
           onClick={() => setShowDetails(!showDetails)}
         >
-          <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+          <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
             {tanggalFormatted}
           </td>
           <td className="px-4 py-3">
@@ -232,34 +232,34 @@ const PurchaseRow = memo(
               )}
             </div>
             {purchase.catatan && (
-              <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-1">
+              <div className="text-base text-gray-500 dark:text-slate-400 mt-1 line-clamp-1">
                 {purchase.catatan}
               </div>
             )}
           </td>
-          <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+          <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
             {purchase.vendor_name || (
               <span className="text-gray-400 italic">Tanpa Vendor</span>
             )}
           </td>
           <td className="px-4 py-3 text-center">
-            <span className="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-semibold">
+            <span className="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-base font-semibold">
               {purchase.items.length} item
             </span>
           </td>
           <td className="px-4 py-3 text-center">
             {purchase.status_pembayaran === "LUNAS" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-base font-semibold">
                 <CheckIcon size={14} />
                 LUNAS
               </span>
             ) : purchase.status_pembayaran === "HUTANG" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-base font-semibold">
                 <ClockIcon size={14} className="text-[#2266ff]" />
                 TAGIHAN
               </span>
             ) : (
-              <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
+              <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-base font-semibold">
                 {purchase.metode_pembayaran || "CASH"}
               </span>
             )}
@@ -418,7 +418,7 @@ const PurchaseRow = memo(
         {showDetails && (
           <tr className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
             <td colSpan={7} className="px-4 py-3">
-              <div className="text-xs">
+              <div className="text-base">
                 <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                   Detail Item:
                 </div>
@@ -588,18 +588,18 @@ export default function TabelPembelian({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nomor faktur, vendor, catatan..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">Total Pembelian</div>
+            <div className="text-base text-gray-500 dark:text-slate-400">Total Pembelian</div>
             <div className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
               Rp {totalPembelian.toLocaleString("id-ID")}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">Transaksi</div>
+            <div className="text-base text-gray-500 dark:text-slate-400">Transaksi</div>
             <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
               {filteredPurchases.length}
             </div>
@@ -610,7 +610,7 @@ export default function TabelPembelian({
       {/* Toggle tampilkan pembelian yang dibatalkan (VOID) */}
       {jumlahVoid > 0 && (
         <div className="flex items-center justify-end">
-          <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-slate-300 select-none">
+          <label className="inline-flex items-center gap-2 cursor-pointer text-base font-semibold text-gray-600 dark:text-slate-300 select-none">
             <input
               type="checkbox"
               checked={tampilkanVoid}
@@ -645,7 +645,7 @@ export default function TabelPembelian({
               ? "Tidak ada pembelian yang cocok dengan pencarian"
               : "Belum ada data pembelian"}
           </p>
-          <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
+          <p className="text-gray-500 dark:text-slate-400 text-base mt-1">
             {searchQuery
               ? "Coba kata kunci lain"
               : "Tambahkan pembelian pertama Anda menggunakan form di atas"}
@@ -657,54 +657,54 @@ export default function TabelPembelian({
             <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
               <tr>
                 <th
-                  className="px-4 py-3 text-left text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"
+                  className="px-4 py-3 text-left text-base font-semibold cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => handleSort("date")}
                 >
                   <div className="flex items-center gap-1">
                     Tanggal
                     {sortBy === "date" && (
-                      <span className="text-xs">
+                      <span className="text-base">
                         {sortOrder === "asc" ? "↑" : "↓"}
                       </span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">
+                <th className="px-4 py-3 text-left text-base font-semibold">
                   Nomor Faktur
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">
+                <th className="px-4 py-3 text-left text-base font-semibold">
                   Vendor
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
+                <th className="px-4 py-3 text-center text-base font-semibold">
                   Items
                 </th>
                 <th
-                  className="px-4 py-3 text-center text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"
+                  className="px-4 py-3 text-center text-base font-semibold cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => handleSort("status")}
                 >
                   <div className="flex items-center justify-center gap-1">
                     Status
                     {sortBy === "status" && (
-                      <span className="text-xs">
+                      <span className="text-base">
                         {sortOrder === "asc" ? "↑" : "↓"}
                       </span>
                     )}
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 text-right text-xs font-semibold cursor-pointer hover:bg-white/10 transition-colors"
+                  className="px-4 py-3 text-right text-base font-semibold cursor-pointer hover:bg-white/10 transition-colors"
                   onClick={() => handleSort("total")}
                 >
                   <div className="flex items-center justify-end gap-1">
                     Total Harga
                     {sortBy === "total" && (
-                      <span className="text-xs">
+                      <span className="text-base">
                         {sortOrder === "asc" ? "↑" : "↓"}
                       </span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">
+                <th className="px-4 py-3 text-center text-base font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -728,7 +728,7 @@ export default function TabelPembelian({
 
       {/* Info Text */}
       {filteredPurchases.length > 0 && (
-        <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
+        <div className="text-base text-gray-500 dark:text-slate-400 text-center">
           Klik baris untuk melihat detail item pembelian
         </div>
       )}

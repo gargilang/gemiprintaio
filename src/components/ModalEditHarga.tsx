@@ -93,7 +93,7 @@ export default function ModalEditHarga({
             <h2 className="text-base font-bold text-white truncate">
               Edit Harga
             </h2>
-            <p className="text-xs text-white/80 truncate">{itemName}</p>
+            <p className="text-sm text-white/80 truncate">{itemName}</p>
           </div>
           <button
             type="button"
@@ -122,7 +122,7 @@ export default function ModalEditHarga({
           <button
             type="button"
             onClick={handleReset}
-            className="text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-[#00afef] transition-colors underline"
+            className="text-sm font-semibold text-gray-600 dark:text-slate-400 hover:text-[#00afef] transition-colors underline"
           >
             Reset ke harga normal
           </button>
@@ -130,7 +130,7 @@ export default function ModalEditHarga({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold text-sm"
+              className="px-4 py-1.5 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold text-base"
             >
               Batal
             </button>
@@ -138,7 +138,7 @@ export default function ModalEditHarga({
               type="submit"
               form="edit-price-form"
               disabled={computed.harga <= 0}
-              className="px-4 py-1.5 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold text-sm disabled:opacity-50"
+              className="px-4 py-1.5 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all font-semibold text-base disabled:opacity-50"
             >
               Simpan
             </button>
@@ -156,7 +156,7 @@ export default function ModalEditHarga({
           <button
             type="button"
             onClick={() => setMode("harga")}
-            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all border-2 ${
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all border-2 ${
               mode === "harga"
                 ? "bg-[#00afef] text-white border-[#00afef]"
                 : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700"
@@ -167,7 +167,7 @@ export default function ModalEditHarga({
           <button
             type="button"
             onClick={() => setMode("subtotal")}
-            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all border-2 ${
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all border-2 ${
               mode === "subtotal"
                 ? "bg-[#00afef] text-white border-[#00afef]"
                 : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700"
@@ -181,9 +181,8 @@ export default function ModalEditHarga({
         {mode === "harga" ? (
           <>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
-                Harga / Satuan (Rp){" "}
-                <span className="text-red-500">*</span>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                Harga / Satuan (Rp) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -191,14 +190,14 @@ export default function ModalEditHarga({
                 min="0"
                 value={hargaStr}
                 onChange={(e) => setHargaStr(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold"
+                className="w-full px-3 py-2 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold"
                 autoFocus
               />
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 Harga normal: Rp {hargaOriginal.toLocaleString("id-ID")}
               </p>
             </div>
-            <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-xs">
+            <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-slate-400">
                   Jumlah:
@@ -220,9 +219,8 @@ export default function ModalEditHarga({
         ) : (
           <>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
-                Subtotal Final (Rp){" "}
-                <span className="text-red-500">*</span>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                Subtotal Final (Rp) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -230,15 +228,15 @@ export default function ModalEditHarga({
                 min="0"
                 value={subtotalStr}
                 onChange={(e) => setSubtotalStr(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold"
+                className="w-full px-3 py-2 text-base bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold"
                 autoFocus
               />
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 Subtotal normal: Rp{" "}
                 {(hargaOriginal * jumlah).toLocaleString("id-ID")}
               </p>
             </div>
-            <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-xs">
+            <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-slate-400">
                   Jumlah:
@@ -260,10 +258,10 @@ export default function ModalEditHarga({
         )}
 
         {isOverridden && (
-          <div className="rounded-lg border-2 border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+          <div className="rounded-lg border-2 border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
             Harga ini berbeda dari harga catalog (Rp{" "}
-            {hargaOriginal.toLocaleString("id-ID")}). Override akan tersimpan
-            di transaksi.
+            {hargaOriginal.toLocaleString("id-ID")}). Override akan tersimpan di
+            transaksi.
           </div>
         )}
       </form>

@@ -132,7 +132,7 @@ export default function ModalTambahItemLainnya({
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800 text-white font-semibold disabled:opacity-50"
           >
             {saving ? "Menyimpan..." : "Simpan"}
           </button>
@@ -200,7 +200,7 @@ export default function ModalTambahItemLainnya({
           <button
             type="button"
             onClick={() => setTampilkanInternal((v) => !v)}
-            className="flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-300"
+            className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-300"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

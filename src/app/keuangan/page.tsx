@@ -862,7 +862,7 @@ export default function FinancePage() {
               <h2 className="text-2xl font-bold mb-1 uppercase font-twcenmt tracking-wide">
                 Buku Keuangan
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Area kerja buku kas —{" "}
                 <span className="font-semibold">{periodeLabel}</span>. Riwayat
                 tersedia di Laporan.
@@ -894,7 +894,7 @@ export default function FinancePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {/* Card 1: Saldo */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-pink-600">
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">Saldo</p>
+          <p className="text-base text-gray-500 dark:text-slate-400 font-semibold mb-1">Saldo</p>
           <p className="text-2xl font-bold text-pink-600">
             {formatRupiah(summaryData.saldo)}
           </p>
@@ -902,7 +902,7 @@ export default function FinancePage() {
 
         {/* Card 2: Total Omzet */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-green-500">
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
+          <p className="text-base text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Total Omzet
           </p>
           <p className="text-2xl font-bold text-green-600">
@@ -915,7 +915,7 @@ export default function FinancePage() {
           onClick={() => setShowBiayaDetail(!showBiayaDetail)}
           className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-red-500 cursor-pointer hover:shadow-lg transition-all duration-200"
         >
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1 flex items-center justify-between">
+          <p className="text-base text-gray-500 dark:text-slate-400 font-semibold mb-1 flex items-center justify-between">
             <span>Total Biaya</span>
             <svg
               className={`w-5 h-5 transform transition-transform ${
@@ -939,14 +939,14 @@ export default function FinancePage() {
           {showBiayaDetail && (
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 space-y-1">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-slate-300">Operasional:</span>
-                <span className="text-sm font-semibold text-red-700">
+                <span className="text-base text-gray-600 dark:text-slate-300">Operasional:</span>
+                <span className="text-base font-semibold text-red-700">
                   {formatRupiah(summaryData.biayaOperasional)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-slate-300">HPP:</span>
-                <span className="text-sm font-semibold text-red-700">
+                <span className="text-base text-gray-600 dark:text-slate-300">HPP:</span>
+                <span className="text-base font-semibold text-red-700">
                   {formatRupiah(summaryData.biayaBahan)}
                 </span>
               </div>
@@ -956,14 +956,14 @@ export default function FinancePage() {
 
         {/* Card 4: Payables (NEW) */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-amber-500">
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
+          <p className="text-base text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Tagihan Vendor
           </p>
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-300">
             {formatRupiah(summaryData.hutang)}
           </p>
           {summaryData.hutangCount > 0 && (
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
               {summaryData.hutangCount} pembelian
             </p>
           )}
@@ -971,14 +971,14 @@ export default function FinancePage() {
 
         {/* Card 5: Receivables */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-blue-500">
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mb-1">
+          <p className="text-base text-gray-500 dark:text-slate-400 font-semibold mb-1">
             Piutang Pelanggan
           </p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">
             {formatRupiah(summaryData.piutang)}
           </p>
           {summaryData.piutangCount > 0 && (
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
               {summaryData.piutangCount} penjualan
             </p>
           )}
@@ -1007,7 +1007,7 @@ export default function FinancePage() {
           <div className="relative">
             <button
               onClick={() => setShowKategoriDropdown(!showKategoriDropdown)}
-              className="bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+              className="bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
             >
               <svg
                 className="w-5 h-5"
@@ -1049,7 +1049,7 @@ export default function FinancePage() {
                       const allKats = new Set(kategoriOptions);
                       setSelectedKategoriFilters(allKats);
                     }}
-                    className="flex-1 text-xs px-2 py-1 bg-cyan-50 dark:bg-slate-800 text-cyan-700 rounded hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                    className="flex-1 text-sm px-2 py-1 bg-cyan-50 dark:bg-slate-800 text-cyan-700 rounded hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                   >
                     Pilih Semua
                   </button>
@@ -1057,7 +1057,7 @@ export default function FinancePage() {
                     onClick={() => {
                       setSelectedKategoriFilters(new Set());
                     }}
-                    className="flex-1 text-xs px-2 py-1 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    className="flex-1 text-sm px-2 py-1 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     Bersihkan
                   </button>
@@ -1067,7 +1067,7 @@ export default function FinancePage() {
                   return (
                     <label
                       key={kat}
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                      className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"
@@ -1102,7 +1102,7 @@ export default function FinancePage() {
             currentUser?.role === "staff") && (
             <button
               onClick={() => { setPengaturanDefaultTab("kolom"); setShowPengaturanModal(true); }}
-              className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+              className="bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
               title="Kelola pengurus, kategori transaksi, dan rumus kalkulasi"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1114,7 +1114,7 @@ export default function FinancePage() {
           )}
           <button
             onClick={() => setShowDeleteAllModal(true)}
-            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
+            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
           >
             <svg
               className="w-5 h-5"
@@ -1132,7 +1132,7 @@ export default function FinancePage() {
             Hapus Semua
           </button>
           <div className="ml-auto">
-            <div className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-semibold px-4 py-2 rounded-lg shadow-inner flex items-center gap-2">
+            <div className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-base font-semibold px-4 py-2.5 rounded-lg shadow-inner flex items-center gap-2">
               <>{filteredCashBooks.length} Transaksi {periodeLabel}</>
             </div>
           </div>
@@ -1148,22 +1148,22 @@ export default function FinancePage() {
           <table className="w-full table-fixed">
             <thead className="bg-gradient-to-r from-orange-500 to-pink-600 text-white sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-bold uppercase whitespace-nowrap w-28">
+                <th className="px-3 py-3 text-left text-sm font-bold uppercase whitespace-nowrap w-28">
                   Tanggal
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-bold uppercase w-28">
+                <th className="px-3 py-3 text-left text-sm font-bold uppercase w-28">
                   Kategori
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-40">
+                <th className="px-3 py-3 text-right text-sm font-bold uppercase w-40">
                   Nominal
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-bold uppercase">
+                <th className="px-3 py-3 text-left text-sm font-bold uppercase">
                   Keperluan
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-bold uppercase w-32">
+                <th className="px-3 py-3 text-right text-sm font-bold uppercase w-32">
                   Saldo
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-bold uppercase w-32">
+                <th className="px-3 py-3 text-center text-sm font-bold uppercase w-32">
                   Aksi
                 </th>
               </tr>

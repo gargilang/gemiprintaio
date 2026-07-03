@@ -51,7 +51,7 @@ export default function ModalBayarPiutang({
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [metodePembayaran, setMetodePembayaran] = useState("CASH");
   const [tanggalBayar, setTanggalBayar] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [referensi, setReferensi] = useState("");
   const [catatan, setCatatan] = useState("");
@@ -64,7 +64,7 @@ export default function ModalBayarPiutang({
     () => {
       if (!loading) onClose();
     },
-    isOpen
+    isOpen,
   );
 
   useEffect(() => {
@@ -266,29 +266,35 @@ export default function ModalBayarPiutang({
                             <div className="font-bold text-gray-800 dark:text-slate-100">
                               {receivable.nomor_faktur}
                             </div>
-                            <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
+                            <div className="text-base text-gray-600 dark:text-slate-300 mt-1">
                               {receivable.pelanggan_nama || "Pelanggan Umum"}
                             </div>
                             {receivable.dibuat_pada && (
-                              <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                              <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                                 {formatDate(receivable.dibuat_pada)}
                               </div>
                             )}
                             <div className="mt-3 space-y-1">
-                              <div className="text-sm">
-                                <span className="text-gray-600 dark:text-slate-300">Total:</span>{" "}
+                              <div className="text-base">
+                                <span className="text-gray-600 dark:text-slate-300">
+                                  Total:
+                                </span>{" "}
                                 <span className="font-semibold">
                                   {formatRupiah(receivable.jumlah_piutang)}
                                 </span>
                               </div>
-                              <div className="text-sm">
-                                <span className="text-gray-600 dark:text-slate-300">Terbayar:</span>{" "}
+                              <div className="text-base">
+                                <span className="text-gray-600 dark:text-slate-300">
+                                  Terbayar:
+                                </span>{" "}
                                 <span className="font-semibold text-green-600">
                                   {formatRupiah(receivable.jumlah_terbayar)}
                                 </span>
                               </div>
-                              <div className="text-sm">
-                                <span className="text-gray-600 dark:text-slate-300">Sisa:</span>{" "}
+                              <div className="text-base">
+                                <span className="text-gray-600 dark:text-slate-300">
+                                  Sisa:
+                                </span>{" "}
                                 <span className="font-bold text-red-600">
                                   {formatRupiah(receivable.sisa_piutang)}
                                 </span>
@@ -296,7 +302,7 @@ export default function ModalBayarPiutang({
                             </div>
                           </div>
                           <div
-                            className={`px-2 py-1 rounded text-xs font-semibold ${
+                            className={`px-2 py-1 rounded text-sm font-semibold ${
                               receivable.status === "AKTIF"
                                 ? "bg-red-100 dark:bg-red-900/30 text-red-700"
                                 : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
@@ -377,7 +383,7 @@ export default function ModalBayarPiutang({
                           type="button"
                           onClick={() =>
                             setJumlahBayar(
-                              selectedReceivable.sisa_piutang.toString()
+                              selectedReceivable.sisa_piutang.toString(),
                             )
                           }
                           className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
@@ -389,7 +395,7 @@ export default function ModalBayarPiutang({
                           type="button"
                           onClick={() =>
                             setJumlahBayar(
-                              (selectedReceivable.sisa_piutang / 2).toString()
+                              (selectedReceivable.sisa_piutang / 2).toString(),
                             )
                           }
                           className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
@@ -454,7 +460,6 @@ export default function ModalBayarPiutang({
                         placeholder="Catatan tambahan..."
                       />
                     </div>
-
                   </form>
                 )}
               </div>

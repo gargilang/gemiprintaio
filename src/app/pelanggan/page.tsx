@@ -38,7 +38,9 @@ const PelangganRow = memo(
     return (
       <tr
         className={`hover:bg-teal-50 transition-all cursor-default ${
-          index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+          index % 2 === 0
+            ? "bg-white dark:bg-slate-900"
+            : "bg-gray-50 dark:bg-slate-800"
         }`}
       >
         <td className="px-4 py-3">
@@ -46,24 +48,28 @@ const PelangganRow = memo(
             {customer.nama || customer.nama_perusahaan}
           </div>
           {customer.nama && customer.nama_perusahaan && (
-            <div className="text-xs text-gray-800 dark:text-slate-100 mt-1">
+            <div className="text-sm text-gray-800 dark:text-slate-100 mt-1">
               {customer.nama_perusahaan}
             </div>
           )}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{customer.email}</td>
-        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">{customer.telepon}</td>
-        <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-w-xs truncate">
+        <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
+          {customer.email}
+        </td>
+        <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
+          {customer.telepon}
+        </td>
+        <td className="px-4 py-3 text-base text-gray-600 dark:text-slate-300 max-w-xs truncate">
           {customer.alamat}
         </td>
         <td className="px-4 py-3 text-center">
           {customer.member_status === 1 ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-semibold">
               <CheckIcon size={14} />
               Member
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-semibold">
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-sm font-semibold">
               Regular
             </span>
           )}
@@ -112,7 +118,7 @@ const PelangganRow = memo(
         </td>
       </tr>
     );
-  }
+  },
 );
 
 PelangganRow.displayName = "PelangganRow";
@@ -122,7 +128,7 @@ export default function PelangganPage() {
   const initialUser =
     typeof window !== "undefined" ? getCachedSessionUser() : null;
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(
-    initialUser
+    initialUser,
   );
   const {
     data: pelangganData,
@@ -144,14 +150,16 @@ export default function PelangganPage() {
             ? (next as (p: Pelanggan[]) => Pelanggan[])(base)
             : next;
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutatePelanggan]
+    [mutatePelanggan],
   );
   const loading = currentUser === null && pelangganLoading;
   const [showModal, setShowModal] = useState(false);
-  const [editingPelanggan, setEditingPelanggan] = useState<Pelanggan | null>(null);
+  const [editingPelanggan, setEditingPelanggan] = useState<Pelanggan | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
     nama: "",
     email: "",
@@ -185,7 +193,7 @@ export default function PelangganPage() {
   // Helper function to update a single customer in state without reloading
   function updatePelangganInState(updated: Pelanggan) {
     setDaftarPelanggan((prev: Pelanggan[]) =>
-      prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+      prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
     );
   }
 
@@ -201,7 +209,8 @@ export default function PelangganPage() {
           c.nama.toLowerCase().includes(query) ||
           c.email.toLowerCase().includes(query) ||
           c.telepon.includes(query) ||
-          (c.nama_perusahaan && c.nama_perusahaan.toLowerCase().includes(query))
+          (c.nama_perusahaan &&
+            c.nama_perusahaan.toLowerCase().includes(query)),
       );
     }
 
@@ -251,7 +260,7 @@ export default function PelangganPage() {
       const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
       const end = Math.min(
         filteredPelanggan.length,
-        start + visibleRows + buffer * 2
+        start + visibleRows + buffer * 2,
       );
 
       setVisibleRange({ start, end });
@@ -382,7 +391,7 @@ export default function PelangganPage() {
         try {
           await deletePelangganAction(customer.id);
           setDaftarPelanggan((prev: Pelanggan[]) =>
-            prev.filter((c) => c.id !== customer.id)
+            prev.filter((c) => c.id !== customer.id),
           );
           showMsg("success", "Pelanggan berhasil dihapus");
         } catch (error: any) {
@@ -417,7 +426,7 @@ export default function PelangganPage() {
               <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
                 Data Pelanggan
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Kelola informasi pelanggan dan status membership
               </p>
             </div>
@@ -481,7 +490,7 @@ export default function PelangganPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAdd}
-                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all font-semibold shadow-md flex items-center gap-2"
+                className="px-4 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all font-semibold shadow-md flex items-center gap-2"
               >
                 <svg
                   className="w-5 h-5"
@@ -507,7 +516,7 @@ export default function PelangganPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama, email, telepon..."
-                  className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
+                  className="px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <svg
                   className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -527,7 +536,7 @@ export default function PelangganPage() {
               <select
                 value={filterMember}
                 onChange={(e) => setFilterMember(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
               >
                 <option value="all">Semua Status</option>
                 <option value="member">Member</option>
@@ -662,122 +671,120 @@ export default function PelangganPage() {
           </div>
         }
       >
-            <form
-              id="customers-modal-form"
-              onSubmit={handleSave}
-              className="p-6 space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Nama Lengkap <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nama: e.target.value })
-                    }
-                    placeholder="Contoh: John Doe"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
-                    required
-                  />
-                </div>
+        <form
+          id="customers-modal-form"
+          onSubmit={handleSave}
+          className="p-6 space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Nama Lengkap <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.nama}
+                onChange={(e) =>
+                  setFormData({ ...formData, nama: e.target.value })
+                }
+                placeholder="Contoh: John Doe"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
+                required
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="email@example.com"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="email@example.com"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Telepon
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.telepon}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telepon: e.target.value })
-                    }
-                    placeholder="08xx-xxxx-xxxx"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Telepon
+              </label>
+              <input
+                type="tel"
+                value={formData.telepon}
+                onChange={(e) =>
+                  setFormData({ ...formData, telepon: e.target.value })
+                }
+                placeholder="08xx-xxxx-xxxx"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Perusahaan / Instansi
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama_perusahaan}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        nama_perusahaan: e.target.value,
-                      })
-                    }
-                    placeholder="Nama perusahaan (opsional)"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Perusahaan / Instansi
+              </label>
+              <input
+                type="text"
+                value={formData.nama_perusahaan}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nama_perusahaan: e.target.value,
+                  })
+                }
+                placeholder="Nama perusahaan (opsional)"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Alamat
-                  </label>
-                  <textarea
-                    value={formData.alamat}
-                    onChange={(e) =>
-                      setFormData({ ...formData, alamat: e.target.value })
-                    }
-                    placeholder="Alamat lengkap"
-                    rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
-                  />
-                </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                Alamat
+              </label>
+              <textarea
+                value={formData.alamat}
+                onChange={(e) =>
+                  setFormData({ ...formData, alamat: e.target.value })
+                }
+                placeholder="Alamat lengkap"
+                rows={3}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
 
-                <div className="md:col-span-2">
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-slate-800 rounded-lg border-2 border-amber-200 dark:border-amber-800/50">
-                    <input
-                      type="checkbox"
-                      id="member_status"
-                      checked={formData.member_status === 1}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          member_status: e.target.checked ? 1 : 0,
-                        })
-                      }
-                      className="w-5 h-5 text-amber-600 dark:text-amber-300 border-gray-300 rounded focus:ring-amber-500"
-                    />
-                    <label
-                      htmlFor="member_status"
-                      className="flex-1 text-sm cursor-pointer"
-                    >
-                      <span className="font-semibold text-amber-900 block">
-                        Member - Harga Khusus
-                      </span>
-                      <span className="text-xs text-amber-700 dark:text-amber-300">
-                        Pelanggan member mendapat diskon khusus untuk semua
-                        produk
-                      </span>
-                    </label>
-                  </div>
-                </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-slate-800 rounded-lg border-2 border-amber-200 dark:border-amber-800/50">
+                <input
+                  type="checkbox"
+                  id="member_status"
+                  checked={formData.member_status === 1}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      member_status: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-5 h-5 text-amber-600 dark:text-amber-300 border-gray-300 rounded focus:ring-amber-500"
+                />
+                <label
+                  htmlFor="member_status"
+                  className="flex-1 text-sm cursor-pointer"
+                >
+                  <span className="font-semibold text-amber-900 block">
+                    Member - Harga Khusus
+                  </span>
+                  <span className="text-sm text-amber-700 dark:text-amber-300">
+                    Pelanggan member mendapat diskon khusus untuk semua produk
+                  </span>
+                </label>
               </div>
-
-            </form>
+            </div>
+          </div>
+        </form>
       </ModalFormShell>
 
       {/* Notification Toast */}

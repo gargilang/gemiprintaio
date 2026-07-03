@@ -67,7 +67,7 @@ function StatusBadge({ status }: { status: SuratJalanStatus }) {
   };
   return (
     <span
-      className={`inline-block px-2 py-1 rounded-lg text-xs font-semibold border ${styles[status]}`}
+      className={`inline-block px-2 py-1 rounded-lg text-base font-semibold border ${styles[status]}`}
     >
       {labels[status]}
     </span>
@@ -113,11 +113,11 @@ export default function SuratJalanTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nomor SJ, penerima, atau ref faktur..."
-            className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afef] dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         <div className="text-right">
-          <div className="text-xs text-gray-500 dark:text-slate-400">Total</div>
+          <div className="text-base text-gray-500 dark:text-slate-400">Total</div>
           <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
             {filtered.length} SJ
           </div>
@@ -129,7 +129,7 @@ export default function SuratJalanTable({
           <p className="text-gray-600 dark:text-slate-300 font-semibold">
             Belum ada surat jalan
           </p>
-          <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
+          <p className="text-gray-500 dark:text-slate-400 text-base mt-1">
             Buat surat jalan baru atau dari riwayat penjualan
           </p>
         </div>
@@ -138,13 +138,13 @@ export default function SuratJalanTable({
           <table className="w-full">
             <thead className="bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold">No. SJ</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">Tanggal</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">Penerima</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold">Ref. Faktur</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">Item</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">Status</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold">Aksi</th>
+                <th className="px-4 py-3 text-left text-base font-semibold">No. SJ</th>
+                <th className="px-4 py-3 text-left text-base font-semibold">Tanggal</th>
+                <th className="px-4 py-3 text-left text-base font-semibold">Penerima</th>
+                <th className="px-4 py-3 text-left text-base font-semibold">Ref. Faktur</th>
+                <th className="px-4 py-3 text-center text-base font-semibold">Item</th>
+                <th className="px-4 py-3 text-center text-base font-semibold">Status</th>
+                <th className="px-4 py-3 text-center text-base font-semibold">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -161,12 +161,12 @@ export default function SuratJalanTable({
                         {sj.nomor_sj}
                       </div>
                       {sj.dibuat_oleh_nama && (
-                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                        <div className="text-base text-gray-500 dark:text-slate-400 mt-0.5">
                           oleh: {sj.dibuat_oleh_nama}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                    <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
                       {formatDate(sj.tanggal)}
                     </td>
                     <td className="px-4 py-3">
@@ -176,18 +176,18 @@ export default function SuratJalanTable({
                         )}
                       </div>
                       {sj.pelanggan_alamat && (
-                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
+                        <div className="text-base text-gray-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
                           {sj.pelanggan_alamat}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                    <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
                       {sj.nomor_faktur || (
                         <span className="text-gray-400 italic">manual</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-semibold">
+                      <span className="inline-block px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-base font-semibold">
                         {sj.items?.length ?? 0} item
                       </span>
                     </td>
@@ -268,7 +268,7 @@ export default function SuratJalanTable({
                   {expandedId === sj.id && sj.items && sj.items.length > 0 && (
                     <tr className="bg-gradient-to-r from-cyan-50/50 to-blue-50/50 dark:from-slate-800/40 dark:to-slate-800/40">
                       <td colSpan={7} className="px-4 py-3">
-                        <div className="text-xs">
+                        <div className="text-base">
                           <div className="font-semibold text-gray-700 dark:text-slate-300 mb-2">
                             Detail Item:
                           </div>

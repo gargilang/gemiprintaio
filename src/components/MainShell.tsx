@@ -41,7 +41,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
@@ -93,9 +93,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   const visibleLeaves = useMemo(
     () =>
       [...iterateMenuLeaves(MENU_ENTRIES)].filter((item) =>
-        canAccessPath(user?.role, item.href)
+        canAccessPath(user?.role, item.href),
       ),
-    [user?.role]
+    [user?.role],
   );
 
   // Bersihkan sesi saat window/app ditutup (Tauri + browser).
@@ -134,11 +134,11 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     for (const entry of MENU_ENTRIES) {
       if (!isMenuGroup(entry)) continue;
       const childActive = entry.children.some(
-        (c) => pathname === c.href || pathname.startsWith(c.href + "/")
+        (c) => pathname === c.href || pathname.startsWith(c.href + "/"),
       );
       if (childActive) {
         setExpandedGroups((prev) =>
-          prev[entry.id] ? prev : { ...prev, [entry.id]: true }
+          prev[entry.id] ? prev : { ...prev, [entry.id]: true },
         );
       }
     }
@@ -179,13 +179,12 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     };
   }, []); // Dependency kosong berarti hanya berjalan sekali.
 
-
   const computedTitle = useMemo(() => {
     if (!pathname) return "Beranda";
     const exact = PAGE_TITLE_MAP[pathname];
     if (exact) return exact;
     const found = Object.keys(PAGE_TITLE_MAP).find((k) =>
-      pathname.startsWith(k)
+      pathname.startsWith(k),
     );
     return found ? PAGE_TITLE_MAP[found] : "Beranda";
   }, [pathname]);
@@ -247,7 +246,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
             {!sidebarCollapsed && (
               <span className="font-bauhaus text-2xl tracking-wide italic min-w-0 truncate">
                 <span className="text-[#00afef]">gemi</span>
-                <span className="text-[#0a1b3d] dark:text-slate-100">print</span>
+                <span className="text-[#0a1b3d] dark:text-slate-100">
+                  print
+                </span>
               </span>
             )}
             <button
@@ -328,15 +329,14 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
               {MENU_ENTRIES.map((entry) => {
                 if (isMenuGroup(entry)) {
                   const visibleChildren = entry.children.filter((child) =>
-                    canAccessPath(user?.role, child.href)
+                    canAccessPath(user?.role, child.href),
                   );
                   if (visibleChildren.length === 0) return null;
 
                   const expanded = expandedGroups[entry.id] ?? false;
                   const groupChildActive = visibleChildren.some(
                     (c) =>
-                      pathname === c.href ||
-                      pathname?.startsWith(c.href + "/")
+                      pathname === c.href || pathname?.startsWith(c.href + "/"),
                   );
 
                   return (
@@ -502,14 +502,14 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                       "U"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-[#0a1b3d] dark:text-slate-100 truncate leading-tight">
+                    <div className="font-bold text-base text-[#0a1b3d] dark:text-slate-100 truncate leading-tight">
                       {user?.nama_lengkap || user?.nama_pengguna}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                      <span className="text-xs text-[#6b7280] dark:text-slate-400 dark:text-slate-400 truncate">
+                      <span className="text-sm text-[#6b7280] dark:text-slate-400 dark:text-slate-400 truncate">
                         @{user?.nama_pengguna}
                       </span>
-                      <span className="text-[10px] font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white/90 dark:bg-slate-900/80 rounded shrink-0">
+                      <span className="text-xs font-bold text-[#00afef] uppercase px-1.5 py-0.5 bg-white/90 dark:bg-slate-900/80 rounded shrink-0">
                         {user?.role}
                       </span>
                     </div>

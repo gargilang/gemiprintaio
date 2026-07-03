@@ -142,7 +142,7 @@ export default function ModalTambahCepatPelanggan({
             type="button"
             onClick={onClose}
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -150,7 +150,7 @@ export default function ModalTambahCepatPelanggan({
             type="submit"
             form="quick-add-customer-form"
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-lg hover:from-[#0d9488] hover:to-[#0891b2] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-lg hover:from-[#0d9488] hover:to-[#0891b2] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Menyimpan..." : "Simpan"}
           </button>
@@ -163,7 +163,7 @@ export default function ModalTambahCepatPelanggan({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Tipe Pelanggan
           </label>
           <div className="flex gap-4">
@@ -195,7 +195,7 @@ export default function ModalTambahCepatPelanggan({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Nama{" "}
             {tipePelanggan === "perorangan" ? "Lengkap" : "Contact Person"} *
           </label>
@@ -211,7 +211,7 @@ export default function ModalTambahCepatPelanggan({
 
         {tipePelanggan === "perusahaan" && (
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Nama Perusahaan
             </label>
             <input
@@ -225,7 +225,7 @@ export default function ModalTambahCepatPelanggan({
         )}
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Nomor Telepon
           </label>
           <input
@@ -238,7 +238,7 @@ export default function ModalTambahCepatPelanggan({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Email
           </label>
           <input
@@ -251,7 +251,7 @@ export default function ModalTambahCepatPelanggan({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
             Alamat
           </label>
           <textarea
@@ -273,7 +273,7 @@ export default function ModalTambahCepatPelanggan({
           />
           <label htmlFor="memberStatus" className="flex-1 cursor-pointer">
             <span className="font-semibold text-gray-800 dark:text-slate-100">Member</span>
-            <p className="text-sm text-gray-600 dark:text-slate-300">
+            <p className="text-base text-gray-600 dark:text-slate-300">
               Member mendapatkan harga khusus
             </p>
           </label>

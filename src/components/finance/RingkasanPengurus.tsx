@@ -71,8 +71,8 @@ function CellValue({
   formatRupiah: (n: number) => string;
   tone: string;
 }) {
-  if (value === null) return <span className="text-gray-300 text-sm">—</span>;
-  return <span className={`font-bold tabular-nums text-sm ${tone}`}>{formatRupiah(value)}</span>;
+  if (value === null) return <span className="text-gray-300 text-base">—</span>;
+  return <span className={`font-bold tabular-nums text-base ${tone}`}>{formatRupiah(value)}</span>;
 }
 
 export default function RingkasanPengurus({
@@ -111,7 +111,7 @@ export default function RingkasanPengurus({
 
   if (isLoading && !data && !fallbackSummary) {
     return (
-      <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
+      <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 px-4 py-3 text-base text-gray-500 dark:text-slate-400">
         Memuat ringkasan pengurus…
       </div>
     );
@@ -119,7 +119,7 @@ export default function RingkasanPengurus({
 
   if (error && !data && !fallbackSummary) {
     return (
-      <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
+      <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-base text-rose-700">
         Gagal memuat ringkasan: {(error as Error).message}
       </div>
     );
@@ -134,7 +134,7 @@ export default function RingkasanPengurus({
   if (actorRows.length === 0) {
     return (
       <div className="mb-6 space-y-2">
-        <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl px-4 py-3 text-base text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
           <span>
             Belum ada pengurus terdaftar. Tambah di{" "}
             <strong>Pengaturan → Pengurus</strong>, lalu atur bagi hasil agar
@@ -161,7 +161,7 @@ export default function RingkasanPengurus({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             <svg
               className={`w-4 h-4 text-slate-500 transition-transform ${collapsed ? "-rotate-90" : ""}`}
@@ -172,7 +172,7 @@ export default function RingkasanPengurus({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
             Pengurus Usaha
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+            <span className="text-base font-normal text-slate-500 dark:text-slate-400">
               ({actorRows.length} pengurus)
             </span>
           </button>
@@ -200,19 +200,19 @@ export default function RingkasanPengurus({
               scrollBehavior: "smooth",
             }}
           >
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 sticky top-0 z-10">
+            <table className="w-full text-base">
+              <thead className="bg-gray-50 dark:bg-slate-800/80 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 text-left">Nama</th>
-                  <th className="px-4 py-2 text-left">Jabatan</th>
+                  <th className="px-4 py-2.5 text-left">Nama</th>
+                  <th className="px-4 py-2.5 text-left">Jabatan</th>
                   {hasGroup.profit_share && (
-                    <th className="px-4 py-2 text-right text-amber-700 dark:text-amber-300">Bagi Hasil</th>
+                    <th className="px-4 py-2.5 text-right text-amber-700 dark:text-amber-300">Bagi Hasil</th>
                   )}
                   {hasGroup.cash_advance && (
-                    <th className="px-4 py-2 text-right text-violet-700 dark:text-violet-300">Kasbon</th>
+                    <th className="px-4 py-2.5 text-right text-violet-700 dark:text-violet-300">Kasbon</th>
                   )}
                   {hasGroup.bonus && (
-                    <th className="px-4 py-2 text-right text-emerald-700 dark:text-emerald-300">Bonus</th>
+                    <th className="px-4 py-2.5 text-right text-emerald-700 dark:text-emerald-300">Bonus</th>
                   )}
                 </tr>
               </thead>
@@ -233,12 +233,12 @@ export default function RingkasanPengurus({
                       <td className="px-4 py-3 align-top min-w-0">
                         <div className="font-semibold text-gray-900 dark:text-slate-100 truncate">{row.displayName}</div>
                         {noMetrics && (
-                          <p className="text-[11px] text-slate-400 mt-0.5">
+                          <p className="text-sm text-slate-400 mt-0.5">
                             Belum ada rumus — edit di Pengaturan → Pengurus
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3 align-top text-xs text-gray-500 dark:text-slate-400 truncate">
+                      <td className="px-4 py-3 align-top text-base text-gray-500 dark:text-slate-400 truncate">
                         {row.roleLabel}
                       </td>
                       {hasGroup.profit_share && (
@@ -266,7 +266,7 @@ export default function RingkasanPengurus({
       </div>
 
       {legacyCount > 0 && (
-        <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
+        <p className="text-base text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2.5">
           {legacyCount} rumus lama masih aktif di belakang layar. Kelola pengurus di{" "}
           {onOpenPeopleSettings ? (
             <button type="button" onClick={onOpenPeopleSettings} className="underline font-semibold">

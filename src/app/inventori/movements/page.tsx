@@ -190,14 +190,14 @@ export default function MovementLedgerPage() {
               <h2 className="text-2xl font-bold uppercase tracking-wide">
                 Riwayat Mutasi Stok
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Ledger stok global dengan filter tanggal, barang, tipe mutasi,
                 dan referensi.
               </p>
             </div>
           </div>
           <button
-            className="rounded bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 text-white text-sm transition-colors"
+            className="rounded bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 text-white text-base transition-colors"
             onClick={exportCsv}
             disabled={data.movements.length === 0}
           >
@@ -271,13 +271,13 @@ export default function MovementLedgerPage() {
         />
         <div className="flex gap-2">
           <button
-            className="flex-1 rounded-md bg-slate-900 dark:bg-slate-700 px-4 py-2 text-white hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors"
+            className="flex-1 rounded-md bg-slate-900 dark:bg-slate-700 px-4 py-2.5 text-white hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors"
             onClick={applyFilters}
           >
             Filter
           </button>
           <button
-            className="rounded-md border border-slate-300 dark:border-slate-600 px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="rounded-md border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             onClick={resetFilters}
           >
             Reset
@@ -295,7 +295,7 @@ export default function MovementLedgerPage() {
           }
         />
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-base shadow-sm">
         <div>
           <span className="text-slate-500 dark:text-slate-400">
             Total baris
@@ -330,7 +330,7 @@ export default function MovementLedgerPage() {
         </div>
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
             <tr>
               <th className="p-3">Tanggal</th>
@@ -382,7 +382,7 @@ export default function MovementLedgerPage() {
                       )}
                     </td>
                     <td className="p-3 text-right">{money(row.value_delta)}</td>
-                    <td className="p-3 text-xs">
+                    <td className="p-3 text-sm">
                       <div className="font-medium">
                         {link ? (
                           <Link

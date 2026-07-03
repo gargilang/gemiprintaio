@@ -33,7 +33,7 @@ export default function ToastNotifikasi({
     <div
       role="status"
       aria-live="polite"
-      className={`fixed top-4 left-1/2 -translate-x-1/2 transform z-50 w-[calc(100vw-2rem)] max-w-md px-5 py-3 rounded-xl shadow-lg font-semibold text-sm border-2 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300 ${
+      className={`fixed top-4 left-1/2 -translate-x-1/2 transform z-50 w-[calc(100vw-2rem)] max-w-md px-5 py-3 rounded-xl shadow-lg font-semibold text-base border-2 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300 ${
         type === "success"
           ? "bg-green-50/95 text-green-800 border-green-200 dark:bg-green-950/95 dark:text-green-200 dark:border-green-800"
           : "bg-red-50/95 text-red-800 border-red-200 dark:bg-red-950/95 dark:text-red-200 dark:border-red-800"

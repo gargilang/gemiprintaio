@@ -370,7 +370,7 @@ export default function UsersPage() {
                 <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
                   Kelola Pengguna
                 </h2>
-                <p className="text-white/90">
+                <p className="text-white/90 text-base">
                   Tambah, edit, atau hapus pengguna sistem
                 </p>
               </div>
@@ -435,16 +435,16 @@ export default function UsersPage() {
                             <div className="font-semibold text-[#0a1b3d] dark:text-slate-100">
                               {user.nama_lengkap || user.nama_pengguna}
                             </div>
-                            <div className="text-sm text-[#6b7280] dark:text-slate-400">
+                            <div className="text-base text-[#6b7280] dark:text-slate-400">
                               @{user.nama_pengguna}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-[#6b7280] dark:text-slate-400">{user.email}</td>
+                      <td className="px-6 py-4 text-base text-[#6b7280] dark:text-slate-400">{user.email}</td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          className={`px-3 py-1 rounded-full text-sm font-semibold ${
                             user.role === "admin"
                               ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                               : user.role === "manager"
@@ -464,7 +464,7 @@ export default function UsersPage() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleToggleActive(user.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                          className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${
                             user.aktif_status
                               ? "bg-green-100 dark:bg-green-900/30 text-green-700 hover:bg-green-200"
                               : "bg-red-100 dark:bg-red-900/30 text-red-700 hover:bg-red-200"
@@ -532,18 +532,18 @@ export default function UsersPage() {
           <div className="flex flex-wrap gap-3 mt-4">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-[#00afef] shadow-sm">
               <UsersIcon size={16} className="text-[#00afef] shrink-0" />
-              <span className="text-sm text-slate-500 dark:text-slate-400">Total Pengguna</span>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.length}</span>
+              <span className="text-base text-slate-500 dark:text-slate-400">Total Pengguna</span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.length}</span>
             </div>
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-green-500 shadow-sm">
               <CheckIcon size={16} className="text-green-600 shrink-0" />
-              <span className="text-sm text-slate-500 dark:text-slate-400">Aktif</span>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.aktif_status).length}</span>
+              <span className="text-base text-slate-500 dark:text-slate-400">Aktif</span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.aktif_status).length}</span>
             </div>
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-purple-500 shadow-sm">
               <CrownIcon size={16} className="text-purple-600 dark:text-purple-300 shrink-0" />
-              <span className="text-sm text-slate-500 dark:text-slate-400">Admin</span>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.role === "admin").length}</span>
+              <span className="text-base text-slate-500 dark:text-slate-400">Admin</span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.role === "admin").length}</span>
             </div>
           </div>
         </>
@@ -556,7 +556,7 @@ export default function UsersPage() {
             <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
               Password Manager
             </h2>
-            <p className="text-white/90">
+            <p className="text-white/90 text-base">
               Simpan kredensial login untuk layanan internal
             </p>
           </div>
@@ -621,7 +621,7 @@ export default function UsersPage() {
                   <td className="px-6 py-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">
                     {c.nama_layanan}
                   </td>
-                  <td className="px-6 py-4 text-[#6b7280] dark:text-slate-400">
+                  <td className="px-6 py-4 text-base text-[#6b7280] dark:text-slate-400">
                     {c.nama_pengguna_akun}
                   </td>
                   <td className="px-6 py-4">

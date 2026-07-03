@@ -207,7 +207,7 @@ export default function ModalTambahCepatBarang({
             type="button"
             onClick={onClose}
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -215,7 +215,7 @@ export default function ModalTambahCepatBarang({
             type="submit"
             form="quick-add-material-form"
             disabled={dismissDisabled}
-            className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Menyimpan..." : "Simpan"}
           </button>
@@ -228,7 +228,7 @@ export default function ModalTambahCepatBarang({
         className="p-6 space-y-4"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Nama Barang <span className="text-red-500">*</span>
           </label>
           <input
@@ -238,7 +238,7 @@ export default function ModalTambahCepatBarang({
               setFormData((prev) => ({ ...prev, nama: e.target.value }))
             }
             placeholder="Nama barang"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
             required
             autoFocus
           />
@@ -246,7 +246,7 @@ export default function ModalTambahCepatBarang({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Kategori
             </label>
             <select
@@ -258,7 +258,7 @@ export default function ModalTambahCepatBarang({
                   subkategori_id: "",
                 }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">-- Pilih Kategori --</option>
               {categories.map((cat) => (
@@ -270,7 +270,7 @@ export default function ModalTambahCepatBarang({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Sub-Kategori
             </label>
             <select
@@ -281,7 +281,7 @@ export default function ModalTambahCepatBarang({
                   subkategori_id: e.target.value,
                 }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
               disabled={!formData.kategori_id}
             >
               <option value="">-- Pilih Sub-Kategori --</option>
@@ -295,7 +295,7 @@ export default function ModalTambahCepatBarang({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Satuan Dasar <span className="text-red-500">*</span>
           </label>
           <select
@@ -306,7 +306,7 @@ export default function ModalTambahCepatBarang({
                 satuan_dasar: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
             required
           >
             <option value="">-- Pilih Satuan --</option>
@@ -319,7 +319,7 @@ export default function ModalTambahCepatBarang({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+          <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
             Spesifikasi
           </label>
           <input
@@ -332,13 +332,13 @@ export default function ModalTambahCepatBarang({
               }))
             }
             placeholder="Keterangan spesifikasi (opsional)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Harga Jual
             </label>
             <input
@@ -352,12 +352,12 @@ export default function ModalTambahCepatBarang({
               }
               min="0"
               step="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Harga Member
             </label>
             <input
@@ -371,12 +371,12 @@ export default function ModalTambahCepatBarang({
               }
               min="0"
               step="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
         </div>
 
-        <div className="text-xs text-gray-500 dark:text-slate-400 bg-blue-50 dark:bg-slate-800 p-3 rounded-lg">
+        <div className="text-base text-gray-500 dark:text-slate-400 bg-blue-50 dark:bg-slate-800 p-3 rounded-lg">
           <strong>Info:</strong> Barang akan ditambahkan dengan stok awal 0 dan
           status tracking inventori aktif. Anda bisa edit detail lengkap di
           halaman Data Barang.

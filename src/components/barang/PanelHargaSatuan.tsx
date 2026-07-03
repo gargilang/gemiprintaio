@@ -42,7 +42,7 @@ export default function PanelHargaSatuan({
     <div className="bg-blue-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-blue-200 dark:border-slate-700">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-          <span className="w-8 h-8 bg-blue-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+          <span className="w-8 h-8 bg-blue-500 dark:bg-slate-700 text-white rounded-lg flex items-center justify-center text-base font-bold">
             2
           </span>
           Produk Jual
@@ -50,7 +50,7 @@ export default function PanelHargaSatuan({
         <button
           type="button"
           onClick={onAdd}
-          className="px-3 py-1.5 bg-blue-500 dark:bg-slate-700 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center gap-1"
+          className="px-3 py-1.5 bg-blue-500 dark:bg-slate-700 text-white rounded-lg hover:bg-blue-600 transition-colors text-base font-semibold flex items-center gap-1"
         >
           <svg
             className="w-4 h-4"
@@ -76,7 +76,7 @@ export default function PanelHargaSatuan({
             className="bg-white dark:bg-slate-900 rounded-lg p-4 border-2 border-gray-200 dark:border-slate-800"
           >
             <div className="flex items-start justify-between mb-3">
-              <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
+              <span className="text-base font-bold text-gray-600 dark:text-slate-300">
                 Produk #{index + 1}
               </span>
               {unitPrices.length > 1 && (
@@ -106,7 +106,7 @@ export default function PanelHargaSatuan({
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
               {/* Nama Produk — label customer-facing di POS */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Nama Produk
                 </label>
                 <input
@@ -116,16 +116,16 @@ export default function PanelHargaSatuan({
                     onUpdate(index, "nama_produk_jual", e.target.value || null)
                   }
                   placeholder="Nama tampil di POS (opsional)"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                   Wajib unik per barang. Kosong = pakai nama satuan
                 </p>
               </div>
 
               {/* Nama Satuan - DROPDOWN */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Satuan <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -134,7 +134,7 @@ export default function PanelHargaSatuan({
                   onChange={(e) =>
                     onUpdate(index, "nama_satuan", e.target.value)
                   }
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   disabled={loadingMaster}
                 >
                   <option value="">Pilih satuan...</option>
@@ -144,7 +144,7 @@ export default function PanelHargaSatuan({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                   Tidak ada?{" "}
                   <button
                     type="button"
@@ -158,7 +158,7 @@ export default function PanelHargaSatuan({
 
               {/* Unit conversion */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Konversi <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -174,16 +174,16 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="1"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
                   1 {up.nama_satuan} = {up.faktor_konversi} {baseUnit}
                 </p>
               </div>
 
               {/* Harga Beli */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   HPP Rata-rata Awal
                 </label>
                 <input
@@ -198,16 +198,16 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
+                <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_beli)}
                 </p>
               </div>
 
               {/* Harga Jual */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Harga Jual
                 </label>
                 <input
@@ -222,16 +222,16 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
+                <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_jual)}
                 </p>
               </div>
 
               {/* Harga Member */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   Harga Member
                 </label>
                 <input
@@ -246,26 +246,26 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
+                <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_member)}
                 </p>
               </div>
             </div>
           </div>
         ))}
-        <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+        <p className="text-base text-blue-700 dark:text-blue-300 mt-3">
           Setiap produk di bawah selalu muncul sebagai kartu terpisah di POS,
           terlepas dari centang &quot;Munculkan di POS&quot; pada barang induk.
         </p>
       </div>
 
       <div className="mt-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 rounded-lg p-3">
-        <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold mb-1">
+        <p className="text-base text-blue-800 dark:text-blue-200 font-semibold mb-1">
           Contoh Penggunaan:
         </p>
-        <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4">
+        <ul className="text-base text-blue-700 dark:text-blue-300 space-y-1 ml-4">
           <li>
             • <strong>Flexi Banner:</strong> Nama Produk "Print Banner per m²",
             Satuan "m²", Konversi 1

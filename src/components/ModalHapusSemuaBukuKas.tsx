@@ -104,11 +104,11 @@ export default function ModalHapusSemuaBukuKas({
             Aksi ini akan menghapus semua transaksi dari buku keuangan aktif
             secara permanen.
           </p>
-          <div className="bg-yellow-50 dark:bg-slate-800 border-2 border-yellow-300 rounded-xl p-4 text-sm text-yellow-800 dark:text-yellow-200">
+          <div className="bg-yellow-50 dark:bg-slate-800 border-2 border-yellow-300 rounded-xl p-4 text-base text-yellow-800 dark:text-yellow-200">
             <strong>Peringatan:</strong> Aksi ini tidak dapat dibatalkan.
             Pastikan Anda sudah melakukan backup jika diperlukan.
           </div>
-          <div className="bg-blue-50 dark:bg-slate-800 border-2 border-blue-300 dark:border-slate-700 rounded-xl p-4 text-sm">
+          <div className="bg-blue-50 dark:bg-slate-800 border-2 border-blue-300 dark:border-slate-700 rounded-xl p-4 text-base">
             <p className="font-bold text-blue-800 dark:text-blue-200 mb-2">
               Data berikut TIDAK akan terpengaruh:
             </p>

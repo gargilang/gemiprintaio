@@ -57,7 +57,7 @@ export default function TutorialPanel({ schema }: { schema: FormulaSchemaRespons
             key={t.id}
             type="button"
             onClick={() => setMode(t.id)}
-            className={`px-3 py-1.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+            className={`px-3 py-1.5 text-base font-semibold border-b-2 -mb-px transition-colors ${
               mode === t.id
                 ? "border-slate-700 dark:border-slate-300 text-slate-800 dark:text-slate-100"
                 : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
@@ -84,7 +84,7 @@ export default function TutorialPanel({ schema }: { schema: FormulaSchemaRespons
 /** Cheatsheet ringkas untuk formula yang ditulis tangan. */
 function ManualCheatsheet() {
   return (
-    <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
+    <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 text-base text-slate-700 dark:text-slate-300 space-y-1.5">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <span>
           <code className="font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1 rounded text-emerald-700 dark:text-emerald-300">[nama]</code>{" "}
@@ -126,7 +126,7 @@ function AiPromptCard({
   return (
     <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
           Salin teks di bawah ke ChatGPT, Claude, atau AI lain. Tambahkan
           permintaan kamu di bagian akhir, mis.{" "}
           <em>&quot;Buat rumus bonus 5% dari omzet untuk Andi.&quot;</em> Tempel
@@ -136,12 +136,12 @@ function AiPromptCard({
         <button
           type="button"
           onClick={onCopy}
-          className="shrink-0 px-2 py-1 text-[11px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+          className="shrink-0 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
         >
           {copied ? "Tersalin!" : "Salin"}
         </button>
       </div>
-      <pre className="font-mono text-[11px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48">
+      <pre className="font-mono text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words max-h-48">
         {prompt}
       </pre>
     </div>
@@ -194,7 +194,7 @@ function FunctionLibraryCatalog() {
   return (
     <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
           {FUNCTION_LIBRARY.length} fungsi tersedia. Klik nama fungsi untuk
           menyalin signature ke clipboard.
         </p>
@@ -203,7 +203,7 @@ function FunctionLibraryCatalog() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Cari fungsi…"
-          className="text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded w-40 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="text-base px-2 py-1 border border-slate-300 dark:border-slate-600 rounded w-40 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
         />
       </div>
 
@@ -219,7 +219,7 @@ function FunctionLibraryCatalog() {
           if (visible.length === 0) return null;
           return (
             <section key={cat}>
-              <h6 className="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-1">
+              <h6 className="text-sm uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-1">
                 {CATEGORY_LABEL[cat]}
               </h6>
               <ul className="space-y-1">
@@ -232,21 +232,21 @@ function FunctionLibraryCatalog() {
                       <button
                         type="button"
                         onClick={() => copySignature(fn)}
-                        className="font-mono text-[11px] text-violet-700 dark:text-violet-300 font-semibold hover:underline cursor-pointer text-left break-all"
+                        className="font-mono text-sm text-violet-700 dark:text-violet-300 font-semibold hover:underline cursor-pointer text-left break-all"
                         title="Salin signature"
                       >
                         {fn.signature}
                       </button>
                       {copiedFn === fn.name && (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-300 shrink-0">
+                        <span className="text-sm text-emerald-600 dark:text-emerald-300 shrink-0">
                           Tersalin
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
                       {fn.description}
                     </p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 break-all">
+                    <p className="text-sm text-slate-400 dark:text-slate-500 font-mono mt-0.5 break-all">
                       Contoh: {fn.example}
                     </p>
                   </li>
@@ -265,7 +265,7 @@ function FunctionLibraryCatalog() {
                 f.signature.toLowerCase().includes(lower)
             ).length === 0
         ) && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center py-4">
+          <p className="text-base text-slate-400 dark:text-slate-500 italic text-center py-4">
             Tidak ada fungsi yang cocok dengan &quot;{filter}&quot;.
           </p>
         )}

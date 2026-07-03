@@ -452,13 +452,13 @@ export default function ExpressionAssistant({
   // ── Render ───────────────────────────────────────────────────────────────
   if (schemaError && !schema) {
     return (
-      <div className="p-4 text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded">
+      <div className="p-4 text-base text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded">
         Gagal memuat skema rumus: {schemaError}
       </div>
     );
   }
   if (!schema) {
-    return <div className="p-4 text-sm text-slate-500">Memuat skema rumus…</div>;
+    return <div className="p-4 text-base text-slate-500">Memuat skema rumus…</div>;
   }
 
   return (
@@ -474,7 +474,7 @@ export default function ExpressionAssistant({
           </div>
           <span
             aria-live="polite"
-            className={`shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+            className={`shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium ${
               isValid
                 ? "bg-emerald-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-slate-700"
                 : "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50"
@@ -495,7 +495,7 @@ export default function ExpressionAssistant({
         <div
           ref={backdropRef}
           aria-hidden
-          className="absolute left-4 right-4 top-3 font-mono text-sm border border-transparent rounded-md px-3 py-2 overflow-hidden pointer-events-none select-none"
+          className="absolute left-4 right-4 top-3 font-mono text-base border border-transparent rounded-md px-3 py-2.5 overflow-hidden pointer-events-none select-none"
           style={{
             // Harus persis match dengan textarea
             lineHeight: "1.5rem",
@@ -521,7 +521,7 @@ export default function ExpressionAssistant({
           autoCapitalize="off"
           rows={1}
           placeholder='Contoh: [kategori] == "OMZET" ? PREV([omzet]) + [debit] : PREV([omzet])'
-          className="relative w-full font-mono text-sm border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:bg-slate-800 dark:text-slate-100"
+          className="relative w-full font-mono text-base border border-slate-300 rounded-md px-3 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:bg-slate-800 dark:text-slate-100"
           style={{
             color: "transparent",
             caretColor: "#1e293b",
@@ -536,7 +536,7 @@ export default function ExpressionAssistant({
 
         {/* Autocomplete popup */}
         {suggestionOpen && filteredSuggestions.length > 0 && (
-          <ul className="absolute left-4 right-4 mt-1 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-300 rounded-md shadow-lg text-sm z-10">
+          <ul className="absolute left-4 right-4 mt-1 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-300 rounded-md shadow-lg text-base z-10">
             {filteredSuggestions.map((s, idx) => (
               <li
                 key={s.label}
@@ -563,7 +563,7 @@ export default function ExpressionAssistant({
                         : "Fungsi"}
                 </span>
                 <span className={`font-mono text-slate-800 dark:text-slate-100 ${s.kind === "category" ? "font-sans" : ""}`}>{s.label}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{s.hint}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 truncate">{s.hint}</span>
               </li>
             ))}
           </ul>
@@ -582,7 +582,7 @@ export default function ExpressionAssistant({
             {parseResult.diagnostics.map((d, idx) => (
               <li
                 key={idx}
-                className="text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded px-2 py-1 break-words"
+                className="text-sm text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 rounded px-2 py-1 break-words"
               >
                 <span className="font-mono mr-2">[{d.start}:{d.end}]</span>
                 {d.message}
@@ -596,9 +596,9 @@ export default function ExpressionAssistant({
       {/* Test output */}
       {testRows && testRows.length > 0 && (
         <div className="px-4 pt-3">
-          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Hasil uji 4 baris contoh:</p>
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1">Hasil uji 4 baris contoh:</p>
           <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="text-xs min-w-full">
+            <table className="text-sm min-w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                 <tr>
                   <th className="px-2 py-1 text-left">#</th>
@@ -627,7 +627,7 @@ export default function ExpressionAssistant({
               </tbody>
             </table>
           </div>
-          {testError && <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{testError}</p>}
+          {testError && <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">{testError}</p>}
         </div>
       )}
 
@@ -640,7 +640,7 @@ export default function ExpressionAssistant({
             type="button"
             onClick={runTest}
             disabled={!isValid || testing}
-            className="px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
           >
             {testing ? "Menguji…" : "Uji rumus"}
           </button>
@@ -648,7 +648,7 @@ export default function ExpressionAssistant({
             <button
               type="button"
               onClick={handleResetToDefault}
-              className="px-3 py-1.5 text-xs rounded border border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-200 hover:bg-slate-50 dark:hover:bg-white/5"
+              className="px-3 py-1.5 text-sm rounded border border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-200 hover:bg-slate-50 dark:hover:bg-white/5"
               title="Kembalikan rumus ini ke setelan pabrikan"
             >
               ↺ Kembali ke Bawaan
@@ -659,7 +659,7 @@ export default function ExpressionAssistant({
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="px-3 py-1.5 text-base rounded border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             Batal
           </button>
@@ -667,7 +667,7 @@ export default function ExpressionAssistant({
             type="button"
             onClick={handleSave}
             disabled={!isValid || saving}
-            className="px-4 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-1.5 text-base rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? "Menyimpan…" : "Simpan"}
           </button>

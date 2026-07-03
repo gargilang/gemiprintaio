@@ -235,7 +235,7 @@ export default function TabPengurus({
           <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-white">{editingActorId ? "Edit Pengurus" : "Tambah Pengurus"}</h3>
-              <p className="text-blue-100 text-xs mt-1">Jabatan hanya label. Atur persentase bagi hasil untuk orang ini.</p>
+              <p className="text-blue-100 text-base mt-1">Jabatan hanya label. Atur persentase bagi hasil untuk orang ini.</p>
             </div>
             <button
               type="button"
@@ -251,8 +251,8 @@ export default function TabPengurus({
         }
         footer={
           <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 dark:bg-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setFormOpen(false)} className="px-4 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100">Batal</button>
-            <button type="button" onClick={submitOrang} disabled={orangSaving} className="px-4 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            <button type="button" onClick={() => setFormOpen(false)} className="px-4 py-1.5 text-base rounded border border-slate-300 text-slate-700 hover:bg-slate-100">Batal</button>
+            <button type="button" onClick={submitOrang} disabled={orangSaving} className="px-4 py-1.5 text-base rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
               {orangSaving ? "Menyimpan…" : editingActorId ? "Simpan perubahan" : "Tambah orang"}
             </button>
           </div>
@@ -261,12 +261,12 @@ export default function TabPengurus({
         <div className="p-5 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nama</label>
-              <input type="text" value={orangForm.display_name} onChange={(e) => setF("display_name", e.target.value)} placeholder="Mis. Andi" className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+              <label className="block text-base font-semibold text-slate-600 dark:text-slate-300 mb-1">Nama</label>
+              <input type="text" value={orangForm.display_name} onChange={(e) => setF("display_name", e.target.value)} placeholder="Mis. Andi" className="w-full px-3 py-2.5 text-base border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Jabatan</label>
-              <select value={orangForm.role_code} onChange={(e) => setF("role_code", e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white dark:bg-slate-900">
+              <label className="block text-base font-semibold text-slate-600 dark:text-slate-300 mb-1">Jabatan</label>
+              <select value={orangForm.role_code} onChange={(e) => setF("role_code", e.target.value)} className="w-full px-3 py-2.5 text-base border border-slate-300 rounded-md bg-white dark:bg-slate-900">
                 <option value="">— Pilih jabatan —</option>
                 {GROUP_ORDER.map((g) => {
                   const gr = roles.filter((r) => r.role_group === g);
@@ -282,22 +282,22 @@ export default function TabPengurus({
           </div>
 
           <div className="rounded-md border border-blue-200 dark:border-slate-700 bg-blue-50 dark:bg-slate-800 px-3 py-2.5 space-y-1">
-            <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Rumus yang akan dibuat</p>
-            {orangPreview.map((l) => <p key={l} className="text-xs text-blue-800 dark:text-blue-200">{l}</p>)}
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Rumus yang akan dibuat</p>
+            {orangPreview.map((l) => <p key={l} className="text-base text-blue-800 dark:text-blue-200">{l}</p>)}
           </div>
 
           {/* Bagi Hasil */}
           <div className={`rounded-lg border-2 p-4 transition-colors ${orangForm.enable_profit_share ? "border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/40" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"}`}>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input type="checkbox" checked={orangForm.enable_profit_share} onChange={(e) => setF("enable_profit_share", e.target.checked)} className="w-4 h-4 accent-amber-500" />
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Bagi Hasil</span>
-              <span className="text-xs text-slate-400">persentase dari laba bersih</span>
+              <span className="text-base font-semibold text-slate-700 dark:text-slate-200">Bagi Hasil</span>
+              <span className="text-base text-slate-400">persentase dari laba bersih</span>
             </label>
             {orangForm.enable_profit_share && (
               <div className="mt-3">
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Persentase (%)</label>
-                <input type="number" min="0" max="100" step="0.01" value={orangForm.profit_share_percent} onChange={(e) => setF("profit_share_percent", e.target.value)} placeholder="Mis. 40" className="w-40 px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Sisa jatah bagi hasil tersedia: <strong>{sisaBagiHasil}%</strong>. Total semua pengurus tidak boleh lebih dari 100%.</p>
+                <label className="block text-base font-semibold text-slate-600 dark:text-slate-300 mb-1">Persentase (%)</label>
+                <input type="number" min="0" max="100" step="0.01" value={orangForm.profit_share_percent} onChange={(e) => setF("profit_share_percent", e.target.value)} placeholder="Mis. 40" className="w-40 px-3 py-2.5 text-base border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Sisa jatah bagi hasil tersedia: <strong>{sisaBagiHasil}%</strong>. Total semua pengurus tidak boleh lebih dari 100%.</p>
               </div>
             )}
           </div>
@@ -308,8 +308,8 @@ export default function TabPengurus({
 
           {/* Catatan */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Catatan (opsional)</label>
-            <textarea value={orangForm.notes} onChange={(e) => setF("notes", e.target.value)} rows={2} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" placeholder="Catatan internal — tidak muncul di rumus" />
+            <label className="block text-base font-semibold text-slate-600 dark:text-slate-300 mb-1">Catatan (opsional)</label>
+            <textarea value={orangForm.notes} onChange={(e) => setF("notes", e.target.value)} rows={2} className="w-full px-3 py-2.5 text-base border border-slate-300 rounded-md dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" placeholder="Catatan internal — tidak muncul di rumus" />
           </div>
         </div>
       </ModalFormShell>
@@ -317,23 +317,23 @@ export default function TabPengurus({
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <input type="text" value={orangSearch} onChange={(e) => setOrangSearch(e.target.value)} placeholder="Cari nama / jabatan…" className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-52 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
-            <label className="text-xs text-slate-600 flex items-center gap-2 select-none cursor-pointer">
+            <input type="text" value={orangSearch} onChange={(e) => setOrangSearch(e.target.value)} placeholder="Cari nama / jabatan…" className="px-3 py-1.5 text-base border border-slate-300 rounded-md w-52 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
+            <label className="text-base text-slate-600 flex items-center gap-2 select-none cursor-pointer">
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
               Tampilkan nonaktif
             </label>
           </div>
-          <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "", enable_profit_share: true, profit_share_percent: String(sisaBagiHasil) }); setFormOpen(true); }} className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
+          <button type="button" onClick={() => { setEditingActorId(null); setOrangForm({ ...EMPTY_ORANG, role_code: roles[0]?.role_code ?? "", enable_profit_share: true, profit_share_percent: String(sisaBagiHasil) }); setFormOpen(true); }} className="px-3 py-1.5 text-base rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold">
             + Tambah Pengurus
           </button>
         </div>
 
-        {orangLoading && <div className="py-10 text-center text-slate-500 text-sm">Memuat data…</div>}
+        {orangLoading && <div className="py-10 text-center text-slate-500 text-base">Memuat data…</div>}
 
         {!orangLoading && filteredActors.length === 0 && (
-          <div className="py-12 text-center text-slate-500 text-sm space-y-2">
+          <div className="py-12 text-center text-slate-500 text-base space-y-2">
             <p>Belum ada pengurus. Tekan <strong>+ Tambah Pengurus</strong> untuk mulai.</p>
-            <p className="text-xs text-slate-400">Pengurus menerima bagi hasil dari laba bersih.</p>
+            <p className="text-base text-slate-400">Pengurus menerima bagi hasil dari laba bersih.</p>
           </div>
         )}
 
@@ -344,16 +344,16 @@ export default function TabPengurus({
               if (!list?.length) return null;
               return (
                 <section key={group}>
-                  <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">{ROLE_GROUP_LABEL[group]} ({list.length})</h3>
+                  <h3 className="text-base uppercase tracking-wider font-semibold text-slate-500 mb-2">{ROLE_GROUP_LABEL[group]} ({list.length})</h3>
                   <div className="overflow-hidden rounded-lg border border-slate-200">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 text-xs uppercase">
+                    <table className="w-full text-base">
+                      <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 text-base uppercase">
                         <tr>
-                          <th className="px-3 py-2 text-left">Nama</th>
-                          <th className="px-3 py-2 text-left">Jabatan</th>
-                          <th className="px-3 py-2 text-left">Rumus aktif</th>
-                          <th className="px-3 py-2 text-center">Status</th>
-                          <th className="px-3 py-2 text-right">Aksi</th>
+                          <th className="px-3 py-2.5 text-left">Nama</th>
+                          <th className="px-3 py-2.5 text-left">Jabatan</th>
+                          <th className="px-3 py-2.5 text-left">Rumus aktif</th>
+                          <th className="px-3 py-2.5 text-center">Status</th>
+                          <th className="px-3 py-2.5 text-right">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100">
@@ -362,14 +362,14 @@ export default function TabPengurus({
                           const lines = describeActor(a);
                           return (
                             <tr key={a.id} className="hover:bg-slate-50">
-                              <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-100">
+                              <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">
                                 {a.display_name}
-                                {a.notes && <div className="text-[11px] text-slate-400 mt-0.5">{a.notes}</div>}
+                                {a.notes && <div className="text-sm text-slate-400 mt-0.5">{a.notes}</div>}
                               </td>
-                              <td className="px-3 py-2">
-                                <span className="inline-block px-2 py-0.5 text-[11px] rounded-full border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600">{role?.role_label ?? a.role_code}</span>
+                              <td className="px-3 py-2.5">
+                                <span className="inline-block px-2 py-0.5 text-sm rounded-full border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600">{role?.role_label ?? a.role_code}</span>
                               </td>
-                              <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                              <td className="px-3 py-2.5 text-base text-slate-600 dark:text-slate-300">
                                 {lines.length > 0 ? (
                                   <ul className="space-y-0.5">
                                     {lines.map((l) => (
@@ -381,12 +381,12 @@ export default function TabPengurus({
                                   </ul>
                                 ) : <span className="text-slate-400">Tidak ada rumus</span>}
                               </td>
-                              <td className="px-3 py-2 text-center">
+                              <td className="px-3 py-2.5 text-center">
                                 {a.is_active === 1
-                                  ? <span className="text-xs text-emerald-700 dark:text-emerald-300">Aktif</span>
-                                  : <span className="text-xs text-slate-400">Nonaktif</span>}
+                                  ? <span className="text-base text-emerald-700 dark:text-emerald-300">Aktif</span>
+                                  : <span className="text-base text-slate-400">Nonaktif</span>}
                               </td>
-                              <td className="px-3 py-2 text-right">
+                              <td className="px-3 py-2.5 text-right">
                                 <MenuAksi
                                   labelMenu={`Aksi untuk ${a.display_name}`}
                                   aksi={[

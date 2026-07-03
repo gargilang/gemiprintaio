@@ -98,7 +98,7 @@ export default function InputDimensiRoll({
 
   if (variants.length === 0) {
     return (
-      <p className="text-sm text-amber-600 dark:text-amber-400">
+      <p className="text-base text-amber-600 dark:text-amber-400">
         Belum ada varian roll aktif untuk barang ini.
       </p>
     );
@@ -107,11 +107,11 @@ export default function InputDimensiRoll({
   return (
     <div className="space-y-2">
       <div>
-        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
           Lebar roll
         </label>
         <select
-          className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2 text-sm"
+          className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-2 text-base"
           value={variantId}
           onChange={(e) => handleVariantChange(e.target.value)}
           disabled={disabled}
@@ -124,7 +124,7 @@ export default function InputDimensiRoll({
         </select>
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
           Panjang (meter)
           {mode === "adjustment" && (
             <span className="ml-1 text-slate-400 dark:text-slate-500">
@@ -138,14 +138,14 @@ export default function InputDimensiRoll({
           value={panjangStr}
           onChange={(e) => handlePanjangChange(e.target.value)}
           disabled={disabled}
-          className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2 text-sm"
+          className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2 text-base"
           placeholder={mode === "waste" ? "Contoh: 10" : "Contoh: 10 atau -5"}
         />
         {errorMsg && (
-          <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{errorMsg}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400 mt-1">{errorMsg}</p>
         )}
         {!errorMsg && panjangStr && qtyM2 !== 0 && (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
             = {Math.abs(qtyM2).toFixed(2)} m²
             {qtyM2 < 0 ? " (pengurangan)" : " (penambahan)"}
           </p>

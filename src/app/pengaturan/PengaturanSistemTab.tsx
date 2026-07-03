@@ -6,7 +6,11 @@ import { useState, useEffect } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { useSearchParams } from "next/navigation";
 import { BoxIcon } from "@/components/icons/ContentIcons";
-import { HashIcon, PriceTagIcon, SparklesIcon } from "@/components/icons/PageIcons";
+import {
+  HashIcon,
+  PriceTagIcon,
+  SparklesIcon,
+} from "@/components/icons/PageIcons";
 import ToastNotifikasi, {
   NotificationToastProps,
 } from "@/components/ToastNotifikasi";
@@ -78,7 +82,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { PengaturanToko } from "@/types/database";
 
-
 interface SystemPrinter {
   name: string;
   driver?: string | null;
@@ -126,7 +129,7 @@ function SystemTab() {
   const [printers, setPrinters] = useState<SystemPrinter[]>([]);
   const [printerLoading, setPrinterLoading] = useState(false);
   const [printerPrefs, setPrinterPrefs] = useState<PrinterPreferences>(
-    defaultPrinterPreferences
+    defaultPrinterPreferences,
   );
 
   const loadSyncStatus = async () => {
@@ -140,7 +143,8 @@ function SystemTab() {
       setSyncStatus({
         ...serverStatus,
         cloudBackup: clientStatus.cloudBackup,
-        pendingChanges: clientStatus.pendingChanges || serverStatus.pendingChanges,
+        pendingChanges:
+          clientStatus.pendingChanges || serverStatus.pendingChanges,
         lastSyncAt: lastSyncAt || serverStatus.lastSyncAt,
       });
       const minutes = getAutoSyncIntervalMinutes();
@@ -166,7 +170,9 @@ function SystemTab() {
       const result = await invoke<SystemPrinter[]>("list_system_printers");
       setPrinters(result);
       setPrinterPrefs((current) => {
-        const defaultPrinter = result.find((printer) => printer.is_default)?.name;
+        const defaultPrinter = result.find(
+          (printer) => printer.is_default,
+        )?.name;
         return {
           ...current,
           receiptPrinter: current.receiptPrinter || defaultPrinter || "",
@@ -353,8 +359,10 @@ function SystemTab() {
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 dark:text-slate-100">Pengaturan Sistem</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 dark:text-slate-100">
+            Pengaturan Sistem
+          </h2>
+          <p className="text-base text-gray-500 dark:text-slate-400 dark:text-slate-400">
             Pengaturan sistem dan database
           </p>
         </div>
@@ -367,11 +375,183 @@ function SystemTab() {
           localhost browser) write directly to Supabase via server actions,
           so there is no local store to sync. */}
       {isTauri && (
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border-2 border-green-200 dark:border-slate-700">
-        <div className="flex items-center justify-between gap-6">
-          {/* Left: Title & Status */}
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 dark:bg-slate-8000 rounded-xl">
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border-2 border-green-200 dark:border-slate-700">
+          <div className="flex items-center justify-between gap-6">
+            {/* Left: Title & Status */}
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 dark:bg-slate-8000 rounded-xl">
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                  Auto-Backup Database
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      syncStatus?.cloudBackup === "connected"
+                        ? "bg-green-50 dark:bg-slate-8000 animate-pulse"
+                        : syncStatus?.cloudBackup === "syncing"
+                          ? "bg-yellow-50 dark:bg-slate-8000 animate-pulse"
+                          : "bg-gray-400"
+                    }`}
+                  ></div>
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-slate-300">
+                  {syncLoading ? (
+                    "Memuat..."
+                  ) : syncStatus?.cloudBackup === "connected" ? (
+                    <>
+                      Terhubung •{" "}
+                      {syncStatus?.lastSyncAt ? (
+                        <>
+                          Terakhir sync:{" "}
+                          {new Date(syncStatus.lastSyncAt).toLocaleString(
+                            "id-ID",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </>
+                      ) : (
+                        "Belum pernah sync"
+                      )}
+                    </>
+                  ) : syncStatus?.cloudBackup === "syncing" ? (
+                    "Sedang sinkron..."
+                  ) : (
+                    "Tidak terhubung"
+                  )}
+                </p>
+                {syncStatus?.pendingChanges > 0 && (
+                  <p className="text-sm text-orange-600 dark:text-orange-300 font-semibold mt-1">
+                    {syncStatus.pendingChanges} perubahan pending
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Middle: Interval Control */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="5"
+                max="1440"
+                value={syncIntervalValue}
+                onChange={(e) =>
+                  setSyncIntervalValue(parseInt(e.target.value) || 5)
+                }
+                className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-slate-100"
+                disabled={updatingSyncInterval}
+              />
+              <select
+                value={syncIntervalUnit}
+                onChange={(e) => setSyncIntervalUnit(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-slate-100"
+                disabled={updatingSyncInterval}
+              >
+                <option value="Menit">Menit</option>
+                <option value="Jam">Jam</option>
+              </select>
+              <button
+                onClick={handleUpdateSyncInterval}
+                disabled={updatingSyncInterval}
+                className="px-4 py-2 bg-green-50 dark:bg-slate-8000 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all"
+              >
+                {updatingSyncInterval ? "..." : "Terapkan"}
+              </button>
+            </div>
+
+            {/* Right: Manual Sync Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleManualSync}
+                disabled={syncing || pullingOnly}
+                className="px-4 py-2 bg-emerald-50 dark:bg-slate-8000 hover:bg-emerald-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                {syncing ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span>Menyinkronkan...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    <span>Sinkronkan Sekarang</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handlePullCloudOnly}
+                disabled={pullingOnly || syncing}
+                className="px-4 py-2 bg-cyan-50 dark:bg-slate-8000 hover:bg-cyan-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                {pullingOnly ? "Menarik..." : "Tarik Data Cloud"}
+              </button>
+            </div>
+          </div>
+
+          {/* Info Bar */}
+          <div className="mt-4 pt-4 border-t border-green-200 dark:border-slate-700 text-sm text-gray-600 dark:text-slate-300 flex items-center justify-between">
+            <span>
+              💡 Minimal: 5 menit • Rekomendasi: 15-20 menit • Sinkron otomatis
+              berjalan di latar belakang
+            </span>
+            <span className="text-green-600 font-semibold">
+              Data lokal akan otomatis dicadangkan
+            </span>
+          </div>
+        </div>
+      )}
+
+      {isTauri && (
+        <div className="bg-gradient-to-br from-indigo-50 to-sky-50 rounded-xl p-6 border-2 border-indigo-200 dark:border-slate-700">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-indigo-50 dark:bg-slate-8000 rounded-xl">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -382,361 +562,191 @@ function SystemTab() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                 />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                Auto-Backup Database
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    syncStatus?.cloudBackup === "connected"
-                      ? "bg-green-50 dark:bg-slate-8000 animate-pulse"
-                      : syncStatus?.cloudBackup === "syncing"
-                      ? "bg-yellow-50 dark:bg-slate-8000 animate-pulse"
-                      : "bg-gray-400"
-                  }`}
-                ></div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
+                Pengaturan Printer
               </h3>
               <p className="text-sm text-gray-600 dark:text-slate-300">
-                {syncLoading ? (
-                  "Memuat..."
-                ) : syncStatus?.cloudBackup === "connected" ? (
-                  <>
-                    Terhubung •{" "}
-                    {syncStatus?.lastSyncAt ? (
-                      <>
-                        Terakhir sync:{" "}
-                        {new Date(syncStatus.lastSyncAt).toLocaleString(
-                          "id-ID",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </>
-                    ) : (
-                      "Belum pernah sync"
-                    )}
-                  </>
-                ) : syncStatus?.cloudBackup === "syncing" ? (
-                  "Sedang sinkron..."
-                ) : (
-                  "Tidak terhubung"
-                )}
+                Pilih printer default untuk struk thermal dan dokumen aplikasi
+                desktop
               </p>
-              {syncStatus?.pendingChanges > 0 && (
-                <p className="text-xs text-orange-600 dark:text-orange-300 font-semibold mt-1">
-                  {syncStatus.pendingChanges} perubahan pending
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Middle: Interval Control */}
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="5"
-              max="1440"
-              value={syncIntervalValue}
-              onChange={(e) =>
-                setSyncIntervalValue(parseInt(e.target.value) || 5)
-              }
-              className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-slate-100"
-              disabled={updatingSyncInterval}
-            />
-            <select
-              value={syncIntervalUnit}
-              onChange={(e) => setSyncIntervalUnit(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-slate-100"
-              disabled={updatingSyncInterval}
-            >
-              <option value="Menit">Menit</option>
-              <option value="Jam">Jam</option>
-            </select>
-            <button
-              onClick={handleUpdateSyncInterval}
-              disabled={updatingSyncInterval}
-              className="px-4 py-2 bg-green-50 dark:bg-slate-8000 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all"
-            >
-              {updatingSyncInterval ? "..." : "Terapkan"}
-            </button>
-          </div>
+          <div className="bg-white dark:bg-slate-900/85 rounded-lg p-5 border border-indigo-200 dark:border-slate-700 space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Printer Struk Thermal
+                </span>
+                <select
+                  value={printerPrefs.receiptPrinter}
+                  onChange={(event) =>
+                    setPrinterPrefs((prev) => ({
+                      ...prev,
+                      receiptPrinter: event.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                  disabled={printerLoading}
+                >
+                  <option value="">Gunakan printer default sistem</option>
+                  {printers.map((printer) => (
+                    <option key={printer.name} value={printer.name}>
+                      {printer.name}
+                      {printer.is_default ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          {/* Right: Manual Sync Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleManualSync}
-              disabled={syncing || pullingOnly}
-              className="px-4 py-2 bg-emerald-50 dark:bg-slate-8000 hover:bg-emerald-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-            >
-              {syncing ? (
-                <>
-                  <svg
-                    className="animate-spin h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span>Menyinkronkan...</span>
-                </>
+              <label className="block">
+                <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Printer Dokumen
+                </span>
+                <select
+                  value={printerPrefs.documentPrinter}
+                  onChange={(event) =>
+                    setPrinterPrefs((prev) => ({
+                      ...prev,
+                      documentPrinter: event.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                  disabled={printerLoading}
+                >
+                  <option value="">Gunakan printer default sistem</option>
+                  {printers.map((printer) => (
+                    <option key={printer.name} value={printer.name}>
+                      {printer.name}
+                      {printer.is_default ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-slate-800 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 text-sm font-semibold text-gray-700 dark:text-slate-300">
+                Printer terdeteksi
+              </div>
+              {printerLoading ? (
+                <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
+                  Memuat daftar printer...
+                </div>
+              ) : printers.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
+                  Tidak ada printer yang terdeteksi dari sistem operasi.
+                </div>
               ) : (
-                <>
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  <span>Sinkronkan Sekarang</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handlePullCloudOnly}
-              disabled={pullingOnly || syncing}
-              className="px-4 py-2 bg-cyan-50 dark:bg-slate-8000 hover:bg-cyan-600 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-            >
-              {pullingOnly ? "Menarik..." : "Tarik Data Cloud"}
-            </button>
-          </div>
-        </div>
-
-        {/* Info Bar */}
-        <div className="mt-4 pt-4 border-t border-green-200 dark:border-slate-700 text-xs text-gray-600 dark:text-slate-300 flex items-center justify-between">
-          <span>
-            💡 Minimal: 5 menit • Rekomendasi: 15-20 menit • Sinkron otomatis berjalan
-            di latar belakang
-          </span>
-          <span className="text-green-600 font-semibold">
-            Data lokal akan otomatis dicadangkan
-          </span>
-        </div>
-      </div>
-      )}
-
-      {isTauri && (
-      <div className="bg-gradient-to-br from-indigo-50 to-sky-50 rounded-xl p-6 border-2 border-indigo-200 dark:border-slate-700">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="p-3 bg-indigo-50 dark:bg-slate-8000 rounded-xl">
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
-              Pengaturan Printer
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-slate-300">
-              Pilih printer default untuk struk thermal dan dokumen aplikasi desktop
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900/85 rounded-lg p-5 border border-indigo-200 dark:border-slate-700 space-y-5">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                Printer Struk Thermal
-              </span>
-              <select
-                value={printerPrefs.receiptPrinter}
-                onChange={(event) =>
-                  setPrinterPrefs((prev) => ({
-                    ...prev,
-                    receiptPrinter: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
-                disabled={printerLoading}
-              >
-                <option value="">Gunakan printer default sistem</option>
-                {printers.map((printer) => (
-                  <option key={printer.name} value={printer.name}>
-                    {printer.name}
-                    {printer.is_default ? " (default)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                Printer Dokumen
-              </span>
-              <select
-                value={printerPrefs.documentPrinter}
-                onChange={(event) =>
-                  setPrinterPrefs((prev) => ({
-                    ...prev,
-                    documentPrinter: event.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
-                disabled={printerLoading}
-              >
-                <option value="">Gunakan printer default sistem</option>
-                {printers.map((printer) => (
-                  <option key={printer.name} value={printer.name}>
-                    {printer.name}
-                    {printer.is_default ? " (default)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="rounded-lg border border-gray-200 dark:border-slate-800 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 text-sm font-semibold text-gray-700 dark:text-slate-300">
-              Printer terdeteksi
-            </div>
-            {printerLoading ? (
-              <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
-                Memuat daftar printer...
-              </div>
-            ) : printers.length === 0 ? (
-              <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
-                Tidak ada printer yang terdeteksi dari sistem operasi.
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {printers.map((printer) => (
-                  <div
-                    key={printer.name}
-                    className="px-4 py-3 flex items-center justify-between gap-4"
-                  >
-                    <div>
-                      <p className="font-semibold text-gray-800 dark:text-slate-100">
-                        {printer.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
-                        {[printer.driver, printer.port, printer.status]
-                          .filter(Boolean)
-                          .join(" | ") || "Detail printer tidak tersedia"}
-                      </p>
+                <div className="divide-y divide-gray-100">
+                  {printers.map((printer) => (
+                    <div
+                      key={printer.name}
+                      className="px-4 py-3 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-slate-100">
+                          {printer.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">
+                          {[printer.driver, printer.port, printer.status]
+                            .filter(Boolean)
+                            .join(" | ") || "Detail printer tidak tersedia"}
+                        </p>
+                      </div>
+                      {printer.is_default && (
+                        <span className="px-2 py-1 text-sm rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold">
+                          Bawaan
+                        </span>
+                      )}
                     </div>
-                    {printer.is_default && (
-                      <span className="px-2 py-1 text-xs rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold">
-                        Bawaan
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div className="flex items-center justify-between gap-4 pt-1">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              Preferensi ini hanya muncul dan disimpan di aplikasi desktop Tauri.
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={loadPrinters}
-                disabled={printerLoading}
-                className="px-4 py-2 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-60"
-              >
-                {printerLoading ? "Memuat..." : "Muat Ulang"}
-              </button>
-              <button
-                type="button"
-                onClick={savePrinterPrefs}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold"
-              >
-                Simpan Printer
-              </button>
+            <div className="flex items-center justify-between gap-4 pt-1">
+              <p className="text-sm text-gray-500 dark:text-slate-400">
+                Preferensi ini hanya muncul dan disimpan di aplikasi desktop
+                Tauri.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={loadPrinters}
+                  disabled={printerLoading}
+                  className="px-4 py-2 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-60"
+                >
+                  {printerLoading ? "Memuat..." : "Muat Ulang"}
+                </button>
+                <button
+                  type="button"
+                  onClick={savePrinterPrefs}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold"
+                >
+                  Simpan Printer
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="hidden">
-          <div className="flex items-start gap-3 mb-4">
-            <svg
-              className="w-6 h-6 text-orange-500 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h4 className="font-bold text-gray-800 dark:text-slate-100 mb-2">
-                Fitur Dalam Pengembangan
-              </h4>
-              <p className="text-sm text-gray-700 dark:text-slate-300 mb-3">
-                <strong>Catatan Teknis:</strong> Browser tidak dapat mendeteksi
-                printer yang terinstall di komputer karena security
-                restrictions.
-              </p>
-              <p className="text-sm text-gray-700 dark:text-slate-300 mb-3">
-                Untuk saat ini, aplikasi ini menggunakan{" "}
-                <strong>system print dialog</strong> default browser (
-                <code className="px-1 py-0.5 bg-gray-200 rounded text-xs">
-                  window.print()
-                </code>
-                ). Anda bisa memilih printer dari dialog yang muncul.
-              </p>
-              <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800/50">
-                <p className="text-sm text-purple-900 font-semibold mb-2">
-                  Rencana Implementasi:
+          <div className="hidden">
+            <div className="flex items-start gap-3 mb-4">
+              <svg
+                className="w-6 h-6 text-orange-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <h4 className="font-bold text-gray-800 dark:text-slate-100 mb-2">
+                  Fitur Dalam Pengembangan
+                </h4>
+                <p className="text-sm text-gray-700 dark:text-slate-300 mb-3">
+                  <strong>Catatan Teknis:</strong> Browser tidak dapat
+                  mendeteksi printer yang terinstall di komputer karena security
+                  restrictions.
                 </p>
-                <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-1 ml-4">
-                  <li>• Deteksi printer terinstall otomatis</li>
-                  <li>• Pilih printer default untuk receipt & dokumen</li>
-                  <li>• Auto-print tanpa dialog (untuk thermal printer)</li>
-                  <li>• Manajemen antrean cetak</li>
-                </ul>
-                <p className="text-xs text-purple-700 dark:text-purple-300 mt-3">
-                  ⚡ Fitur ini akan tersedia setelah aplikasi di-wrap dengan{" "}
-                  <strong>Tauri</strong> atau <strong>Electron</strong> yang
-                  memiliki akses ke native printer API.
+                <p className="text-sm text-gray-700 dark:text-slate-300 mb-3">
+                  Untuk saat ini, aplikasi ini menggunakan{" "}
+                  <strong>system print dialog</strong> default browser (
+                  <code className="px-1 py-0.5 bg-gray-200 rounded text-xs">
+                    window.print()
+                  </code>
+                  ). Anda bisa memilih printer dari dialog yang muncul.
                 </p>
+                <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800/50">
+                  <p className="text-sm text-purple-900 font-semibold mb-2">
+                    Rencana Implementasi:
+                  </p>
+                  <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-1 ml-4">
+                    <li>• Deteksi printer terinstall otomatis</li>
+                    <li>• Pilih printer default untuk receipt & dokumen</li>
+                    <li>• Auto-print tanpa dialog (untuk thermal printer)</li>
+                    <li>• Manajemen antrean cetak</li>
+                  </ul>
+                  <p className="text-xs text-purple-700 dark:text-purple-300 mt-3">
+                    ⚡ Fitur ini akan tersedia setelah aplikasi di-wrap dengan{" "}
+                    <strong>Tauri</strong> atau <strong>Electron</strong> yang
+                    memiliki akses ke native printer API.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Future Features */}
@@ -848,8 +858,7 @@ function ThemePanel() {
   ];
 
   const effectiveLabel = effective === "dark" ? "Mode Gelap" : "Mode Terang";
-  const effectiveSuffix =
-    theme === "system" ? " (mengikuti sistem)" : "";
+  const effectiveSuffix = theme === "system" ? " (mengikuti sistem)" : "";
 
   return (
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border-2 border-indigo-200 dark:border-slate-700">
@@ -919,7 +928,7 @@ function ThemePanel() {
                 <div className="font-semibold text-gray-800 dark:text-slate-100 dark:text-slate-100">
                   {opt.label}
                 </div>
-                <div className="text-xs text-gray-600 dark:text-slate-300 dark:text-slate-400 mt-0.5">
+                <div className="text-sm text-gray-600 dark:text-slate-300 dark:text-slate-400 mt-0.5">
                   {opt.description}
                 </div>
               </div>
@@ -942,14 +951,13 @@ function ThemePanel() {
         })}
       </div>
 
-      <p className="mt-4 text-xs text-gray-500 dark:text-slate-400 dark:text-slate-400">
-        Mode dark otomatis dinonaktifkan saat mencetak (faktur dan laporan
-        tetap menggunakan latar putih).
+      <p className="mt-4 text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400">
+        Mode dark otomatis dinonaktifkan saat mencetak (faktur dan laporan tetap
+        menggunakan latar putih).
       </p>
     </div>
   );
 }
-
 
 export { SystemTab };
 export default SystemTab;

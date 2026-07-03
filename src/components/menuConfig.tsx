@@ -114,13 +114,6 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FRONT_OF_HOUSE,
       },
       {
-        href: "/katalog-maklon",
-        icon: <PrinterIcon size={18} />,
-        label: "Katalog Maklon",
-        color: "from-fuchsia-500 to-purple-600",
-        allowedRoles: FULL_STAFF,
-      },
-      {
         href: "/retur-penjualan",
         icon: <SalesReturnIcon size={18} />,
         label: "Retur Penjualan",
@@ -211,10 +204,17 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: FULL_STAFF,
       },
       {
+        href: "/katalog-maklon",
+        icon: <PrinterIcon size={18} />,
+        label: "Katalog Extra",
+        color: "from-violet-600 to-purple-700",
+        allowedRoles: FULL_STAFF,
+      },
+      {
         href: "/inventori/adjustments",
         icon: <StockAdjustmentIcon size={18} />,
         label: "Penyesuaian Stok",
-        color: "from-emerald-500 to-teal-600",
+        color: "from-amber-500 to-orange-600",
         allowedRoles: FULL_STAFF,
       },
       {
@@ -323,7 +323,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/pos": "POS / Kasir",
   "/surat-jalan": "Surat Jalan",
   "/penawaran": "Penawaran",
-  "/katalog-maklon": "Katalog Maklon",
+  "/katalog-maklon": "Katalog Extra",
   "/retur-penjualan": "Retur Penjualan",
   "/produksi": "Produksi",
   "/produksi/spk": "SPK",

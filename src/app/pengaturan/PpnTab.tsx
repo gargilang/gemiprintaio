@@ -61,7 +61,7 @@ export default function PpnTab() {
     mutate: mutateSettings,
   } = useCachedData<ShopSettings>(
     "settings:shop",
-    () => getShopSettingsAction() as Promise<ShopSettings>
+    () => getShopSettingsAction() as Promise<ShopSettings>,
   );
 
   const {
@@ -70,7 +70,7 @@ export default function PpnTab() {
     mutate: mutatePool,
   } = useCachedData<NsfpRow[]>(
     "settings:nsfp-pool",
-    () => listNsfpPoolAction({ limit: 1000 }) as Promise<NsfpRow[]>
+    () => listNsfpPoolAction({ limit: 1000 }) as Promise<NsfpRow[]>,
   );
 
   const loading = settingsLoading || poolLoading;
@@ -83,7 +83,7 @@ export default function PpnTab() {
 
   // Form import NSFP
   const [importTahun, setImportTahun] = useState(
-    String(new Date().getFullYear()).slice(-2)
+    String(new Date().getFullYear()).slice(-2),
   );
   const [importKode, setImportKode] = useState("01");
   const [importAwal, setImportAwal] = useState("");
@@ -130,7 +130,7 @@ export default function PpnTab() {
       });
       showMsg(
         "success",
-        `Impor NSFP: ${r.inserted} ditambah, ${r.skipped} sudah ada`
+        `Impor NSFP: ${r.inserted} ditambah, ${r.skipped} sudah ada`,
       );
       setImportAwal("");
       setImportAkhir("");
@@ -142,9 +142,7 @@ export default function PpnTab() {
   };
 
   const handleCancelNsfp = async (id: string) => {
-    const alasan = prompt(
-      "Alasan pembatalan NSFP (akan tercatat permanen):"
-    );
+    const alasan = prompt("Alasan pembatalan NSFP (akan tercatat permanen):");
     if (!alasan?.trim()) return;
     try {
       await cancelNsfpAction(id, alasan.trim());
@@ -187,10 +185,12 @@ export default function PpnTab() {
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">PPN / Pajak</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
-            Pengaturan PKP, NPWP toko, dan pool Nomor Seri Faktur Pajak
-            (NSFP) dari Coretax DJP.
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+            PPN / Pajak
+          </h2>
+          <p className="text-base text-gray-500 dark:text-slate-400">
+            Pengaturan PKP, NPWP toko, dan pool Nomor Seri Faktur Pajak (NSFP)
+            dari Coretax DJP.
           </p>
         </div>
       </div>
@@ -209,7 +209,9 @@ export default function PpnTab() {
 
       {/* Status PKP toko */}
       <section className="bg-gray-50 dark:bg-slate-800 rounded-xl p-6 border-2 border-gray-200 dark:border-slate-800 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">Status PKP Toko</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">
+          Status PKP Toko
+        </h3>
         <p className="text-sm text-gray-600 dark:text-slate-300">
           Aktifkan kalau toko sudah terdaftar sebagai Pengusaha Kena Pajak
           (PKP). Kalau non-aktif, toggle PPN di POS dan Pembelian disembunyikan.
@@ -241,7 +243,10 @@ export default function PpnTab() {
               onBlur={(e) => {
                 const v = e.target.value.trim();
                 if (v && !isValidNpwp(v)) {
-                  showMsg("error", "Format NPWP tidak valid (15 atau 16 digit)");
+                  showMsg(
+                    "error",
+                    "Format NPWP tidak valid (15 atau 16 digit)",
+                  );
                   return;
                 }
                 if (v !== (settings.npwp || ""))
@@ -252,7 +257,7 @@ export default function PpnTab() {
               disabled={!settings.status_pkp}
             />
             {settings.npwp && (
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                 Tampilan: {formatNpwp(settings.npwp)}
               </p>
             )}
@@ -292,7 +297,7 @@ export default function PpnTab() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               disabled={!settings.status_pkp}
             />
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
               Saat ini 11% (UU HPP). Akan jadi 12% sesuai aturan DJP.
             </p>
           </div>
@@ -345,11 +350,11 @@ export default function PpnTab() {
         </h3>
         <p className="text-sm text-gray-600 dark:text-slate-300">
           Unggah rentang NSFP yang sudah didapat dari Coretax DJP. Aplikasi akan
-          memakai berurutan dari nomor terkecil saat menerbitkan faktur.
-          NSFP yang sudah TERPAKAI tidak bisa dipakai ulang.
+          memakai berurutan dari nomor terkecil saat menerbitkan faktur. NSFP
+          yang sudah TERPAKAI tidak bisa dipakai ulang.
         </p>
 
-        <div className="grid grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-3 gap-3 text-base">
           <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold">{tersedia}</div>
             <div>Tersedia</div>
@@ -369,7 +374,7 @@ export default function PpnTab() {
           className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
         >
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Tahun (2 digit)
             </label>
             <input
@@ -381,7 +386,7 @@ export default function PpnTab() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Kode transaksi
             </label>
             <select
@@ -401,7 +406,7 @@ export default function PpnTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Nomor awal
             </label>
             <input
@@ -413,7 +418,7 @@ export default function PpnTab() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Nomor akhir
             </label>
             <input
@@ -433,8 +438,8 @@ export default function PpnTab() {
         </form>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-gray-500 dark:text-slate-400 uppercase">
+          <table className="w-full text-base">
+            <thead className="text-left text-sm text-gray-500 dark:text-slate-400 uppercase">
               <tr>
                 <th className="px-3 py-2">NSFP</th>
                 <th className="px-3 py-2">Status</th>
@@ -452,31 +457,34 @@ export default function PpnTab() {
                 </tr>
               )}
               {pool.map((row) => (
-                <tr key={row.id} className="border-t border-gray-200 dark:border-slate-800">
+                <tr
+                  key={row.id}
+                  className="border-t border-gray-200 dark:border-slate-800"
+                >
                   <td className="px-3 py-2 font-mono">
                     {formatNsfpString(
                       row.kode_transaksi,
                       row.tahun,
-                      row.nomor_seri
+                      row.nomor_seri,
                     )}
                   </td>
                   <td className="px-3 py-2">
                     <span
-                      className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      className={`inline-block px-2 py-0.5 rounded text-sm font-medium ${
                         row.status === "TERSEDIA"
                           ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
                           : row.status === "TERPAKAI"
-                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
-                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600"
+                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600"
                       }`}
                     >
                       {row.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-gray-600 dark:text-slate-300">
+                  <td className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300">
                     {row.penjualan_id || "—"}
                   </td>
-                  <td className="px-3 py-2 text-xs text-gray-600 dark:text-slate-300">
+                  <td className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300">
                     {row.catatan || ""}
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -484,7 +492,7 @@ export default function PpnTab() {
                       <button
                         type="button"
                         onClick={() => handleCancelNsfp(row.id)}
-                        className="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+                        className="text-sm px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
                       >
                         Batalkan
                       </button>

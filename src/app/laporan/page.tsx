@@ -23,12 +23,7 @@ interface User {
   aktif_status: number;
 }
 
-type ReportType =
-  | "cash"
-  | "profit-loss"
-  | "inventory"
-  | "pos"
-  | "receivables";
+type ReportType = "cash" | "profit-loss" | "inventory" | "pos" | "receivables";
 
 interface FormalAccountingReport {
   cashReport: {
@@ -289,7 +284,7 @@ export default function ReportsPage() {
             <h2 className="text-2xl font-bold mb-1 font-twcenmt uppercase tracking-wide">
               Pusat Laporan
             </h2>
-            <p className="text-white/90 text-sm">
+            <p className="text-white/90 text-base">
               Generate berbagai jenis laporan untuk analisis bisnis
             </p>
           </div>
@@ -302,17 +297,20 @@ export default function ReportsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="bg-indigo-100 dark:bg-indigo-900/40 rounded-xl p-3 flex-shrink-0">
-                <DocumentIcon size={28} className="text-indigo-600 dark:text-indigo-300" />
+                <DocumentIcon
+                  size={28}
+                  className="text-indigo-600 dark:text-indigo-300"
+                />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xl">
                   Laporan Manajemen Bulanan
                 </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-                  Dokumen resmi A4 siap cetak: ringkasan KPI, hutang/piutang, riwayat
-                  buku kas, dan kolom tanda tangan.
+                <p className="text-base text-slate-600 dark:text-slate-300 mt-0.5">
+                  Dokumen resmi A4 siap cetak: ringkasan KPI, hutang/piutang,
+                  riwayat buku kas, dan kolom tanda tangan.
                 </p>
-                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+                <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
                   Hanya untuk periode yang sudah ditutup
                 </p>
               </div>
@@ -320,7 +318,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={handleBukaModalLaporan}
-              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow"
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-base font-bold hover:bg-indigo-700 transition-colors shadow"
             >
               <DocumentIcon size={16} className="text-white" />
               Buat Laporan
@@ -352,13 +350,19 @@ export default function ReportsPage() {
               `}
             >
               {!type.available && (
-                <span className="absolute top-2 right-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs font-bold px-2 py-1 rounded-full">
+                <span className="absolute top-2 right-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-sm font-bold px-2 py-1 rounded-full">
                   Segera
                 </span>
               )}
-              <div className="mb-2 text-purple-600 dark:text-purple-300">{type.icon}</div>
-              <h4 className="font-bold text-gray-800 dark:text-slate-100 mb-1">{type.title}</h4>
-              <p className="text-xs text-gray-600 dark:text-slate-300">{type.description}</p>
+              <div className="mb-2 text-purple-600 dark:text-purple-300">
+                {type.icon}
+              </div>
+              <h4 className="font-bold text-gray-800 dark:text-slate-100 mb-1">
+                {type.title}
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-slate-300">
+                {type.description}
+              </p>
             </button>
           ))}
         </div>
@@ -366,20 +370,20 @@ export default function ReportsPage() {
 
       {/* Accounting Reports */}
       <FormalReportPanel
-          selectedReportType={selectedReportType}
-          title={
-            reportTypes.find((type) => type.id === selectedReportType)?.title ||
-            "Laporan"
-          }
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onLoad={handleLoadFormalReport}
-          loading={loadingFormalReport}
-          report={formalReport}
-          formatRupiah={formatRupiah}
-        />
+        selectedReportType={selectedReportType}
+        title={
+          reportTypes.find((type) => type.id === selectedReportType)?.title ||
+          "Laporan"
+        }
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onLoad={handleLoadFormalReport}
+        loading={loadingFormalReport}
+        report={formalReport}
+        formatRupiah={formatRupiah}
+      />
       {/* Modal Laporan Bulanan */}
       {showModalLaporan && (
         <ModalLaporanBulanan
@@ -424,39 +428,41 @@ function FormalReportPanel({
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">{title}</h3>
-          <p className="text-sm text-gray-600 dark:text-slate-300">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">
+            {title}
+          </h3>
+          <p className="text-base text-gray-600 dark:text-slate-300">
             Kalkulasi otomatis dari transaksi POS, HPP snapshot, persediaan,
             piutang, hutang, dan buku kas.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1">
               Dari
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">
+            <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1">
               Sampai
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => onEndDateChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
+              className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
           <button
             onClick={onLoad}
             disabled={loading}
-            className="self-end px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50"
+            className="self-end px-4 py-2 bg-purple-600 text-white rounded-lg text-base font-semibold hover:bg-purple-700 disabled:opacity-50"
           >
             {loading ? "Memuat..." : "Muat Laporan"}
           </button>
@@ -465,13 +471,16 @@ function FormalReportPanel({
 
       {!report ? (
         <div className="bg-gray-50 dark:bg-slate-800/80 rounded-xl p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 text-center">
-          <ClipboardIcon size={48} className="mx-auto text-gray-300 dark:text-slate-500 mb-3" />
+          <ClipboardIcon
+            size={48}
+            className="mx-auto text-gray-300 dark:text-slate-500 mb-3"
+          />
           <p className="text-gray-700 dark:text-slate-300 font-semibold">
             Pilih periode lalu klik Muat Laporan
           </p>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Laporan dihitung langsung dari transaksi, bukan rumus bebas
-            halaman Keuangan.
+          <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
+            Laporan dihitung langsung dari transaksi, bukan rumus bebas halaman
+            Keuangan.
           </p>
         </div>
       ) : (
@@ -702,10 +711,8 @@ function MetricCard({
       "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
     slate:
       "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
-    blue:
-      "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    red:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
+    blue: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    red: "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
     purple:
       "border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
     amber:
@@ -718,9 +725,9 @@ function MetricCard({
         wide ? "md:col-span-2" : ""
       }`}
     >
-      <p className="text-sm font-semibold opacity-80">{label}</p>
+      <p className="text-base font-semibold opacity-80">{label}</p>
       <p className="text-2xl font-bold mt-0.5">{value}</p>
-      {detail && <p className="text-xs opacity-70 mt-1">{detail}</p>}
+      {detail && <p className="text-sm opacity-70 mt-1">{detail}</p>}
     </div>
   );
 }
@@ -742,7 +749,7 @@ function FormalTable({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-slate-800 dark:bg-slate-700 text-white">
             <tr>
               {columns.map((column) => (
@@ -763,14 +770,11 @@ function FormalTable({
                 </td>
               </tr>
             ) : (
-              rows.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className={rowIndex % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"}
-                >
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="px-4 py-3 text-gray-700 dark:text-slate-300">
-                      {cell || "-"}
+              rows.map((row, i) => (
+                <tr key={i}>
+                  {row.map((cell, j) => (
+                    <td key={j} className="px-4 py-3">
+                      {cell}
                     </td>
                   ))}
                 </tr>

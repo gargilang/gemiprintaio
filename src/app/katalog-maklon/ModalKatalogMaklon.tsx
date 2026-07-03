@@ -52,7 +52,7 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
 }
 
 /**
- * Modal tambah/edit item Katalog Maklon. Katalog ini dipakai sebagai daftar
+ * Modal tambah/edit item Katalog Extra. Katalog ini dipakai sebagai daftar
  * produk siap-maklon yang bisa ditambahkan cepat ke keranjang POS.
  */
 export default function ModalKatalogMaklon({
@@ -107,7 +107,7 @@ export default function ModalKatalogMaklon({
     } catch (error: any) {
       showNotification(
         "error",
-        error?.message || "Gagal menyimpan katalog maklon"
+        error?.message || "Gagal menyimpan katalog extra"
       );
     } finally {
       setSaving(false);
@@ -121,7 +121,7 @@ export default function ModalKatalogMaklon({
       allowDismiss={!saving}
       maxWidthClass="max-w-2xl"
       header={
-        <div className="bg-gradient-to-r from-fuchsia-500 to-purple-600 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2 bg-white/20 rounded-lg shrink-0">
               {isEdit ? (
@@ -131,7 +131,7 @@ export default function ModalKatalogMaklon({
               )}
             </div>
             <h3 className="text-2xl font-bold text-white truncate">
-              {isEdit ? "Edit Katalog Maklon" : "Tambah Katalog Maklon"}
+              {isEdit ? "Edit Katalog Extra" : "Tambah Katalog Extra"}
             </h3>
           </div>
           <button
@@ -171,7 +171,7 @@ export default function ModalKatalogMaklon({
             type="submit"
             form="katalog-maklon-form"
             disabled={saving}
-            className="px-6 py-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white rounded-lg hover:from-fuchsia-600 hover:to-purple-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-lg hover:from-violet-700 hover:to-purple-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Menyimpan..." : "Simpan"}
           </button>
@@ -195,7 +195,7 @@ export default function ModalKatalogMaklon({
                 setForm({ ...form, nama_produk: e.target.value })
               }
               placeholder="Contoh: Cetak Banner Flexi 280gr"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
               required
               autoFocus
             />
@@ -212,7 +212,7 @@ export default function ModalKatalogMaklon({
                 setForm({ ...form, nama_satuan: e.target.value })
               }
               placeholder="pcs, m², lembar"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
@@ -227,7 +227,7 @@ export default function ModalKatalogMaklon({
                 setForm({ ...form, kategori: e.target.value || null })
               }
               placeholder="Contoh: Banner, Stiker"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
@@ -246,7 +246,7 @@ export default function ModalKatalogMaklon({
                   harga_jual_default: Number(e.target.value || 0),
                 })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               Harga jual ke pelanggan, per satuan di atas.
@@ -268,7 +268,7 @@ export default function ModalKatalogMaklon({
                   biaya_subkontrak_default: Number(e.target.value || 0),
                 })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               Biaya yang dibayarkan ke vendor maklon, per satuan.
@@ -287,7 +287,7 @@ export default function ModalKatalogMaklon({
                   vendor_subkontrak_id_default: e.target.value || null,
                 })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 bg-white dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">— Pilih saat transaksi —</option>
               {vendorSubkontrak.map((v) => (
@@ -318,7 +318,7 @@ export default function ModalKatalogMaklon({
                     | "NET30",
                 })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 bg-white dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="CASH">CASH (bayar langsung)</option>
               <option value="NET30">NET30 (jadi hutang)</option>
@@ -337,7 +337,7 @@ export default function ModalKatalogMaklon({
               onChange={(e) =>
                 setForm({ ...form, urutan: Number(e.target.value || 0) })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               Angka kecil tampil lebih dulu di daftar/POS.
@@ -358,12 +358,12 @@ export default function ModalKatalogMaklon({
               }
               placeholder="Catatan untuk tim internal (tidak tampil ke pelanggan)"
               rows={2}
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 p-4 bg-fuchsia-50 dark:bg-slate-800 rounded-lg border-2 border-fuchsia-200 dark:border-slate-700">
+            <div className="flex items-center gap-3 p-4 bg-violet-50 dark:bg-slate-800 rounded-lg border-2 border-violet-200 dark:border-slate-700">
               <input
                 type="checkbox"
                 id="is_aktif"
@@ -371,16 +371,16 @@ export default function ModalKatalogMaklon({
                 onChange={(e) =>
                   setForm({ ...form, is_aktif: e.target.checked ? 1 : 0 })
                 }
-                className="w-5 h-5 text-fuchsia-600 border-gray-300 rounded focus:ring-fuchsia-500"
+                className="w-5 h-5 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
               />
               <label
                 htmlFor="is_aktif"
                 className="flex-1 text-sm cursor-pointer"
               >
-                <span className="font-semibold text-fuchsia-900 dark:text-fuchsia-200 block">
+                <span className="font-semibold text-violet-900 dark:text-violet-200 block">
                   Aktif
                 </span>
-                <span className="text-xs text-fuchsia-700 dark:text-fuchsia-300">
+                <span className="text-xs text-violet-700 dark:text-violet-300">
                   Item aktif muncul sebagai pilihan cepat di POS Maklon
                 </span>
               </label>

@@ -122,7 +122,7 @@ export default function StockAdjustmentsPage() {
   return (
     <div className="space-y-6">
       {/* Kartu judul */}
-      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <StockAdjustmentIcon size={28} className="text-white" />
@@ -130,7 +130,7 @@ export default function StockAdjustmentsPage() {
               <h2 className="text-2xl font-bold uppercase tracking-wide">
                 Penyesuaian Stok
               </h2>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-base">
                 Penyesuaian manual, koreksi, dan barang rusak dengan riwayat
                 audit.
               </p>
@@ -216,7 +216,7 @@ export default function StockAdjustmentsPage() {
             />
             <button
               disabled={saving}
-              className="w-full rounded-md bg-emerald-600 px-4 py-2 font-medium text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors"
+              className="w-full rounded-md bg-emerald-600 px-4 py-2.5 font-medium text-white disabled:opacity-60 hover:bg-emerald-700 transition-colors"
               onClick={submit}
             >
               Posting
@@ -224,7 +224,7 @@ export default function StockAdjustmentsPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-base">
             <thead className="bg-slate-50 dark:bg-slate-800 text-left text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="p-3">Tanggal</th>

@@ -52,7 +52,7 @@ function buildPreview(
   prefix: string,
   format: NomorFormat,
   padding: number,
-  seq: number
+  seq: number,
 ): string {
   const today = new Date();
   const y = today.getFullYear();
@@ -124,16 +124,20 @@ function NumberingBlock({
     <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 space-y-4">
       {/* Header */}
       <div>
-        <h3 className="text-base font-bold text-gray-800 dark:text-slate-100">{title}</h3>
-        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+        <h3 className="text-base font-bold text-gray-800 dark:text-slate-100">
+          {title}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+          {subtitle}
+        </p>
       </div>
 
       {/* Preview */}
       <div className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-lg px-4 py-3 border border-gray-200 dark:border-slate-700">
-        <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">
+        <span className="text-sm font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">
           Contoh
         </span>
-        <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+        <span className="font-mono text-base font-bold text-blue-600 dark:text-blue-400">
           {preview}
         </span>
       </div>
@@ -170,7 +174,7 @@ function NumberingBlock({
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
             {FORMAT_OPTIONS.find((o) => o.value === format)?.desc}
           </p>
         </label>
@@ -203,10 +207,12 @@ function NumberingBlock({
             value={padding}
             min={1}
             max={8}
-            onChange={(e) => onPadding(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
+            onChange={(e) =>
+              onPadding(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))
+            }
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100"
           />
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
             {padding} digit → {String(startSeq).padStart(padding, "0")}
           </p>
         </label>
@@ -220,10 +226,12 @@ function NumberingBlock({
             type="number"
             value={startSeq}
             min={1}
-            onChange={(e) => onStartSeq(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) =>
+              onStartSeq(Math.max(1, parseInt(e.target.value) || 1))
+            }
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100"
           />
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
             Urutan mulai dari angka ini setelah reset
           </p>
         </label>
@@ -240,14 +248,14 @@ export default function NomorUrutTab() {
     data: shopSettings,
     isLoading,
     mutate,
-  } = useCachedData<any>(
-    "settings:shop",
-    () => getNomorUrutSettingsAction()
-  );
+  } = useCachedData<any>("settings:shop", () => getNomorUrutSettingsAction());
 
   const [form, setForm] = useState<NomorUrutSettings>(DEFAULTS);
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (shopSettings) {
@@ -283,10 +291,16 @@ export default function NomorUrutTab() {
         spk_start_seq: form.spk_start_seq,
       });
       await mutate(updated, { revalidate: false });
-      setNotice({ type: "success", message: "Pengaturan nomor urut berhasil disimpan" });
+      setNotice({
+        type: "success",
+        message: "Pengaturan nomor urut berhasil disimpan",
+      });
     } catch (err) {
       console.error("Gagal menyimpan nomor urut:", err);
-      setNotice({ type: "error", message: "Gagal menyimpan pengaturan nomor urut" });
+      setNotice({
+        type: "error",
+        message: "Gagal menyimpan pengaturan nomor urut",
+      });
     } finally {
       setSaving(false);
     }
@@ -301,14 +315,25 @@ export default function NomorUrutTab() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+          <svg
+            className="w-8 h-8 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+            />
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Nomor Urut</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+            Nomor Urut
+          </h2>
+          <p className="text-base text-gray-500 dark:text-slate-400">
             Format penomoran otomatis untuk faktur penjualan dan SPK produksi
           </p>
         </div>
@@ -356,9 +381,19 @@ export default function NomorUrutTab() {
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
             <p className="font-semibold mb-1">Catatan penting</p>
             <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-400">
-              <li>Perubahan format hanya berlaku untuk nomor <strong>baru</strong> — nomor yang sudah terbit tidak berubah.</li>
-              <li>Reset urutan terjadi otomatis saat periode baru dimulai (hari/bulan/tahun berikutnya).</li>
-              <li>Jika format diubah dari <em>Prefix+Tanggal+Urutan</em> ke <em>Prefix+Urutan</em>, pastikan prefix cukup unik untuk menghindari duplikasi.</li>
+              <li>
+                Perubahan format hanya berlaku untuk nomor <strong>baru</strong>{" "}
+                — nomor yang sudah terbit tidak berubah.
+              </li>
+              <li>
+                Reset urutan terjadi otomatis saat periode baru dimulai
+                (hari/bulan/tahun berikutnya).
+              </li>
+              <li>
+                Jika format diubah dari <em>Prefix+Tanggal+Urutan</em> ke{" "}
+                <em>Prefix+Urutan</em>, pastikan prefix cukup unik untuk
+                menghindari duplikasi.
+              </li>
             </ul>
           </div>
 

@@ -235,7 +235,7 @@ export default function ModalBayarHutang({
                     <p className="text-green-700 font-semibold">
                       Tidak ada tagihan pembelian
                     </p>
-                    <p className="text-green-600 text-sm mt-1">
+                    <p className="text-green-600 text-base mt-1">
                       Semua pembelian sudah lunas
                     </p>
                   </div>
@@ -256,12 +256,12 @@ export default function ModalBayarHutang({
                             <div className="font-bold text-gray-800 dark:text-slate-100">
                               {debt.nomor_faktur}
                             </div>
-                            <div className="text-sm text-gray-600 dark:text-slate-300">
+                            <div className="text-base text-gray-600 dark:text-slate-300">
                               {debt.nomor_pembelian}
                             </div>
                           </div>
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-base font-semibold ${
                               debt.status_pembayaran === "SEBAGIAN"
                                 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                                 : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
@@ -273,7 +273,7 @@ export default function ModalBayarHutang({
                               : debt.status_pembayaran}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-slate-300 mb-2">
+                        <div className="text-base text-gray-600 dark:text-slate-300 mb-2">
                           <div>
                             Vendor:{" "}
                             {debt.vendor_name || (
@@ -283,7 +283,7 @@ export default function ModalBayarHutang({
                           <div>Tanggal: {formatDate(debt.tanggal)}</div>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-slate-800">
-                          <div className="text-sm">
+                          <div className="text-base">
                             <div className="text-gray-600 dark:text-slate-300">
                               Total: {formatRupiah(debt.total_jumlah)}
                             </div>
@@ -292,7 +292,7 @@ export default function ModalBayarHutang({
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-xs text-gray-500 dark:text-slate-400">
+                            <div className="text-base text-gray-500 dark:text-slate-400">
                               Sisa Tagihan
                             </div>
                             <div className="text-lg font-bold text-red-600">
@@ -334,13 +334,13 @@ export default function ModalBayarHutang({
                     )}
 
                     <div className="bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 p-4 rounded-lg">
-                      <div className="text-sm text-indigo-800 dark:text-indigo-200 mb-2">
+                      <div className="text-base text-indigo-800 dark:text-indigo-200 mb-2">
                         Pembelian Terpilih:
                       </div>
                       <div className="font-bold text-gray-800 dark:text-slate-100">
                         {selectedDebt.nomor_faktur}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-slate-300">
+                      <div className="text-base text-gray-600 dark:text-slate-300">
                         Sisa Tagihan:{" "}
                         <span className="font-bold text-red-600">
                           {formatRupiah(selectedDebt.sisa_hutang)}
@@ -349,27 +349,27 @@ export default function ModalBayarHutang({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Tanggal Pembayaran *
                       </label>
                       <input
                         type="date"
                         value={tanggalBayar}
                         onChange={(e) => setTanggalBayar(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Jumlah Pembayaran (Rp) *
                       </label>
                       <input
                         type="number"
                         value={jumlahBayar}
                         onChange={(e) => setJumlahBayar(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         placeholder="Masukkan jumlah pembayaran"
                         min="0"
                         step="0.01"
@@ -381,7 +381,7 @@ export default function ModalBayarHutang({
                           onClick={() =>
                             setJumlahBayar(selectedDebt.sisa_hutang.toString())
                           }
-                          className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-sm font-semibold hover:bg-green-200 transition-colors"
+                          className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded text-base font-semibold hover:bg-green-200 transition-colors"
                         >
                           Lunas ({formatRupiah(selectedDebt.sisa_hutang)})
                         </button>
@@ -392,7 +392,7 @@ export default function ModalBayarHutang({
                               (selectedDebt.sisa_hutang / 2).toString()
                             )
                           }
-                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-sm font-semibold hover:bg-blue-200 transition-colors"
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-base font-semibold hover:bg-blue-200 transition-colors"
                         >
                           50% ({formatRupiah(selectedDebt.sisa_hutang / 2)})
                         </button>
@@ -400,13 +400,13 @@ export default function ModalBayarHutang({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Metode Pembayaran *
                       </label>
                       <select
                         value={metodePembayaran}
                         onChange={(e) => setMetodePembayaran(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
                       >
                         <option value="CASH">Cash</option>
@@ -417,26 +417,26 @@ export default function ModalBayarHutang({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Referensi (No. Transaksi/Giro/Cek)
                       </label>
                       <input
                         type="text"
                         value={referensi}
                         onChange={(e) => setReferensi(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         placeholder="Opsional"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                      <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
                         Catatan
                       </label>
                       <textarea
                         value={catatan}
                         onChange={(e) => setCatatan(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         rows={3}
                         placeholder="Catatan pembayaran (opsional)"
                       />
@@ -445,7 +445,7 @@ export default function ModalBayarHutang({
                     <button
                       type="button"
                       onClick={() => setSelectedDebt(null)}
-                      className="text-sm text-indigo-600 dark:text-indigo-300 hover:underline font-medium"
+                      className="text-base text-indigo-600 dark:text-indigo-300 hover:underline font-medium"
                       disabled={loading}
                     >
                       Ubah pilihan pembelian
@@ -462,7 +462,7 @@ export default function ModalBayarHutang({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
@@ -470,7 +470,7 @@ export default function ModalBayarHutang({
             type="submit"
             form="pay-debt-form"
             disabled={loading || !selectedDebt}
-            className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Memproses..." : "Simpan"}
           </button>

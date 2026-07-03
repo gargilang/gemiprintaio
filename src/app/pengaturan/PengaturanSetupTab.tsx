@@ -147,7 +147,7 @@ function MaterialsTab() {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
             Master Kategori Bahan
           </h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-base text-gray-500 dark:text-slate-400">
             Kelola kategori, subkategori, spesifikasi, dan satuan bahan
           </p>
         </div>

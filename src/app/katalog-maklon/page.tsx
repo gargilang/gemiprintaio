@@ -115,16 +115,16 @@ export default function KatalogMaklonPage() {
   const handleDelete = (item: KatalogMaklon) => {
     setConfirmDialog({
       show: true,
-      title: "Hapus Katalog Maklon",
-      message: `Yakin ingin menghapus "${item.nama_produk}" dari katalog maklon?\n\nData akan dihapus permanen dari daftar.`,
+      title: "Hapus Katalog Extra",
+      message: `Yakin ingin menghapus "${item.nama_produk}" dari katalog extra?\n\nData akan dihapus permanen dari daftar.`,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
           await deleteKatalogMaklonAction(item.id);
-          showMsg("success", "Katalog maklon berhasil dihapus");
+          showMsg("success", "Katalog extra berhasil dihapus");
           await reload();
         } catch (error: any) {
-          showMsg("error", error?.message || "Gagal menghapus katalog maklon");
+          showMsg("error", error?.message || "Gagal menghapus katalog extra");
         }
       },
     });
@@ -136,17 +136,17 @@ export default function KatalogMaklonPage() {
     <>
       <div className="space-y-6">
         {/* Kartu Judul */}
-        <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-white/20 rounded-xl">
               <PrinterIcon size={32} className="text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-1 uppercase tracking-wide">
-                Katalog Maklon
+                Katalog Extra
               </h2>
               <p className="text-white/90 text-sm">
-                Daftar produk maklon siap pakai untuk transaksi cepat di POS
+                Daftar produk extra siap pakai untuk transaksi cepat di POS
               </p>
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function KatalogMaklonPage() {
 
         {/* Kartu Ringkasan */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -166,12 +166,12 @@ export default function KatalogMaklonPage() {
               </div>
             </div>
             <p className="text-3xl font-bold">{totalItems}</p>
-            <p className="text-sm mt-2 text-fuchsia-100">
+            <p className="text-sm mt-2 text-violet-100">
               Terdaftar di katalog
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-gradient-to-br from-fuchsia-600 to-violet-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -183,7 +183,7 @@ export default function KatalogMaklonPage() {
               </div>
             </div>
             <p className="text-3xl font-bold">{activeItems}</p>
-            <p className="text-sm mt-2 text-green-100">Tampil di POS</p>
+            <p className="text-sm mt-2 text-fuchsia-100">Tampil di POS</p>
           </div>
 
           <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl shadow-lg p-6 text-white">
@@ -219,7 +219,7 @@ export default function KatalogMaklonPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <button
               onClick={handleAdd}
-              className="px-4 py-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white rounded-lg hover:from-fuchsia-600 hover:to-purple-700 transition-all font-semibold shadow-md flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-lg hover:from-violet-700 hover:to-purple-800 transition-all font-semibold shadow-md flex items-center gap-2"
             >
               <PlusIcon size={20} />
               Tambah Katalog
@@ -232,7 +232,7 @@ export default function KatalogMaklonPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama produk..."
-                  className="px-4 py-2 pl-10 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
+                  className="px-4 py-2 pl-10 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent w-64 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <SearchIcon
                   size={18}
@@ -243,7 +243,7 @@ export default function KatalogMaklonPage() {
               <select
                 value={filterKategori}
                 onChange={(e) => setFilterKategori(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
+                className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-900 font-semibold text-gray-700 dark:text-slate-300"
               >
                 <option value="all">Semua Kategori</option>
                 {kategoriOptions.map((kategori) => (
@@ -260,7 +260,7 @@ export default function KatalogMaklonPage() {
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white sticky top-0 z-10">
+              <thead className="bg-gradient-to-r from-violet-600 to-purple-700 text-white sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Nama Produk
@@ -312,7 +312,7 @@ export default function KatalogMaklonPage() {
                         <p className="text-lg font-semibold text-gray-600 dark:text-slate-300">
                           {searchQuery || filterKategori !== "all"
                             ? "Tidak ada data yang sesuai"
-                            : "Belum ada katalog maklon"}
+                            : "Belum ada katalog extra"}
                         </p>
                         <p className="text-sm mt-1">
                           {searchQuery || filterKategori !== "all"
@@ -330,7 +330,7 @@ export default function KatalogMaklonPage() {
                     return (
                       <tr
                         key={item.id}
-                        className={`hover:bg-fuchsia-50 dark:hover:bg-slate-800/60 transition-all cursor-default ${
+                        className={`hover:bg-violet-50 dark:hover:bg-slate-800/60 transition-all cursor-default ${
                           idx % 2 === 0
                             ? "bg-white dark:bg-slate-900"
                             : "bg-gray-50 dark:bg-slate-800"
