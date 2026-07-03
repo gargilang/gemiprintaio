@@ -144,6 +144,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: OPERATIONAL,
       },
       {
+        href: "/produksi/pengambilan",
+        icon: <PackageIcon size={18} />,
+        label: "Pengambilan",
+        color: "from-amber-500 to-red-600",
+        allowedRoles: OPERATIONAL,
+      },
+      {
         href: "/produksi/ai-prompt",
         icon: <SparklesIcon size={18} />,
         label: "Prompt AI",
@@ -320,6 +327,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/retur-penjualan": "Retur Penjualan",
   "/produksi": "Produksi",
   "/produksi/spk": "SPK",
+  "/produksi/pengambilan": "Pengambilan",
   "/produksi/ai-prompt": "Prompt AI",
   "/barang": "Data Barang",
   "/inventori/adjustments": "Penyesuaian Stok",
