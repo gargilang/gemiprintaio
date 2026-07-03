@@ -22,9 +22,11 @@ import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import ModalTambahCepatPelanggan from "@/components/ModalTambahCepatPelanggan";
 import ModalTambahFinishing from "@/components/ModalTambahFinishing";
 import ModalEditHarga from "@/components/ModalEditHarga";
-import MaklonLineModal, {
-  type MaklonLineFormValue,
-} from "@/components/MaklonLineModal";
+import ModalTambahItemLainnya, {
+  type TambahItemLainnyaValue,
+} from "./ModalTambahItemLainnya";
+import ModalRincianInternalMaklon from "./ModalRincianInternalMaklon";
+import ModalParkirKeranjang from "./ModalParkirKeranjang";
 import PpnFakturModal, {
   type PpnFakturData,
 } from "@/components/PpnFakturModal";
@@ -44,6 +46,16 @@ import {
   payReceivableAction,
   getFinishingOptionsAction,
 } from "./actions";
+import {
+  parkCartAction,
+  listParkedCartsAction,
+  loadParkedCartAction,
+  deleteParkedCartAction,
+  markFinalAction,
+  jadikanPenawaranAction,
+} from "./keranjang-tersimpan-actions";
+import type { ParkedCart } from "@/lib/services/keranjang-tersimpan-service";
+import type { QuotationItemInput } from "@/lib/services/quotation-service";
 import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 import {
@@ -99,6 +111,7 @@ export default function POSPage() {
       sales: (data.sales as any[]) || [],
       subkontraktor:
         (data.subkontraktor as SubkontraktorOption[] | undefined) || [],
+      katalogMaklon: data.katalogMaklon ?? [],
     };
   });
   const safePos = posInitData ?? EMPTY_POS_INIT;
@@ -117,12 +130,44 @@ export default function POSPage() {
     },
   );
   const tokoPkp = statusPkpData === 1;
+
+  const { data: shopSettingsData } = useCachedData(
+    "pos-shop-settings",
+    async () => {
+      const { getShopSettingsAction } =
+        await import("@/app/pengaturan/actions");
+      const s = await getShopSettingsAction();
+      return {
+        nama_toko: s.nama_toko,
+        slogan: s.slogan,
+        alamat: s.alamat,
+        telepon: s.telepon,
+        email: s.email,
+        website: s.website,
+        bank_nama: s.bank_nama,
+        bank_nomor: s.bank_nomor,
+        bank_atas_nama: s.bank_atas_nama,
+        catatan_faktur: s.catatan_faktur,
+        npwp: s.npwp,
+        alamat_npwp: s.alamat_npwp,
+      };
+    },
+  );
+  const shopSettings = shopSettingsData ?? undefined;
+
   // Stabilkan referensi array yang dipakai di useMemo (hindari dep berubah tiap render).
   const materials = useMemo(() => safePos.materials ?? [], [safePos.materials]);
   const sales = safePos.sales ?? [];
   // Cache localStorage versi pre-maklon bisa hydrate posInitData tanpa field
   // subkontraktor — fallback ke array kosong sampai SWR re-fetch.
-  const subkontraktor = safePos.subkontraktor ?? [];
+  const subkontraktor = useMemo(
+    () => safePos.subkontraktor ?? [],
+    [safePos.subkontraktor],
+  );
+  const katalogMaklon = useMemo(
+    () => safePos.katalogMaklon ?? [],
+    [safePos.katalogMaklon],
+  );
   const [refreshing, setRefreshing] = useState(false);
   const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
@@ -218,13 +263,15 @@ export default function POSPage() {
   // Modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showReceivableModal, setShowReceivableModal] = useState(false);
-  const [showMaklonModal, setShowMaklonModal] = useState(false);
+  const [showTambahItemLainnya, setShowTambahItemLainnya] = useState(false);
+  const [editingRincianInternalIndex, setEditingRincianInternalIndex] =
+    useState<number | null>(null);
+  const [showParkirModal, setShowParkirModal] = useState(false);
+  const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>([]);
+  const [loadedParkedId, setLoadedParkedId] = useState<string | null>(null);
   const [showPpnModal, setShowPpnModal] = useState(false);
   // PPN data untuk transaksi yang sedang disusun. Null = tidak kena PPN.
   const [ppnFaktur, setPpnFaktur] = useState<PpnFakturData | null>(null);
-  const [editingMaklonIndex, setEditingMaklonIndex] = useState<number | null>(
-    null,
-  );
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -396,11 +443,29 @@ export default function POSPage() {
           butuh_dimensi_status: m.butuh_dimensi_status,
           kategori_nama: m.kategori_nama ?? null,
           frekuensi_terjual: m.frekuensi_terjual,
+          sumber: "BARANG",
         });
       }
     }
+    for (const k of katalogMaklon) {
+      result.push({
+        id: `katalog-${k.id}`,
+        nama: k.nama_produk,
+        nama_satuan: k.nama_satuan,
+        nama_produk_jual: k.nama_produk,
+        harga_jual: k.harga_jual_default,
+        harga_member: k.harga_jual_default,
+        faktor_konversi: 1,
+        kategori_nama: k.kategori ?? null,
+        sumber: "KATALOG_MAKLON",
+        katalog_maklon_id: k.id,
+        biaya_subkontrak_default: k.biaya_subkontrak_default,
+        vendor_subkontrak_id_default: k.vendor_subkontrak_id_default,
+        metode_bayar_vendor_default: k.metode_bayar_vendor_default,
+      });
+    }
     return result;
-  }, [materials]);
+  }, [materials, katalogMaklon]);
 
   const filteredProdukJual = useMemo<ProdukJualFlat[]>(() => {
     const q = materialSearch.trim().toLowerCase();
@@ -414,7 +479,7 @@ export default function POSPage() {
       if (!q) return true;
       return (
         p.nama.toLowerCase().includes(q) ||
-        p.barang_nama.toLowerCase().includes(q) ||
+        (p.barang_nama?.toLowerCase().includes(q) ?? false) ||
         p.nama_satuan.toLowerCase().includes(q)
       );
     });
@@ -575,6 +640,33 @@ export default function POSPage() {
 
   const handleProdukJualClick = useCallback(
     (produk: ProdukJualFlat) => {
+      if (produk.sumber === "KATALOG_MAKLON") {
+        const vendor = subkontraktor.find(
+          (v) => v.id === produk.vendor_subkontrak_id_default,
+        );
+        const newItem: CartItem = {
+          barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
+          barang_nama: produk.nama,
+          harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
+          nama_satuan: produk.nama_satuan,
+          faktor_konversi: 1,
+          harga_satuan: produk.harga_jual,
+          jumlah: 1,
+          subtotalRaw: produk.harga_jual,
+          originalHargaSatuan: produk.harga_jual,
+          tipe_item: "MAKLON",
+          katalog_maklon_id: produk.katalog_maklon_id,
+          vendor_subkontrak_id:
+            produk.vendor_subkontrak_id_default || undefined,
+          vendor_subkontrak_nama: vendor?.nama_perusahaan,
+          biaya_subkontrak: produk.biaya_subkontrak_default,
+          metode_bayar_vendor: produk.metode_bayar_vendor_default,
+          deskripsi_pekerjaan: produk.nama,
+        };
+        setCart((prev) => [...prev, newItem]);
+        return;
+      }
+
       const material = materials.find((m) => m.id === produk.barang_id);
       if (!material) return;
       const unit = material.unit_prices.find((u) => u.id === produk.id);
@@ -603,17 +695,22 @@ export default function POSPage() {
       setFormHargaSatuan(null);
       setFormBiayaTambahan([]);
     },
-    [materials, selectedMaterial, selectedUnit, editingCartIndex],
+    [
+      materials,
+      selectedMaterial,
+      selectedUnit,
+      editingCartIndex,
+      subkontraktor,
+    ],
   );
 
   const handleEditCartItem = (index: number) => {
     const item = cart[index];
     if (!item) return;
 
-    // Maklon lines are edited through the dedicated MaklonLineModal — they
-    // don't belong to the regular barang-driven product form.
+    // Baris maklon diedit lewat modal rincian internal (vendor/biaya tersembunyi).
     if (item.tipe_item === "MAKLON") {
-      handleOpenMaklonModal(index);
+      setEditingRincianInternalIndex(index);
       return;
     }
 
@@ -709,61 +806,143 @@ export default function POSPage() {
     }
   };
 
-  /**
-   * Open the maklon modal — either for adding a new maklon line or editing
-   * an existing one. Editing only works for cart lines that already have
-   * tipe_item === 'MAKLON'.
-   */
-  const handleOpenMaklonModal = (index: number | null = null) => {
-    setEditingMaklonIndex(index);
-    setShowMaklonModal(true);
+  const handleSaveTambahItemLainnya = (v: TambahItemLainnyaValue) => {
+    const vendor = subkontraktor.find((s) => s.id === v.vendor_subkontrak_id);
+    const newItem: CartItem = {
+      barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
+      barang_nama: v.barang_nama,
+      harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
+      nama_satuan: v.nama_satuan,
+      faktor_konversi: 1,
+      harga_satuan: v.harga_satuan,
+      jumlah: v.jumlah,
+      subtotalRaw: v.jumlah * v.harga_satuan,
+      originalHargaSatuan: v.harga_satuan,
+      tipe_item: "MAKLON",
+      vendor_subkontrak_id: v.vendor_subkontrak_id,
+      vendor_subkontrak_nama: vendor?.nama_perusahaan,
+      biaya_subkontrak: v.biaya_subkontrak,
+      metode_bayar_vendor: v.metode_bayar_vendor,
+      deskripsi_pekerjaan: v.barang_nama,
+    };
+    setCart((prev) => [...prev, newItem]);
+    setShowTambahItemLainnya(false);
   };
 
-  const handleSaveMaklonLine = (value: MaklonLineFormValue) => {
-    const vendor = subkontraktor.find(
-      (v) => v.id === value.vendor_subkontrak_id,
+  const handleSaveRincianInternal = (index: number, v: Partial<CartItem>) => {
+    setCart((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, ...v } : it)),
     );
+    setEditingRincianInternalIndex(null);
+  };
 
-    // Build N CartItems, one per line — all share the same vendor + metode.
-    const newItems: CartItem[] = value.lines.map((line) => ({
-      // Placeholder ids — server pakai konstanta yang sama, lihat barang-placeholder.ts.
-      barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
-      barang_nama: line.deskripsi_pekerjaan,
-      harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
-      nama_satuan: line.nama_satuan || "pcs",
-      faktor_konversi: 1,
-      harga_satuan: line.harga_satuan,
-      jumlah: line.jumlah,
-      subtotalRaw: line.jumlah * line.harga_satuan,
-      originalHargaSatuan: line.harga_satuan,
-      tipe_item: "MAKLON",
-      vendor_subkontrak_id: value.vendor_subkontrak_id,
-      vendor_subkontrak_nama: vendor?.nama_perusahaan,
-      biaya_subkontrak: line.biaya_subkontrak,
-      metode_bayar_vendor: value.metode_bayar_vendor,
-      deskripsi_pekerjaan: line.deskripsi_pekerjaan,
-    }));
-
-    setCart((prev) => {
-      if (editingMaklonIndex !== null) {
-        // Edit mode: replace the existing line; if user added more lines,
-        // append the rest after the original index.
-        const next = [...prev];
-        const original = prev[editingMaklonIndex];
-        next[editingMaklonIndex] = {
-          ...newItems[0],
-          finishing: original?.finishing,
-        };
-        if (newItems.length > 1) {
-          next.splice(editingMaklonIndex + 1, 0, ...newItems.slice(1));
-        }
-        return next;
-      }
-      return [...prev, ...newItems];
+  const defaultParkLabel = useMemo(() => {
+    const nama =
+      selectedPelanggan?.nama ||
+      pencarianPelanggan.trim() ||
+      fakturUmum?.nama ||
+      "Pelanggan Umum";
+    const jam = new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
+    return `${nama} · ${cart.length} item · ${jam}`;
+  }, [selectedPelanggan, pencarianPelanggan, fakturUmum, cart.length]);
 
-    setShowMaklonModal(false);
-    setEditingMaklonIndex(null);
+  const refreshParked = useCallback(async () => {
+    try {
+      setParkedCarts(await listParkedCartsAction());
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshParked();
+  }, [refreshParked]);
+
+  const handlePark = async (label: string) => {
+    await parkCartAction({
+      label,
+      pelanggan_id: selectedPelanggan?.id || null,
+      pelanggan_nama_snapshot:
+        selectedPelanggan?.nama ||
+        pencarianPelanggan.trim() ||
+        fakturUmum?.nama ||
+        null,
+      pelanggan_kota: fakturUmum?.kota || null,
+      prioritas,
+      ppn_snapshot: ppnFaktur ?? null,
+      cart_snapshot: cart,
+    });
+    setCart([]);
+    setFakturUmum(null);
+    setPpnFaktur(null);
+    setPencarianPelanggan("");
+    setSelectedPelanggan(null);
+    setLoadedParkedId(null);
+    setShowParkirModal(false);
+    await refreshParked();
+    showMsg("success", "Keranjang diparkir");
+  };
+
+  const handleLoadParked = async (id: string) => {
+    if (
+      cart.length > 0 &&
+      !window.confirm(
+        "Ganti keranjang saat ini? Keranjang yang belum diparkir akan hilang.",
+      )
+    ) {
+      return;
+    }
+    const p = await loadParkedCartAction(id);
+    if (!p) return;
+    setCart(p.cart_snapshot as CartItem[]);
+    setPencarianPelanggan(p.pelanggan_nama_snapshot || "");
+    setPrioritas(p.prioritas);
+    setPpnFaktur((p.ppn_snapshot as PpnFakturData | null) ?? null);
+    setLoadedParkedId(id);
+    showMsg("success", `Keranjang "${p.label}" dimuat`);
+  };
+
+  const toQuotationItemInput = (item: CartItem): QuotationItemInput => ({
+    barang_id: item.barang_id,
+    harga_satuan_id: item.harga_satuan_id || null,
+    jumlah: item.jumlah,
+    nama_satuan: item.nama_satuan,
+    faktor_konversi: item.faktor_konversi || 1,
+    harga_satuan: item.harga_satuan,
+    subtotal: item.subtotalRaw,
+    panjang: item.panjang ?? null,
+    lebar: item.lebar ?? null,
+    tipe_item: (item.tipe_item as "BARANG" | "JASA" | "MAKLON") || "BARANG",
+    vendor_subkontrak_id: item.vendor_subkontrak_id || null,
+    biaya_subkontrak: item.biaya_subkontrak ?? null,
+    metode_bayar_vendor: (item.metode_bayar_vendor as "CASH" | "NET30") || null,
+    deskripsi_pekerjaan: item.deskripsi_pekerjaan || null,
+  });
+
+  const handleJadikanPenawaran = async (id: string) => {
+    const p = await loadParkedCartAction(id);
+    if (!p) return;
+    const items = (p.cart_snapshot as CartItem[]).map(toQuotationItemInput);
+    const r = await jadikanPenawaranAction(id, items, {
+      pelanggan_id: p.pelanggan_id,
+      pelanggan_nama_snapshot: p.pelanggan_nama_snapshot,
+      pelanggan_kota: p.pelanggan_kota,
+      kena_ppn: p.ppn_snapshot ? true : undefined,
+    });
+    showMsg(
+      "success",
+      `Jadikan penawaran ${r.nomor_penawaran}. Lihat di halaman Penawaran.`,
+    );
+    await refreshParked();
+  };
+
+  const handleDeleteParked = async (id: string) => {
+    if (!window.confirm("Hapus keranjang tersimpan ini?")) return;
+    await deleteParkedCartAction(id);
+    await refreshParked();
   };
 
   const handleDeleteSale = async (saleId: string) => {
@@ -1216,6 +1395,12 @@ export default function POSPage() {
       setRoundCartPrices(true);
       setFakturUmum(null);
 
+      if (loadedParkedId) {
+        await markFinalAction(loadedParkedId);
+        setLoadedParkedId(null);
+        await refreshParked();
+      }
+
       // Reload data
       await loadAllData();
     } catch (error: any) {
@@ -1430,9 +1615,9 @@ export default function POSPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleOpenMaklonModal(null)}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#0a1b3d] to-[#2266ff] text-white rounded-lg text-xs font-bold hover:from-[#0a1b3d]/90 hover:to-[#2266ff]/90 transition-all shadow-sm"
-                  title="Tambah pekerjaan yang dikerjakan vendor subkontraktor"
+                  onClick={() => setShowTambahItemLainnya(true)}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-bold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm"
+                  title="Tambah item khusus tanpa katalog"
                 >
                   <svg
                     className="w-4 h-4"
@@ -1447,7 +1632,7 @@ export default function POSPage() {
                       d="M12 4v16m8-8H4"
                     />
                   </svg>
-                  Maklon
+                  Tambah Item Lainnya
                 </button>
 
                 <div className="shrink-0 text-xs text-gray-500 dark:text-slate-400 bg-cyan-50 dark:bg-slate-800 px-3 py-1 rounded-full whitespace-nowrap">
@@ -2020,6 +2205,15 @@ export default function POSPage() {
                 pencarianPelanggan.trim() ||
                 undefined
               }
+              shopSettings={shopSettings}
+              onEditRincianInternal={(index) =>
+                setEditingRincianInternalIndex(index)
+              }
+              onParkClick={() => setShowParkirModal(true)}
+              parkedCarts={parkedCarts}
+              onLoadParked={handleLoadParked}
+              onJadikanPenawaran={handleJadikanPenawaran}
+              onDeleteParked={handleDeleteParked}
             />
           </div>
         </div>
@@ -2088,38 +2282,34 @@ export default function POSPage() {
         onPayReceivable={payReceivableAction}
       />
 
-      <MaklonLineModal
-        show={showMaklonModal}
+      <ModalTambahItemLainnya
+        open={showTambahItemLainnya}
         subkontraktor={subkontraktor}
-        isEditing={editingMaklonIndex !== null}
-        initialValue={
-          editingMaklonIndex !== null && cart[editingMaklonIndex]
-            ? {
-                vendor_subkontrak_id:
-                  cart[editingMaklonIndex].vendor_subkontrak_id || "",
-                metode_bayar_vendor:
-                  cart[editingMaklonIndex].metode_bayar_vendor || "CASH",
-                lines: [
-                  {
-                    deskripsi_pekerjaan:
-                      cart[editingMaklonIndex].deskripsi_pekerjaan ||
-                      cart[editingMaklonIndex].barang_nama,
-                    jumlah: cart[editingMaklonIndex].jumlah,
-                    nama_satuan: cart[editingMaklonIndex].nama_satuan,
-                    harga_satuan: cart[editingMaklonIndex].harga_satuan,
-                    biaya_subkontrak:
-                      cart[editingMaklonIndex].biaya_subkontrak || 0,
-                  },
-                ],
-              }
+        onClose={() => setShowTambahItemLainnya(false)}
+        onSave={handleSaveTambahItemLainnya}
+      />
+
+      <ModalRincianInternalMaklon
+        open={editingRincianInternalIndex !== null}
+        item={
+          editingRincianInternalIndex !== null
+            ? cart[editingRincianInternalIndex]
             : null
         }
-        onClose={() => {
-          setShowMaklonModal(false);
-          setEditingMaklonIndex(null);
+        subkontraktor={subkontraktor}
+        onClose={() => setEditingRincianInternalIndex(null)}
+        onSave={(v) => {
+          if (editingRincianInternalIndex !== null) {
+            handleSaveRincianInternal(editingRincianInternalIndex, v);
+          }
         }}
-        onSave={handleSaveMaklonLine}
-        onShowMessage={showMsg}
+      />
+
+      <ModalParkirKeranjang
+        open={showParkirModal}
+        defaultLabel={defaultParkLabel}
+        onClose={() => setShowParkirModal(false)}
+        onConfirm={handlePark}
       />
 
       <PpnFakturModal

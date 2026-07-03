@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { previewNomorFakturAction } from "@/app/pos/preview-faktur-actions";
+import DropdownKeranjangTersimpan from "@/app/pos/DropdownKeranjangTersimpan";
+import type { ParkedCart } from "@/lib/services/keranjang-tersimpan-service";
 import {
   CashIcon,
   TransferIcon,
@@ -74,8 +77,29 @@ interface POSCartProps {
   onPrioritasChange: (prioritas: "NORMAL" | "KILAT") => void;
   onPrintTypeChange: (printType: PrintType) => void;
   onCheckout: () => void;
-  /** Nama pelanggan aktif untuk pratinjau penawaran. */
+  /** Nama pelanggan aktif untuk pratinjau faktur. */
   customerName?: string;
+  /** Data toko untuk header pratinjau faktur. */
+  shopSettings?: {
+    nama_toko?: string | null;
+    slogan?: string | null;
+    alamat?: string | null;
+    telepon?: string | null;
+    email?: string | null;
+    website?: string | null;
+    bank_nama?: string | null;
+    bank_nomor?: string | null;
+    bank_atas_nama?: string | null;
+    catatan_faktur?: string | null;
+    npwp?: string | null;
+    alamat_npwp?: string | null;
+  };
+  onEditRincianInternal?: (index: number) => void;
+  onParkClick?: () => void;
+  parkedCarts?: ParkedCart[];
+  onLoadParked?: (id: string) => void;
+  onJadikanPenawaran?: (id: string) => void;
+  onDeleteParked?: (id: string) => void;
 }
 
 const denominations = [
@@ -92,7 +116,7 @@ const denominations = [
 ];
 
 function calculateChange(
-  amount: number
+  amount: number,
 ): { denom: number; label: string; count: number }[] {
   if (amount <= 0) return [];
 
@@ -139,16 +163,23 @@ export default function KeranjangPOS({
   onPrintTypeChange,
   onCheckout,
   customerName,
+  shopSettings,
+  onEditRincianInternal,
+  onParkClick,
+  parkedCarts = [],
+  onLoadParked,
+  onJadikanPenawaran,
+  onDeleteParked,
 }: POSCartProps) {
   const totalRaw = cart.reduce((sum, item) => sum + item.subtotalRaw, 0);
   const lineCharges = useMemo(
     () => allocateCartLineCharges(cart, roundCartPrices),
-    [cart, roundCartPrices]
+    [cart, roundCartPrices],
   );
   const subtotalItems = lineCharges.reduce((sum, n) => sum + n, 0);
   const biayaTambahanTotal = useMemo(
     () => getCartBiayaTambahanTotal(cart),
-    [cart]
+    [cart],
   );
   const total = subtotalItems + biayaTambahanTotal;
   const hasRoundingChoice = totalRaw !== roundUpToThousand(totalRaw);
@@ -159,14 +190,13 @@ export default function KeranjangPOS({
   const [showChangeDetail, setShowChangeDetail] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
-  const handlePreviewQuotation = async () => {
+  const handlePreviewFaktur = async () => {
+    if (cart.length === 0) return;
     try {
-      const { generateFakturHTML, patchQuotationHTML } = await import(
-        "@/lib/faktur-print"
-      );
-      const { mapPenjualanItemKeFaktur } = await import(
-        "@/lib/dokumen-item-display"
-      );
+      const { generateFakturHTML, patchQuotationHTML } =
+        await import("@/lib/faktur-print");
+      const { mapPenjualanItemKeFaktur } =
+        await import("@/lib/dokumen-item-display");
 
       const items = cart.flatMap((item, index) => {
         const lineTotal = lineCharges[index];
@@ -204,26 +234,28 @@ export default function KeranjangPOS({
         return rows;
       });
 
+      const nomorPreview = await previewNomorFakturAction();
+
       const html = generateFakturHTML({
-        nomor_faktur: "—",
+        nomor_faktur: nomorPreview,
         tanggal: new Date().toISOString(),
         pelanggan_nama: customerName?.trim() || "—",
         items,
         total,
         bayar: 0,
         sisa: 0,
-        shop: undefined,
+        shop: shopSettings,
       });
 
-      const patched = patchQuotationHTML(html);
+      const patched = patchQuotationHTML(html, { judul: "Faktur Penjualan" });
 
       window.dispatchEvent(
         new CustomEvent("gemi:preview-faktur", {
-          detail: { html: patched, title: "Penawaran Harga" },
-        })
+          detail: { html: patched, title: "Faktur Penjualan" },
+        }),
       );
     } catch (e) {
-      console.error("handlePreviewQuotation error:", e);
+      console.error("handlePreviewFaktur error:", e);
     }
   };
 
@@ -278,7 +310,43 @@ export default function KeranjangPOS({
           <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 leading-tight">
             Keranjang
           </h3>
-          <p className="text-xs text-gray-500 dark:text-slate-400">{cart.length} item</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {cart.length} item
+            </p>
+            {onParkClick && (
+              <button
+                type="button"
+                onClick={onParkClick}
+                disabled={cart.length === 0}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold disabled:opacity-50"
+                title="Parkir keranjang"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                  />
+                </svg>
+                Parkir
+              </button>
+            )}
+            {onLoadParked && onJadikanPenawaran && onDeleteParked && (
+              <DropdownKeranjangTersimpan
+                parkedCarts={parkedCarts}
+                onLoad={onLoadParked}
+                onJadikanPenawaran={onJadikanPenawaran}
+                onDelete={onDeleteParked}
+              />
+            )}
+          </div>
         </div>
         <div className="text-right shrink-0">
           <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
@@ -308,15 +376,30 @@ export default function KeranjangPOS({
             )}
             <button
               type="button"
-              onClick={handlePreviewQuotation}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/50 text-[10px] font-semibold transition-colors"
-              title="Pratinjau penawaran harga"
+              onClick={handlePreviewFaktur}
+              disabled={cart.length === 0}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/50 text-[10px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Lihat faktur"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
               </svg>
-              Penawaran
+              Lihat Faktur
             </button>
           </div>
         </div>
@@ -347,110 +430,122 @@ export default function KeranjangPOS({
             const itemBiayaTotal = getItemBiayaTambahanTotal(item);
             const lineTotal = lineCharges[index] + itemBiayaTotal;
             return (
-            <div
-              key={index}
-              className={`bg-white dark:bg-slate-900 rounded-lg p-3 border transition-all ${
-                editingCartIndex === index
-                  ? "border-amber-400 ring-2 ring-amber-200/50 shadow-sm"
-                  : item.tipe_item === "MAKLON"
-                    ? "border-[#00afef]/50 hover:border-[#00afef]"
+              <div
+                key={index}
+                className={`bg-white dark:bg-slate-900 rounded-lg p-3 border transition-all ${
+                  editingCartIndex === index
+                    ? "border-amber-400 ring-2 ring-amber-200/50 shadow-sm"
                     : "border-gray-200 dark:border-slate-800 hover:border-[#00afef]/50"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {item.tipe_item === "MAKLON" && (
-                    <div className="mb-1 flex items-center gap-2 flex-wrap">
-                      <span className="inline-block text-[9px] px-1.5 py-0.5 bg-[#00afef]/20 text-[#0a1b3d] dark:text-slate-100 font-bold rounded uppercase tracking-wide">
-                        Maklon
-                      </span>
-                      {item.vendor_subkontrak_nama && (
-                        <span className="text-[10px] text-[#2266ff] truncate">
-                          → {item.vendor_subkontrak_nama}
-                        </span>
-                      )}
-                      {item.metode_bayar_vendor && (
-                        <span className="text-[9px] px-1 py-0.5 bg-blue-50 dark:bg-slate-800 text-[#2266ff] border border-blue-200 dark:border-slate-700 rounded">
-                          {item.metode_bayar_vendor}
-                        </span>
-                      )}
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-gray-800 dark:text-slate-100 truncate">
+                      {item.barang_nama}
                     </div>
-                  )}
-                  <div className="font-semibold text-sm text-gray-800 dark:text-slate-100 truncate">
-                    {item.barang_nama}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-slate-300 mt-0.5">
-                    {item.butuh_dimensi && item.panjang && item.lebar ? (
-                      <span>
-                        {item.useRounding &&
-                        item.selectedRollSize != null &&
-                        item.billedPanjang != null &&
-                        item.billedLebar != null ? (
-                          formatRollCartDetailLine(item)
-                        ) : (
-                          <>
-                            {(item.jumlah_roll ?? 1) > 1
-                              ? `${item.jumlah_roll} × `
-                              : ""}
-                            {item.panjang.toFixed(2)} × {item.lebar.toFixed(2)}{" "}
-                            m = {item.jumlah.toFixed(2)} m² @ Rp{" "}
-                            {formatPosUnitPrice(item.harga_satuan)}
-                          </>
-                        )}
-                      </span>
-                    ) : (
-                      <span>
-                        {item.jumlah} {item.nama_satuan} @ Rp{" "}
-                        {formatPosUnitPrice(item.harga_satuan)}
-                      </span>
-                    )}
-                    {item.originalHargaSatuan != null &&
-                      Math.abs(item.harga_satuan - item.originalHargaSatuan) >
-                        0.01 && (
-                        <span className="ml-1.5 inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded uppercase tracking-wide">
-                          Harga Ubah
-                        </span>
-                      )}
-                  </div>
-                  <div className="text-sm font-bold text-[#00afef] mt-1">
-                    Rp {lineTotal.toLocaleString("id-ID")}
-                  </div>
-                  {itemBiayaTotal > 0 && (
-                    <div className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5">
-                      Barang Rp {lineCharges[index].toLocaleString("id-ID")}
-                      {" + biaya Rp "}
-                      {itemBiayaTotal.toLocaleString("id-ID")}
-                    </div>
-                  )}
-                  {item.tipe_item === "MAKLON" &&
-                    typeof item.biaya_subkontrak === "number" && (
-                      <div className="text-[10px] text-[#2266ff] mt-0.5">
-                        Bayar vendor: Rp{" "}
-                        {item.biaya_subkontrak.toLocaleString("id-ID")}
-                        {(() => {
-                          const margin = lineTotal - (item.biaya_subkontrak || 0);
-                          return margin >= 0 ? (
-                            <span className="ml-1 text-emerald-700 dark:text-emerald-300">
-                              (margin +Rp {margin.toLocaleString("id-ID")})
-                            </span>
+                    <div className="text-xs text-gray-600 dark:text-slate-300 mt-0.5">
+                      {item.butuh_dimensi && item.panjang && item.lebar ? (
+                        <span>
+                          {item.useRounding &&
+                          item.selectedRollSize != null &&
+                          item.billedPanjang != null &&
+                          item.billedLebar != null ? (
+                            formatRollCartDetailLine(item)
                           ) : (
-                            <span className="ml-1 text-amber-700 dark:text-amber-300">
-                              (rugi −Rp{" "}
-                              {Math.abs(margin).toLocaleString("id-ID")})
-                            </span>
-                          );
-                        })()}
+                            <>
+                              {(item.jumlah_roll ?? 1) > 1
+                                ? `${item.jumlah_roll} × `
+                                : ""}
+                              {item.panjang.toFixed(2)} ×{" "}
+                              {item.lebar.toFixed(2)} m ={" "}
+                              {item.jumlah.toFixed(2)} m² @ Rp{" "}
+                              {formatPosUnitPrice(item.harga_satuan)}
+                            </>
+                          )}
+                        </span>
+                      ) : (
+                        <span>
+                          {item.jumlah} {item.nama_satuan} @ Rp{" "}
+                          {formatPosUnitPrice(item.harga_satuan)}
+                        </span>
+                      )}
+                      {item.originalHargaSatuan != null &&
+                        Math.abs(item.harga_satuan - item.originalHargaSatuan) >
+                          0.01 && (
+                          <span className="ml-1.5 inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded uppercase tracking-wide">
+                            Harga Ubah
+                          </span>
+                        )}
+                    </div>
+                    <div className="text-sm font-bold text-[#00afef] mt-1">
+                      Rp {lineTotal.toLocaleString("id-ID")}
+                    </div>
+                    {itemBiayaTotal > 0 && (
+                      <div className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5">
+                        Barang Rp {lineCharges[index].toLocaleString("id-ID")}
+                        {" + biaya Rp "}
+                        {itemBiayaTotal.toLocaleString("id-ID")}
                       </div>
                     )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {onEditItem && (
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {item.tipe_item === "MAKLON" && onEditRincianInternal && (
+                      <button
+                        type="button"
+                        onClick={() => onEditRincianInternal(index)}
+                        className="bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 p-1.5 rounded-md transition-all text-amber-700 dark:text-amber-300"
+                        aria-label="Rincian internal maklon"
+                        title="Rincian internal"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                    {onEditItem && item.tipe_item !== "MAKLON" && (
+                      <button
+                        type="button"
+                        onClick={() => onEditItem(index)}
+                        className="bg-[#00afef]/90 hover:bg-[#00afef] p-1.5 rounded-md transition-all text-white"
+                        aria-label="Ubah item"
+                        title="Ubah item"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => onEditItem(index)}
-                      className="bg-[#00afef]/90 hover:bg-[#00afef] p-1.5 rounded-md transition-all text-white"
-                      aria-label="Ubah item"
-                      title="Ubah item"
+                      onClick={() => onRemoveItem(index)}
+                      className="bg-red-50 dark:bg-red-900/30 hover:bg-red-500 dark:hover:bg-red-500 p-1.5 rounded-md transition-all text-red-500 dark:text-red-400 hover:text-white"
+                      aria-label="Hapus item"
+                      title="Hapus item"
                     >
                       <svg
                         className="w-4 h-4"
@@ -462,68 +557,46 @@ export default function KeranjangPOS({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                         />
                       </svg>
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(index)}
-                    className="bg-red-50 dark:bg-red-900/30 hover:bg-red-500 dark:hover:bg-red-500 p-1.5 rounded-md transition-all text-red-500 dark:text-red-400 hover:text-white"
-                    aria-label="Hapus item"
-                    title="Hapus item"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
+                  </div>
                 </div>
+
+                {item.finishing && item.finishing.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                    <div className="flex flex-wrap gap-1">
+                      {item.finishing.map((fin, finIndex) => (
+                        <span
+                          key={finIndex}
+                          className="inline-block text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 rounded"
+                        >
+                          {fin.jenis_finishing}
+                          {fin.keterangan && ` (${fin.keterangan})`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {item.biaya_tambahan && item.biaya_tambahan.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                    <div className="flex flex-wrap gap-1">
+                      {item.biaya_tambahan.map((biaya, biayaIndex) => (
+                        <span
+                          key={biayaIndex}
+                          className="inline-block text-[10px] px-1.5 py-0.5 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200 rounded"
+                        >
+                          {biaya.label || "Biaya"}
+                          {biaya.nominal > 0 &&
+                            ` Rp ${biaya.nominal.toLocaleString("id-ID")}`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {item.finishing && item.finishing.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800">
-                  <div className="flex flex-wrap gap-1">
-                    {item.finishing.map((fin, finIndex) => (
-                      <span
-                        key={finIndex}
-                        className="inline-block text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 rounded"
-                      >
-                        {fin.jenis_finishing}
-                        {fin.keterangan && ` (${fin.keterangan})`}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {item.biaya_tambahan && item.biaya_tambahan.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800">
-                  <div className="flex flex-wrap gap-1">
-                    {item.biaya_tambahan.map((biaya, biayaIndex) => (
-                      <span
-                        key={biayaIndex}
-                        className="inline-block text-[10px] px-1.5 py-0.5 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200 rounded"
-                      >
-                        {biaya.label || "Biaya"}
-                        {biaya.nominal > 0 &&
-                          ` Rp ${biaya.nominal.toLocaleString("id-ID")}`}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
             );
           })
         )}

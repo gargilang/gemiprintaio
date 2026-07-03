@@ -82,6 +82,8 @@ export interface CartItem {
   biaya_subkontrak?: number;
   metode_bayar_vendor?: "CASH" | "NET30";
   deskripsi_pekerjaan?: string;
+  /** Referensi entri katalog maklon jika baris berasal dari template. */
+  katalog_maklon_id?: string;
 }
 
 export interface SubkontraktorOption {
@@ -95,6 +97,7 @@ export type POSInitData = {
   materials: Material[];
   sales: any[];
   subkontraktor: SubkontraktorOption[];
+  katalogMaklon?: import("@/lib/services/katalog-maklon-service").KatalogMaklon[];
 };
 
 export const EMPTY_POS_INIT: POSInitData = {
@@ -102,6 +105,7 @@ export const EMPTY_POS_INIT: POSInitData = {
   materials: [],
   sales: [],
   subkontraktor: [],
+  katalogMaklon: [],
 };
 
 /** Urutan tampilan kategori (selaras dengan kategori_barang bawaan). */
@@ -128,11 +132,16 @@ export interface ProdukJualFlat {
   harga_jual: number;
   harga_member: number;
   faktor_konversi: number;
-  /** ID barang induk */
-  barang_id: string;
+  /** ID barang induk (kosong untuk entri katalog maklon). */
+  barang_id?: string;
   /** Nama barang induk — ditampilkan sebagai label sekunder di kartu */
-  barang_nama: string;
-  butuh_dimensi_status: number;
+  barang_nama?: string;
+  butuh_dimensi_status?: number;
   kategori_nama?: string | null;
-  frekuensi_terjual: number;
+  frekuensi_terjual?: number;
+  sumber?: "BARANG" | "KATALOG_MAKLON";
+  katalog_maklon_id?: string;
+  biaya_subkontrak_default?: number;
+  vendor_subkontrak_id_default?: string | null;
+  metode_bayar_vendor_default?: "CASH" | "NET30";
 }

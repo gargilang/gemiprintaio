@@ -829,16 +829,22 @@ export function generateQuotationHTML(data: {
 }
 
 /**
- * Post-process faktur HTML to turn it into a quotation:
- * - Replace "FAKTUR PENJUALAN" with "PENAWARAN HARGA"
- * - Remove BAYAR and SISA rows
- * - Replace title tag
+ * Post-process faktur HTML untuk pratinjau penawaran atau faktur:
+ * - Ganti judul dokumen (bawaan: "Penawaran Harga" → header PENAWARAN HARGA)
+ * - Hapus baris BAYAR dan SISA
+ * - Ganti tag title
  */
-export function patchQuotationHTML(html: string): string {
+export function patchQuotationHTML(
+  html: string,
+  options?: { judul?: string },
+): string {
+  const judul = options?.judul ?? "Penawaran Harga";
+  const headerJudul =
+    judul === "Penawaran Harga" ? "PENAWARAN HARGA" : judul.toUpperCase();
   return (
     html
-      .replace(/FAKTUR PENJUALAN/g, "PENAWARAN HARGA")
-      .replace(/<title>Faktur[^<]*<\/title>/, "<title>Penawaran Harga</title>")
+      .replace(/FAKTUR PENJUALAN/g, headerJudul)
+      .replace(/<title>Faktur[^<]*<\/title>/, `<title>${judul}</title>`)
       // Remove BAYAR row
       .replace(
         /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
