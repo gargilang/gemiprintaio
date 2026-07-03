@@ -68,6 +68,52 @@ describe("production pickup", () => {
     );
   });
 
+  it("setOrderStatusSiapDiambilCascade tidak set SIAP_AMBIL bila ada item terhalang", async () => {
+    mockDb.query.mockImplementation(async (table: string) => {
+      if (table === "item_produksi") {
+        return {
+          data: [
+            {
+              id: "item-1",
+              order_produksi_id: "ord-1",
+              status: "PRINTING",
+              is_maklon: 0,
+              barang_nama: "Banner",
+              roll_inventory_status: "PENDING",
+            },
+          ],
+          error: null,
+        };
+      }
+      if (table === "production_material_consumptions") {
+        return { data: [], error: null };
+      }
+      return { data: [], error: null };
+    });
+    mockDb.queryOne.mockImplementation(async (_table: string) => {
+      if (_table === "order_produksi") {
+        return { data: { id: "ord-1", status: "PROSES", status_override_manual: 0 }, error: null };
+      }
+      if (_table === "item_produksi") {
+        return {
+          data: { id: "item-1", status: "PRINTING", roll_inventory_status: "PENDING" },
+          error: null,
+        };
+      }
+      return { data: null, error: null };
+    });
+
+    const hasil = await setOrderStatusSiapDiambilCascade("ord-1");
+    expect(hasil.terhalang).toHaveLength(1);
+    expect(
+      mockDb.update.mock.calls.some(
+        (call) =>
+          call[0] === "order_produksi" &&
+          call[2]?.status === "SIAP_AMBIL",
+      ),
+    ).toBe(false);
+  });
+
   it("markOrderSudahDiambil menolak order bukan SIAP_AMBIL", async () => {
     mockDb.queryOne.mockResolvedValue({
       data: { id: "ord-1", status: "PROSES" },

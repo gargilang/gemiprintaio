@@ -1217,10 +1217,12 @@ export async function setOrderStatusSiapDiambilCascade(orderId: string): Promise
     }
   }
 
-  await db.update("order_produksi", orderId, {
-    status: "SIAP_AMBIL",
-    status_override_manual: 1,
-  });
+  if (terhalang.length === 0) {
+    await db.update("order_produksi", orderId, {
+      status: "SIAP_AMBIL",
+      status_override_manual: 1,
+    });
+  }
 
   // updateProductionItemStatus sudah memanggil recompute per item, tapi panggil
   // sekali lagi untuk memastikan status order final konsisten.
@@ -1273,6 +1275,17 @@ export async function markOrderSudahDiambil(orderId: string): Promise<{
         nama: String(item.barang_nama || item.id),
       });
     }
+  }
+
+  if (terhalang.length > 0) {
+    const finalOrder = await db.queryOne<any>("order_produksi", {
+      where: { id: orderId },
+    });
+    return {
+      selesai,
+      terhalang,
+      statusOrderAkhir: String(finalOrder.data?.status || "SIAP_AMBIL"),
+    };
   }
 
   await db.update("order_produksi", orderId, {
