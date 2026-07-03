@@ -2737,5 +2737,16 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
     `);
   }
 
+  // Normalisasi item legacy SIAP_AMBIL → status produksi selesai (cetak/maklon).
+  db.exec(`
+    UPDATE item_produksi
+    SET status = 'FINISHING'
+    WHERE status = 'SIAP_AMBIL' AND (is_maklon IS NULL OR is_maklon = 0);
+
+    UPDATE item_produksi
+    SET status = 'DIKERJAKAN_VENDOR'
+    WHERE status = 'SIAP_AMBIL' AND is_maklon = 1;
+  `);
+
   serverSqliteColumnsCache.clear();
 }
