@@ -11,17 +11,6 @@ interface DropdownKeranjangTersimpanProps {
   onDelete: (id: string) => void;
 }
 
-function formatJam(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "—";
-  }
-}
-
 export default function DropdownKeranjangTersimpan({
   parkedCarts,
   onLoad,
@@ -91,9 +80,6 @@ export default function DropdownKeranjangTersimpan({
         </p>
       ) : (
         sorted.map((p) => {
-          const itemCount = Array.isArray(p.cart_snapshot)
-            ? p.cart_snapshot.length
-            : 0;
           const status = p.status;
           return (
             <div
@@ -104,9 +90,6 @@ export default function DropdownKeranjangTersimpan({
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
                     {p.label}
-                  </p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {itemCount} item · {formatJam(p.dibuat_pada)}
                   </p>
                   <span
                     className={`inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
