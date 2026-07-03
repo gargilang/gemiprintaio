@@ -8,6 +8,7 @@ import {
   deriveOrderStatus,
   adalahStatusTerminal,
   statusProduksiSelesaiUntukItem,
+  adalahStatusProduksiSelesai,
 } from "@/lib/produksi/status-produksi";
 import { itemStatusSchema, orderStatusSchema } from "@/lib/schemas/produksi";
 
@@ -91,6 +92,7 @@ describe("schema produksi", () => {
   });
   it("orderStatusSchema valid/invalid", () => {
     expect(orderStatusSchema.safeParse("PROSES").success).toBe(true);
+    expect(orderStatusSchema.safeParse("SIAP_AMBIL").success).toBe(true);
     expect(orderStatusSchema.safeParse("PRINTING").success).toBe(false);
   });
 });
@@ -118,5 +120,15 @@ describe("SIAP_AMBIL per order", () => {
     expect(statusProduksiSelesaiUntukItem({ is_maklon: true })).toBe(
       "DIKERJAKAN_VENDOR",
     );
+  });
+
+  it("adalahStatusProduksiSelesai untuk cetak dan maklon", () => {
+    expect(adalahStatusProduksiSelesai({ is_maklon: false }, "FINISHING")).toBe(true);
+    expect(adalahStatusProduksiSelesai({ is_maklon: false }, "PRINTING")).toBe(false);
+    expect(adalahStatusProduksiSelesai({ is_maklon: true }, "DIKERJAKAN_VENDOR")).toBe(
+      true,
+    );
+    expect(adalahStatusProduksiSelesai({ is_maklon: true }, "SEDANG_DIAMBIL")).toBe(true);
+    expect(adalahStatusProduksiSelesai({ is_maklon: true }, "SEDANG_DIKIRIM")).toBe(false);
   });
 });
