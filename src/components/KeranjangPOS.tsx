@@ -164,51 +164,34 @@ export default function KeranjangPOS({
       const { generateFakturHTML, patchQuotationHTML } = await import(
         "@/lib/faktur-print"
       );
-      const { formatRollCartDetailLine } = await import("@/lib/money-rounding");
+      const { mapPenjualanItemKeFaktur } = await import(
+        "@/lib/dokumen-item-display"
+      );
 
-      const items: Array<{
-        nama: string;
-        ukuran: string;
-        qty: number;
-        satuan: string;
-        harga: number;
-        jumlah: number;
-      }> = [];
-
-      cart.forEach((item, index) => {
-        let ukuran = "";
-        if (
-          item.butuh_dimensi &&
-          item.billedPanjang != null &&
-          item.billedLebar != null
-        ) {
-          ukuran = `${item.billedPanjang} × ${item.billedLebar} m`;
-        } else if (
-          item.butuh_dimensi &&
-          item.panjang != null &&
-          item.lebar != null
-        ) {
-          ukuran = `${item.panjang} × ${item.lebar} m`;
-        }
-
-        items.push({
-          nama:
-            item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-              ? item.deskripsi_pekerjaan
-              : item.barang_nama,
-          ukuran,
-          qty: item.jumlah,
-          satuan: item.nama_satuan,
-          harga:
-            item.jumlah > 0
-              ? lineCharges[index] / item.jumlah
-              : item.harga_satuan,
-          jumlah: lineCharges[index],
-        });
+      const items = cart.flatMap((item, index) => {
+        const lineTotal = lineCharges[index];
+        const hargaEfektif =
+          item.jumlah > 0 ? lineTotal / item.jumlah : item.harga_satuan;
+        const rows = [
+          mapPenjualanItemKeFaktur({
+            barang_nama: item.barang_nama,
+            tipe_item: item.tipe_item,
+            deskripsi_pekerjaan: item.deskripsi_pekerjaan,
+            jumlah: item.jumlah,
+            nama_satuan: item.nama_satuan,
+            panjang: item.panjang,
+            lebar: item.lebar,
+            billed_panjang: item.billedPanjang,
+            billed_lebar: item.billedLebar,
+            jumlah_roll: item.jumlah_roll,
+            harga_satuan: hargaEfektif,
+            subtotal: lineTotal,
+          }),
+        ];
 
         for (const biaya of item.biaya_tambahan || []) {
           if (!biaya.label?.trim() || biaya.nominal <= 0) continue;
-          items.push({
+          rows.push({
             nama: biaya.label.trim(),
             ukuran: "",
             qty: 1,
@@ -217,6 +200,8 @@ export default function KeranjangPOS({
             jumlah: biaya.nominal,
           });
         }
+
+        return rows;
       });
 
       const html = generateFakturHTML({

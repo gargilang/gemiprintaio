@@ -19,6 +19,8 @@ export interface ThermalInvoiceData {
     harga: number;
     subtotal: number;
     dimensi?: string;
+    /** Biaya tambahan per item (cetak sebagai sub-baris di bawah item). */
+    biaya_tambahan?: Array<{ label: string; nominal: number }>;
   }[];
   total: number;
   jumlah_bayar: number;
@@ -61,14 +63,15 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   const shopEmail = shop?.email?.trim() || "cs@gemiprint.com";
   const shopWebsite = shop?.website?.trim();
   const shopReceiptNote =
-    shop?.catatan_struk?.trim() || "Barang yang sudah dibeli tidak dapat dikembalikan";
+    shop?.catatan_struk?.trim() ||
+    "Barang yang sudah dibeli tidak dapat dikembalikan";
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Faktur - ${nomor_faktur}</title>
+  <title>Struk - ${nomor_faktur}</title>
   <style>
     @font-face {
       font-family: 'Bauhaus 93';
@@ -255,7 +258,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     ${shopWebsite ? `<div class="contact">${escapeHtml(shopWebsite)}</div>` : ""}
   </div>
 
-  <div class="invoice-title">FAKTUR PENJUALAN</div>
+  <div class="invoice-title">STRUK PENJUALAN</div>
 
   <div class="info-section">
     <div class="info-row">
@@ -309,12 +312,22 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       ${item.dimensi ? `<div class="item-dimensi">${item.dimensi}</div>` : ""}
       <div class="item-detail">
         <span>${item.jumlah} ${item.satuan} x ${item.harga.toLocaleString(
-          "id-ID"
+          "id-ID",
         )}</span>
         <span>${item.subtotal.toLocaleString("id-ID")}</span>
       </div>
+      ${(item.biaya_tambahan || [])
+        .filter((b) => b.label?.trim() && b.nominal > 0)
+        .map(
+          (b) => `
+      <div class="item-detail">
+        <span>+ ${escapeHtml(b.label.trim())}</span>
+        <span>Rp ${Number(b.nominal).toLocaleString("id-ID")}</span>
+      </div>`,
+        )
+        .join("")}
     </div>
-    `
+    `,
       )
       .join("")}
   </div>
@@ -327,7 +340,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     <div class="total-row">
       <span>${escapeHtml(b.label)}:</span>
       <span>Rp ${Number(b.nominal).toLocaleString("id-ID")}</span>
-    </div>`
+    </div>`,
       )
       .join("")}
     <div class="total-row grand">
@@ -382,10 +395,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   `;
 }
 
-function writeInvoiceToWindow(
-  target: Window,
-  invoiceHTML: string
-): void {
+function writeInvoiceToWindow(target: Window, invoiceHTML: string): void {
   target.document.open();
   target.document.write(invoiceHTML);
   target.document.close();

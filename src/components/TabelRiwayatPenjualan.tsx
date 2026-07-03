@@ -6,6 +6,12 @@ import DialogKonfirmasi from "./DialogKonfirmasi";
 import MenuAksi from "./MenuAksi";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { updateSaleCustomerAction } from "@/app/produksi/spk/actions";
+import {
+  formatDimensiBarisThermal,
+  formatUkuranCetakInput,
+  mapPenjualanItemKeFaktur,
+  qtySatuanCetakPenjualan,
+} from "@/lib/dokumen-item-display";
 
 interface SaleItemRow {
   barang_nama?: string;
@@ -18,6 +24,10 @@ interface SaleItemRow {
   lebar?: number | null;
   deskripsi_pekerjaan?: string | null;
   tipe_item?: string | null;
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  billed_panjang?: number | null;
+  billed_lebar?: number | null;
+  jumlah_roll?: number | null;
 }
 
 interface Sale {
@@ -67,7 +77,9 @@ export default function TabelRiwayatPenjualan({
     invoiceNumber: string;
   } | null>(null);
   const [fakturPromptSale, setFakturPromptSale] = useState<Sale | null>(null);
-  const [fakturPromptMode, setFakturPromptMode] = useState<"preview" | "print">("print");
+  const [fakturPromptMode, setFakturPromptMode] = useState<"preview" | "print">(
+    "print",
+  );
   const [fakturPromptInput, setFakturPromptInput] = useState({
     nama: "",
     kota: "Bekasi",
@@ -168,15 +180,19 @@ export default function TabelRiwayatPenjualan({
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      LUNAS: "bg-green-100 dark:bg-green-900/30 text-green-700 border-green-200 dark:border-slate-700",
-      AKTIF: "bg-red-100 dark:bg-red-900/30 text-red-700 border-red-200 dark:border-red-800/50",
-      SEBAGIAN: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 border-yellow-200 dark:border-yellow-800/50",
+      LUNAS:
+        "bg-green-100 dark:bg-green-900/30 text-green-700 border-green-200 dark:border-slate-700",
+      AKTIF:
+        "bg-red-100 dark:bg-red-900/30 text-red-700 border-red-200 dark:border-red-800/50",
+      SEBAGIAN:
+        "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 border-yellow-200 dark:border-yellow-800/50",
     };
 
     return (
       <span
         className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
-          styles[status as keyof typeof styles] || "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
+          styles[status as keyof typeof styles] ||
+          "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
         }`}
       >
         {status}
@@ -272,7 +288,8 @@ export default function TabelRiwayatPenjualan({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
+        const { getShopSettingsAction } =
+          await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -283,26 +300,42 @@ export default function TabelRiwayatPenjualan({
           catatan_struk: settings.catatan_struk,
         };
       } catch (settingsError) {
-        console.warn("Data usaha tidak bisa dimuat untuk reprint thermal:", settingsError);
+        console.warn(
+          "Data usaha tidak bisa dimuat untuk reprint thermal:",
+          settingsError,
+        );
       }
       const items = (sale.items || []).map((item) => {
-        const dimensi =
-          item.panjang && item.lebar
-            ? `${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m`
-            : undefined;
-        return {
-          nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-            ? item.deskripsi_pekerjaan
-            : item.barang_nama || "-",
+        const subtotal = Number(item.subtotal || 0);
+        const harga = Number(item.harga_satuan || 0);
+        const cetakInput = {
           jumlah: Number(item.jumlah || 0),
-          satuan: item.nama_satuan || "",
-          harga: Number(item.harga_satuan || 0),
-          subtotal: Number(item.subtotal || 0),
-          dimensi,
+          nama_satuan: item.nama_satuan || "",
+          panjang: item.panjang,
+          lebar: item.lebar,
+        };
+        const { qty, satuan } = qtySatuanCetakPenjualan(cetakInput);
+        return {
+          nama:
+            item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+              ? item.deskripsi_pekerjaan
+              : item.barang_nama || "-",
+          jumlah: qty,
+          satuan,
+          harga: qty > 0 ? subtotal / qty : harga,
+          subtotal,
+          dimensi: formatDimensiBarisThermal(cetakInput),
+          biaya_tambahan: (item.biaya_tambahan || [])
+            .filter((b) => b.label?.trim() && b.nominal > 0)
+            .map((b) => ({
+              label: b.label.trim(),
+              nominal: Number(b.nominal),
+            })),
         };
       });
       const total = sale.total_jumlah;
-      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      const bayar =
+        sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       printThermalInvoice({
         nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
@@ -315,7 +348,7 @@ export default function TabelRiwayatPenjualan({
         jumlah_bayar: bayar,
         kembalian: Math.max(0, bayar - total),
         metode_pembayaran: sale.metode_pembayaran,
-        biaya_tambahan: sale.biaya_tambahan,
+        biaya_tambahan: undefined,
       });
     } catch (e) {
       console.error("reprintThermal error:", e);
@@ -328,13 +361,10 @@ export default function TabelRiwayatPenjualan({
   const previewFaktur = async (
     sale: Sale,
     overrideNama?: string,
-    overrideKota?: string
+    overrideKota?: string,
   ) => {
     const nama =
-      overrideNama ||
-      sale.pelanggan_nama ||
-      sale.pelanggan_nama_snapshot ||
-      "";
+      overrideNama || sale.pelanggan_nama || sale.pelanggan_nama_snapshot || "";
     if (!nama) {
       setFakturPromptInput({
         nama: "",
@@ -346,7 +376,7 @@ export default function TabelRiwayatPenjualan({
     }
     setPrintingId(sale.id);
     try {
-      const { generateFakturHTML, formatUkuran } = await import("@/lib/faktur-print");
+      const { generateFakturHTML } = await import("@/lib/faktur-print");
       let shop:
         | {
             nama_toko?: string | null;
@@ -364,7 +394,8 @@ export default function TabelRiwayatPenjualan({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
+        const { getShopSettingsAction } =
+          await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -381,20 +412,33 @@ export default function TabelRiwayatPenjualan({
           alamat_npwp: settings.alamat_npwp,
         };
       } catch (settingsError) {
-        console.warn("Data usaha tidak bisa dimuat untuk preview faktur:", settingsError);
+        console.warn(
+          "Data usaha tidak bisa dimuat untuk preview faktur:",
+          settingsError,
+        );
       }
-      const items = (sale.items || []).map((item) => ({
-        nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-          ? item.deskripsi_pekerjaan
-          : item.barang_nama || "-",
-        ukuran: formatUkuran(item.panjang, item.lebar),
-        qty: Number(item.jumlah || 0),
-        satuan: item.nama_satuan || "",
-        harga: Number(item.harga_satuan || 0),
-        jumlah: Number(item.subtotal || 0),
-      }));
+      const items = (sale.items || []).map((item) =>
+        mapPenjualanItemKeFaktur({
+          barang_nama: item.barang_nama,
+          tipe_item: item.tipe_item ?? undefined,
+          deskripsi_pekerjaan: item.deskripsi_pekerjaan,
+          jumlah: Number(item.jumlah || 0),
+          nama_satuan: item.nama_satuan || "",
+          panjang: item.panjang,
+          lebar: item.lebar,
+          harga_satuan: Number(item.harga_satuan || 0),
+          subtotal: Number(item.subtotal || 0),
+          biaya_tambahan: (item.biaya_tambahan || [])
+            .filter((b) => b.label?.trim() && b.nominal > 0)
+            .map((b) => ({
+              label: b.label.trim(),
+              nominal: Number(b.nominal),
+            })),
+        }),
+      );
       const total = sale.total_jumlah;
-      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      const bayar =
+        sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       const sisa = Math.max(0, total - bayar);
       const html = generateFakturHTML({
         nomor_faktur: sale.nomor_faktur,
@@ -406,12 +450,11 @@ export default function TabelRiwayatPenjualan({
         bayar,
         sisa,
         shop,
-        biaya_tambahan: sale.biaya_tambahan,
       });
       window.dispatchEvent(
         new CustomEvent("gemi:preview-faktur", {
           detail: { html, title: `Faktur ${sale.nomor_faktur}` },
-        })
+        }),
       );
     } catch (e) {
       console.error("previewFaktur error:", e);
@@ -424,13 +467,10 @@ export default function TabelRiwayatPenjualan({
   const reprintFaktur = async (
     sale: Sale,
     overrideNama?: string,
-    overrideKota?: string
+    overrideKota?: string,
   ) => {
     const nama =
-      overrideNama ||
-      sale.pelanggan_nama ||
-      sale.pelanggan_nama_snapshot ||
-      "";
+      overrideNama || sale.pelanggan_nama || sale.pelanggan_nama_snapshot || "";
     if (!nama) {
       // Buka prompt untuk penjualan lama tanpa data snapshot
       setFakturPromptInput({
@@ -443,7 +483,7 @@ export default function TabelRiwayatPenjualan({
     }
     setPrintingId(sale.id);
     try {
-      const { printFaktur, formatUkuran } = await import("@/lib/faktur-print");
+      const { printFaktur } = await import("@/lib/faktur-print");
       let shop:
         | {
             nama_toko?: string | null;
@@ -461,7 +501,8 @@ export default function TabelRiwayatPenjualan({
           }
         | undefined;
       try {
-        const { getShopSettingsAction } = await import("@/app/pengaturan/actions");
+        const { getShopSettingsAction } =
+          await import("@/app/pengaturan/actions");
         const settings = await getShopSettingsAction();
         shop = {
           nama_toko: settings.nama_toko,
@@ -478,20 +519,33 @@ export default function TabelRiwayatPenjualan({
           alamat_npwp: settings.alamat_npwp,
         };
       } catch (settingsError) {
-        console.warn("Data usaha tidak bisa dimuat untuk reprint faktur:", settingsError);
+        console.warn(
+          "Data usaha tidak bisa dimuat untuk reprint faktur:",
+          settingsError,
+        );
       }
-      const items = (sale.items || []).map((item) => ({
-        nama: item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-          ? item.deskripsi_pekerjaan
-          : item.barang_nama || "-",
-        ukuran: formatUkuran(item.panjang, item.lebar),
-        qty: Number(item.jumlah || 0),
-        satuan: item.nama_satuan || "",
-        harga: Number(item.harga_satuan || 0),
-        jumlah: Number(item.subtotal || 0),
-      }));
+      const items = (sale.items || []).map((item) =>
+        mapPenjualanItemKeFaktur({
+          barang_nama: item.barang_nama,
+          tipe_item: item.tipe_item ?? undefined,
+          deskripsi_pekerjaan: item.deskripsi_pekerjaan,
+          jumlah: Number(item.jumlah || 0),
+          nama_satuan: item.nama_satuan || "",
+          panjang: item.panjang,
+          lebar: item.lebar,
+          harga_satuan: Number(item.harga_satuan || 0),
+          subtotal: Number(item.subtotal || 0),
+          biaya_tambahan: (item.biaya_tambahan || [])
+            .filter((b) => b.label?.trim() && b.nominal > 0)
+            .map((b) => ({
+              label: b.label.trim(),
+              nominal: Number(b.nominal),
+            })),
+        }),
+      );
       const total = sale.total_jumlah;
-      const bayar = sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
+      const bayar =
+        sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
       const sisa = Math.max(0, total - bayar);
       await printFaktur({
         nomor_faktur: sale.nomor_faktur,
@@ -503,7 +557,6 @@ export default function TabelRiwayatPenjualan({
         bayar,
         sisa,
         shop,
-        biaya_tambahan: sale.biaya_tambahan,
       });
     } catch (e) {
       console.error("reprintFaktur error:", e);
@@ -519,12 +572,12 @@ export default function TabelRiwayatPenjualan({
   const salesUntukTotal = sesuaiPencarian.filter((sale) => !isVoid(sale));
   const totalPenjualan = salesUntukTotal.reduce(
     (sum, sale) => sum + sale.total_jumlah,
-    0
+    0,
   );
   const totalPiutang = salesUntukTotal
     .filter(
       (s) =>
-        s.status_pembayaran === "AKTIF" || s.status_pembayaran === "SEBAGIAN"
+        s.status_pembayaran === "AKTIF" || s.status_pembayaran === "SEBAGIAN",
     )
     .reduce((sum, sale) => sum + sale.sisa_piutang, 0);
 
@@ -564,21 +617,27 @@ export default function TabelRiwayatPenjualan({
             </button>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">Total Penjualan</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Total Penjualan
+            </div>
             <div className="text-lg font-bold text-[#00afef]">
               Rp {totalPenjualan.toLocaleString("id-ID")}
             </div>
           </div>
           {totalPiutang > 0 && (
             <div className="text-right">
-              <div className="text-xs text-gray-500 dark:text-slate-400">Total Piutang</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
+                Total Piutang
+              </div>
               <div className="text-lg font-bold text-red-600">
                 Rp {totalPiutang.toLocaleString("id-ID")}
               </div>
             </div>
           )}
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400">Transaksi</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              Transaksi
+            </div>
             <div className="text-lg font-bold text-gray-800 dark:text-slate-100">
               {filteredSales.length}
             </div>
@@ -619,7 +678,9 @@ export default function TabelRiwayatPenjualan({
               />
             </svg>
           </div>
-          <p className="text-gray-600 dark:text-slate-300 font-semibold">Belum ada transaksi</p>
+          <p className="text-gray-600 dark:text-slate-300 font-semibold">
+            Belum ada transaksi
+          </p>
           <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
             Transaksi akan muncul di sini
           </p>
@@ -670,7 +731,9 @@ export default function TabelRiwayatPenjualan({
                     <td className="px-4 py-3">
                       <div
                         className={`font-bold text-gray-800 dark:text-slate-100 ${
-                          isVoid(sale) ? "line-through text-gray-500 dark:text-slate-400" : ""
+                          isVoid(sale)
+                            ? "line-through text-gray-500 dark:text-slate-400"
+                            : ""
                         }`}
                       >
                         {sale.nomor_faktur}
@@ -688,9 +751,10 @@ export default function TabelRiwayatPenjualan({
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-gray-800 dark:text-slate-100">
-                        {sale.pelanggan_nama || sale.pelanggan_nama_snapshot || (
-                          <span className="text-gray-400 italic">Umum</span>
-                        )}
+                        {sale.pelanggan_nama ||
+                          sale.pelanggan_nama_snapshot || (
+                            <span className="text-gray-400 italic">Umum</span>
+                          )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -889,76 +953,129 @@ export default function TabelRiwayatPenjualan({
                             Detail Item:
                           </div>
                           <div className="space-y-1">
-                            {sale.items.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between py-1 px-2 bg-white dark:bg-slate-900/60 rounded"
-                              >
-                                <div className="flex-1">
-                                  <span className="font-semibold text-gray-800 dark:text-slate-100">
-                                    {idx + 1}. {item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-                                    ? item.deskripsi_pekerjaan
-                                    : item.barang_nama}
-                                  </span>
-                                  <span className="text-gray-500 dark:text-slate-400 ml-2">
-                                    ({item.nama_satuan})
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-4 text-gray-700 dark:text-slate-300">
-                                  <span>
-                                    Qty:{" "}
-                                    <span className="font-semibold">
-                                      {item.jumlah}
-                                    </span>
-                                  </span>
-                                  <span>×</span>
-                                  <span>
-                                    Rp{" "}
-                                    <span className="font-semibold">
-                                      {(item.harga_satuan ?? 0).toLocaleString(
-                                        "id-ID"
+                            {sale.items.map((item, idx) => {
+                              const cetakInput = {
+                                jumlah: Number(item.jumlah || 0),
+                                nama_satuan: item.nama_satuan || "",
+                                panjang: item.panjang,
+                                lebar: item.lebar,
+                                billed_panjang: item.billed_panjang,
+                                billed_lebar: item.billed_lebar,
+                                jumlah_roll: item.jumlah_roll,
+                              };
+                              const { qty: qtyCetak, satuan: satuanCetak } =
+                                qtySatuanCetakPenjualan(cetakInput);
+                              const ukuranCetak = formatUkuranCetakInput(
+                                cetakInput as any,
+                              );
+                              const biayaItem = (item.biaya_tambahan || [])
+                                .filter((b) => b.label?.trim() && b.nominal > 0)
+                                .map((b) => ({
+                                  label: b.label.trim(),
+                                  nominal: Number(b.nominal),
+                                }));
+                              return (
+                                <div
+                                  key={idx}
+                                  className="py-1 px-2 bg-white dark:bg-slate-900/60 rounded"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <span className="font-semibold text-gray-800 dark:text-slate-100">
+                                        {idx + 1}.{" "}
+                                        {item.tipe_item === "MAKLON" &&
+                                        item.deskripsi_pekerjaan
+                                          ? item.deskripsi_pekerjaan
+                                          : item.barang_nama}
+                                      </span>
+                                      {ukuranCetak ? (
+                                        <span className="text-gray-500 dark:text-slate-400 ml-2">
+                                          Ukuran: {ukuranCetak}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-500 dark:text-slate-400 ml-2">
+                                          ({item.nama_satuan})
+                                        </span>
                                       )}
-                                    </span>
-                                  </span>
-                                  <span>=</span>
-                                  <span className="font-semibold text-[#00afef]">
-                                    Rp{" "}
-                                    {(item.subtotal ?? 0).toLocaleString(
-                                      "id-ID"
-                                    )}
-                                  </span>
-                                  {typeof item.hpp_total === "number" && (
-                                    <span className="text-slate-500">
-                                      HPP Rp{" "}
-                                      {item.hpp_total.toLocaleString("id-ID")}
-                                    </span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-gray-700 dark:text-slate-300">
+                                      <span>
+                                        Qty:{" "}
+                                        <span className="font-semibold">
+                                          {qtyCetak}
+                                          {satuanCetak ? ` ${satuanCetak}` : ""}
+                                        </span>
+                                      </span>
+                                      <span>×</span>
+                                      <span>
+                                        Rp{" "}
+                                        <span className="font-semibold">
+                                          {(qtyCetak > 0
+                                            ? (item.subtotal ?? 0) / qtyCetak
+                                            : (item.harga_satuan ?? 0)
+                                          ).toLocaleString("id-ID")}
+                                        </span>
+                                      </span>
+                                      <span>=</span>
+                                      <span className="font-semibold text-[#00afef]">
+                                        Rp{" "}
+                                        {(item.subtotal ?? 0).toLocaleString(
+                                          "id-ID",
+                                        )}
+                                      </span>
+                                      {typeof item.hpp_total === "number" && (
+                                        <span className="text-slate-500">
+                                          HPP Rp{" "}
+                                          {item.hpp_total.toLocaleString(
+                                            "id-ID",
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {biayaItem.length > 0 && (
+                                    <div className="mt-1 pl-3 space-y-0.5 text-xs text-gray-600 dark:text-slate-300">
+                                      {biayaItem.map((b, bIdx) => (
+                                        <div
+                                          key={bIdx}
+                                          className="flex justify-between"
+                                        >
+                                          <span>+ {b.label}</span>
+                                          <span className="text-amber-700 dark:text-amber-300">
+                                            Rp{" "}
+                                            {b.nominal.toLocaleString("id-ID")}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
-                          {sale.biaya_tambahan && sale.biaya_tambahan.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
-                              <div className="font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                                Biaya Tambahan:
+                          {sale.biaya_tambahan &&
+                            sale.biaya_tambahan.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                                <div className="font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                  Biaya Tambahan:
+                                </div>
+                                <div className="space-y-0.5">
+                                  {sale.biaya_tambahan.map((b, bIdx) => (
+                                    <div
+                                      key={bIdx}
+                                      className="flex justify-between py-0.5 px-2 bg-amber-50 dark:bg-amber-900/20 rounded"
+                                    >
+                                      <span className="text-gray-700 dark:text-slate-300">
+                                        {b.label}
+                                      </span>
+                                      <span className="font-semibold text-amber-700 dark:text-amber-300">
+                                        Rp {b.nominal.toLocaleString("id-ID")}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="space-y-0.5">
-                                {sale.biaya_tambahan.map((b, bIdx) => (
-                                  <div
-                                    key={bIdx}
-                                    className="flex justify-between py-0.5 px-2 bg-amber-50 dark:bg-amber-900/20 rounded"
-                                  >
-                                    <span className="text-gray-700 dark:text-slate-300">
-                                      {b.label}
-                                    </span>
-                                    <span className="font-semibold text-amber-700 dark:text-amber-300">
-                                      Rp {b.nominal.toLocaleString("id-ID")}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -1001,7 +1118,10 @@ export default function TabelRiwayatPenjualan({
 
       {fakturPromptSale && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div ref={fakturPromptRef} className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div
+            ref={fakturPromptRef}
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
             <div className="bg-gradient-to-r from-[#00afef] to-[#2266ff] px-5 py-4">
               <h3 className="text-white font-bold text-lg">
                 {fakturPromptMode === "preview"
@@ -1065,7 +1185,9 @@ export default function TabelRiwayatPenjualan({
                   disabled={!fakturPromptInput.nama.trim()}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00afef] to-[#2266ff] text-white font-bold hover:from-[#0099dd] hover:to-[#1955ee] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {fakturPromptMode === "preview" ? "Pratinjau" : "Cetak Faktur"}
+                  {fakturPromptMode === "preview"
+                    ? "Pratinjau"
+                    : "Cetak Faktur"}
                 </button>
               </div>
             </div>

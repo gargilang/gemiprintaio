@@ -9,6 +9,10 @@ import type {
 } from "@/lib/services/production-service";
 import { getStatusColor, getPriorityColor } from "./spk-status";
 import {
+  formatTampilanDimensiSpk,
+  formatTampilanQtySpk,
+} from "@/lib/penjualan-cetak-utils";
+import {
   STATUS_ORDER,
   daftarStatusUntukItem,
   labelStatus,
@@ -74,13 +78,18 @@ export default function SpkDetailModal({
     let cancelled = false;
     Promise.all(
       barangIds.map(async (barangId) => {
-        const res = await fetch(`/api/barang-komponen?parent_barang_id=${barangId}`);
+        const res = await fetch(
+          `/api/barang-komponen?parent_barang_id=${barangId}`,
+        );
         const data = await res.json();
         return [barangId, data.komponen || []] as const;
-      })
+      }),
     ).then((entries) => {
       if (cancelled) return;
-      const map: Record<string, Array<{ qty: number; komponen_nama: string }>> = {};
+      const map: Record<
+        string,
+        Array<{ qty: number; komponen_nama: string }>
+      > = {};
       for (const [bid, komponen] of entries) {
         if (komponen.length > 0) map[bid] = komponen;
       }
@@ -144,13 +153,15 @@ export default function SpkDetailModal({
           {/* Order Info */}
           <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg">
             <div>
-              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Faktur</div>
-              <div className="font-semibold">
-                {order.nomor_faktur}
+              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
+                Faktur
               </div>
+              <div className="font-semibold">{order.nomor_faktur}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Pelanggan</div>
+              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
+                Pelanggan
+              </div>
               <button
                 type="button"
                 onClick={onEditCustomer}
@@ -162,22 +173,26 @@ export default function SpkDetailModal({
               </button>
             </div>
             <div>
-              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Prioritas</div>
+              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
+                Prioritas
+              </div>
               <span
                 className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getPriorityColor(
-                  order.prioritas
+                  order.prioritas,
                 )}`}
               >
                 {order.prioritas}
               </span>
             </div>
             <div>
-              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">Status</div>
+              <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
+                Status
+              </div>
               <select
                 value={order.status}
                 onChange={(e) => onUpdateOrderStatus(order.id, e.target.value)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
-                  order.status
+                  order.status,
                 )}`}
               >
                 {STATUS_ORDER.map((s) => (
@@ -208,20 +223,21 @@ export default function SpkDetailModal({
                     <div className="font-bold text-gray-900 dark:text-slate-100 mb-1">
                       {idx + 1}. {item.barang_nama}
                     </div>
-                    {item.barang_id && komponenByBarang[item.barang_id]?.length > 0 && (
-                      <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                        Komponen:{" "}
-                        {komponenByBarang[item.barang_id]
-                          .map((k) => `${k.qty} × ${k.komponen_nama}`)
-                          .join(", ")}
-                      </div>
-                    )}
+                    {item.barang_id &&
+                      komponenByBarang[item.barang_id]?.length > 0 && (
+                        <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                          Komponen:{" "}
+                          {komponenByBarang[item.barang_id]
+                            .map((k) => `${k.qty} × ${k.komponen_nama}`)
+                            .join(", ")}
+                        </div>
+                      )}
                     <div className="text-sm text-gray-600 dark:text-slate-300">
-                      Jumlah: {item.jumlah} {item.nama_satuan}
+                      Jumlah: {formatTampilanQtySpk(item)}
                     </div>
-                    {item.panjang && item.lebar && (
+                    {formatTampilanDimensiSpk(item) && (
                       <div className="text-sm text-gray-600 dark:text-slate-300">
-                        Ukuran: {item.panjang} x {item.lebar} cm
+                        Ukuran: {formatTampilanDimensiSpk(item)}
                       </div>
                     )}
                     {item.jenis_bahan && (
@@ -237,9 +253,11 @@ export default function SpkDetailModal({
                   </div>
                   <select
                     value={item.status}
-                    onChange={(e) => onUpdateItemStatus(item.id, e.target.value)}
+                    onChange={(e) =>
+                      onUpdateItemStatus(item.id, e.target.value)
+                    }
                     className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
-                      item.status
+                      item.status,
                     )}`}
                   >
                     {daftarStatusUntukItem({ is_maklon: item.is_maklon }).map(
@@ -251,7 +269,7 @@ export default function SpkDetailModal({
                         >
                           {labelStatus(s)}
                         </option>
-                      )
+                      ),
                     )}
                   </select>
                 </div>
@@ -264,7 +282,9 @@ export default function SpkDetailModal({
                           Roll aktual
                         </label>
                         <select
-                          value={consumptionDrafts[item.id]?.roll_variant_id || ""}
+                          value={
+                            consumptionDrafts[item.id]?.roll_variant_id || ""
+                          }
                           onChange={(e) =>
                             onPatchDraft(item.id, {
                               roll_variant_id: e.target.value,
@@ -273,12 +293,14 @@ export default function SpkDetailModal({
                           className="px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
                         >
                           <option value="">Pilih roll</option>
-                          {(rollVariantsByItem[item.id] || []).map((variant) => (
-                            <option key={variant.id} value={variant.id}>
-                              {Number(variant.lebar_m).toFixed(2)}m · sisa{" "}
-                              {Number(variant.panjang_tersedia_m).toFixed(2)}m
-                            </option>
-                          ))}
+                          {(rollVariantsByItem[item.id] || []).map(
+                            (variant) => (
+                              <option key={variant.id} value={variant.id}>
+                                {Number(variant.lebar_m).toFixed(2)}m · sisa{" "}
+                                {Number(variant.panjang_tersedia_m).toFixed(2)}m
+                              </option>
+                            ),
+                          )}
                         </select>
                       </div>
                       <div>
@@ -290,7 +312,9 @@ export default function SpkDetailModal({
                           min="0"
                           step="any"
                           inputMode="decimal"
-                          value={consumptionDrafts[item.id]?.linear_used_m || ""}
+                          value={
+                            consumptionDrafts[item.id]?.linear_used_m || ""
+                          }
                           onChange={(e) =>
                             onPatchDraft(item.id, {
                               linear_used_m: e.target.value,
@@ -317,27 +341,31 @@ export default function SpkDetailModal({
                   </div>
                 )}
 
-                {item.roll_inventory_status === "POSTED" && item.consumption && (
-                  <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
-                    <span>
-                      Roll {Number(item.consumption.roll_width_m).toFixed(2)}m ·
-                      pakai {Number(item.consumption.linear_used_m).toFixed(2)}m ·
-                      stok keluar {Number(item.consumption.area_used_m2).toFixed(2)}m²
-                    </span>
-                    {Number(item.consumption.waste_area_m2) > 0 && (
+                {item.roll_inventory_status === "POSTED" &&
+                  item.consumption && (
+                    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
                       <span>
-                        Waste {Number(item.consumption.waste_area_m2).toFixed(2)}m²
+                        Roll {Number(item.consumption.roll_width_m).toFixed(2)}m
+                        · pakai{" "}
+                        {Number(item.consumption.linear_used_m).toFixed(2)}m ·
+                        stok keluar{" "}
+                        {Number(item.consumption.area_used_m2).toFixed(2)}m²
                       </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onVoidConsumption(item)}
-                      className="px-2 py-1 rounded border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-                    >
-                      Koreksi
-                    </button>
-                  </div>
-                )}
+                      {Number(item.consumption.waste_area_m2) > 0 && (
+                        <span>
+                          Waste{" "}
+                          {Number(item.consumption.waste_area_m2).toFixed(2)}m²
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onVoidConsumption(item)}
+                        className="px-2 py-1 rounded border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                      >
+                        Koreksi
+                      </button>
+                    </div>
+                  )}
 
                 {/* Finishing */}
                 {item.finishing && item.finishing.length > 0 && (
@@ -363,7 +391,7 @@ export default function SpkDetailModal({
                           </div>
                           <span
                             className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
-                              fin.status
+                              fin.status,
                             )}`}
                           >
                             {fin.status}

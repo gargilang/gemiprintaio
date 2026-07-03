@@ -10,6 +10,7 @@ class FakturLine {
   final String? satuan;
   final double harga;
   final double jumlah;
+  final List<FakturLineCharge> biayaTambahan;
   const FakturLine({
     required this.name,
     this.ukuran,
@@ -17,7 +18,15 @@ class FakturLine {
     this.satuan,
     required this.harga,
     required this.jumlah,
+    this.biayaTambahan = const [],
   });
+}
+
+/// Biaya tambahan per item (sub-baris di bawah FakturLine).
+class FakturLineCharge {
+  final String label;
+  final double nominal;
+  const FakturLineCharge({required this.label, required this.nominal});
 }
 
 /// Biaya tambahan tingkat header (ongkir, pasang, dll).
@@ -323,6 +332,8 @@ class FakturPreviewPage extends StatelessWidget {
       color: Color(0xFF0A1B3D),
     );
     const cellStyle = TextStyle(fontSize: 11, color: Color(0xFF0A1B3D));
+    const subChargeStyle = TextStyle(
+        fontSize: 10, color: Color(0xFF64748B), fontStyle: FontStyle.italic);
     final border = const BorderSide(color: Color(0xFFCBD5E1));
 
     return Table(
@@ -355,13 +366,21 @@ class FakturPreviewPage extends StatelessWidget {
           final nama = (l.ukuran != null && l.ukuran!.isNotEmpty)
               ? '${l.name}\n${l.ukuran}'
               : l.name;
-          return TableRow(children: [
-            _cell(nama, cellStyle),
-            _cell(qtyText, cellStyle, align: TextAlign.right),
-            _cell(_rupiah.format(l.harga), cellStyle, align: TextAlign.right),
-            _cell(_rupiah.format(l.jumlah), cellStyle, align: TextAlign.right),
-          ]);
-        }),
+          return <TableRow>[
+            TableRow(children: [
+              _cell(nama, cellStyle),
+              _cell(qtyText, cellStyle, align: TextAlign.right),
+              _cell(_rupiah.format(l.harga), cellStyle, align: TextAlign.right),
+              _cell(_rupiah.format(l.jumlah), cellStyle, align: TextAlign.right),
+            ]),
+            ...l.biayaTambahan.where((c) => c.nominal > 0).map((c) => TableRow(children: [
+              _cell('+ ${c.label}', subChargeStyle),
+              const SizedBox(),
+              const SizedBox(),
+              _cell(_rupiah.format(c.nominal), subChargeStyle, align: TextAlign.right),
+            ])),
+          ];
+        }).expand((rows) => rows),
       ],
     );
   }
@@ -405,7 +424,11 @@ class FakturPreviewPage extends StatelessWidget {
             const Divider(),
             _totalsRow('TOTAL', total, grand: true),
             if (bayar != null) _totalsRow('BAYAR', bayar!),
-            if (sisa != null) _totalsRow('SISA', sisa!),
+            if (bayar != null)
+              _totalsRow(
+                bayar! > total ? 'KEMBALIAN' : 'SISA',
+                bayar! > total ? bayar! - total : (sisa ?? 0),
+              ),
           ],
         ),
       ),

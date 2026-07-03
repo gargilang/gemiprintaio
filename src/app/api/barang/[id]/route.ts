@@ -95,6 +95,7 @@ export async function PUT(
       payload.unit_prices = unit_prices.map((up: any, index: number) => ({
         id: up.id,
         nama_satuan: up.nama_satuan,
+        nama_produk_jual: up.nama_produk_jual?.trim() || null,
         faktor_konversi: up.faktor_konversi ?? 1,
         harga_beli: up.harga_beli ?? 0,
         harga_jual: up.harga_jual ?? 0,

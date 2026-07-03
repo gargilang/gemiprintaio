@@ -18,7 +18,10 @@ import {
   createMaklonPurchase,
   deleteMaklonPurchasesForSale,
 } from "./purchases-service";
-import { recalculateCashbookIfAvailable, resolveOpenPeriodeIdForKeuangan } from "./finance-service";
+import {
+  recalculateCashbookIfAvailable,
+  resolveOpenPeriodeIdForKeuangan,
+} from "./finance-service";
 import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
@@ -37,8 +40,13 @@ import { withDuplicateNumberRetry } from "../retry-utils";
 // TIPE
 // ============================================================================
 
-import type { Sale, SaleItem, Receivable, POSInitData, CreateSaleData } from "./pos-queries";
-
+import type {
+  Sale,
+  SaleItem,
+  Receivable,
+  POSInitData,
+  CreateSaleData,
+} from "./pos-queries";
 
 function getTodayJakarta(): string {
   return new Date().toLocaleDateString("sv-SE", {
@@ -51,12 +59,15 @@ function positiveNumber(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function isRollInventoryLine(material: any, item: {
-  panjang?: number | null;
-  lebar?: number | null;
-  recommended_roll_width_m?: number | null;
-  selectedRollSize?: number | null;
-}): boolean {
+function isRollInventoryLine(
+  material: any,
+  item: {
+    panjang?: number | null;
+    lebar?: number | null;
+    recommended_roll_width_m?: number | null;
+    selectedRollSize?: number | null;
+  },
+): boolean {
   return (
     Number(material?.lacak_inventori_status) !== 0 &&
     Number(material?.butuh_dimensi_status) === 1 &&
@@ -68,7 +79,7 @@ function isRollInventoryLine(material: any, item: {
 
 async function fallbackAverageCostPerBaseUnit(
   barangId: string,
-  hargaSatuanId?: string | null
+  hargaSatuanId?: string | null,
 ): Promise<number> {
   const unitPricesResult = await db.query<any>("harga_barang_satuan", {
     where: { barang_id: barangId },
@@ -76,12 +87,14 @@ async function fallbackAverageCostPerBaseUnit(
   });
   const rows = unitPricesResult.data || [];
   const preferred = hargaSatuanId
-    ? rows.find((r: Record<string,unknown>) => r.id === hargaSatuanId)
+    ? rows.find((r: Record<string, unknown>) => r.id === hargaSatuanId)
     : null;
   const unit =
     preferred ||
-    rows.find((r: Record<string,unknown>) => Number(r.default_status) === 1) ||
-    rows.find((r: Record<string,unknown>) => Number(r.faktor_konversi) === 1) ||
+    rows.find((r: Record<string, unknown>) => Number(r.default_status) === 1) ||
+    rows.find(
+      (r: Record<string, unknown>) => Number(r.faktor_konversi) === 1,
+    ) ||
     rows[0];
   const factor = positiveNumber(unit?.faktor_konversi) || 1;
   return positiveNumber(unit?.harga_beli) / factor;
@@ -94,17 +107,13 @@ async function fallbackAverageCostPerBaseUnit(
  * yearly  → YYYY
  * never   → "" (tidak pakai tanggal)
  */
-function getDatePart(
-  tanggal: string,
-  reset: string,
-  format: string
-): string {
+function getDatePart(tanggal: string, reset: string, format: string): string {
   if (format === "PREFIX-SEQ") return "";
   const d = tanggal.replace(/-/g, "");
-  if (reset === "daily") return d;                    // 20260524
-  if (reset === "monthly") return d.slice(0, 6);      // 202605
-  if (reset === "yearly") return d.slice(0, 4);       // 2026
-  return d;                                           // never → still embed full date
+  if (reset === "daily") return d; // 20260524
+  if (reset === "monthly") return d.slice(0, 6); // 202605
+  if (reset === "yearly") return d.slice(0, 4); // 2026
+  return d; // never → still embed full date
 }
 
 /**
@@ -117,7 +126,7 @@ function extractSeqFromNumber(
   format: string,
   datePart: string,
   padding: number,
-  startSeq: number
+  startSeq: number,
 ): number {
   if (!lastNumber) return startSeq;
   try {
@@ -165,7 +174,7 @@ async function generateInvoiceNumber(tanggal: string): Promise<string> {
       format,
       datePart,
       padding,
-      startSeq
+      startSeq,
     );
   }
 
@@ -201,7 +210,7 @@ async function generateSPKNumber(): Promise<string> {
       format,
       datePart,
       padding,
-      startSeq
+      startSeq,
     );
   }
 
@@ -268,7 +277,11 @@ async function compensateFailedSale(params: {
       try {
         await rebuildInventoryBalance(barangId);
       } catch (e) {
-        console.error("[compensateFailedSale] gagal rebuild saldo", barangId, e);
+        console.error(
+          "[compensateFailedSale] gagal rebuild saldo",
+          barangId,
+          e,
+        );
       }
     }
   } catch (e) {
@@ -369,15 +382,12 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
       if (item.tipe_item === "MAKLON") {
         if (!item.vendor_subkontrak_id) {
           throw new Error(
-            `Item ${i + 1} (Maklon): vendor subkontraktor wajib dipilih`
+            `Item ${i + 1} (Maklon): vendor subkontraktor wajib dipilih`,
           );
         }
-        if (
-          !item.biaya_subkontrak ||
-          item.biaya_subkontrak <= 0
-        ) {
+        if (!item.biaya_subkontrak || item.biaya_subkontrak <= 0) {
           throw new Error(
-            `Item ${i + 1} (Maklon): biaya subkontrak harus lebih dari 0`
+            `Item ${i + 1} (Maklon): biaya subkontrak harus lebih dari 0`,
           );
         }
         if (
@@ -385,12 +395,12 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           item.metode_bayar_vendor !== "NET30"
         ) {
           throw new Error(
-            `Item ${i + 1} (Maklon): metode bayar vendor harus CASH atau NET30`
+            `Item ${i + 1} (Maklon): metode bayar vendor harus CASH atau NET30`,
           );
         }
         if (!item.deskripsi_pekerjaan?.trim()) {
           throw new Error(
-            `Item ${i + 1} (Maklon): deskripsi pekerjaan wajib diisi`
+            `Item ${i + 1} (Maklon): deskripsi pekerjaan wajib diisi`,
           );
         }
       }
@@ -404,7 +414,10 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
       });
       if (isRollInventoryLine(materialResult.data, item)) continue;
       const qtyBase = item.jumlah * (positiveNumber(item.faktor_konversi) || 1);
-      requiredStock.set(item.barang_id, (requiredStock.get(item.barang_id) || 0) + qtyBase);
+      requiredStock.set(
+        item.barang_id,
+        (requiredStock.get(item.barang_id) || 0) + qtyBase,
+      );
     }
     for (const [barangId, requiredQty] of requiredStock) {
       const materialResult = await db.queryOne("barang", {
@@ -416,8 +429,8 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         if (available < requiredQty) {
           throw new Error(
             `Stok tidak cukup untuk ${material.nama || "barang ini"}. Stok tersedia ${available.toLocaleString(
-              "id-ID"
-            )}, dibutuhkan ${requiredQty.toLocaleString("id-ID")}.`
+              "id-ID",
+            )}, dibutuhkan ${requiredQty.toLocaleString("id-ID")}.`,
           );
         }
       }
@@ -431,7 +444,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
     // Tentukan status pembayaran
     const actualPaid = data.jumlah_dibayar || 0;
     const isFullPaymentMethod = ["CASH", "TRANSFER", "QRIS", "DEBIT"].includes(
-      data.metode_pembayaran
+      data.metode_pembayaran,
     );
     const isLunas = isFullPaymentMethod && actualPaid >= data.total_jumlah;
     const isPiutang =
@@ -451,9 +464,13 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         : { dpp: data.total_jumlah, ppn: 0, total: data.total_jumlah };
 
     if (kenaPpn === 1) {
-      if (!data.nsfp_kode_transaksi || !data.nsfp_tahun || !data.nsfp_nomor_seri) {
+      if (
+        !data.nsfp_kode_transaksi ||
+        !data.nsfp_tahun ||
+        !data.nsfp_nomor_seri
+      ) {
         throw new Error(
-          "Faktur kena PPN wajib menyertakan NSFP (Nomor Seri Faktur Pajak) lengkap"
+          "Faktur kena PPN wajib menyertakan NSFP (Nomor Seri Faktur Pajak) lengkap",
         );
       }
     }
@@ -477,45 +494,34 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         metode_pembayaran: data.metode_pembayaran,
         kasir_id: data.kasir_id || null,
         catatan: data.catatan?.trim() || null,
-        biaya_tambahan_total: (data.biaya_tambahan || [])
-          .reduce((sum, b) => sum + (Number(b.nominal) || 0), 0),
+        biaya_tambahan_total: (() => {
+          const perItem = (data.items || []).flatMap(
+            (it: any) => it.biaya_tambahan || [],
+          );
+          const source =
+            perItem.length > 0 ? perItem : data.biaya_tambahan || [];
+          return source.reduce((sum, b) => sum + (Number(b.nominal) || 0), 0);
+        })(),
         // PPN keluaran
         kena_ppn: kenaPpn,
         ppn_persen: ppnPersen,
         ppn_metode: ppnMetode,
         dpp_total: ppnHeaderBreakdown.dpp,
         ppn_total: ppnHeaderBreakdown.ppn,
-        nsfp_kode_transaksi: kenaPpn === 1 ? data.nsfp_kode_transaksi || null : null,
+        nsfp_kode_transaksi:
+          kenaPpn === 1 ? data.nsfp_kode_transaksi || null : null,
         nsfp_tahun: kenaPpn === 1 ? data.nsfp_tahun || null : null,
         nsfp_nomor_seri: kenaPpn === 1 ? data.nsfp_nomor_seri || null : null,
         tanggal_faktur_pajak:
           kenaPpn === 1 ? data.tanggal_faktur_pajak || tanggalSale : null,
         pelanggan_npwp_snapshot: data.pelanggan_npwp_snapshot || null,
-        pelanggan_alamat_npwp_snapshot: data.pelanggan_alamat_npwp_snapshot || null,
+        pelanggan_alamat_npwp_snapshot:
+          data.pelanggan_alamat_npwp_snapshot || null,
         pelanggan_nama_npwp_snapshot: data.pelanggan_nama_npwp_snapshot || null,
       };
 
       const saleResult = await db.insert("penjualan", sale);
       if (saleResult.error) throw saleResult.error;
-
-      // Sisipkan baris biaya tambahan (ongkir, biaya pasang, dll). Lewati baris
-      // dengan label kosong atau nominal 0.
-      if (data.biaya_tambahan && data.biaya_tambahan.length > 0) {
-        for (let i = 0; i < data.biaya_tambahan.length; i++) {
-          const b = data.biaya_tambahan[i];
-          const label = b.label?.trim();
-          const nominal = Number(b.nominal) || 0;
-          if (!label || nominal <= 0) continue;
-          const r = await db.insert("biaya_tambahan_penjualan", {
-            id: generateId(),
-            penjualan_id: saleId,
-            label,
-            nominal,
-            urutan: i,
-          });
-          if (r.error) throw r.error;
-        }
-      }
 
       // Lock NSFP slot kalau dipakai (status TERSEDIA → TERPAKAI). Lakukan
       // sebelum insert items supaya gagal-tertentu di NSFP rollback semua.
@@ -534,12 +540,12 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         });
         if (!nsfpRow.data) {
           throw new Error(
-            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} tidak ditemukan di pool. Impor dulu dari Coretax.`
+            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} tidak ditemukan di pool. Impor dulu dari Coretax.`,
           );
         }
         if (nsfpRow.data.status !== "TERSEDIA") {
           throw new Error(
-            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} sudah ${nsfpRow.data.status}. Pilih nomor lain.`
+            `NSFP ${data.nsfp_kode_transaksi}.${data.nsfp_tahun}.${data.nsfp_nomor_seri} sudah ${nsfpRow.data.status}. Pilih nomor lain.`,
           );
         }
         const upd = await db.update("nsfp_pool", nsfpRow.data.id, {
@@ -583,7 +589,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             positiveNumber(material?.average_cost_per_base_unit) ||
             (await fallbackAverageCostPerBaseUnit(
               item.barang_id,
-              item.harga_satuan_id
+              item.harga_satuan_id,
             ));
           hppSatuan =
             averageCostPerBaseUnit *
@@ -595,7 +601,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           positiveNumber(item.selectedRollSize) ||
           null;
         const rollInventoryDeferred =
-          !isMaklon && !isJasa && isRollInventoryLine(material, {
+          !isMaklon &&
+          !isJasa &&
+          isRollInventoryLine(material, {
             ...item,
             recommended_roll_width_m: recommendedRollWidth,
           });
@@ -658,7 +666,11 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           maklonItemIds.set(i, itemId);
           // Baris maklon tidak pernah menyentuh stok atau frekuensi terjual
           // — karena tidak ada barang dasar di katalog kita.
-        } else if (material && material.lacak_inventori_status && !rollInventoryDeferred) {
+        } else if (
+          material &&
+          material.lacak_inventori_status &&
+          !rollInventoryDeferred
+        ) {
           const stockReduction = item.jumlah * item.faktor_konversi;
           affectedBarangIds.add(item.barang_id);
           await postInventoryMovement({
@@ -688,6 +700,55 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         }
       }
 
+      // Sisipkan baris biaya tambahan (ongkir, biaya pasang, dll). Lewati baris
+      // dengan label kosong atau nominal 0. Preferensi: biaya per-item
+      // (data.items[i].biaya_tambahan) ditautkan ke item_penjualan_id supaya
+      // reprint struk/faktur/SPK bisa menampilkannya sebagai sub-baris item.
+      // Fallback ke biaya header (data.biaya_tambahan) untuk klien legacy yang
+      // belum mengirim per-item — biaya ini tidak ditautkan (item_penjualan_id null).
+      const perItemBiaya = (data.items || []).flatMap((it: any, i: number) =>
+        ((it as any).biaya_tambahan || []).map((b: any) => ({
+          label: String(b.label || "").trim(),
+          nominal: Number(b.nominal) || 0,
+          item_index: i,
+        })),
+      );
+      const flatBiaya = (data.biaya_tambahan || []).map((b: any) => ({
+        label: String(b.label || "").trim(),
+        nominal: Number(b.nominal) || 0,
+      }));
+      if (perItemBiaya.length > 0) {
+        let urutan = 0;
+        for (const b of perItemBiaya) {
+          if (!b.label || b.nominal <= 0) continue;
+          const itemId = insertedItemIds[b.item_index];
+          if (!itemId) continue;
+          const r = await db.insert("biaya_tambahan_penjualan", {
+            id: generateId(),
+            penjualan_id: saleId,
+            item_penjualan_id: itemId,
+            label: b.label,
+            nominal: b.nominal,
+            urutan: urutan++,
+          });
+          if (r.error) throw r.error;
+        }
+      } else if (flatBiaya.length > 0) {
+        for (let i = 0; i < flatBiaya.length; i++) {
+          const b = flatBiaya[i];
+          if (!b.label || b.nominal <= 0) continue;
+          const r = await db.insert("biaya_tambahan_penjualan", {
+            id: generateId(),
+            penjualan_id: saleId,
+            item_penjualan_id: null,
+            label: b.label,
+            nominal: b.nominal,
+            urutan: i,
+          });
+          if (r.error) throw r.error;
+        }
+      }
+
       // Buat entri keuangan kalau LUNAS
       if (isLunas) {
         await createFinanceEntry({
@@ -698,7 +759,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             invoiceNumber,
             data.pelanggan_id,
             data.catatan,
-            saleId
+            saleId,
           ),
           omzet: data.total_jumlah,
           catatan: data.catatan,
@@ -780,7 +841,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
               data.metode_pembayaran,
               jumlahTerbayar,
               data.total_jumlah,
-              saleId
+              saleId,
             ),
             omzet: jumlahTerbayar,
             catatan: data.catatan,
@@ -875,7 +936,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
 
           const prodItemResult = await db.insert(
             "item_produksi",
-            productionItem
+            productionItem,
           );
           if (prodItemResult.error) throw prodItemResult.error;
 
@@ -896,7 +957,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
 
               const finResult = await db.insert(
                 "item_finishing",
-                finishingItem
+                finishingItem,
               );
               if (finResult.error) throw finResult.error;
             }
@@ -983,7 +1044,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           console.error(
             "[createSale] createMaklonPurchase failed for vendor",
             group.vendorId,
-            err
+            err,
           );
           // Tampilkan tapi jangan throw — penjualan sendiri sudah commit.
         }
@@ -1015,7 +1076,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
       } catch (cleanupErr) {
         console.error(
           "[createSale] compensating cleanup gagal (data mungkin perlu diperiksa manual):",
-          cleanupErr
+          cleanupErr,
         );
       }
     }
@@ -1039,7 +1100,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
 export async function voidSale(
   id: string,
   reason = "Penjualan dibatalkan",
-  actorId?: string | null
+  actorId?: string | null,
 ): Promise<boolean> {
   const sb =
     process.env.TAURI === "true" || process.env.TAURI === "1"
@@ -1084,18 +1145,18 @@ export async function voidSale(
         o.status === "PROSES" ||
         o.status === "SELESAI" ||
         o.status === "PRINTING" ||
-        o.status === "FINISHING"
+        o.status === "FINISHING",
     );
     if (activeOrders.length > 0) {
       const spkList = activeOrders
-        .map((o: Record<string,unknown>) => {
+        .map((o: Record<string, unknown>) => {
           const status = o.status;
           return `${o.nomor_spk} (${status})`;
         })
         .join(", ");
       throw new Error(
         `Tidak bisa dibatalkan. Penjualan ini sudah masuk produksi: ${spkList}. ` +
-          `Batalkan atau selesaikan SPK tersebut dulu sebelum membatalkan penjualan.`
+          `Batalkan atau selesaikan SPK tersebut dulu sebelum membatalkan penjualan.`,
       );
     }
   }
@@ -1112,7 +1173,7 @@ export async function voidSale(
     if (paymentsResult.error) throw paymentsResult.error;
     if ((paymentsResult.data || []).length > 0) {
       throw new Error(
-        "Penjualan sudah memiliki pelunasan piutang. Revert pembayaran dulu sebelum membatalkan transaksi."
+        "Penjualan sudah memiliki pelunasan piutang. Revert pembayaran dulu sebelum membatalkan transaksi.",
       );
     }
   }
@@ -1132,8 +1193,7 @@ export async function voidSale(
         continue;
       }
       const original = movements.find(
-        (m) =>
-          m.source_line_id === item.id && m.movement_type === "SALE_ISSUE"
+        (m) => m.source_line_id === item.id && m.movement_type === "SALE_ISSUE",
       );
       const qtyBase =
         original?.qty_delta != null
@@ -1224,10 +1284,7 @@ export async function voidSale(
       });
       if (orderItemsResult.error) throw orderItemsResult.error;
       for (const prodItem of orderItemsResult.data || []) {
-        if (
-          prodItem.status === "DIBATALKAN" ||
-          prodItem.status === "SELESAI"
-        ) {
+        if (prodItem.status === "DIBATALKAN" || prodItem.status === "SELESAI") {
           continue;
         }
         const itemUpd = await db.update("item_produksi", prodItem.id, {
@@ -1263,7 +1320,6 @@ export async function voidSale(
 export async function deleteSale(id: string): Promise<boolean> {
   return voidSale(id, "Penjualan dibatalkan");
 }
-
 
 /**
  * Ambil semua piutang
@@ -1391,7 +1447,7 @@ export async function payReceivable(data: {
   if (failures.length > 0) {
     console.warn(
       `[payReceivable] payment ${paymentId} recorded with ${failures.length} non-fatal failures:`,
-      failures
+      failures,
     );
     // Catatan: kita sengaja TIDAK throw di sini. Baris pembayaran adalah
     // sumber kebenaran — kehilangan baris itu jauh lebih buruk daripada
@@ -1436,9 +1492,7 @@ export async function revertSalePayment(data: {
   });
   const payments = paymentsResult.data || [];
   if (payments.length === 0) {
-    throw new Error(
-      "Tidak ada catatan pembayaran piutang untuk transaksi ini"
-    );
+    throw new Error("Tidak ada catatan pembayaran piutang untuk transaksi ini");
   }
 
   // Pembersihan best-effort. Tiap langkah terisolasi supaya satu kegagalan
@@ -1448,16 +1502,13 @@ export async function revertSalePayment(data: {
   // Langkah 1: hapus semua record pembayaran.
   for (const payment of payments) {
     try {
-      const del = await db.delete(
-        "pelunasan_piutang",
-        (payment as any).id
-      );
+      const del = await db.delete("pelunasan_piutang", (payment as any).id);
       if (del.error) throw del.error;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(
         `[revertSalePayment] failed to delete pelunasan_piutang ${(payment as any).id}:`,
-        e
+        e,
       );
       failures.push(`delete pelunasan_piutang ${(payment as any).id}: ${msg}`);
     }
@@ -1516,10 +1567,10 @@ export async function revertSalePayment(data: {
   if (failures.length > 0) {
     console.warn(
       `[revertSalePayment] sale ${data.sale_id} reverted with ${failures.length} non-fatal failures:`,
-      failures
+      failures,
     );
     throw new Error(
-      `Pembayaran sebagian berhasil direvert (${payments.length} pembayaran), tetapi ada ${failures.length} kesalahan saat membersihkan data terkait. Periksa log untuk detail.`
+      `Pembayaran sebagian berhasil direvert (${payments.length} pembayaran), tetapi ada ${failures.length} kesalahan saat membersihkan data terkait. Periksa log untuk detail.`,
     );
   }
 
@@ -1585,7 +1636,7 @@ async function buildKeperluan(
   invoiceNumber: string,
   pelanggan_id?: string,
   catatan?: string,
-  saleId?: string
+  saleId?: string,
 ): Promise<string> {
   let keperluan = `Penjualan ${invoiceNumber}`;
 
@@ -1620,7 +1671,7 @@ async function buildPiutangKeperluan(
   metode_pembayaran?: string,
   jumlahTerbayar?: number,
   total_jumlah?: number,
-  saleId?: string
+  saleId?: string,
 ): Promise<string> {
   let keperluan = "";
 
@@ -1645,7 +1696,7 @@ async function buildPiutangKeperluan(
 
   if (jumlahTerbayar && total_jumlah) {
     keperluan += ` (Rp ${jumlahTerbayar.toLocaleString(
-      "id-ID"
+      "id-ID",
     )} dari Rp ${total_jumlah.toLocaleString("id-ID")})`;
   }
 
@@ -1655,4 +1706,3 @@ async function buildPiutangKeperluan(
 
   return keperluan;
 }
-

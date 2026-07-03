@@ -44,16 +44,18 @@ import {
   payReceivableAction,
   getFinishingOptionsAction,
 } from "./actions";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
 } from "@/lib/barang-placeholder";
 import { getReferensiUnitPrice } from "@/lib/barang-unit-utils";
+import {
+  formatDimensiBarisThermal,
+  mapPenjualanItemKeFaktur,
+  qtySatuanCetakPenjualan,
+} from "@/lib/dokumen-item-display";
 import {
   type User,
   type Customer,
@@ -72,7 +74,7 @@ import {
 /** Kumpulkan baris biaya tambahan valid dari semua item keranjang. */
 function getCartBiayaTambahanRows(cart: CartItem[]): BiayaTambahanItem[] {
   return cart.flatMap((item) =>
-    (item.biaya_tambahan || []).filter((b) => b.label.trim() && b.nominal > 0)
+    (item.biaya_tambahan || []).filter((b) => b.label.trim() && b.nominal > 0),
   );
 }
 
@@ -108,12 +110,11 @@ export default function POSPage() {
   const { data: statusPkpData } = useCachedData<number>(
     "pos-status-pkp",
     async () => {
-      const { getShopSettingsAction } = await import(
-        "@/app/pengaturan/actions"
-      );
+      const { getShopSettingsAction } =
+        await import("@/app/pengaturan/actions");
       const s = await getShopSettingsAction();
       return Number(s?.status_pkp) === 1 ? 1 : 0;
-    }
+    },
   );
   const tokoPkp = statusPkpData === 1;
   // Stabilkan referensi array yang dipakai di useMemo (hindari dep berubah tiap render).
@@ -128,10 +129,10 @@ export default function POSPage() {
     (partial: Partial<POSInitData>) => {
       void mutatePosInit(
         (prev) => ({ ...(prev ?? EMPTY_POS_INIT), ...partial }),
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutatePosInit]
+    [mutatePosInit],
   );
   const setCustomers = useCallback<
     (next: Customer[] | ((prev: Customer[]) => Customer[])) => void
@@ -146,10 +147,10 @@ export default function POSPage() {
               : next;
           return { ...base, customers: updated };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutatePosInit]
+    [mutatePosInit],
   );
   const setMaterials = (m: Material[]) => patchPos({ materials: m });
   const setSales = useCallback<
@@ -165,20 +166,20 @@ export default function POSPage() {
               : next;
           return { ...base, sales: updated };
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutatePosInit]
+    [mutatePosInit],
   );
 
   // Cart & Transaction State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [roundCartPrices, setRoundCartPrices] = useState(true);
   const [selectedPelanggan, setSelectedPelanggan] = useState<Customer | null>(
-    null
+    null,
   );
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
-    null
+    null,
   );
   const [selectedUnit, setSelectedUnit] = useState<UnitPrice | null>(null);
   const [quantity, setQuantity] = useState("1");
@@ -187,16 +188,18 @@ export default function POSPage() {
   const [useRounding, setUseRounding] = useState(false);
   const [selectedRollSize, setSelectedRollSize] = useState<number | null>(null);
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
-  const [rollSizes, setRollSizes] = useState<number[]>(() => getStoredRollSizes());
+  const [rollSizes, setRollSizes] = useState<number[]>(() =>
+    getStoredRollSizes(),
+  );
   const [catatan, setCatatan] = useState("");
   // State finishing dan harga override untuk barang yang sedang dipilih di form
   const [formFinishing, setFormFinishing] = useState<FinishingItem[]>([]);
   const [showFormFinishingModal, setShowFormFinishingModal] = useState(false);
   const [formHargaSatuan, setFormHargaSatuan] = useState<number | null>(null);
   const [showFormHargaModal, setShowFormHargaModal] = useState(false);
-  const [formBiayaTambahan, setFormBiayaTambahan] = useState<BiayaTambahanItem[]>(
-    []
-  );
+  const [formBiayaTambahan, setFormBiayaTambahan] = useState<
+    BiayaTambahanItem[]
+  >([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
@@ -220,7 +223,7 @@ export default function POSPage() {
   // PPN data untuk transaksi yang sedang disusun. Null = tidak kena PPN.
   const [ppnFaktur, setPpnFaktur] = useState<PpnFakturData | null>(null);
   const [editingMaklonIndex, setEditingMaklonIndex] = useState<number | null>(
-    null
+    null,
   );
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -291,7 +294,7 @@ export default function POSPage() {
       return;
     }
     setSelectedRollSize(
-      suggestSmallestCoveringRollSize(parsedPanjang, parsedLebar, rollSizes)
+      suggestSmallestCoveringRollSize(parsedPanjang, parsedLebar, rollSizes),
     );
   }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
 
@@ -307,7 +310,7 @@ export default function POSPage() {
     const billed = getBillableDimensionsForRoll(
       parsedPanjang,
       parsedLebar,
-      selectedRollSize
+      selectedRollSize,
     );
     if (!billed) return null;
     const pieceCount = Math.max(1, Math.round(parseFloat(quantity) || 1));
@@ -354,7 +357,7 @@ export default function POSPage() {
   };
 
   const filteredPelanggan = customers.filter((c) =>
-    c.nama.toLowerCase().includes(pencarianPelanggan.toLowerCase())
+    c.nama.toLowerCase().includes(pencarianPelanggan.toLowerCase()),
   );
 
   const materialCategories = useMemo(() => {
@@ -431,7 +434,7 @@ export default function POSPage() {
       case "ArrowDown":
         e.preventDefault();
         setIndexPelangganTerpilih((prev) =>
-          prev < filteredPelanggan.length - 1 ? prev + 1 : prev
+          prev < filteredPelanggan.length - 1 ? prev + 1 : prev,
         );
         break;
       case "ArrowUp":
@@ -506,7 +509,7 @@ export default function POSPage() {
         if (!isRollSizeValidForDimensions(p, l, selectedRollSize)) {
           showMsg(
             "error",
-            "Roll terlalu kecil untuk ukuran cut ini (coba roll lebih besar atau putar orientasi)"
+            "Roll terlalu kecil untuk ukuran cut ini (coba roll lebih besar atau putar orientasi)",
           );
           return null;
         }
@@ -600,7 +603,7 @@ export default function POSPage() {
       setFormHargaSatuan(null);
       setFormBiayaTambahan([]);
     },
-    [materials, selectedMaterial, selectedUnit, editingCartIndex]
+    [materials, selectedMaterial, selectedUnit, editingCartIndex],
   );
 
   const handleEditCartItem = (index: number) => {
@@ -635,7 +638,7 @@ export default function POSPage() {
       setLebar(String(item.lebar));
       setUseRounding(item.useRounding ?? false);
       setSelectedRollSize(
-        item.useRounding ? (item.selectedRollSize ?? null) : null
+        item.useRounding ? (item.selectedRollSize ?? null) : null,
       );
       const perPieceArea =
         item.useRounding &&
@@ -660,7 +663,7 @@ export default function POSPage() {
     // Pulihkan finishing dan harga override dari item yang sedang diedit
     setFormFinishing(item.finishing ? [...item.finishing] : []);
     setFormBiayaTambahan(
-      item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : []
+      item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : [],
     );
     if (
       item.originalHargaSatuan != null &&
@@ -706,7 +709,6 @@ export default function POSPage() {
     }
   };
 
-
   /**
    * Open the maklon modal — either for adding a new maklon line or editing
    * an existing one. Editing only works for cart lines that already have
@@ -719,7 +721,7 @@ export default function POSPage() {
 
   const handleSaveMaklonLine = (value: MaklonLineFormValue) => {
     const vendor = subkontraktor.find(
-      (v) => v.id === value.vendor_subkontrak_id
+      (v) => v.id === value.vendor_subkontrak_id,
     );
 
     // Build N CartItems, one per line — all share the same vendor + metode.
@@ -773,7 +775,7 @@ export default function POSPage() {
       console.error("Error deleting sale:", error);
       showMsg(
         "error",
-        error.message || "Terjadi kesalahan saat membatalkan transaksi"
+        error.message || "Terjadi kesalahan saat membatalkan transaksi",
       );
     }
   };
@@ -783,8 +785,8 @@ export default function POSPage() {
       sale.status_pembayaran === "LUNAS"
         ? "LUNAS (sudah dibayar penuh)"
         : sale.status_pembayaran === "SEBAGIAN"
-        ? "SEBAGIAN (masih ada sisa tagihan)"
-        : sale.status_pembayaran;
+          ? "SEBAGIAN (masih ada sisa tagihan)"
+          : sale.status_pembayaran;
 
     setConfirmDialog({
       show: true,
@@ -794,7 +796,7 @@ export default function POSPage() {
       }?\n\nPelanggan: ${
         sale.pelanggan_nama || "Pelanggan Umum"
       }\nTotal Transaksi: Rp ${sale.total_jumlah.toLocaleString(
-        "id-ID"
+        "id-ID",
       )}\nStatus Sekarang: ${currentStatus}\n${
         sale.sisa_piutang > 0
           ? `Sisa Tagihan: Rp ${sale.sisa_piutang.toLocaleString("id-ID")}\n`
@@ -809,14 +811,14 @@ export default function POSPage() {
 
           showMsg(
             "success",
-            `Status berhasil dikembalikan ke PIUTANG (${paymentsDeleted} pembayaran dihapus)`
+            `Status berhasil dikembalikan ke PIUTANG (${paymentsDeleted} pembayaran dihapus)`,
           );
           await loadAllData();
         } catch (error: any) {
           console.error("Error reverting sale:", error);
           showMsg(
             "error",
-            error.message || "Gagal mengembalikan status penjualan"
+            error.message || "Gagal mengembalikan status penjualan",
           );
         }
       },
@@ -839,7 +841,8 @@ export default function POSPage() {
     // Jika pengguna mau cetak faktur tapi pelanggan umum (belum dipilih) dan
     // belum mengisi kota, minta kota saja.
     const wantsFaktur = printType === "faktur" || printType === "both";
-    const resolvedFakturUmum = fakturUmum ?? (typedName ? { nama: typedName, kota: "Bekasi" } : null);
+    const resolvedFakturUmum =
+      fakturUmum ?? (typedName ? { nama: typedName, kota: "Bekasi" } : null);
     if (wantsFaktur && !selectedPelanggan && !resolvedFakturUmum) {
       setFakturUmumInput({ nama: "", kota: "Bekasi" });
       setShowFakturUmumModal(true);
@@ -892,7 +895,7 @@ export default function POSPage() {
   const processCheckout = async (
     total: number,
     bayar: number,
-    kembalian: number
+    kembalian: number,
   ) => {
     setRefreshing(true);
     try {
@@ -924,14 +927,16 @@ export default function POSPage() {
         biaya_subkontrak: item.biaya_subkontrak ?? null,
         metode_bayar_vendor: item.metode_bayar_vendor ?? null,
         deskripsi_pekerjaan: item.deskripsi_pekerjaan ?? null,
+        biaya_tambahan: (item.biaya_tambahan || [])
+          .filter((b) => b.label.trim() && b.nominal > 0)
+          .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
       }));
 
       const result = await createSaleAction({
         pelanggan_id: selectedPelanggan?.id,
-        pelanggan_nama_snapshot:
-          !selectedPelanggan
-            ? (fakturUmum?.nama || pencarianPelanggan.trim() || undefined)
-            : undefined,
+        pelanggan_nama_snapshot: !selectedPelanggan
+          ? fakturUmum?.nama || pencarianPelanggan.trim() || undefined
+          : undefined,
         pelanggan_kota: fakturUmum?.kota || undefined,
         items: saleItems,
         total_jumlah: total,
@@ -969,7 +974,7 @@ export default function POSPage() {
 
       showMsg(
         "success",
-        `Transaksi berhasil! Faktur: ${result.nomor_faktur} | SPK: ${result.spk_number}`
+        `Transaksi berhasil! Faktur: ${result.nomor_faktur} | SPK: ${result.spk_number}`,
       );
 
       // Print receipt and/or faktur based on user's choice
@@ -994,9 +999,8 @@ export default function POSPage() {
           | undefined;
 
         try {
-          const { getShopSettingsAction } = await import(
-            "@/app/pengaturan/actions"
-          );
+          const { getShopSettingsAction } =
+            await import("@/app/pengaturan/actions");
           const settings = await getShopSettingsAction();
           shopSettings = {
             nama_toko: settings.nama_toko,
@@ -1022,47 +1026,60 @@ export default function POSPage() {
           tanggal: tanggalIso,
           shop: shopSettings,
           pelanggan_nama:
-            selectedPelanggan?.nama || fakturUmum?.nama || pencarianPelanggan.trim() || undefined,
+            selectedPelanggan?.nama ||
+            fakturUmum?.nama ||
+            pencarianPelanggan.trim() ||
+            undefined,
           pelanggan_telepon: selectedPelanggan?.telepon,
           kasir_nama: currentUser?.nama_pengguna || "Kasir",
-          items: cart.map((item, index) => ({
-            nama:
-              item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-                ? item.deskripsi_pekerjaan
-                : item.barang_nama,
-            jumlah: item.jumlah,
-            satuan: item.nama_satuan,
-            harga:
-              item.jumlah > 0
-                ? lineCharges[index] / item.jumlah
-                : item.harga_satuan,
-            subtotal: lineCharges[index],
-            dimensi:
-              item.butuh_dimensi && item.panjang && item.lebar
-                ? item.useRounding &&
-                  item.selectedRollSize != null &&
-                  item.billedPanjang != null &&
-                  item.billedLebar != null
-                  ? formatRollCartDetailLine(item)
-                  : `${(item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : ""}${item.panjang.toFixed(2)} × ${item.lebar.toFixed(2)} m = ${item.jumlah.toFixed(2)} m²`
-                : undefined,
-          })),
+          items: cart.map((item, index) => {
+            const lineTotal = lineCharges[index];
+            const cetakInput = {
+              jumlah: item.jumlah,
+              nama_satuan: item.nama_satuan,
+              panjang: item.panjang,
+              lebar: item.lebar,
+              billed_panjang: item.billedPanjang,
+              billed_lebar: item.billedLebar,
+              jumlah_roll: item.jumlah_roll,
+            };
+            const { qty, satuan } = qtySatuanCetakPenjualan(cetakInput);
+            return {
+              nama:
+                item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
+                  ? item.deskripsi_pekerjaan
+                  : item.barang_nama,
+              jumlah: qty,
+              satuan,
+              harga: qty > 0 ? lineTotal / qty : item.harga_satuan,
+              subtotal: lineTotal,
+              dimensi:
+                item.butuh_dimensi && item.panjang && item.lebar
+                  ? item.useRounding &&
+                    item.selectedRollSize != null &&
+                    item.billedPanjang != null &&
+                    item.billedLebar != null
+                    ? formatRollCartDetailLine(item)
+                    : formatDimensiBarisThermal(cetakInput)
+                  : undefined,
+              biaya_tambahan: (item.biaya_tambahan || [])
+                .filter((b) => b.label.trim() && b.nominal > 0)
+                .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+            };
+          }),
           total: total,
           jumlah_bayar: bayar,
           kembalian: kembalian,
           metode_pembayaran: paymentMethod,
           catatan: catatan.trim() || undefined,
-          biaya_tambahan: checkoutBiayaTambahan,
         });
 
         const buildFakturData = async () => {
-          const { formatUkuran } = await import("@/lib/faktur-print");
-          const { formatNsfpString, formatNpwp } = await import(
-            "@/lib/ppn-helpers"
-          );
+          const { formatNsfpString, formatNpwp } =
+            await import("@/lib/ppn-helpers");
           const sisa = Math.max(
             0,
-            total - (paymentMethod === "NET30" ? 0 : bayar)
+            total - (paymentMethod === "NET30" ? 0 : bayar),
           );
 
           const shop = shopSettings
@@ -1076,17 +1093,18 @@ export default function POSPage() {
           // Untuk safety di client side, hitung ulang dari ppnFaktur input.
           const ppn = ppnFaktur
             ? (() => {
-                const { hitungPpn } = require("@/lib/ppn-helpers") as typeof import("@/lib/ppn-helpers");
+                const { hitungPpn } =
+                  require("@/lib/ppn-helpers") as typeof import("@/lib/ppn-helpers");
                 const breakdown = hitungPpn(
                   total,
                   ppnFaktur.ppn_persen,
-                  ppnFaktur.ppn_metode
+                  ppnFaktur.ppn_metode,
                 );
                 return {
                   nsfp: formatNsfpString(
                     ppnFaktur.nsfp_kode_transaksi,
                     ppnFaktur.nsfp_tahun,
-                    ppnFaktur.nsfp_nomor_seri.padStart(8, "0")
+                    ppnFaktur.nsfp_nomor_seri.padStart(8, "0"),
                   ),
                   kode_transaksi: ppnFaktur.nsfp_kode_transaksi,
                   dpp_total: breakdown.dpp,
@@ -1107,60 +1125,60 @@ export default function POSPage() {
             nomor_faktur: result.nomor_faktur,
             tanggal: tanggalIso,
             pelanggan_nama:
-              selectedPelanggan?.nama || fakturUmum?.nama || pencarianPelanggan.trim() || "",
+              selectedPelanggan?.nama ||
+              fakturUmum?.nama ||
+              pencarianPelanggan.trim() ||
+              "",
             pelanggan_detail: [
               selectedPelanggan?.kontak_person
                 ? `Kontak: ${selectedPelanggan.kontak_person}`
                 : "",
-              selectedPelanggan?.telepon ? `Telp: ${selectedPelanggan.telepon}` : "",
-              selectedPelanggan?.email ? `Email: ${selectedPelanggan.email}` : "",
+              selectedPelanggan?.telepon
+                ? `Telp: ${selectedPelanggan.telepon}`
+                : "",
+              selectedPelanggan?.email
+                ? `Email: ${selectedPelanggan.email}`
+                : "",
               selectedPelanggan?.alamat || "",
             ].filter(Boolean),
             kota: fakturUmum?.kota || "Bekasi",
-            items: cart.map((item, index) => ({
-              // For maklon lines, the customer-facing item name is the
-              // deskripsi_pekerjaan; the placeholder barang name should
-              // never reach the printed faktur.
-              nama:
-                item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-                  ? item.deskripsi_pekerjaan
-                  : item.barang_nama,
-              ukuran:
-                item.butuh_dimensi && item.panjang && item.lebar
-                  ? item.useRounding &&
-                    item.billedPanjang != null &&
-                    item.billedLebar != null
-                    ? formatUkuran(item.billedPanjang, item.billedLebar)
-                    : formatUkuran(item.panjang, item.lebar)
-                  : "",
-              qty: item.jumlah,
-              satuan: item.nama_satuan,
-              harga:
-                item.jumlah > 0
-                  ? lineCharges[index] / item.jumlah
-                  : item.harga_satuan,
-              jumlah: lineCharges[index],
-            })),
+            items: cart.map((item, index) => {
+              const lineTotal = lineCharges[index];
+              return mapPenjualanItemKeFaktur({
+                barang_nama: item.barang_nama,
+                tipe_item: item.tipe_item,
+                deskripsi_pekerjaan: item.deskripsi_pekerjaan,
+                jumlah: item.jumlah,
+                nama_satuan: item.nama_satuan,
+                panjang: item.panjang,
+                lebar: item.lebar,
+                billed_panjang: item.billedPanjang,
+                billed_lebar: item.billedLebar,
+                jumlah_roll: item.jumlah_roll,
+                harga_satuan: item.harga_satuan,
+                subtotal: lineTotal,
+                biaya_tambahan: (item.biaya_tambahan || [])
+                  .filter((b) => b.label.trim() && b.nominal > 0)
+                  .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+              });
+            }),
             total,
             bayar: paymentMethod === "NET30" ? 0 : bayar,
             sisa,
             catatan: catatan.trim() || undefined,
             ppn,
             shop,
-            biaya_tambahan: checkoutBiayaTambahan,
           };
         };
 
         try {
           if (printType === "thermal" || printType === "both") {
-            const { printThermalInvoice } = await import(
-              "@/lib/thermal-print"
-            );
+            const { printThermalInvoice } = await import("@/lib/thermal-print");
             const printed = printThermalInvoice(buildThermalData());
             if (!printed) {
               showMsg(
                 "error",
-                "Transaksi tersimpan, tetapi struk tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+                "Transaksi tersimpan, tetapi struk tidak bisa dibuka. Izinkan pop-up untuk situs ini.",
               );
             }
           }
@@ -1171,7 +1189,7 @@ export default function POSPage() {
             if (!printed) {
               showMsg(
                 "error",
-                "Transaksi tersimpan, tetapi faktur tidak bisa dibuka. Izinkan pop-up untuk situs ini."
+                "Transaksi tersimpan, tetapi faktur tidak bisa dibuka. Izinkan pop-up untuk situs ini.",
               );
             }
           }
@@ -1179,7 +1197,7 @@ export default function POSPage() {
           console.error("Error mencetak faktur:", printError);
           showMsg(
             "error",
-            "Transaksi tersimpan, tetapi gagal menyiapkan dokumen untuk dicetak."
+            "Transaksi tersimpan, tetapi gagal menyiapkan dokumen untuk dicetak.",
           );
         }
       }
@@ -1243,64 +1261,67 @@ export default function POSPage() {
                   Pelanggan
                 </h3>
 
-                <div className="relative flex-1 min-w-0" ref={customerDropdownRef}>
-                <input
-                  type="text"
-                  value={pencarianPelanggan}
-                  onChange={(e) => {
-                    setPencarianPelanggan(e.target.value);
-                    setShowDropdownPelanggan(true);
-                    setIndexPelangganTerpilih(-1);
-                  }}
-                  onFocus={() => setShowDropdownPelanggan(true)}
-                  onKeyDown={handlePelangganKeyDown}
-                  placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
-                  className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
-                />
+                <div
+                  className="relative flex-1 min-w-0"
+                  ref={customerDropdownRef}
+                >
+                  <input
+                    type="text"
+                    value={pencarianPelanggan}
+                    onChange={(e) => {
+                      setPencarianPelanggan(e.target.value);
+                      setShowDropdownPelanggan(true);
+                      setIndexPelangganTerpilih(-1);
+                    }}
+                    onFocus={() => setShowDropdownPelanggan(true)}
+                    onKeyDown={handlePelangganKeyDown}
+                    placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
+                    className="w-full pl-4 pr-36 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                  />
 
-                {showDropdownPelanggan && filteredPelanggan.length > 0 && (
-                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                    {filteredPelanggan.map((customer, index) => (
-                      <div
-                        key={customer.id}
-                        onClick={() => handlePilihPelanggan(customer)}
-                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
-                          index === indexPelangganTerpilih
-                            ? "bg-[#00afef] text-white"
-                            : "hover:bg-slate-50 dark:hover:bg-white/5"
-                        }`}
-                      >
+                  {showDropdownPelanggan && filteredPelanggan.length > 0 && (
+                    <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                      {filteredPelanggan.map((customer, index) => (
                         <div
-                          className={`font-semibold ${
+                          key={customer.id}
+                          onClick={() => handlePilihPelanggan(customer)}
+                          className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
                             index === indexPelangganTerpilih
-                              ? "text-white"
-                              : "text-gray-800 dark:text-slate-100"
+                              ? "bg-[#00afef] text-white"
+                              : "hover:bg-slate-50 dark:hover:bg-white/5"
                           }`}
                         >
-                          {customer.nama}
-                        </div>
-                        {customer.member_status === 1 && (
-                          <span
-                            className={`text-xs px-2 py-1 rounded ${
+                          <div
+                            className={`font-semibold ${
                               index === indexPelangganTerpilih
-                                ? "bg-white dark:bg-slate-900 text-[#00afef]"
-                                : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                ? "text-white"
+                                : "text-gray-800 dark:text-slate-100"
                             }`}
                           >
-                            MEMBER
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                            {customer.nama}
+                          </div>
+                          {customer.member_status === 1 && (
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                index === indexPelangganTerpilih
+                                  ? "bg-white dark:bg-slate-900 text-[#00afef]"
+                                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                              }`}
+                            >
+                              MEMBER
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                <button
-                  onClick={() => setShowCustomerModal(true)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
-                >
-                  + Pelanggan Baru
-                </button>
+                  <button
+                    onClick={() => setShowCustomerModal(true)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
+                  >
+                    + Pelanggan Baru
+                  </button>
                 </div>
               </div>
 
@@ -1450,31 +1471,31 @@ export default function POSPage() {
                     aria-label="Filter kategori barang"
                   >
                     <div className="flex flex-nowrap gap-2 w-max">
-                    <button
-                      type="button"
-                      onClick={() => setMaterialCategoryFilter("ALL")}
-                      className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
-                        materialCategoryFilter === "ALL"
-                          ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
-                          : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
-                      }`}
-                    >
-                      Semua
-                    </button>
-                    {materialCategories.map((cat) => (
                       <button
-                        key={cat}
                         type="button"
-                        onClick={() => setMaterialCategoryFilter(cat)}
+                        onClick={() => setMaterialCategoryFilter("ALL")}
                         className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
-                          materialCategoryFilter === cat
+                          materialCategoryFilter === "ALL"
                             ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
                             : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
                         }`}
                       >
-                        {cat}
+                        Semua
                       </button>
-                    ))}
+                      {materialCategories.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setMaterialCategoryFilter(cat)}
+                          className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                            materialCategoryFilter === cat
+                              ? "border-[#00afef] bg-[#00afef] text-white shadow-sm"
+                              : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:border-[#00afef]/50 hover:bg-slate-50 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1578,7 +1599,7 @@ export default function POSPage() {
                             value={selectedUnit?.id || ""}
                             onChange={(e) => {
                               const unit = selectedMaterial.unit_prices.find(
-                                (u) => u.id === e.target.value
+                                (u) => u.id === e.target.value,
                               );
                               setSelectedUnit(unit || null);
                             }}
@@ -1600,25 +1621,9 @@ export default function POSPage() {
                         {selectedMaterial.butuh_dimensi_status === 1 && (
                           <div className="space-y-2">
                             <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
-                              Dimensi (m)
+                              Ukuran (Lebar × Panjang, m)
                             </label>
                             <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={panjang}
-                                  onChange={(e) => setPanjang(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      handleAddToCart();
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
-                                  placeholder="Panjang"
-                                />
-                              </div>
                               <div>
                                 <input
                                   type="number"
@@ -1633,6 +1638,22 @@ export default function POSPage() {
                                   }}
                                   className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="Lebar"
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={panjang}
+                                  onChange={(e) => setPanjang(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleAddToCart();
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                                  placeholder="Panjang"
                                 />
                               </div>
                             </div>
@@ -1670,10 +1691,22 @@ export default function POSPage() {
                                   : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
                               }`}
                             >
-                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                              <svg
+                                className="w-3 h-3 shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                                />
                               </svg>
-                              {formFinishing.length > 0 ? `Finishing (${formFinishing.length})` : "+ Finishing"}
+                              {formFinishing.length > 0
+                                ? `Finishing (${formFinishing.length})`
+                                : "+ Finishing"}
                             </button>
                             <button
                               type="button"
@@ -1684,10 +1717,22 @@ export default function POSPage() {
                                   : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-[#2266ff]/50"
                               }`}
                             >
-                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              <svg
+                                className="w-3 h-3 shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
                               </svg>
-                              {formHargaSatuan !== null ? "Harga Ubah" : "Ubah Harga"}
+                              {formHargaSatuan !== null
+                                ? "Harga Ubah"
+                                : "Ubah Harga"}
                             </button>
                           </div>
 
@@ -1696,7 +1741,9 @@ export default function POSPage() {
                               <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
                                 Biaya Tambahan
                                 {formBiayaTambahan.length > 0 && (
-                                  <span className="ml-1 text-[#00afef]">({formBiayaTambahan.length})</span>
+                                  <span className="ml-1 text-[#00afef]">
+                                    ({formBiayaTambahan.length})
+                                  </span>
                                 )}
                               </span>
                               <button
@@ -1719,13 +1766,19 @@ export default function POSPage() {
                             ) : (
                               <div className="space-y-1">
                                 {formBiayaTambahan.map((biaya, idx) => (
-                                  <div key={idx} className="flex items-center gap-1">
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-1"
+                                  >
                                     <input
                                       type="text"
                                       value={biaya.label}
                                       onChange={(e) => {
                                         const next = [...formBiayaTambahan];
-                                        next[idx] = { ...next[idx], label: e.target.value };
+                                        next[idx] = {
+                                          ...next[idx],
+                                          label: e.target.value,
+                                        };
                                         setFormBiayaTambahan(next);
                                       }}
                                       placeholder="Ongkir, pasang, dll"
@@ -1740,7 +1793,8 @@ export default function POSPage() {
                                         const next = [...formBiayaTambahan];
                                         next[idx] = {
                                           ...next[idx],
-                                          nominal: parseFloat(e.target.value) || 0,
+                                          nominal:
+                                            parseFloat(e.target.value) || 0,
                                         };
                                         setFormBiayaTambahan(next);
                                       }}
@@ -1751,14 +1805,26 @@ export default function POSPage() {
                                       type="button"
                                       onClick={() =>
                                         setFormBiayaTambahan(
-                                          formBiayaTambahan.filter((_, i) => i !== idx)
+                                          formBiayaTambahan.filter(
+                                            (_, i) => i !== idx,
+                                          ),
                                         )
                                       }
                                       className="p-0.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                                       aria-label="Hapus biaya"
                                     >
-                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                      <svg
+                                        className="w-3.5 h-3.5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          d="M6 18L18 6M6 6l12 12"
+                                        />
                                       </svg>
                                     </button>
                                   </div>
@@ -1825,7 +1891,9 @@ export default function POSPage() {
                               <select
                                 value={selectedRollSize ?? ""}
                                 onChange={(e) =>
-                                  setSelectedRollSize(parseFloat(e.target.value))
+                                  setSelectedRollSize(
+                                    parseFloat(e.target.value),
+                                  )
                                 }
                                 className="w-full px-3 py-2 text-sm border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
                               >
@@ -1834,27 +1902,28 @@ export default function POSPage() {
                                     isRollSizeValidForDimensions(
                                       parsedPanjang,
                                       parsedLebar,
-                                      size
-                                    )
+                                      size,
+                                    ),
                                   )
                                   .map((size) => {
                                     const billed = getBillableDimensionsForRoll(
                                       parsedPanjang,
                                       parsedLebar,
-                                      size
+                                      size,
                                     );
                                     if (!billed) return null;
                                     const area = billed.area;
-                                    const harga = selectedPelanggan?.member_status
-                                      ? selectedUnit?.harga_member ||
-                                        selectedUnit?.harga_jual ||
-                                        0
-                                      : selectedUnit?.harga_jual || 0;
+                                    const harga =
+                                      selectedPelanggan?.member_status
+                                        ? selectedUnit?.harga_member ||
+                                          selectedUnit?.harga_jual ||
+                                          0
+                                        : selectedUnit?.harga_jual || 0;
                                     const subRaw = area * harga;
                                     const printLen = getRollPrintLength(
                                       billed.panjang,
                                       billed.lebar,
-                                      size
+                                      size,
                                     );
                                     return (
                                       <option key={size} value={size}>
@@ -1869,17 +1938,18 @@ export default function POSPage() {
                                     );
                                   })}
                               </select>
-                              {rollBillingPreview && selectedRollSize != null && (
-                                <p className="text-xs text-gray-500 dark:text-slate-400 leading-snug">
-                                  Tagih:{" "}
-                                  <span className="font-semibold text-[#00afef]">
-                                    Rp{" "}
-                                    {roundUpToThousand(
-                                      rollBillingPreview.subtotalRaw
-                                    ).toLocaleString("id-ID")}
-                                  </span>
-                                </p>
-                              )}
+                              {rollBillingPreview &&
+                                selectedRollSize != null && (
+                                  <p className="text-xs text-gray-500 dark:text-slate-400 leading-snug">
+                                    Tagih:{" "}
+                                    <span className="font-semibold text-[#00afef]">
+                                      Rp{" "}
+                                      {roundUpToThousand(
+                                        rollBillingPreview.subtotalRaw,
+                                      ).toLocaleString("id-ID")}
+                                    </span>
+                                  </p>
+                                )}
                             </div>
                           )}
 
@@ -1901,8 +1971,8 @@ export default function POSPage() {
                   </div>
                 )}
               </div>
+            </div>
           </div>
-        </div>
 
           {/* Right: Cart */}
           <div className="lg:col-span-1 space-y-3">
@@ -1946,7 +2016,9 @@ export default function POSPage() {
               onPrintTypeChange={setPrintType}
               onCheckout={handleCheckout}
               customerName={
-                selectedPelanggan?.nama || pencarianPelanggan.trim() || undefined
+                selectedPelanggan?.nama ||
+                pencarianPelanggan.trim() ||
+                undefined
               }
             />
           </div>

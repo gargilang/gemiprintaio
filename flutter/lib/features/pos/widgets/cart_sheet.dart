@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gemiprint/core/penjualan_cetak_utils.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
@@ -213,17 +214,39 @@ class _CartSheetState extends State<CartSheet> {
 
   Widget _line(int i) {
     final item = widget.cart[i];
+    final isDim = item.butuhDimensi && !item.isMaklon;
+    final ukuran = isDim
+        ? formatUkuranCetakInput(
+            panjang: item.panjang,
+            lebar: item.lebar,
+            billedPanjang: item.billedPanjang,
+            billedLebar: item.billedLebar,
+          )
+        : null;
+    final qtyLabel = isDim
+        ? formatQtyLabel(ItemCetakPenjualan(
+            jumlah: item.jumlah,
+            namaSatuan: item.namaSatuan,
+            panjang: item.panjang,
+            lebar: item.lebar,
+            billedPanjang: item.billedPanjang,
+            billedLebar: item.billedLebar,
+          ))
+        : null;
+    final rollDetail = isDim && item.billedPanjang != null
+        ? formatRollCartDetailLine(
+            billedPanjang: item.billedPanjang,
+            billedLebar: item.billedLebar,
+            selectedRollSize: item.selectedRollSize,
+            jumlah: item.jumlah,
+            hargaSatuan: item.hargaSatuan,
+          )
+        : '';
     final detail = item.isMaklon
-        ? 'Subkontrak${item.vendorSubkontrakNama != null ? ' · ${item.vendorSubkontrakNama}' : ''}'
-        : (item.billedPanjang != null
-              ? formatRollCartDetailLine(
-                  billedPanjang: item.billedPanjang,
-                  billedLebar: item.billedLebar,
-                  selectedRollSize: item.selectedRollSize,
-                  jumlah: item.jumlah,
-                  hargaSatuan: item.hargaSatuan,
-                )
-              : '${item.jumlah.toStringAsFixed(item.butuhDimensi ? 2 : 0)} ${item.namaSatuan} @ Rp ${formatPosUnitPrice(item.hargaSatuan)}');
+        ? 'Subkontrak${item.vendorSubkontrakNama != null ? ' - ${item.vendorSubkontrakNama}' : ''}'
+        : (isDim
+            ? ''
+            : '${item.jumlah.toStringAsFixed(item.butuhDimensi ? 2 : 0)} ${item.namaSatuan} @ Rp ${formatPosUnitPrice(item.hargaSatuan)}');
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
       child: Padding(
@@ -261,6 +284,16 @@ class _CartSheetState extends State<CartSheet> {
                 ),
               ],
             ),
+            if (isDim && ukuran != null)
+              Text(
+                'Ukuran: $ukuran - Qty: $qtyLabel',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              ),
+            if (rollDetail.isNotEmpty)
+              Text(
+                rollDetail,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              ),
             if (detail.isNotEmpty)
               Text(
                 detail,

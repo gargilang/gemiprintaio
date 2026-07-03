@@ -10,6 +10,13 @@ const saleFinishingSchema = z
   })
   .passthrough();
 
+const biayaTambahanSchema = z
+  .object({
+    label: z.string(),
+    nominal: finiteNumber,
+  })
+  .passthrough();
+
 const saleItemSchema = z
   .object({
     barang_id: z.string().min(1),
@@ -31,13 +38,7 @@ const saleItemSchema = z
     biaya_subkontrak: finiteNumber.nullable().optional(),
     metode_bayar_vendor: z.enum(["CASH", "NET30"]).nullable().optional(),
     deskripsi_pekerjaan: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-const biayaTambahanSchema = z
-  .object({
-    label: z.string(),
-    nominal: finiteNumber,
+    biaya_tambahan: z.array(biayaTambahanSchema).optional(),
   })
   .passthrough();
 

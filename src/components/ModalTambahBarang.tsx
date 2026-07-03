@@ -7,6 +7,7 @@ import PanelHargaSatuan from "./barang/PanelHargaSatuan";
 import PanelKomponenRakitan from "@/components/PanelKomponenRakitan";
 import type { UnitPrice } from "./barang/types-barang";
 import {
+  findDuplicateNamaProduk,
   getReferensiUnitPrice,
   normalizeDefaultStatusForSave,
 } from "@/lib/barang-unit-utils";
@@ -268,7 +269,7 @@ export default function ModalTambahBarang({
 
   const removeUnitPrice = (index: number) => {
     if (unitPrices.length <= 1) {
-      alert("Minimal harus ada 1 harga satuan");
+      alert("Minimal harus ada 1 produk jual");
       return;
     }
     setUnitPrices(unitPrices.filter((_, i) => i !== index));
@@ -330,13 +331,21 @@ export default function ModalTambahBarang({
       // Validasi produk jual
       for (const up of unitPrices) {
         if (!up.nama_satuan || !up.nama_satuan.trim()) {
-          alert("Nama satuan tidak boleh kosong");
+          alert("Satuan tidak boleh kosong");
           return;
         }
         if (up.faktor_konversi <= 0) {
           alert("Faktor konversi harus lebih dari 0");
           return;
         }
+      }
+
+      const duplicateNama = findDuplicateNamaProduk(unitPrices);
+      if (duplicateNama) {
+        alert(
+          `Nama produk "${duplicateNama}" sudah dipakai. Setiap produk jual harus punya nama unik.`,
+        );
+        return;
       }
 
       setLoading(true);

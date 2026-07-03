@@ -1,9 +1,20 @@
 import type { ProductionOrder } from "@/lib/services/production-service";
+import {
+  formatTampilanDimensiSpk,
+  formatTampilanQtySpk,
+} from "@/lib/penjualan-cetak-utils";
 
-// HTML cetak SPK (thermal 80mm). Diekstrak dari spk/page (Fase 6 B6).
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
-  export function generateSPKHTML(order: ProductionOrder): string {
-    return `
+export function generateSPKHTML(order: ProductionOrder): string {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -200,14 +211,14 @@ import type { ProductionOrder } from "@/lib/services/production-service";
 
   <div class="items">
     ${(order.items || [])
-      .map(
-        (item, idx) => `
+      .map((item, idx) => {
+        return `
     <div class="item">
-      <div class="item-name">${idx + 1}. ${item.barang_nama}</div>
-      <div class="item-detail">Jumlah: ${item.jumlah} ${item.nama_satuan}</div>
+      <div class="item-name">${idx + 1}. ${escapeHtml(item.barang_nama)}</div>
+      <div class="item-detail">Jumlah: ${escapeHtml(formatTampilanQtySpk(item))}</div>
       ${
-        item.panjang && item.lebar
-          ? `<div class="item-detail">Ukuran: ${item.panjang} x ${item.lebar} cm</div>`
+        formatTampilanDimensiSpk(item)
+          ? `<div class="item-detail">Ukuran: ${escapeHtml(formatTampilanDimensiSpk(item)!)}</div>`
           : ""
       }
       ${
@@ -230,7 +241,7 @@ import type { ProductionOrder } from "@/lib/services/production-service";
             (f) =>
               `- ${f.jenis_finishing}${
                 f.keterangan ? ` (${f.keterangan})` : ""
-              }`
+              }`,
           )
           .join("<br>")}
       </div>
@@ -239,12 +250,12 @@ import type { ProductionOrder } from "@/lib/services/production-service";
       }
       ${
         item.catatan_produksi
-          ? `<div class="item-detail"><strong>Catatan:</strong> ${item.catatan_produksi}</div>`
+          ? `<div class="item-detail"><strong>Catatan:</strong> ${escapeHtml(item.catatan_produksi)}</div>`
           : ""
       }
     </div>
-    `
-      )
+    `;
+      })
       .join("")}
   </div>
 
@@ -272,4 +283,4 @@ import type { ProductionOrder } from "@/lib/services/production-service";
 </body>
 </html>
     `;
-  }
+}

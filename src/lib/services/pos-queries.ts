@@ -29,7 +29,6 @@ import { getShopSettings } from "./shop-settings-service";
 // TIPE
 // ============================================================================
 
-
 export interface Sale {
   id: string;
   nomor_faktur: string;
@@ -56,7 +55,12 @@ export interface Sale {
   member_status?: boolean | number;
   items?: SaleItem[];
   /** Header-level extra charges. */
-  biaya_tambahan?: Array<{ id?: string; label: string; nominal: number; urutan?: number }>;
+  biaya_tambahan?: Array<{
+    id?: string;
+    label: string;
+    nominal: number;
+    urutan?: number;
+  }>;
   biaya_tambahan_total?: number;
 }
 
@@ -81,6 +85,8 @@ export interface SaleItem {
   billed_lebar?: number | null;
   recommended_roll_width_m?: number | null;
   roll_inventory_deferred?: number | null;
+  /** Biaya tambahan yang ditautkan ke item ini (item_penjualan_id). */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
   dibuat_pada?: string;
 }
 
@@ -188,7 +194,6 @@ export interface CreateSaleData {
 // FUNGSI HELPER
 // ============================================================================
 
-
 function getTodayJakarta(): string {
   return new Date().toLocaleDateString("sv-SE", {
     timeZone: "Asia/Jakarta",
@@ -200,12 +205,15 @@ function positiveNumber(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function isRollInventoryLine(material: any, item: {
-  panjang?: number | null;
-  lebar?: number | null;
-  recommended_roll_width_m?: number | null;
-  selectedRollSize?: number | null;
-}): boolean {
+function isRollInventoryLine(
+  material: any,
+  item: {
+    panjang?: number | null;
+    lebar?: number | null;
+    recommended_roll_width_m?: number | null;
+    selectedRollSize?: number | null;
+  },
+): boolean {
   return (
     Number(material?.lacak_inventori_status) !== 0 &&
     Number(material?.butuh_dimensi_status) === 1 &&
@@ -217,7 +225,7 @@ function isRollInventoryLine(material: any, item: {
 
 async function fallbackAverageCostPerBaseUnit(
   barangId: string,
-  hargaSatuanId?: string | null
+  hargaSatuanId?: string | null,
 ): Promise<number> {
   const unitPricesResult = await db.query<any>("harga_barang_satuan", {
     where: { barang_id: barangId },
@@ -243,17 +251,13 @@ async function fallbackAverageCostPerBaseUnit(
  * yearly  → YYYY
  * never   → "" (tidak pakai tanggal)
  */
-function getDatePart(
-  tanggal: string,
-  reset: string,
-  format: string
-): string {
+function getDatePart(tanggal: string, reset: string, format: string): string {
   if (format === "PREFIX-SEQ") return "";
   const d = tanggal.replace(/-/g, "");
-  if (reset === "daily") return d;                    // 20260524
-  if (reset === "monthly") return d.slice(0, 6);      // 202605
-  if (reset === "yearly") return d.slice(0, 4);       // 2026
-  return d;                                           // never → still embed full date
+  if (reset === "daily") return d; // 20260524
+  if (reset === "monthly") return d.slice(0, 6); // 202605
+  if (reset === "yearly") return d.slice(0, 4); // 2026
+  return d; // never → still embed full date
 }
 
 /**
@@ -266,7 +270,7 @@ function extractSeqFromNumber(
   format: string,
   datePart: string,
   padding: number,
-  startSeq: number
+  startSeq: number,
 ): number {
   if (!lastNumber) return startSeq;
   try {
@@ -314,7 +318,7 @@ async function generateInvoiceNumber(tanggal: string): Promise<string> {
       format,
       datePart,
       padding,
-      startSeq
+      startSeq,
     );
   }
 
@@ -350,7 +354,7 @@ async function generateSPKNumber(): Promise<string> {
       format,
       datePart,
       padding,
-      startSeq
+      startSeq,
     );
   }
 
@@ -408,10 +412,10 @@ export async function getPOSInitData(): Promise<POSInitData> {
 
     // Indeks kategori/subkategori sekali (hindari .find berulang per produk).
     const categoryById = new Map<string, any>(
-      categories.map((c: any) => [c.id, c])
+      categories.map((c: any) => [c.id, c]),
     );
     const subcategoryById = new Map<string, any>(
-      subcategories.map((sc: any) => [sc.id, sc])
+      subcategories.map((sc: any) => [sc.id, sc]),
     );
 
     // Lengkapi barang dengan harga satuan dan nama kategori
@@ -481,8 +485,12 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       if (!sales || sales.length === 0) return [];
 
       const saleIds = sales.map((s: any) => s.id);
-      const pelangganIds = [...new Set(sales.map((s: any) => s.pelanggan_id).filter(Boolean))];
-      const kasirIds = [...new Set(sales.map((s: any) => s.kasir_id).filter(Boolean))];
+      const pelangganIds = [
+        ...new Set(sales.map((s: any) => s.pelanggan_id).filter(Boolean)),
+      ];
+      const kasirIds = [
+        ...new Set(sales.map((s: any) => s.kasir_id).filter(Boolean)),
+      ];
 
       // 2–7. Ambil semua data terkait sekaligus secara paralel
       const [
@@ -494,12 +502,21 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         biayaTambahanRes,
       ] = await Promise.all([
         supabase.from("item_penjualan").select("*").in("penjualan_id", saleIds),
-        supabase.from("piutang_penjualan").select("*").in("id_penjualan", saleIds),
+        supabase
+          .from("piutang_penjualan")
+          .select("*")
+          .in("id_penjualan", saleIds),
         pelangganIds.length > 0
-          ? supabase.from("pelanggan").select("id,nama,member_status").in("id", pelangganIds)
+          ? supabase
+              .from("pelanggan")
+              .select("id,nama,member_status")
+              .in("id", pelangganIds)
           : Promise.resolve({ data: [], error: null }),
         kasirIds.length > 0
-          ? supabase.from("profil").select("id,nama_pengguna").in("id", kasirIds)
+          ? supabase
+              .from("profil")
+              .select("id,nama_pengguna")
+              .in("id", kasirIds)
           : Promise.resolve({ data: [], error: null }),
         // Pelunasan dibutuhkan untuk tahu has_pelunasan — diambil sekaligus
         supabase.from("pelunasan_piutang").select("id,id_piutang"),
@@ -521,7 +538,9 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const allBiayaTambahan: any[] = biayaTambahanRes.data || [];
 
       // Ambil nama barang untuk semua barang_id unik dalam satu query
-      const barangIds = [...new Set(allItems.map((i: any) => i.barang_id).filter(Boolean))];
+      const barangIds = [
+        ...new Set(allItems.map((i: any) => i.barang_id).filter(Boolean)),
+      ];
       const barangMap = new Map<string, string>();
       if (barangIds.length > 0) {
         const { data: barangRows } = await supabase
@@ -537,7 +556,10 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const itemsByPenjualanId = new Map<string, any[]>();
       for (const item of allItems) {
         const list = itemsByPenjualanId.get(item.penjualan_id) || [];
-        list.push({ ...item, barang_nama: barangMap.get(item.barang_id) || "" });
+        list.push({
+          ...item,
+          barang_nama: barangMap.get(item.barang_id) || "",
+        });
         itemsByPenjualanId.set(item.penjualan_id, list);
       }
 
@@ -552,6 +574,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       }
 
       const biayaTambahanBySaleId = new Map<string, any[]>();
+      const biayaByItemId = new Map<string, any[]>();
       for (const b of allBiayaTambahan) {
         const list = biayaTambahanBySaleId.get(b.penjualan_id) || [];
         list.push({
@@ -561,9 +584,21 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           urutan: b.urutan ?? 0,
         });
         biayaTambahanBySaleId.set(b.penjualan_id, list);
+        if (b.item_penjualan_id) {
+          const itemList = biayaByItemId.get(b.item_penjualan_id) || [];
+          itemList.push({
+            label: b.label,
+            nominal: Number(b.nominal) || 0,
+            urutan: b.urutan ?? 0,
+          });
+          biayaByItemId.set(b.item_penjualan_id, itemList);
+        }
       }
       // Urutkan setiap list berdasarkan urutan
       for (const [, list] of biayaTambahanBySaleId) {
+        list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+      }
+      for (const [, list] of biayaByItemId) {
         list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
       }
 
@@ -577,7 +612,9 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         const customer = customerMap.get(sale.pelanggan_id);
         const kasir = userMap.get(sale.kasir_id);
         const piutang = piutangBySaleId.get(sale.id);
-        const has_pelunasan = piutang ? pelunasanByPiutangId.has(piutang.id) : false;
+        const has_pelunasan = piutang
+          ? pelunasanByPiutangId.has(piutang.id)
+          : false;
 
         return {
           ...sale,
@@ -587,7 +624,10 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           status_pembayaran: piutang?.status || "LUNAS",
           sisa_piutang: piutang?.sisa_piutang || 0,
           has_pelunasan,
-          items: itemsByPenjualanId.get(sale.id) || [],
+          items: (itemsByPenjualanId.get(sale.id) || []).map((it) => ({
+            ...it,
+            biaya_tambahan: biayaByItemId.get(it.id) || [],
+          })),
           biaya_tambahan: biayaTambahanBySaleId.get(sale.id) || [],
         };
       });
@@ -628,7 +668,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
     const customers = customersResult.data || [];
     const users = usersResult.data || [];
     const piutangList = (piutangResult.data || []).filter((p: any) =>
-      saleIdSet.has(p.id_penjualan)
+      saleIdSet.has(p.id_penjualan),
     );
 
     // Peta nama barang (katalog, jumlahnya terbatas).
@@ -642,7 +682,10 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
     for (const item of (allItemsResult.data || []) as any[]) {
       if (!saleIdSet.has(item.penjualan_id)) continue;
       const list = itemsByPenjualanId.get(item.penjualan_id) || [];
-      list.push({ ...item, barang_nama: barangNameMap.get(item.barang_id) || "" });
+      list.push({
+        ...item,
+        barang_nama: barangNameMap.get(item.barang_id) || "",
+      });
       itemsByPenjualanId.set(item.penjualan_id, list);
     }
 
@@ -652,8 +695,9 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       piutangWithPelunasan.add(pl.id_piutang);
     }
 
-    // Biaya tambahan per penjualan (terurut).
+    // Biaya tambahan per penjualan (terurut) + per item (berdasar item_penjualan_id).
     const biayaBySaleId = new Map<string, any[]>();
+    const biayaByItemIdSqlite = new Map<string, any[]>();
     for (const b of (allBiayaResult.data || []) as any[]) {
       if (!saleIdSet.has(b.penjualan_id)) continue;
       const list = biayaBySaleId.get(b.penjualan_id) || [];
@@ -664,8 +708,20 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         urutan: b.urutan ?? 0,
       });
       biayaBySaleId.set(b.penjualan_id, list);
+      if (b.item_penjualan_id) {
+        const itemList = biayaByItemIdSqlite.get(b.item_penjualan_id) || [];
+        itemList.push({
+          label: b.label,
+          nominal: Number(b.nominal) || 0,
+          urutan: b.urutan ?? 0,
+        });
+        biayaByItemIdSqlite.set(b.item_penjualan_id, itemList);
+      }
     }
     for (const [, list] of biayaBySaleId) {
+      list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+    }
+    for (const [, list] of biayaByItemIdSqlite) {
       list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
     }
 
@@ -684,7 +740,10 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         status_pembayaran: piutang?.status || "LUNAS",
         sisa_piutang: piutang?.sisa_piutang || 0,
         has_pelunasan,
-        items: itemsByPenjualanId.get(sale.id) || [],
+        items: (itemsByPenjualanId.get(sale.id) || []).map((it) => ({
+          ...it,
+          biaya_tambahan: biayaByItemIdSqlite.get(it.id) || [],
+        })),
         biaya_tambahan: biayaBySaleId.get(sale.id) || [],
       };
     });
@@ -706,7 +765,7 @@ export async function getReceivables(): Promise<Receivable[]> {
 
     // Filter hanya AKTIF dan SEBAGIAN
     const activeReceivables = piutangList.filter(
-      (p: any) => p.status === "AKTIF" || p.status === "SEBAGIAN"
+      (p: any) => p.status === "AKTIF" || p.status === "SEBAGIAN",
     );
 
     // Ambil penjualan dan pelanggan untuk pengayaan

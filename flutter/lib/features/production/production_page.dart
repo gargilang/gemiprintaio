@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/penjualan_cetak_utils.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/models/production.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -103,13 +104,32 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
             const SizedBox(height: 12),
             const Text('Item Produksi', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             const SizedBox(height: 8),
-            ...order.items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.barangNama ?? '-', style: const TextStyle(fontSize: 13)),
-                Text('Qty: ${item.quantity} · ${_statusLabel(item.status)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              ])),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: _statusColor(item.status).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: Text(_statusLabel(item.status), style: TextStyle(color: _statusColor(item.status), fontSize: 10, fontWeight: FontWeight.w600))),
-            ]))),
+            ...order.items.map((item) {
+              final cetak = ItemCetakPenjualan(
+                jumlah: item.quantity,
+                namaSatuan: item.namaSatuan,
+                panjang: item.panjang,
+                lebar: item.lebar,
+                billedPanjang: item.billedPanjang,
+                billedLebar: item.billedLebar,
+                jumlahRoll: item.jumlahRoll,
+              );
+              final qtyLabel = formatQtyLabel(cetak);
+              final ukuran = formatUkuranCetakInput(
+                panjang: item.panjang,
+                lebar: item.lebar,
+                billedPanjang: item.billedPanjang,
+                billedLebar: item.billedLebar,
+              );
+              final ukuranText = ukuran != null ? ' - Ukuran: $ukuran' : '';
+              return Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(item.barangNama ?? '-', style: const TextStyle(fontSize: 13)),
+                  Text('Qty: $qtyLabel$ukuranText - ${_statusLabel(item.status)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                ])),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: _statusColor(item.status).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: Text(_statusLabel(item.status), style: TextStyle(color: _statusColor(item.status), fontSize: 10, fontWeight: FontWeight.w600))),
+              ]));
+            }),
             const SizedBox(height: 16),
             if (order.status == 'MENUNGGU') SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () { Navigator.of(context).pop(); _updateStatus(order, 'PROSES'); }, icon: const Icon(Icons.play_arrow, size: 18), label: const Text('Lanjutkan ke Proses'))),
             if (order.status == 'PROSES' || order.status == 'DALAM_PROSES') SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () { Navigator.of(context).pop(); _updateStatus(order, 'SELESAI'); }, icon: const Icon(Icons.check, size: 18), label: const Text('Tandai Selesai'), style: FilledButton.styleFrom(backgroundColor: AppColors.success))),

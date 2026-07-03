@@ -65,7 +65,7 @@ export default function PanelHargaSatuan({
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Tambah Satuan
+          Tambah Produk
         </button>
       </div>
 
@@ -84,7 +84,7 @@ export default function PanelHargaSatuan({
                   type="button"
                   onClick={() => onRemove(index)}
                   className="text-red-500 hover:text-red-700 p-1"
-                  title="Hapus satuan ini"
+                  title="Hapus produk ini"
                 >
                   <svg
                     className="w-5 h-5"
@@ -119,7 +119,7 @@ export default function PanelHargaSatuan({
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                  Kosong = pakai nama satuan
+                  Wajib unik per barang. Kosong = pakai nama satuan
                 </p>
               </div>
 
@@ -256,7 +256,7 @@ export default function PanelHargaSatuan({
           </div>
         ))}
         <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
-          Setiap satuan di bawah selalu muncul sebagai kartu terpisah di POS,
+          Setiap produk di bawah selalu muncul sebagai kartu terpisah di POS,
           terlepas dari centang &quot;Munculkan di POS&quot; pada barang induk.
         </p>
       </div>

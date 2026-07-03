@@ -11,10 +11,7 @@
  * can pick "Save as PDF" from the print dialog if they want a file.
  */
 
-import {
-  formatJakartaDate,
-  formatRupiahPlain,
-} from "@/lib/format-id";
+import { formatJakartaDate, formatRupiahPlain } from "@/lib/format-id";
 import { openPrintDocument } from "@/lib/print-fonts";
 import { preparePrintHtml } from "@/lib/print-embed-client";
 import { catatanUntukPihakLuar } from "@/lib/dokumen-item-display";
@@ -34,6 +31,8 @@ export interface FakturItem {
   harga: number;
   /** Line total (Rp). */
   jumlah: number;
+  /** Biaya tambahan per item — dicetak sebagai sub-baris di bawah item. */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 export interface FakturData {
@@ -134,6 +133,21 @@ function renderItemRow(item: FakturItem, index: number): string {
     ? `${qtyDisplay} ${escapeHtml(item.satuan)}`
     : qtyDisplay;
 
+  const biayaRows = (item.biaya_tambahan || [])
+    .filter((b) => b.label?.trim() && b.nominal > 0)
+    .map(
+      (b) => `
+    <tr class="item-sub">
+      <td class="col-no"></td>
+      <td class="col-nama">+ ${escapeHtml(b.label.trim())}</td>
+      <td class="col-ukuran"></td>
+      <td class="col-qty"></td>
+      <td class="col-harga"></td>
+      <td class="col-jumlah">${formatRupiahPlain(b.nominal)}</td>
+    </tr>`,
+    )
+    .join("");
+
   return `
     <tr>
       <td class="col-no">${index + 1}</td>
@@ -142,7 +156,7 @@ function renderItemRow(item: FakturItem, index: number): string {
       <td class="col-qty">${qtyCell}</td>
       <td class="col-harga">${formatRupiahPlain(item.harga)}</td>
       <td class="col-jumlah">${formatRupiahPlain(item.jumlah)}</td>
-    </tr>`;
+    </tr>${biayaRows}`;
 }
 
 export function generateFakturHTML(data: FakturData): string {
@@ -176,16 +190,24 @@ export function generateFakturHTML(data: FakturData): string {
     catatanFaktur: shop?.catatan_faktur?.trim() || SHOP_INFO.catatanFaktur,
   };
 
-  const kotaDisplay = (kota?.trim() || "Bekasi") + ", " + formatJakartaDate(tanggal);
+  const kotaDisplay =
+    (kota?.trim() || "Bekasi") + ", " + formatJakartaDate(tanggal);
   const itemsHTML = items.map(renderItemRow).join("");
   const pelangganDetailHTML = (pelanggan_detail || [])
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => `<div class="info-line"><span>${escapeHtml(line)}</span></div>`)
+    .map(
+      (line) => `<div class="info-line"><span>${escapeHtml(line)}</span></div>`,
+    )
     .join("");
 
   // PPN-aware totals: kalau kena_ppn, tampil DPP + PPN row sebelum TOTAL.
   const hasPpn = ppn && ppn.ppn_total > 0;
+  // Dinamis: bayar > total → KEMBALIAN (cash lebih). Selain itu → SISA.
+  const isOverpay = bayar > total;
+  const kembalian = isOverpay ? bayar - total : 0;
+  const settlementLabel = isOverpay ? "KEMBALIAN" : "SISA";
+  const settlementValue = isOverpay ? kembalian : sisa;
   const biayaTambahanRows = (biaya_tambahan || [])
     .filter((b) => b.label?.trim() && b.nominal > 0)
     .map(
@@ -193,7 +215,7 @@ export function generateFakturHTML(data: FakturData): string {
       <div class="totals-row">
         <div class="totals-label">${escapeHtml(b.label)} Rp.</div>
         <div class="totals-value">${formatRupiahPlain(b.nominal)}</div>
-      </div>`
+      </div>`,
     )
     .join("");
   const totalsHTML = hasPpn
@@ -215,8 +237,8 @@ export function generateFakturHTML(data: FakturData): string {
         <div class="totals-value">${formatRupiahPlain(bayar)}</div>
       </div>
       <div class="totals-row">
-        <div class="totals-label">SISA Rp.</div>
-        <div class="totals-value">${formatRupiahPlain(sisa)}</div>
+        <div class="totals-label">${settlementLabel} Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(settlementValue)}</div>
       </div>`
     : `${biayaTambahanRows}
       <div class="totals-row">
@@ -228,8 +250,8 @@ export function generateFakturHTML(data: FakturData): string {
         <div class="totals-value">${formatRupiahPlain(bayar)}</div>
       </div>
       <div class="totals-row">
-        <div class="totals-label">SISA Rp.</div>
-        <div class="totals-value">${formatRupiahPlain(sisa)}</div>
+        <div class="totals-label">${settlementLabel} Rp.</div>
+        <div class="totals-value">${formatRupiahPlain(settlementValue)}</div>
       </div>`;
 
   // Optional faktur pajak header strip — hanya kalau kena PPN dan punya NSFP.
@@ -250,7 +272,7 @@ export function generateFakturHTML(data: FakturData): string {
         <div class="ppn-block">
           <div class="ppn-block-title">Pembeli Barang Kena Pajak</div>
           <div class="ppn-block-line"><b>${escapeHtml(
-            ppn!.pelanggan_nama_npwp || pelanggan_nama || "—"
+            ppn!.pelanggan_nama_npwp || pelanggan_nama || "—",
           )}</b></div>
           ${
             ppn!.pelanggan_alamat_npwp
@@ -483,6 +505,14 @@ export function generateFakturHTML(data: FakturData): string {
     .col-qty     { width: 8%;  text-align: center; }
     .col-harga   { width: 16%; text-align: right; }
     .col-jumlah  { width: 26%; text-align: right; }
+    /* Sub-baris biaya tambahan per item */
+    table.items tbody tr.item-sub td {
+      border-top: none;
+      font-size: 8.5pt;
+      color: #555;
+      font-style: italic;
+      background: #f8fbff;
+    }
 
     /* ============ FOOTER ============ */
     .footer {
@@ -805,19 +835,21 @@ export function generateQuotationHTML(data: {
  * - Replace title tag
  */
 export function patchQuotationHTML(html: string): string {
-  return html
-    .replace(/FAKTUR PENJUALAN/g, "PENAWARAN HARGA")
-    .replace(/<title>Faktur[^<]*<\/title>/, "<title>Penawaran Harga</title>")
-    // Remove BAYAR row
-    .replace(
-      /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
-      ""
-    )
-    // Remove SISA row
-    .replace(
-      /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
-      ""
-    );
+  return (
+    html
+      .replace(/FAKTUR PENJUALAN/g, "PENAWARAN HARGA")
+      .replace(/<title>Faktur[^<]*<\/title>/, "<title>Penawaran Harga</title>")
+      // Remove BAYAR row
+      .replace(
+        /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+        "",
+      )
+      // Remove SISA row
+      .replace(
+        /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
+        "",
+      )
+  );
 }
 
 /** Hilangkan baris BAYAR/SISA dari layout faktur (PO, penawaran, dll.). */
@@ -825,30 +857,35 @@ export function stripBayarSisaRows(html: string): string {
   return html
     .replace(
       /<div class="totals-row">\s*<div class="totals-label">BAYAR Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
-      ""
+      "",
     )
     .replace(
       /<div class="totals-row">\s*<div class="totals-label">SISA Rp\.<\/div>[\s\S]*?<\/div>\s*<\/div>/,
-      ""
+      "",
     );
 }
 
 /** Ubah layout faktur penjualan menjadi Pesanan Pembelian untuk vendor. */
 export function patchPurchaseOrderHTML(html: string): string {
-  return stripBayarSisaRows(html)
-    .replace(/FAKTUR PENJUALAN/g, "PESANAN PEMBELIAN")
-    .replace(/<title>Faktur[^<]*<\/title>/, "<title>Pesanan Pembelian</title>")
-    .replace(/Kepada Yth\./g, "Vendor")
-    .replace(/No\. Faktur\s*:/g, "No. PO :")
-    // Vendor tidak perlu rekening toko atau catatan legal faktur penjualan
-    .replace(
-      /<div class="payment-section">[\s\S]*?<\/div>\s*(?=<div class="totals-box">)/,
-      ""
-    )
-    .replace(
-      /<div class="footer">/,
-      '<div class="footer" style="grid-template-columns:220px 1fr;justify-items:end;">'
-    );
+  return (
+    stripBayarSisaRows(html)
+      .replace(/FAKTUR PENJUALAN/g, "PESANAN PEMBELIAN")
+      .replace(
+        /<title>Faktur[^<]*<\/title>/,
+        "<title>Pesanan Pembelian</title>",
+      )
+      .replace(/Kepada Yth\./g, "Vendor")
+      .replace(/No\. Faktur\s*:/g, "No. PO :")
+      // Vendor tidak perlu rekening toko atau catatan legal faktur penjualan
+      .replace(
+        /<div class="payment-section">[\s\S]*?<\/div>\s*(?=<div class="totals-box">)/,
+        "",
+      )
+      .replace(
+        /<div class="footer">/,
+        '<div class="footer" style="grid-template-columns:220px 1fr;justify-items:end;">',
+      )
+  );
 }
 
 export type PurchaseOrderPrintData = {
@@ -863,11 +900,13 @@ export type PurchaseOrderPrintData = {
 };
 
 /** HTML cetak Pesanan Pembelian — layout sama dengan faktur penjualan Gemiprint. */
-export function generatePurchaseOrderHTML(data: PurchaseOrderPrintData): string {
+export function generatePurchaseOrderHTML(
+  data: PurchaseOrderPrintData,
+): string {
   const vendorDetail: string[] = [];
   if (data.expected_date) {
     vendorDetail.push(
-      `Estimasi tiba: ${formatJakartaDate(data.expected_date)}`
+      `Estimasi tiba: ${formatJakartaDate(data.expected_date)}`,
     );
   }
   const catatanVendor = catatanUntukPihakLuar(data.catatan);
@@ -890,7 +929,7 @@ export function generatePurchaseOrderHTML(data: PurchaseOrderPrintData): string 
 
 /** Buka dialog cetak Pesanan Pembelian (popup + font embedded). */
 export async function printPurchaseOrder(
-  data: PurchaseOrderPrintData
+  data: PurchaseOrderPrintData,
 ): Promise<boolean> {
   const html = await preparePrintHtml(generatePurchaseOrderHTML(data));
   return openPrintDocument(html, "Cetak Pesanan Pembelian");
@@ -902,7 +941,7 @@ export async function printPurchaseOrder(
  */
 export function formatUkuran(
   panjang: number | null | undefined,
-  lebar: number | null | undefined
+  lebar: number | null | undefined,
 ): string {
   const p = typeof panjang === "number" && panjang > 0 ? panjang : 0;
   const l = typeof lebar === "number" && lebar > 0 ? lebar : 0;

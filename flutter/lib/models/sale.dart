@@ -98,6 +98,11 @@ class SaleItem {
   final double grossMargin;
   final double? panjang;
   final double? lebar;
+  final double? billedPanjang;
+  final double? billedLebar;
+  final num? jumlahRoll;
+  final num? jumlahLembar;
+  final String? namaSatuan;
   final String? finishingOptions;
   final String? createdAt;
 
@@ -115,6 +120,11 @@ class SaleItem {
     this.grossMargin = 0,
     this.panjang,
     this.lebar,
+    this.billedPanjang,
+    this.billedLebar,
+    this.jumlahRoll,
+    this.jumlahLembar,
+    this.namaSatuan,
     this.finishingOptions,
     this.createdAt,
   });
@@ -137,6 +147,11 @@ class SaleItem {
       grossMargin: (json['gross_margin'] as num?)?.toDouble() ?? 0,
       panjang: (json['panjang'] as num?)?.toDouble(),
       lebar: (json['lebar'] as num?)?.toDouble(),
+      billedPanjang: (json['billed_panjang'] as num?)?.toDouble(),
+      billedLebar: (json['billed_lebar'] as num?)?.toDouble(),
+      jumlahRoll: json['jumlah_roll'] as num?,
+      jumlahLembar: json['jumlah_lembar'] as num?,
+      namaSatuan: json['nama_satuan'] as String?,
       finishingOptions: json['finishing_options'] as String?,
       createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
     );

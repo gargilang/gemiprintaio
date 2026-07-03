@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gemiprint/core/penjualan_cetak_utils.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
 import 'package:gemiprint/widgets/faktur_preview_page.dart';
@@ -24,12 +25,33 @@ Future<void> showPenawaranPreview(
   final lines = <FakturLine>[];
   for (var i = 0; i < cart.length; i++) {
     final item = cart[i];
+    final cetak = ItemCetakPenjualan(
+      jumlah: item.jumlah,
+      namaSatuan: item.namaSatuan,
+      panjang: item.panjang,
+      lebar: item.lebar,
+      billedPanjang: item.billedPanjang,
+      billedLebar: item.billedLebar,
+    );
+    final qs = qtySatuanCetak(cetak);
+    final ukuran = formatUkuranCetakInput(
+      panjang: item.panjang,
+      lebar: item.lebar,
+      billedPanjang: item.billedPanjang,
+      billedLebar: item.billedLebar,
+    );
+    final lineCharge = charges[i];
     lines.add(FakturLine(
       name: item.barangNama,
-      satuan: item.namaSatuan,
-      qty: item.jumlah,
-      harga: item.hargaSatuan,
-      jumlah: charges[i],
+      ukuran: ukuran,
+      qty: qs.qty,
+      satuan: qs.satuan.isEmpty ? null : qs.satuan,
+      harga: qs.qty > 0 ? lineCharge / qs.qty : item.hargaSatuan,
+      jumlah: lineCharge,
+      biayaTambahan: item.biayaTambahan
+          .where((b) => b.nominal > 0 && b.label.trim().isNotEmpty)
+          .map((b) => FakturLineCharge(label: b.label.trim(), nominal: b.nominal))
+          .toList(),
     ));
   }
 

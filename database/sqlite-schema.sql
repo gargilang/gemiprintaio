@@ -187,11 +187,15 @@ CREATE TABLE "harga_barang_satuan" (
         nama_produk_jual TEXT,
         dibuat_pada TEXT DEFAULT (datetime('now')),
         diperbarui_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
-        FOREIGN KEY (barang_id) REFERENCES "barang"(id) ON DELETE CASCADE,
-        UNIQUE(barang_id, nama_satuan)
+        FOREIGN KEY (barang_id) REFERENCES "barang"(id) ON DELETE CASCADE
       );
 
 -- Indexes for harga_barang_satuan
+CREATE UNIQUE INDEX idx_harga_barang_satuan_nama_produk_unik
+  ON harga_barang_satuan (
+    barang_id,
+    lower(trim(coalesce(nullif(trim(nama_produk_jual), ''), nama_satuan)))
+  );
 CREATE INDEX idx_harga_barang_satuan_sync_status ON harga_barang_satuan(sync_status);
 
 -- Table: hutang_pembelian
@@ -1356,6 +1360,7 @@ CREATE INDEX idx_pinjaman_karyawan_sync ON pinjaman_karyawan(sync_status);
 CREATE TABLE biaya_tambahan_penjualan (
       id TEXT PRIMARY KEY,
       penjualan_id TEXT NOT NULL,
+      item_penjualan_id TEXT,
       label TEXT NOT NULL,
       nominal REAL NOT NULL DEFAULT 0,
       urutan INTEGER NOT NULL DEFAULT 0,
@@ -1363,10 +1368,12 @@ CREATE TABLE biaya_tambahan_penjualan (
       sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
       last_synced_at TEXT,
       sync_version INTEGER DEFAULT 1,
-      FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE
+      FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
+      FOREIGN KEY (item_penjualan_id) REFERENCES item_penjualan(id) ON DELETE CASCADE
     );
 
 CREATE INDEX idx_biaya_tambahan_penjualan_sale ON biaya_tambahan_penjualan(penjualan_id);
+CREATE INDEX idx_biaya_tambahan_penjualan_item ON biaya_tambahan_penjualan(item_penjualan_id);
 CREATE INDEX idx_biaya_tambahan_sync_status ON biaya_tambahan_penjualan(sync_status);
 
 -- Table: laporan_bulanan

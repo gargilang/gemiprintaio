@@ -1,9 +1,26 @@
 /**
- * Helper tampilan item dokumen (PO, penawaran) — UI dan cetak faktur.
+ * Helper tampilan item dokumen (PO, penawaran, faktur penjualan) — UI dan cetak.
  */
 
 import { formatUkuranPembelian } from "@/lib/faktur-pembelian-print";
 import type { FakturItem } from "@/lib/faktur-print";
+
+export type {
+  ItemCetakPenjualan,
+  ItemSpkLike,
+} from "@/lib/penjualan-cetak-utils";
+export {
+  formatDimensiBarisThermal,
+  formatTampilanDimensiSpk,
+  formatTampilanQtySpk,
+  formatUkuranCetakInput,
+  formatUkuranPerKepingSpk,
+  hitungQtyLembarCetakPenjualan,
+  hitungQtyM2CetakPenjualan,
+  mapPenjualanItemKeFaktur,
+  qtySatuanCetakPenjualan,
+  toCetakInputSpk,
+} from "@/lib/penjualan-cetak-utils";
 
 type ItemDimensi = {
   jumlah: number;

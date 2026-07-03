@@ -13,6 +13,7 @@ import "server-only";
 import { db, getServerSupabaseClient } from "../db-unified";
 import { getReferencedHargaSatuanIds } from "../server-data-supabase";
 import {
+  findDuplicateNamaProduk,
   getReferensiUnitPrice,
   normalizeDefaultStatusForSave,
 } from "../barang-unit-utils";
@@ -210,6 +211,15 @@ export async function createMaterial(
       ? normalizeDefaultStatusForSave(rawUnitPrices)
       : rawUnitPrices;
 
+    if (Array.isArray(unit_prices) && unit_prices.length > 0) {
+      const duplicateNama = findDuplicateNamaProduk(unit_prices);
+      if (duplicateNama) {
+        throw new Error(
+          `Nama produk "${duplicateNama}" sudah dipakai. Setiap produk jual harus punya nama unik.`,
+        );
+      }
+    }
+
     // Insert material
     const isDimensional = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
     const defaultUnitPrice =
@@ -327,6 +337,15 @@ export async function updateMaterial(
       rawUnitPrices !== undefined && Array.isArray(rawUnitPrices)
         ? normalizeDefaultStatusForSave(rawUnitPrices)
         : rawUnitPrices;
+
+    if (unit_prices !== undefined && Array.isArray(unit_prices) && unit_prices.length > 0) {
+      const duplicateNama = findDuplicateNamaProduk(unit_prices);
+      if (duplicateNama) {
+        throw new Error(
+          `Nama produk "${duplicateNama}" sudah dipakai. Setiap produk jual harus punya nama unik.`,
+        );
+      }
+    }
 
     if (unit_prices !== undefined && Array.isArray(unit_prices)) {
       const keepIds = unit_prices

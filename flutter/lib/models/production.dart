@@ -52,6 +52,13 @@ class ProductionItem {
   final String orderProduksiId;
   final String? barangNama;
   final double quantity;
+  final String? namaSatuan;
+  final double? panjang;
+  final double? lebar;
+  final double? billedPanjang;
+  final double? billedLebar;
+  final num? jumlahRoll;
+  final List<MapEntry<String, double>> biayaTambahan;
   final String status;
   final String statusCetak;
   final String statusFinishing;
@@ -63,6 +70,13 @@ class ProductionItem {
     required this.orderProduksiId,
     this.barangNama,
     this.quantity = 0,
+    this.namaSatuan,
+    this.panjang,
+    this.lebar,
+    this.billedPanjang,
+    this.billedLebar,
+    this.jumlahRoll,
+    this.biayaTambahan = const [],
     this.status = 'MENUNGGU',
     this.statusCetak = 'BELUM',
     this.statusFinishing = 'BELUM',
@@ -97,6 +111,18 @@ class ProductionItem {
           (json['quantity'] as num?)?.toDouble() ??
           (json['jumlah'] as num?)?.toDouble() ??
           0,
+      namaSatuan: json['nama_satuan'] as String?,
+      panjang: (json['panjang'] as num?)?.toDouble(),
+      lebar: (json['lebar'] as num?)?.toDouble(),
+      billedPanjang: (json['billed_panjang'] as num?)?.toDouble(),
+      billedLebar: (json['billed_lebar'] as num?)?.toDouble(),
+      jumlahRoll: json['jumlah_roll'] as num?,
+      biayaTambahan: ((json['biaya_tambahan'] as List?) ?? [])
+          .whereType<Map<String, dynamic>>()
+          .where((b) => (b['nominal'] as num?)?.toDouble() != null && (b['nominal'] as num).toDouble() > 0)
+          .map((b) => MapEntry((b['label'] ?? '').toString().trim(), (b['nominal'] as num).toDouble()))
+          .where((e) => e.key.isNotEmpty)
+          .toList(),
       status: status,
       statusCetak: (json['status_cetak'] ?? status) as String,
       statusFinishing: statusFinishing,

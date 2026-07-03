@@ -7,6 +7,37 @@ export type UnitPriceLike = {
   harga_beli?: number | null;
 };
 
+export type ProdukJualLike = {
+  nama_produk_jual?: string | null;
+  nama_satuan: string;
+};
+
+/** Nama tampilan POS: nama produk jual jika diisi, fallback ke satuan. */
+export function getNamaProdukEfektif(up: ProdukJualLike): string {
+  const custom = up.nama_produk_jual?.trim();
+  if (custom) return custom;
+  return up.nama_satuan.trim();
+}
+
+/** Kunci perbandingan duplikat (case-insensitive). */
+export function getKunciNamaProdukEfektif(up: ProdukJualLike): string {
+  return getNamaProdukEfektif(up).toLocaleLowerCase("id-ID");
+}
+
+/** Kembalikan nama produk duplikat pertama, atau null jika unik. */
+export function findDuplicateNamaProduk<T extends ProdukJualLike>(
+  unitPrices: T[],
+): string | null {
+  const seen = new Set<string>();
+  for (const up of unitPrices) {
+    const key = getKunciNamaProdukEfektif(up);
+    if (!key) continue;
+    if (seen.has(key)) return getNamaProdukEfektif(up);
+    seen.add(key);
+  }
+  return null;
+}
+
 /** Satuan acuan konversi harga: faktor = 1, atau baris pertama. */
 export function getReferensiUnitPrice<T extends UnitPriceLike>(
   unitPrices: T[] | null | undefined

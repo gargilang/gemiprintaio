@@ -70,6 +70,8 @@ export interface ProductionItem {
   is_maklon?: boolean;
   finishing?: FinishingItem[];
   consumption?: ProductionMaterialConsumption | null;
+  /** Biaya tambahan yang ditautkan ke item_penjualan ini (untuk cetak SPK). */
+  biaya_tambahan?: Array<{ label: string; nominal: number }>;
 }
 
 export interface ProductionMaterialConsumption {
@@ -140,11 +142,13 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
       allFinishingResult,
       allSaleItemsResult,
       allConsumptionsResult,
+      allBiayaResult,
     ] = await Promise.all([
       db.query<ProductionItem>("item_produksi"),
       db.query<FinishingItem>("item_finishing"),
       db.query<any>("item_penjualan"),
       db.query<any>("production_material_consumptions"),
+      db.query<any>("biaya_tambahan_penjualan"),
     ]);
 
     // Item per order (terurut dibuat_pada).
@@ -157,7 +161,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
     }
     for (const [, list] of itemsByOrderId) {
       list.sort((a: any, b: any) =>
-        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || "")),
       );
     }
 
@@ -170,7 +174,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
     }
     for (const [, list] of finishingByItemId) {
       list.sort((a: any, b: any) =>
-        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+        String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || "")),
       );
     }
 
@@ -189,71 +193,89 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
       }
     }
 
+    // Biaya tambahan per item_penjualan (untuk cetak SPK sebagai sub-baris item).
+    const biayaByItemPenjualanId = new Map<string, any[]>();
+    for (const b of (allBiayaResult.data || []) as any[]) {
+      if (!b.item_penjualan_id) continue;
+      const list = biayaByItemPenjualanId.get(b.item_penjualan_id) || [];
+      list.push({
+        label: b.label,
+        nominal: Number(b.nominal) || 0,
+        urutan: b.urutan ?? 0,
+      });
+      biayaByItemPenjualanId.set(b.item_penjualan_id, list);
+    }
+    for (const [, list] of biayaByItemPenjualanId) {
+      list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+    }
+
     // Lengkapi order dengan data faktur dan pelanggan, dan ambil item
     const ordersWithItems = orders.map((order) => {
-        // Cari penjualan
-        const penjualan = penjualanList.find(
-          (p: any) => p.id === order.penjualan_id
+      // Cari penjualan
+      const penjualan = penjualanList.find(
+        (p: any) => p.id === order.penjualan_id,
+      );
+
+      // Cari pelanggan
+      const pelanggan = pelangganList.find(
+        (pel: any) => pel.id === penjualan?.pelanggan_id,
+      );
+
+      const items = itemsByOrderId.get(order.id) || [];
+
+      // Lengkapi tiap item dengan finishing + saleItem + konsumsi (dari peta).
+      const itemsWithFinishing = items.map((item) => {
+        const finishing = finishingByItemId.get(item.id) || [];
+
+        // Lengkapi finishing dengan nama operator
+        const finishingWithOperator = finishing.map((fin) => {
+          const operator = profilList.find(
+            (prof: any) => prof.id === fin.operator_id,
+          );
+          return {
+            ...fin,
+            operator_nama: operator?.nama_pengguna || undefined,
+          };
+        });
+
+        // Lengkapi item dengan nama operator
+        const operator = profilList.find(
+          (prof: any) => prof.id === item.operator_id,
         );
-
-        // Cari pelanggan
-        const pelanggan = pelangganList.find(
-          (pel: any) => pel.id === penjualan?.pelanggan_id
-        );
-
-        const items = itemsByOrderId.get(order.id) || [];
-
-        // Lengkapi tiap item dengan finishing + saleItem + konsumsi (dari peta).
-        const itemsWithFinishing = items.map((item) => {
-            const finishing = finishingByItemId.get(item.id) || [];
-
-            // Lengkapi finishing dengan nama operator
-            const finishingWithOperator = finishing.map((fin) => {
-              const operator = profilList.find(
-                (prof: any) => prof.id === fin.operator_id
-              );
-              return {
-                ...fin,
-                operator_nama: operator?.nama_pengguna || undefined,
-              };
-            });
-
-            // Lengkapi item dengan nama operator
-            const operator = profilList.find(
-              (prof: any) => prof.id === item.operator_id
-            );
-            const saleItem = saleItemById.get(item.item_penjualan_id) || null;
-            const consumption =
-              postedConsumptionByItemId.get(item.id) || null;
-
-            return {
-              ...item,
-              is_maklon: saleItem?.tipe_item === "MAKLON",
-              barang_id: (item as any).barang_id || saleItem?.barang_id || null,
-              billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
-              billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
-              recommended_roll_width_m:
-                (item as any).recommended_roll_width_m ??
-                saleItem?.recommended_roll_width_m ??
-                null,
-              roll_inventory_status:
-                (item as any).roll_inventory_status ||
-                (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),
-              operator_nama: operator?.nama_pengguna || undefined,
-              finishing: finishingWithOperator,
-              consumption,
-            };
-          });
+        const saleItem = saleItemById.get(item.item_penjualan_id) || null;
+        const consumption = postedConsumptionByItemId.get(item.id) || null;
 
         return {
-          ...order,
-          nomor_faktur: penjualan?.nomor_faktur || undefined,
-          pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
-          penjualan_dibatalkan:
-            (penjualan as any)?.status_transaksi === "VOIDED",
-          items: itemsWithFinishing,
+          ...item,
+          is_maklon: saleItem?.tipe_item === "MAKLON",
+          barang_id: (item as any).barang_id || saleItem?.barang_id || null,
+          billed_panjang:
+            (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
+          billed_lebar:
+            (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
+          recommended_roll_width_m:
+            (item as any).recommended_roll_width_m ??
+            saleItem?.recommended_roll_width_m ??
+            null,
+          roll_inventory_status:
+            (item as any).roll_inventory_status ||
+            (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),
+          operator_nama: operator?.nama_pengguna || undefined,
+          finishing: finishingWithOperator,
+          consumption,
+          biaya_tambahan:
+            biayaByItemPenjualanId.get(item.item_penjualan_id) || [],
         };
       });
+
+      return {
+        ...order,
+        nomor_faktur: penjualan?.nomor_faktur || undefined,
+        pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
+        penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
+        items: itemsWithFinishing,
+      };
+    });
 
     // Urutkan berdasarkan prioritas (KILAT duluan) lalu tanggal
     return ordersWithItems.sort((a, b) => {
@@ -274,7 +296,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
  * Ambil satu order produksi berdasarkan ID
  */
 export async function getProductionOrderById(
-  id: string
+  id: string,
 ): Promise<ProductionOrder | null> {
   try {
     const orderResult = await db.queryOne<ProductionOrder>("order_produksi", {
@@ -312,20 +334,39 @@ export async function getProductionOrderById(
 
     // Ambil finishing + konsumsi material secara batch (hindari N+1 per item)
     const itemIds = items.map((item) => item.id);
-    const [finishingByItem, consumptionsByItem] = await Promise.all([
-      fetchChildrenByForeignKey<FinishingItem>("item_finishing", "item_produksi_id", itemIds),
-      fetchChildrenByForeignKey<any>("production_material_consumptions", "item_produksi_id", itemIds),
-    ]);
-
+    const saleItemIds = items
+      .map((item) => item.item_penjualan_id)
+      .filter(Boolean) as string[];
+    const [finishingByItem, consumptionsByItem, biayaBySaleItem] =
+      await Promise.all([
+        fetchChildrenByForeignKey<FinishingItem>(
+          "item_finishing",
+          "item_produksi_id",
+          itemIds,
+        ),
+        fetchChildrenByForeignKey<any>(
+          "production_material_consumptions",
+          "item_produksi_id",
+          itemIds,
+        ),
+        fetchChildrenByForeignKey<any>(
+          "biaya_tambahan_penjualan",
+          "item_penjualan_id",
+          saleItemIds,
+        ),
+      ]);
     const finishingRows = [...finishingByItem.values()].flat();
     const operatorIds = [
       ...items.map((item) => item.operator_id),
       ...finishingRows.map((fin) => fin.operator_id),
     ].filter(Boolean) as string[];
-    const saleItemIds = items.map((item) => item.item_penjualan_id).filter(Boolean) as string[];
 
     const [operatorMap, saleItemMap] = await Promise.all([
-      buildLookupMap<{ nama_pengguna: string }>("profil", operatorIds, "nama_pengguna"),
+      buildLookupMap<{ nama_pengguna: string }>(
+        "profil",
+        operatorIds,
+        "nama_pengguna",
+      ),
       buildLookupMap<any>("item_penjualan", saleItemIds),
     ]);
 
@@ -333,7 +374,9 @@ export async function getProductionOrderById(
       const finishing = (finishingByItem.get(item.id) || [])
         .slice()
         .sort((a, b) =>
-          String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""))
+          String(a.dibuat_pada || "").localeCompare(
+            String(b.dibuat_pada || ""),
+          ),
         )
         .map((fin) => ({
           ...fin,
@@ -346,15 +389,18 @@ export async function getProductionOrderById(
         ? saleItemMap.get(item.item_penjualan_id) || null
         : null;
       const consumption =
-        (consumptionsByItem.get(item.id) || []).find((row: any) => row.status === "POSTED") ||
-        null;
+        (consumptionsByItem.get(item.id) || []).find(
+          (row: any) => row.status === "POSTED",
+        ) || null;
 
       return {
         ...item,
         is_maklon: saleItem?.tipe_item === "MAKLON",
         barang_id: (item as any).barang_id || saleItem?.barang_id || null,
-        billed_panjang: (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
-        billed_lebar: (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
+        billed_panjang:
+          (item as any).billed_panjang ?? saleItem?.billed_panjang ?? null,
+        billed_lebar:
+          (item as any).billed_lebar ?? saleItem?.billed_lebar ?? null,
         recommended_roll_width_m:
           (item as any).recommended_roll_width_m ??
           saleItem?.recommended_roll_width_m ??
@@ -367,6 +413,10 @@ export async function getProductionOrderById(
           : undefined,
         finishing,
         consumption,
+        biaya_tambahan: (biayaBySaleItem.get(item.item_penjualan_id) || [])
+          .slice()
+          .sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
+          .map((b) => ({ label: b.label, nominal: Number(b.nominal) || 0 })),
       };
     });
 
@@ -583,13 +633,15 @@ export async function createProductionOrder(data: {
  */
 export async function updateProductionOrderStatus(
   id: string,
-  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN"
+  status: "MENUNGGU" | "PROSES" | "SELESAI" | "DIBATALKAN",
 ): Promise<boolean> {
   try {
     // Guard: SPK yang DIBATALKAN karena penjualannya VOID tidak boleh
     // dihidupkan lagi. Void penjualan men-soft-cancel SPK; mengubah balik
     // statusnya akan men-desinkronkan SPK dengan penjualan yang sudah batal.
-    const orderRes = await db.queryOne<any>("order_produksi", { where: { id } });
+    const orderRes = await db.queryOne<any>("order_produksi", {
+      where: { id },
+    });
     const order = orderRes.data;
     if (order && order.status === "DIBATALKAN" && status !== "DIBATALKAN") {
       const saleRes = await db.queryOne<any>("penjualan", {
@@ -598,7 +650,7 @@ export async function updateProductionOrderStatus(
       if (saleRes.data?.status_transaksi === "VOIDED") {
         throw new Error(
           "SPK ini dibatalkan karena penjualannya sudah dibatalkan (VOID). " +
-            "Status tidak bisa diubah lagi."
+            "Status tidak bisa diubah lagi.",
         );
       }
     }
@@ -632,7 +684,7 @@ export async function updateProductionOrderStatus(
  *                      (reset-otomatis); selain itu status order dibiarkan.
  */
 export async function recomputeOrderStatusFromItems(
-  orderId: string
+  orderId: string,
 ): Promise<void> {
   const orderRes = await db.queryOne<any>("order_produksi", {
     where: { id: orderId },
@@ -647,12 +699,12 @@ export async function recomputeOrderStatusFromItems(
   const derived = deriveOrderStatus(statuses);
 
   const overrideOn =
-    order.status_override_manual === 1 ||
-    order.status_override_manual === true;
+    order.status_override_manual === 1 || order.status_override_manual === true;
 
   if (!overrideOn) {
     const patch: any = { status: derived };
-    if (derived === "SELESAI") patch.diselesaikan_pada = new Date().toISOString();
+    if (derived === "SELESAI")
+      patch.diselesaikan_pada = new Date().toISOString();
     await db.update("order_produksi", orderId, patch);
     return;
   }
@@ -706,7 +758,7 @@ async function resolveProductionConsumptionContext(itemId: string): Promise<{
 }
 
 export async function getRollVariantsForProductionItem(
-  itemId: string
+  itemId: string,
 ): Promise<RollVariant[]> {
   const { saleItem } = await resolveProductionConsumptionContext(itemId);
   return getRollVariants(saleItem.barang_id);
@@ -719,9 +771,8 @@ export async function postProductionMaterialConsumption(input: {
   operator_id?: string | null;
   catatan?: string | null;
 }): Promise<ProductionMaterialConsumption> {
-  const { item, saleItem, material } = await resolveProductionConsumptionContext(
-    input.item_produksi_id
-  );
+  const { item, saleItem, material } =
+    await resolveProductionConsumptionContext(input.item_produksi_id);
   if (Number(material.lacak_inventori_status) === 0) {
     throw new Error("Barang ini tidak melacak inventori");
   }
@@ -732,7 +783,9 @@ export async function postProductionMaterialConsumption(input: {
   const existing = await db.query<any>("production_material_consumptions", {
     where: { item_produksi_id: input.item_produksi_id },
   });
-  const active = (existing.data || []).find((row: any) => row.status === "POSTED");
+  const active = (existing.data || []).find(
+    (row: any) => row.status === "POSTED",
+  );
   if (active) {
     throw new Error("Konsumsi bahan untuk item ini sudah diposting");
   }
@@ -745,12 +798,14 @@ export async function postProductionMaterialConsumption(input: {
   const orderP = positiveNumber(saleItem.panjang ?? item.panjang);
   const orderL = positiveNumber(saleItem.lebar ?? item.lebar);
   const billedArea = positiveNumber(saleItem.jumlah);
-  const suggested = orderP > 0 && orderL > 0
-    ? getBillableDimensionsForRoll(orderP, orderL, rollWidth)
-    : null;
+  const suggested =
+    orderP > 0 && orderL > 0
+      ? getBillableDimensionsForRoll(orderP, orderL, rollWidth)
+      : null;
   const suggestedLinear = suggested ? suggested.area / rollWidth : 0;
   const linearUsed = positiveNumber(input.linear_used_m) || suggestedLinear;
-  if (linearUsed <= 0) throw new Error("Panjang aktual roll harus lebih dari 0");
+  if (linearUsed <= 0)
+    throw new Error("Panjang aktual roll harus lebih dari 0");
 
   const areaUsed = rollWidth * linearUsed;
   const issueArea = billedArea > 0 ? Math.min(billedArea, areaUsed) : areaUsed;
@@ -839,7 +894,7 @@ export async function postProductionMaterialConsumption(input: {
 export async function voidProductionMaterialConsumption(
   consumptionId: string,
   reason = "Konsumsi produksi dibatalkan",
-  actorId?: string | null
+  actorId?: string | null,
 ): Promise<boolean> {
   const rowResult = await db.queryOne<any>("production_material_consumptions", {
     where: { id: consumptionId },
@@ -850,7 +905,11 @@ export async function voidProductionMaterialConsumption(
   if (row.status === "VOIDED") return true;
 
   const movement = row.movement_id
-    ? (await db.queryOne<any>("inventory_movements", { where: { id: row.movement_id } })).data
+    ? (
+        await db.queryOne<any>("inventory_movements", {
+          where: { id: row.movement_id },
+        })
+      ).data
     : null;
   if (movement) {
     await postInventoryMovement({
@@ -875,7 +934,11 @@ export async function voidProductionMaterialConsumption(
   }
 
   const wasteMovement = row.waste_movement_id
-    ? (await db.queryOne<any>("inventory_movements", { where: { id: row.waste_movement_id } })).data
+    ? (
+        await db.queryOne<any>("inventory_movements", {
+          where: { id: row.waste_movement_id },
+        })
+      ).data
     : null;
   if (wasteMovement) {
     await postInventoryMovement({
@@ -955,7 +1018,7 @@ export async function deductBomComponents({
       perUnitQty = hitungQtyKomponenDimensiM2(
         Number(k.jumlah_roll),
         Number(k.panjang),
-        Number(k.lebar)
+        Number(k.lebar),
       );
     }
     const totalQty = perUnitQty * qtySPK;
@@ -976,7 +1039,7 @@ export async function deductBomComponents({
     } catch (err) {
       console.warn(
         `[BOM] Gagal potong komponen ${k.komponen_id} untuk SPK ${spkId}:`,
-        err
+        err,
       );
     }
   }
@@ -990,12 +1053,14 @@ export async function updateProductionItemStatus(
   data: {
     status: "MENUNGGU" | "PRINTING" | "FINISHING" | "SELESAI";
     operator_id?: string;
-  }
+  },
 ): Promise<boolean> {
   try {
     // Guard: item produksi yang DIBATALKAN karena penjualannya VOID tidak
     // boleh dihidupkan lagi (konsisten dengan guard di order).
-    const cur = await db.queryOne<any>("item_produksi", { where: { id: itemId } });
+    const cur = await db.queryOne<any>("item_produksi", {
+      where: { id: itemId },
+    });
     if (cur.data?.status === "DIBATALKAN") {
       const ord = await db.queryOne<any>("order_produksi", {
         where: { id: cur.data.order_produksi_id },
@@ -1006,7 +1071,7 @@ export async function updateProductionItemStatus(
         });
         if (sale.data?.status_transaksi === "VOIDED") {
           throw new Error(
-            "Item produksi ini dibatalkan karena penjualannya sudah dibatalkan (VOID)."
+            "Item produksi ini dibatalkan karena penjualannya sudah dibatalkan (VOID).",
           );
         }
       }
@@ -1036,15 +1101,22 @@ export async function updateProductionItemStatus(
       const itemResult = await db.queryOne<any>("item_produksi", {
         where: { id: itemId },
       });
-      const rollStatus = String(itemResult.data?.roll_inventory_status || "NOT_REQUIRED");
+      const rollStatus = String(
+        itemResult.data?.roll_inventory_status || "NOT_REQUIRED",
+      );
       if (rollStatus === "PENDING") {
-        const existing = await db.query<any>("production_material_consumptions", {
-          where: { item_produksi_id: itemId },
-        });
-        const hasPosted = (existing.data || []).some((row: any) => row.status === "POSTED");
+        const existing = await db.query<any>(
+          "production_material_consumptions",
+          {
+            where: { item_produksi_id: itemId },
+          },
+        );
+        const hasPosted = (existing.data || []).some(
+          (row: any) => row.status === "POSTED",
+        );
         if (!hasPosted) {
           throw new Error(
-            "Konfirmasi roll aktual dulu sebelum menandai item produksi selesai."
+            "Konfirmasi roll aktual dulu sebelum menandai item produksi selesai.",
           );
         }
       }
@@ -1059,12 +1131,16 @@ export async function updateProductionItemStatus(
 
     // BOM: potong stok komponen rakitan saat item baru diselesaikan
     if (data.status === "SELESAI" && cur.data?.status !== "SELESAI") {
-      const itemFull = await db.queryOne<any>("item_produksi", { where: { id: itemId } });
+      const itemFull = await db.queryOne<any>("item_produksi", {
+        where: { id: itemId },
+      });
       const barangId = itemFull.data?.barang_id;
       const qtySPK = Number(itemFull.data?.jumlah || 1);
       const orderId = itemFull.data?.order_produksi_id;
       if (barangId && orderId) {
-        const orderData = await db.queryOne<any>("order_produksi", { where: { id: orderId } });
+        const orderData = await db.queryOne<any>("order_produksi", {
+          where: { id: orderId },
+        });
         const nomorSpk = String(orderData.data?.nomor_spk || orderId);
         await deductBomComponents({
           barangId,
@@ -1120,7 +1196,10 @@ export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
       selesai.push(item.id);
     } catch {
       // Terhalang (mis. roll PENDING belum dikonfirmasi).
-      terhalang.push({ id: item.id, nama: String(item.barang_nama || item.id) });
+      terhalang.push({
+        id: item.id,
+        nama: String(item.barang_nama || item.id),
+      });
     }
   }
 
@@ -1144,7 +1223,10 @@ export async function setOrderStatusSelesaiCascade(orderId: string): Promise<{
  */
 export async function updateSaleCustomer(
   penjualanId: string,
-  data: { pelanggan_id?: string | null; pelanggan_nama_snapshot?: string | null }
+  data: {
+    pelanggan_id?: string | null;
+    pelanggan_nama_snapshot?: string | null;
+  },
 ): Promise<boolean> {
   const usePelangganId = !!(data.pelanggan_id && data.pelanggan_id.trim());
   const patch = usePelangganId

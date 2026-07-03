@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     if (!unit_prices || unit_prices.length === 0) {
       return NextResponse.json(
-        { error: "Minimal harus ada 1 harga satuan" },
+        { error: "Minimal harus ada 1 produk jual" },
         { status: 400 }
       );
     }
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
 
     const mappedPrices = unit_prices.map((up: any, index: number) => ({
       nama_satuan: up.nama_satuan,
+      nama_produk_jual: up.nama_produk_jual?.trim() || null,
       faktor_konversi: up.faktor_konversi ?? 1,
       harga_jual: up.harga_jual ?? 0,
       harga_member: up.harga_member ?? 0,

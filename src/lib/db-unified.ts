@@ -18,7 +18,11 @@ import { WEB_SERVER_MEDIATED_ONLY } from "./sync-config";
 
 // SQLite helpers (extracted)
 export { getServerSQLite, SYNC_V2_TABLES } from "./db-sqlite";
-import { getServerSQLite, serverSqliteColumnsCache, SYNC_V2_TABLES } from "./db-sqlite";
+import {
+  getServerSQLite,
+  serverSqliteColumnsCache,
+  SYNC_V2_TABLES,
+} from "./db-sqlite";
 import { hashPayload } from "./payload-hash-util";
 
 // ============================================================================
@@ -77,7 +81,7 @@ function getDeviceId(): string {
 
 function withSyncMetadata(
   data: Record<string, any>,
-  opts: { keepClientMutationId?: boolean } = {}
+  opts: { keepClientMutationId?: boolean } = {},
 ): Record<string, any> {
   const now = getCurrentTimestamp();
   const next = { ...data };
@@ -87,7 +91,8 @@ function withSyncMetadata(
     typeof next.change_version === "number" ? next.change_version + 1 : 1;
   if (!opts.keepClientMutationId) {
     next.client_mutation_id =
-      next.client_mutation_id || `${next.updated_by_device}-${crypto.randomUUID()}`;
+      next.client_mutation_id ||
+      `${next.updated_by_device}-${crypto.randomUUID()}`;
   }
   if (typeof next.is_deleted === "undefined") next.is_deleted = 0;
   return next;
@@ -139,10 +144,11 @@ export function isServerSide(): boolean {
   return !isBrowser();
 }
 
-
 // SQLite section moved to db-sqlite.ts
 
-async function getServerSQLiteTableColumns(table: string): Promise<Set<string>> {
+async function getServerSQLiteTableColumns(
+  table: string,
+): Promise<Set<string>> {
   const cached = serverSqliteColumnsCache.get(table);
   if (cached) {
     return cached;
@@ -180,7 +186,7 @@ async function getServerSQLiteTableColumns(table: string): Promise<Set<string>> 
 const serverSupabaseColumnsCache = new Map<string, Set<string>>();
 
 async function getServerSupabaseTableColumns(
-  table: string
+  table: string,
 ): Promise<Set<string>> {
   const cached = serverSupabaseColumnsCache.get(table);
   if (cached) return cached;
@@ -189,10 +195,7 @@ async function getServerSupabaseTableColumns(
   if (!supabase) return new Set();
 
   try {
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .limit(1);
+    const { data, error } = await supabase.from(table).select("*").limit(1);
     if (error) {
       // Table missing from cloud schema or RLS denied — return empty so
       // the caller falls back to the unfiltered path.
@@ -373,7 +376,7 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
 
     if (serverOnlineStatus) {
       console.info(
-        `🌐 Supabase online - using ${supabaseTargetLabel()} database`
+        `🌐 Supabase online - using ${supabaseTargetLabel()} database`,
       );
     } else {
       if (error) {
@@ -384,7 +387,7 @@ async function isServerSupabaseAvailable(): Promise<boolean> {
 
     return serverOnlineStatus;
   } catch (err) {
-      console.info("📴 Supabase connection failed - using local SQLite");
+    console.info("📴 Supabase connection failed - using local SQLite");
     serverOnlineStatus = false;
     lastServerOnlineCheck = now;
     return false;
@@ -491,7 +494,7 @@ class UnifiedDatabase {
    */
   async query<T = any>(
     table: string,
-    options: QueryOptions = {}
+    options: QueryOptions = {},
   ): Promise<QueryResult<T>> {
     try {
       // Tauri: Always use SQLite via Rust
@@ -510,7 +513,10 @@ class UnifiedDatabase {
           // Supabase-only mode: surface error instead of trying to read
           // from a non-existent SQLite mirror.
           if (skipServerSqliteMirror()) {
-            console.error(`❌ Supabase query failed on ${table}:`, result.error);
+            console.error(
+              `❌ Supabase query failed on ${table}:`,
+              result.error,
+            );
             return result;
           }
           console.warn(`⚠️ Supabase query failed, falling back to SQLite`);
@@ -545,7 +551,7 @@ class UnifiedDatabase {
    */
   async queryOne<T = any>(
     table: string,
-    options: QueryOptions = {}
+    options: QueryOptions = {},
   ): Promise<SingleResult<T>> {
     const result = await this.query<T>(table, { ...options, limit: 1 });
 
@@ -564,7 +570,7 @@ class UnifiedDatabase {
    */
   async insert(
     table: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     try {
       // Generate ID if not provided
@@ -601,7 +607,10 @@ class UnifiedDatabase {
           // local SQLite mirror). Surface the actual Supabase error
           // instead of trying to write to a mirror that doesn't exist.
           if (skipServerSqliteMirror()) {
-            console.error(`❌ Supabase insert failed on ${table}:`, result.error);
+            console.error(
+              `❌ Supabase insert failed on ${table}:`,
+              result.error,
+            );
             return result;
           }
           console.warn(`⚠️ Supabase insert failed, falling back to SQLite`);
@@ -613,7 +622,7 @@ class UnifiedDatabase {
             return {
               data: null,
               error: new Error(
-                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan"
+                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan",
               ),
             };
           }
@@ -649,7 +658,7 @@ class UnifiedDatabase {
   async update(
     table: string,
     id: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     try {
       // Update timestamp (standar Indonesia: diperbarui_pada)
@@ -681,7 +690,10 @@ class UnifiedDatabase {
           // Supabase-only mode: surface the actual error instead of
           // attempting a non-existent SQLite fallback.
           if (skipServerSqliteMirror()) {
-            console.error(`❌ Supabase update failed on ${table}:`, result.error);
+            console.error(
+              `❌ Supabase update failed on ${table}:`,
+              result.error,
+            );
             return result;
           }
           console.warn(`⚠️ Supabase update failed, falling back to SQLite`);
@@ -691,7 +703,7 @@ class UnifiedDatabase {
             return {
               data: null,
               error: new Error(
-                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan"
+                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan",
               ),
             };
           }
@@ -756,7 +768,10 @@ class UnifiedDatabase {
             return result;
           }
           if (skipServerSqliteMirror()) {
-            console.error(`❌ Supabase delete failed on ${table}:`, result.error);
+            console.error(
+              `❌ Supabase delete failed on ${table}:`,
+              result.error,
+            );
             return result;
           }
           console.warn(`⚠️ Supabase delete failed, falling back to SQLite`);
@@ -766,7 +781,7 @@ class UnifiedDatabase {
             return {
               data: null,
               error: new Error(
-                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan"
+                "Supabase tidak tersedia dan SQLite mirror dinonaktifkan",
               ),
             };
           }
@@ -808,7 +823,7 @@ class UnifiedDatabase {
 
   private async queryServerSQLite<T>(
     table: string,
-    options: QueryOptions
+    options: QueryOptions,
   ): Promise<QueryResult<T>> {
     const db = await getServerSQLite();
     if (!db) {
@@ -869,7 +884,7 @@ class UnifiedDatabase {
 
   private async insertServerSQLite(
     table: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const db = await getServerSQLite();
     if (!db) {
@@ -897,7 +912,7 @@ class UnifiedDatabase {
     // OR IGNORE: if Supabase failed and fell back here, a prior attempt may have
     // already written the row — silently skip the duplicate rather than crashing.
     const sql = `INSERT OR IGNORE INTO ${table} (${columns.join(
-      ", "
+      ", ",
     )}) VALUES (${placeholders})`;
 
     try {
@@ -912,20 +927,22 @@ class UnifiedDatabase {
         // warning supaya konflik (b) terlihat/greppable, bukan hilang senyap.
         console.warn(
           `[insertServerSQLite] INSERT OR IGNORE: 0 baris berubah untuk ${table} id=${data.id}. ` +
-            `Data baru TIDAK ditulis (kemungkinan retry idempoten ATAU konflik PK). Periksa bila tak terduga.`
+            `Data baru TIDAK ditulis (kemungkinan retry idempoten ATAU konflik PK). Periksa bila tak terduga.`,
         );
         // Kembalikan ID baris yang ada supaya referensi FK downstream tetap valid.
         try {
           const existing = db
             .prepare(`SELECT id FROM ${table} WHERE id = ?`)
             .get(data.id);
-          if (existing) return { data: { id: (existing as any).id }, error: null };
+          if (existing)
+            return { data: { id: (existing as any).id }, error: null };
           // id not found — try by participant_code if available (finance_metric_mappings)
           if (data.participant_code) {
             const byCode = db
               .prepare(`SELECT id FROM ${table} WHERE participant_code = ?`)
               .get(data.participant_code);
-            if (byCode) return { data: { id: (byCode as any).id }, error: null };
+            if (byCode)
+              return { data: { id: (byCode as any).id }, error: null };
           }
         } catch {
           // best-effort lookup; fall through to return original id
@@ -941,7 +958,7 @@ class UnifiedDatabase {
   private async updateServerSQLite(
     table: string,
     id: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const db = await getServerSQLite();
     if (!db) {
@@ -975,7 +992,7 @@ class UnifiedDatabase {
 
   private async deleteServerSQLite(
     table: string,
-    id: string
+    id: string,
   ): Promise<MutationResult> {
     const db = await getServerSQLite();
     if (!db) {
@@ -999,7 +1016,7 @@ class UnifiedDatabase {
 
   private async queryServerSupabase<T>(
     table: string,
-    options: QueryOptions
+    options: QueryOptions,
   ): Promise<QueryResult<T>> {
     const supabase = getServerSupabaseClient();
     if (!supabase) {
@@ -1036,7 +1053,7 @@ class UnifiedDatabase {
     if (options.offset) {
       query = query.range(
         options.offset,
-        options.offset + (options.limit || 10) - 1
+        options.offset + (options.limit || 10) - 1,
       );
     }
 
@@ -1052,7 +1069,7 @@ class UnifiedDatabase {
 
   private async insertServerSupabase(
     table: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const supabase = getServerSupabaseClient();
     if (!supabase) {
@@ -1067,7 +1084,7 @@ class UnifiedDatabase {
     let payload =
       tableColumns.size > 0
         ? Object.fromEntries(
-            Object.entries(data).filter(([key]) => tableColumns.has(key))
+            Object.entries(data).filter(([key]) => tableColumns.has(key)),
           )
         : data;
 
@@ -1086,7 +1103,7 @@ class UnifiedDatabase {
       if (!error) {
         if (droppedColumns.length > 0) {
           console.warn(
-            `Server Supabase insert on ${table} skipped columns missing from schema: ${droppedColumns.join(", ")}`
+            `Server Supabase insert on ${table} skipped columns missing from schema: ${droppedColumns.join(", ")}`,
           );
         }
         return { data: { id: inserted.id }, error: null };
@@ -1108,7 +1125,7 @@ class UnifiedDatabase {
     return {
       data: null,
       error: new Error(
-        `Supabase schema cache rejected insert on ${table} after dropping columns: ${droppedColumns.join(", ")}`
+        `Supabase schema cache rejected insert on ${table} after dropping columns: ${droppedColumns.join(", ")}`,
       ),
     };
   }
@@ -1116,7 +1133,7 @@ class UnifiedDatabase {
   private async updateServerSupabase(
     table: string,
     id: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const supabase = getServerSupabaseClient();
     if (!supabase) {
@@ -1129,7 +1146,7 @@ class UnifiedDatabase {
     let payload =
       tableColumns.size > 0
         ? Object.fromEntries(
-            Object.entries(data).filter(([key]) => tableColumns.has(key))
+            Object.entries(data).filter(([key]) => tableColumns.has(key)),
           )
         : data;
 
@@ -1144,7 +1161,7 @@ class UnifiedDatabase {
       if (!error) {
         if (droppedColumns.length > 0) {
           console.warn(
-            `Server Supabase update on ${table} skipped columns missing from schema: ${droppedColumns.join(", ")}`
+            `Server Supabase update on ${table} skipped columns missing from schema: ${droppedColumns.join(", ")}`,
           );
         }
         return { data: { id }, error: null };
@@ -1166,14 +1183,14 @@ class UnifiedDatabase {
     return {
       data: null,
       error: new Error(
-        `Supabase schema cache rejected update on ${table} after dropping columns: ${droppedColumns.join(", ")}`
+        `Supabase schema cache rejected update on ${table} after dropping columns: ${droppedColumns.join(", ")}`,
       ),
     };
   }
 
   private async deleteServerSupabase(
     table: string,
-    id: string
+    id: string,
   ): Promise<MutationResult> {
     const supabase = getServerSupabaseClient();
     if (!supabase) {
@@ -1193,7 +1210,7 @@ class UnifiedDatabase {
   private async registerMutationIfNeeded(
     table: string,
     recordId: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<boolean> {
     const supabase = getServerSupabaseClient();
     if (!supabase || !data.client_mutation_id) return true;
@@ -1221,7 +1238,7 @@ class UnifiedDatabase {
 
   private async queryTauri<T>(
     table: string,
-    options: QueryOptions
+    options: QueryOptions,
   ): Promise<QueryResult<T>> {
     assertSafeIdentifier(table);
     let sql = `SELECT ${options.select || "*"} FROM ${table}`;
@@ -1262,7 +1279,7 @@ class UnifiedDatabase {
 
   private async insertTauri(
     table: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     assertSafeIdentifier(table);
     const columns = Object.keys(data);
@@ -1271,7 +1288,7 @@ class UnifiedDatabase {
     const placeholders = columns.map(() => "?").join(", ");
 
     const sql = `INSERT INTO ${table} (${columns.join(
-      ", "
+      ", ",
     )}) VALUES (${placeholders})`;
 
     await invoke("db_execute", { sql, params: values });
@@ -1281,7 +1298,7 @@ class UnifiedDatabase {
   private async updateTauri(
     table: string,
     id: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     assertSafeIdentifier(table);
     const sets = Object.keys(data).map((key) => {
@@ -1298,7 +1315,7 @@ class UnifiedDatabase {
 
   private async deleteTauri(
     table: string,
-    id: string
+    id: string,
   ): Promise<MutationResult> {
     assertSafeIdentifier(table);
     const sql = `DELETE FROM ${table} WHERE id = ?`;
@@ -1311,7 +1328,7 @@ class UnifiedDatabase {
 
   private async querySupabase<T>(
     table: string,
-    options: QueryOptions
+    options: QueryOptions,
   ): Promise<QueryResult<T>> {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -1345,7 +1362,7 @@ class UnifiedDatabase {
     if (options.offset) {
       query = query.range(
         options.offset,
-        options.offset + (options.limit || 10) - 1
+        options.offset + (options.limit || 10) - 1,
       );
     }
 
@@ -1363,7 +1380,7 @@ class UnifiedDatabase {
 
   private async insertSupabase(
     table: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -1386,7 +1403,7 @@ class UnifiedDatabase {
   private async updateSupabase(
     table: string,
     id: string,
-    data: Record<string, any>
+    data: Record<string, any>,
   ): Promise<MutationResult> {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -1404,7 +1421,7 @@ class UnifiedDatabase {
 
   private async deleteSupabase(
     table: string,
-    id: string
+    id: string,
   ): Promise<MutationResult> {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -1432,7 +1449,7 @@ class UnifiedDatabase {
         JSON.stringify({
           data,
           timestamp: Date.now(),
-        })
+        }),
       );
     } catch (e) {
       console.warn("Failed to cache data:", e);
@@ -1468,7 +1485,7 @@ class UnifiedDatabase {
     table: string,
     operation: "insert" | "update" | "delete",
     data: any,
-    recordId?: string
+    recordId?: string,
   ) {
     // Queue operation for background sync to Supabase
     // This will be handled by a background task in Tauri
@@ -1498,27 +1515,31 @@ class UnifiedDatabase {
     `);
 
     const columns = (
-      db.prepare("PRAGMA table_info(sync_queue)").all() as Array<{ name: string }>
+      db.prepare("PRAGMA table_info(sync_queue)").all() as Array<{
+        name: string;
+      }>
     ).map((c) => c.name);
 
     if (!columns.includes("dibuat_pada")) {
       db.exec("ALTER TABLE sync_queue ADD COLUMN dibuat_pada TEXT");
       if (columns.includes("created_at")) {
         db.exec(
-          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, created_at, datetime('now'))"
+          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, created_at, datetime('now'))",
         );
       } else {
         db.exec(
-          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, datetime('now'))"
+          "UPDATE sync_queue SET dibuat_pada = COALESCE(dibuat_pada, datetime('now'))",
         );
       }
     }
 
     if (!columns.includes("status")) {
-      db.exec("ALTER TABLE sync_queue ADD COLUMN status TEXT DEFAULT 'pending'");
+      db.exec(
+        "ALTER TABLE sync_queue ADD COLUMN status TEXT DEFAULT 'pending'",
+      );
       if (columns.includes("synced_at")) {
         db.exec(
-          "UPDATE sync_queue SET status = CASE WHEN synced_at IS NULL THEN 'pending' ELSE 'completed' END WHERE status IS NULL"
+          "UPDATE sync_queue SET status = CASE WHEN synced_at IS NULL THEN 'pending' ELSE 'completed' END WHERE status IS NULL",
         );
       } else {
         db.exec("UPDATE sync_queue SET status = COALESCE(status, 'pending')");
@@ -1532,7 +1553,7 @@ class UnifiedDatabase {
       ).map((c) => c.name);
       if (!cols.includes("muncul_di_pos_status")) {
         db.exec(
-          "ALTER TABLE barang ADD COLUMN muncul_di_pos_status INTEGER NOT NULL DEFAULT 1"
+          "ALTER TABLE barang ADD COLUMN muncul_di_pos_status INTEGER NOT NULL DEFAULT 1",
         );
       }
     }
@@ -1540,14 +1561,129 @@ class UnifiedDatabase {
     // Migrasi: harga_barang_satuan.nama_produk_jual
     {
       const cols = (
-        db
-          .prepare("PRAGMA table_info(harga_barang_satuan)")
-          .all() as Array<{ name: string }>
+        db.prepare("PRAGMA table_info(harga_barang_satuan)").all() as Array<{
+          name: string;
+        }>
       ).map((c) => c.name);
       if (!cols.includes("nama_produk_jual")) {
         db.exec(
-          "ALTER TABLE harga_barang_satuan ADD COLUMN nama_produk_jual TEXT"
+          "ALTER TABLE harga_barang_satuan ADD COLUMN nama_produk_jual TEXT",
         );
+      }
+    }
+
+    // Migrasi: biaya_tambahan_penjualan.item_penjualan_id (tautan biaya ke item,
+    // supaya reprint struk/faktur/SPK bisa menampilkan biaya sebagai sub-baris
+    // per item selaras dengan cetak saat checkout).
+    {
+      const cols = (
+        db
+          .prepare("PRAGMA table_info(biaya_tambahan_penjualan)")
+          .all() as Array<{ name: string }>
+      ).map((c) => c.name);
+      if (!cols.includes("item_penjualan_id")) {
+        db.exec(
+          "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN item_penjualan_id TEXT",
+        );
+      }
+    }
+
+    // Migrasi: unik produk jual per barang (ganti unik satuan legacy)
+    {
+      const legacyUnique = db
+        .prepare(
+          `SELECT 1 FROM sqlite_master
+           WHERE type = 'table'
+             AND name = 'harga_barang_satuan'
+             AND sql LIKE '%UNIQUE(barang_id, nama_satuan)%'
+           LIMIT 1`,
+        )
+        .get();
+      const newIndexExists = db
+        .prepare(
+          `SELECT 1 FROM sqlite_master
+           WHERE type = 'index'
+             AND name = 'idx_harga_barang_satuan_nama_produk_unik'
+           LIMIT 1`,
+        )
+        .get();
+
+      if (legacyUnique && !newIndexExists) {
+        const colInfo = (
+          db.prepare("PRAGMA table_info(harga_barang_satuan)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).filter((c) => !c.pk);
+        const pkCol = (
+          db.prepare("PRAGMA table_info(harga_barang_satuan)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).find((c) => c.pk);
+        const colDefs = [
+          pkCol
+            ? `"${pkCol.name}" ${pkCol.type || "TEXT"} PRIMARY KEY`
+            : '"id" TEXT PRIMARY KEY',
+          ...colInfo.map((c) => {
+            let sql = `"${c.name}" ${c.type || "TEXT"}`;
+            if (c.notnull) sql += " NOT NULL";
+            if (c.dflt_value != null) sql += ` DEFAULT ${c.dflt_value}`;
+            return sql;
+          }),
+          "FOREIGN KEY (barang_id) REFERENCES barang(id) ON DELETE CASCADE",
+        ].join(",\n              ");
+        const colList = (
+          db.prepare("PRAGMA table_info(harga_barang_satuan)").all() as Array<{
+            name: string;
+          }>
+        )
+          .map((c) => `"${c.name}"`)
+          .join(", ");
+
+        const rebuild = db.transaction(() => {
+          db.pragma("foreign_keys = OFF");
+          db.exec(`
+            CREATE TABLE harga_barang_satuan__new (
+              ${colDefs}
+            )
+          `);
+          db.exec(
+            `INSERT INTO harga_barang_satuan__new (${colList})
+             SELECT ${colList} FROM harga_barang_satuan`,
+          );
+          db.exec("DROP TABLE harga_barang_satuan");
+          db.exec(
+            "ALTER TABLE harga_barang_satuan__new RENAME TO harga_barang_satuan",
+          );
+          db.exec(`
+            CREATE UNIQUE INDEX idx_harga_barang_satuan_nama_produk_unik
+              ON harga_barang_satuan (
+                barang_id,
+                lower(trim(coalesce(nullif(trim(nama_produk_jual), ''), nama_satuan)))
+              )
+          `);
+          db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_harga_barang_satuan_sync_status
+              ON harga_barang_satuan(sync_status)
+          `);
+          db.pragma("foreign_keys = ON");
+        });
+        rebuild();
+      } else if (!newIndexExists) {
+        db.exec(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_harga_barang_satuan_nama_produk_unik
+            ON harga_barang_satuan (
+              barang_id,
+              lower(trim(coalesce(nullif(trim(nama_produk_jual), ''), nama_satuan)))
+            )
+        `);
       }
     }
 
@@ -1555,14 +1691,14 @@ class UnifiedDatabase {
     {
       const tableExists = db
         .prepare(
-          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='barang_komponen' LIMIT 1"
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='barang_komponen' LIMIT 1",
         )
         .get();
       if (tableExists) {
         const cols = (
-          db
-            .prepare("PRAGMA table_info(barang_komponen)")
-            .all() as Array<{ name: string }>
+          db.prepare("PRAGMA table_info(barang_komponen)").all() as Array<{
+            name: string;
+          }>
         ).map((c) => c.name);
         if (!cols.includes("jumlah_roll")) {
           db.exec("ALTER TABLE barang_komponen ADD COLUMN jumlah_roll INTEGER");
@@ -1603,7 +1739,7 @@ class UnifiedDatabase {
     table: string,
     operation: "insert" | "update" | "delete",
     data: any,
-    recordId?: string
+    recordId?: string,
   ) {
     // Queue operation for later sync to Supabase when connection is restored
     if (!isServerSide()) return;
@@ -1627,7 +1763,7 @@ class UnifiedDatabase {
         operation,
         data ? JSON.stringify(data) : null,
         recordId || null,
-        now
+        now,
       );
       console.debug(`📝 Queued ${operation} on ${table} for later sync`);
     } catch (error: any) {
@@ -1646,7 +1782,9 @@ class UnifiedDatabase {
 
     const supabaseAvailable = await isServerSupabaseAvailable();
     if (!supabaseAvailable) {
-      console.debug("🔴 Supabase not available, skipping sync queue processing");
+      console.debug(
+        "🔴 Supabase not available, skipping sync queue processing",
+      );
       return;
     }
 
@@ -1658,14 +1796,14 @@ class UnifiedDatabase {
 
       // Get pending operations
       const stmt = db.prepare(`
-        SELECT * FROM sync_queue 
-        WHERE status = 'pending' 
+        SELECT * FROM sync_queue
+        WHERE status = 'pending'
         ORDER BY dibuat_pada ASC
       `);
       const pendingOps = stmt.all() as any[];
 
       console.debug(
-        `🔄 Processing ${pendingOps.length} pending sync operations...`
+        `🔄 Processing ${pendingOps.length} pending sync operations...`,
       );
 
       for (const op of pendingOps) {
@@ -1680,12 +1818,12 @@ class UnifiedDatabase {
             result = await this.updateServerSupabase(
               op.table_name,
               op.record_id,
-              data
+              data,
             );
           } else if (op.operation === "delete") {
             result = await this.deleteServerSupabase(
               op.table_name,
-              op.record_id
+              op.record_id,
             );
           }
 
@@ -1699,7 +1837,7 @@ class UnifiedDatabase {
           } else {
             console.error(
               `❌ Failed to sync ${op.operation} on ${op.table_name}:`,
-              result?.error
+              result?.error,
             );
           }
         } catch (error: any) {
@@ -1709,13 +1847,15 @@ class UnifiedDatabase {
 
       // Clean up completed operations older than 7 days
       const cleanupStmt = db.prepare(`
-        DELETE FROM sync_queue 
-        WHERE status = 'completed' 
+        DELETE FROM sync_queue
+        WHERE status = 'completed'
         AND datetime(dibuat_pada) < datetime('now', '-7 days')
       `);
       const cleaned = cleanupStmt.run();
       if (cleaned.changes > 0) {
-        console.debug(`🧹 Cleaned up ${cleaned.changes} old sync queue entries`);
+        console.debug(
+          `🧹 Cleaned up ${cleaned.changes} old sync queue entries`,
+        );
       }
     } catch (error: any) {
       console.error("Error processing sync queue:", error);
@@ -1876,7 +2016,7 @@ class UnifiedDatabase {
    */
   async batchInsert(
     table: string,
-    records: Record<string, any>[]
+    records: Record<string, any>[],
   ): Promise<MutationResult[]> {
     const results: MutationResult[] = [];
 
@@ -1932,7 +2072,7 @@ class UnifiedDatabase {
 
     try {
       const result = await invoke<{ synced: number; failed: number }>(
-        "sync_to_cloud"
+        "sync_to_cloud",
       );
       return {
         success: result.failed === 0,
@@ -1989,7 +2129,7 @@ class UnifiedDatabase {
             if (isSchemaDrift) {
               console.warn(
                 `⚠️ syncFromCloud skipped table ${table} due to schema drift:`,
-                code || message
+                code || message,
               );
               continue;
             }
@@ -2004,7 +2144,7 @@ class UnifiedDatabase {
           for (const row of data) {
             const normalized = normalizeRecord(
               row as Record<string, any>,
-              "fromSupabase"
+              "fromSupabase",
             );
             const recordId =
               typeof normalized.id === "string" ? normalized.id : null;
@@ -2015,14 +2155,19 @@ class UnifiedDatabase {
                 .get(recordId) as Record<string, any> | undefined;
               if (existing) {
                 const remoteUpdatedAt =
-                  normalized.updated_at_server ?? normalized.diperbarui_pada ?? null;
+                  normalized.updated_at_server ??
+                  normalized.diperbarui_pada ??
+                  null;
                 const localUpdatedAt =
-                  existing.updated_at_server ?? existing.diperbarui_pada ?? null;
-                shouldCountAsChange = String(remoteUpdatedAt) !== String(localUpdatedAt);
+                  existing.updated_at_server ??
+                  existing.diperbarui_pada ??
+                  null;
+                shouldCountAsChange =
+                  String(remoteUpdatedAt) !== String(localUpdatedAt);
               }
             }
             const entries = Object.entries(normalized).filter(([key]) =>
-              columns.has(key)
+              columns.has(key),
             );
             if (entries.length === 0) continue;
             const names = entries.map(([key]) => key);
@@ -2037,9 +2182,7 @@ class UnifiedDatabase {
                 ? `INSERT INTO ${table} (${names.join(", ")}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${upsertAssignments}`
                 : `INSERT OR IGNORE INTO ${table} (${names.join(", ")}) VALUES (${placeholders})`;
             try {
-              sqlite
-                .prepare(upsertSql)
-                .run(...values);
+              sqlite.prepare(upsertSql).run(...values);
               if (shouldCountAsChange) {
                 pulled++;
               }
@@ -2075,13 +2218,18 @@ class UnifiedDatabase {
                     const newId = idEntry[1];
                     // Re-point the existing row to the cloud id, then upsert.
                     sqlite
-                      .prepare(`UPDATE satuan_barang SET id = ? WHERE nama = ? AND id != ?`)
+                      .prepare(
+                        `UPDATE satuan_barang SET id = ? WHERE nama = ? AND id != ?`,
+                      )
                       .run(newId, namaVal, newId);
                     sqlite.prepare(upsertSql).run(...values);
                     if (shouldCountAsChange) pulled++;
                   }
                 } catch (retryErr) {
-                  console.warn(`⚠ satuan_barang UNIQUE retry failed for row:`, retryErr);
+                  console.warn(
+                    `⚠ satuan_barang UNIQUE retry failed for row:`,
+                    retryErr,
+                  );
                 }
                 continue;
               }
@@ -2128,7 +2276,9 @@ class UnifiedDatabase {
 
               if (subkategoriId) {
                 const existsSubkategori = sqlite
-                  .prepare("SELECT 1 FROM subkategori_barang WHERE id = ? LIMIT 1")
+                  .prepare(
+                    "SELECT 1 FROM subkategori_barang WHERE id = ? LIMIT 1",
+                  )
                   .get(subkategoriId);
                 if (!existsSubkategori) {
                   entryMap.set("subkategori_id", null);
@@ -2149,16 +2299,14 @@ class UnifiedDatabase {
               upsertAssignments.length > 0
                 ? `INSERT INTO ${deferred.table} (${names.join(", ")}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${upsertAssignments}`
                 : `INSERT OR IGNORE INTO ${deferred.table} (${names.join(", ")}) VALUES (${placeholders})`;
-            sqlite
-              .prepare(upsertSql)
-              .run(...values);
+            sqlite.prepare(upsertSql).run(...values);
             if (deferred.shouldCountAsChange) {
               pulled++;
             }
           } catch (retryError: any) {
             console.warn(
               `⚠️ syncFromCloud FK retry failed on table ${deferred.table}:`,
-              retryError?.code || retryError?.message || retryError
+              retryError?.code || retryError?.message || retryError,
             );
             failed++;
           }
@@ -2178,7 +2326,7 @@ class UnifiedDatabase {
 
     try {
       const result = await invoke<{ pulled: number; failed: number }>(
-        "sync_from_cloud"
+        "sync_from_cloud",
       );
       return {
         success: result.failed === 0,
@@ -2312,7 +2460,9 @@ export async function createMaterialWithUnitPrices(materialData: {
     return await db.transaction(async () => {
       const defaultUnitPrice =
         materialData.unit_prices.find((up) => up.default_status) ??
-        materialData.unit_prices.find((up) => Number(up.faktor_konversi) === 1) ??
+        materialData.unit_prices.find(
+          (up) => Number(up.faktor_konversi) === 1,
+        ) ??
         materialData.unit_prices[0];
       const averageCostPerBaseUnit =
         defaultUnitPrice && Number(defaultUnitPrice.faktor_konversi || 0) > 0
@@ -2429,7 +2579,7 @@ export async function getAllMaterialsWithUnitPrices() {
           ...material,
           unit_prices: unitPricesResult.data || [],
         };
-      })
+      }),
     );
 
     return { data: materialsWithUnits, error: null };
@@ -2446,7 +2596,7 @@ export async function getAllMaterialsWithUnitPrices() {
  * @returns Result from the callback
  */
 export async function withSQLiteDatabase<T>(
-  callback: (db: any) => Promise<T> | T
+  callback: (db: any) => Promise<T> | T,
 ): Promise<T> {
   if (!isTauriApp()) {
     throw new Error("SQLite direct access is only available in Tauri app");
@@ -2466,4 +2616,3 @@ export async function withSQLiteDatabase<T>(
 
 // Export singleton instance
 export const db = new UnifiedDatabase();
-

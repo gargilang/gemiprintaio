@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gemiprint/core/penjualan_cetak_utils.dart';
 import 'package:gemiprint/core/constants/roles.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
 import 'package:gemiprint/providers/providers.dart';
@@ -338,10 +339,41 @@ class _DetailSheet extends ConsumerWidget {
           const SizedBox(height: 12),
           const Text('Item', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 8),
-          ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
-            Expanded(child: Text(item['barang_nama'] ?? item['nama_barang'] ?? '-', style: const TextStyle(fontSize: 13))),
-            Text('${item['quantity'] ?? item['jumlah'] ?? 0} × ${currencyFmt.format((item['harga_satuan'] as num?)?.toDouble() ?? 0)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          ]))),
+          ...items.map((item) {
+            final raw = item as Map<String, dynamic>;
+            final cetak = ItemCetakPenjualan(
+              jumlah: (raw['jumlah'] as num?)?.toDouble() ?? 0,
+              namaSatuan: raw['nama_satuan'] as String?,
+              panjang: (raw['panjang'] as num?)?.toDouble(),
+              lebar: (raw['lebar'] as num?)?.toDouble(),
+              billedPanjang: (raw['billed_panjang'] as num?)?.toDouble(),
+              billedLebar: (raw['billed_lebar'] as num?)?.toDouble(),
+              jumlahRoll: raw['jumlah_roll'] as num?,
+              jumlahLembar: raw['jumlah_lembar'] as num?,
+            );
+            final qtyLabel = formatQtyLabel(cetak);
+            final ukuran = formatUkuranCetakInput(
+              panjang: cetak.panjang,
+              lebar: cetak.lebar,
+              billedPanjang: cetak.billedPanjang,
+              billedLebar: cetak.billedLebar,
+            );
+            final harga = (raw['harga_satuan'] as num?)?.toDouble() ?? 0;
+            final biayaList = ((raw['biaya_tambahan'] as List?) ?? [])
+                .whereType<Map<String, dynamic>>()
+                .where((b) => (b['nominal'] as num?)?.toDouble() != null && (b['nominal'] as num).toDouble() > 0)
+                .map((b) => MapEntry((b['label'] ?? '').toString().trim(), (b['nominal'] as num).toDouble()))
+                .where((e) => e.key.isNotEmpty)
+                .toList();
+            return Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(raw['barang_nama'] ?? raw['nama_barang'] ?? '-', style: const TextStyle(fontSize: 13)),
+                if (ukuran != null) Text('Ukuran: $ukuran', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                ...biayaList.map((e) => Text('+ ${e.key}: Rp ${currencyFmt.format(e.value)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+              ])),
+              Text('$qtyLabel × ${currencyFmt.format(harga)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ]));
+          }),
           const Divider(),
           _totalRow('Total', currencyFmt.format(total)),
           _totalRow('Dibayar', currencyFmt.format(dibayar)),
@@ -366,17 +398,49 @@ class _DetailSheet extends ConsumerWidget {
                   paymentMethod: metode == '-' ? null : metode.toString(),
                   shop: shop,
                   lines: items.map((item) {
-                    final qty = (item['quantity'] ?? item['jumlah'] ?? 0)
-                        .toDouble() as double;
-                    final harga =
-                        (item['harga_satuan'] as num?)?.toDouble() ?? 0;
+                    final raw = item as Map<String, dynamic>;
+                    final cetak = ItemCetakPenjualan(
+                      jumlah: (raw['jumlah'] as num?)?.toDouble() ?? 0,
+                      namaSatuan: raw['nama_satuan'] as String?,
+                      panjang: (raw['panjang'] as num?)?.toDouble(),
+                      lebar: (raw['lebar'] as num?)?.toDouble(),
+                      billedPanjang: (raw['billed_panjang'] as num?)?.toDouble(),
+                      billedLebar: (raw['billed_lebar'] as num?)?.toDouble(),
+                      jumlahRoll: raw['jumlah_roll'] as num?,
+                      jumlahLembar: raw['jumlah_lembar'] as num?,
+                    );
+                    final qs = qtySatuanCetak(cetak);
+                    final ukuran = formatUkuranCetakInput(
+                      panjang: cetak.panjang,
+                      lebar: cetak.lebar,
+                      billedPanjang: cetak.billedPanjang,
+                      billedLebar: cetak.billedLebar,
+                    );
+                    final hargaLine =
+                        (raw['harga_satuan'] as num?)?.toDouble() ?? 0;
+                    final subtotalLine =
+                        (raw['subtotal'] as num?)?.toDouble() ??
+                        (qs.qty * hargaLine);
                     return FakturLine(
                       name: item['barang_nama'] ?? item['nama_barang'] ?? '-',
-                      satuan: item['nama_satuan'] as String?,
-                      qty: qty,
-                      harga: harga,
-                      jumlah: (item['subtotal'] as num?)?.toDouble() ??
-                          (qty * harga),
+                      ukuran: ukuran,
+                      qty: qs.qty,
+                      satuan: qs.satuan.isEmpty ? null : qs.satuan,
+                      harga: qs.qty > 0
+                          ? subtotalLine / qs.qty
+                          : hargaLine,
+                      jumlah: subtotalLine,
+                      biayaTambahan: ((raw['biaya_tambahan'] as List?) ?? [])
+                          .whereType<Map<String, dynamic>>()
+                          .where((b) =>
+                              (b['nominal'] as num?)?.toDouble() != null &&
+                              (b['nominal'] as num).toDouble() > 0)
+                          .map((b) => FakturLineCharge(
+                                label: (b['label'] ?? '').toString().trim(),
+                                nominal: (b['nominal'] as num).toDouble(),
+                              ))
+                          .where((c) => c.label.isNotEmpty)
+                          .toList(),
                     );
                   }).toList(),
                 ),
