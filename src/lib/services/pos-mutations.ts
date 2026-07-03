@@ -185,6 +185,11 @@ async function generateInvoiceNumber(tanggal: string): Promise<string> {
   return `${prefix}-${seqStr}`;
 }
 
+/** Preview nomor faktur berikutnya TANPA persist (untuk tombol "Lihat Faktur"). */
+export async function previewNextInvoiceNumber(): Promise<string> {
+  return generateInvoiceNumber(getTodayJakarta());
+}
+
 async function generateSPKNumber(): Promise<string> {
   const settings = await getShopSettings();
   const prefix = settings.spk_prefix || "SPK";

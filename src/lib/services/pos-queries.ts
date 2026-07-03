@@ -24,6 +24,10 @@ import {
 } from "./inventory-service";
 import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
+import {
+  listKatalogMaklon,
+  type KatalogMaklon,
+} from "./katalog-maklon-service";
 
 // ============================================================================
 // TIPE
@@ -116,6 +120,7 @@ export interface POSInitData {
   sales: Sale[];
   /** Vendor yang bisa dipakai sebagai subkontraktor maklon (tipe SUBKONTRAKTOR atau KEDUANYA). */
   subkontraktor: any[];
+  katalogMaklon: KatalogMaklon[];
 }
 
 export interface CreateSaleData {
@@ -447,11 +452,19 @@ export async function getPOSInitData(): Promise<POSInitData> {
       console.warn("[getPOSInitData] failed to load subkontraktor vendors:", e);
     }
 
+    let katalogMaklon: KatalogMaklon[] = [];
+    try {
+      katalogMaklon = await listKatalogMaklon(true);
+    } catch (e) {
+      console.warn("[getPOSInitData] failed to load katalog_maklon:", e);
+    }
+
     return {
       customers: customersResult.data || [],
       materials: materialsWithPrices,
       sales,
       subkontraktor,
+      katalogMaklon,
     };
   } catch (error) {
     console.error("Error fetching POS init data:", error);
