@@ -57,3 +57,13 @@ CREATE TABLE IF NOT EXISTS katalog_maklon (
 );
 CREATE INDEX IF NOT EXISTS idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_katalog_maklon_nama_unik ON katalog_maklon(nama_produk) WHERE is_deleted = 0;
+
+-- RLS + grant untuk sync Tauri (anon key) dan API service-role
+ALTER TABLE public.keranjang_tersimpan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.katalog_maklon ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_full_access" ON public.keranjang_tersimpan TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_full_access" ON public.katalog_maklon TO anon USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE public.keranjang_tersimpan TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.katalog_maklon TO anon, authenticated, service_role;
