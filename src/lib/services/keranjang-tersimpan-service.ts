@@ -19,6 +19,8 @@ export interface ParkedCart {
   dibuat_oleh: string | null;
   dibuat_pada: string;
   diperbarui_pada: string;
+  is_deleted?: number;
+  deleted_at?: string | null;
 }
 
 function addDaysIso(iso: string, days: number): string {
