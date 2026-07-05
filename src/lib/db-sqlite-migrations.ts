@@ -2738,14 +2738,27 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
   }
 
   // Normalisasi item legacy SIAP_AMBIL → status produksi selesai (cetak/maklon).
+  // is_maklon bukan kolom DB; diturunkan dari item_penjualan.tipe_item.
   db.exec(`
     UPDATE item_produksi
     SET status = 'FINISHING'
-    WHERE status = 'SIAP_AMBIL' AND (is_maklon IS NULL OR is_maklon = 0);
+    WHERE status = 'SIAP_AMBIL'
+      AND id IN (
+        SELECT ip.id
+        FROM item_produksi ip
+        LEFT JOIN item_penjualan isp ON isp.id = ip.item_penjualan_id
+        WHERE COALESCE(isp.tipe_item, 'BARANG') != 'MAKLON'
+      );
 
     UPDATE item_produksi
     SET status = 'DIKERJAKAN_VENDOR'
-    WHERE status = 'SIAP_AMBIL' AND is_maklon = 1;
+    WHERE status = 'SIAP_AMBIL'
+      AND id IN (
+        SELECT ip.id
+        FROM item_produksi ip
+        INNER JOIN item_penjualan isp ON isp.id = ip.item_penjualan_id
+        WHERE isp.tipe_item = 'MAKLON'
+      );
   `);
 
   serverSqliteColumnsCache.clear();
