@@ -60,12 +60,29 @@ export async function updateMaterialWithUnitPricesAction(
   }
 }
 
-export async function deleteMaterialAction(id: string) {
+/**
+ * Hapus barang.
+ *
+ * Mengembalikan objek hasil `{ ok, error }` alih-alih melempar untuk kasus
+ * "terblokir" yang wajar (mis. barang masih dipakai di transaksi / rakitan).
+ * Alasannya: di produksi, Next.js meredaksi pesan Error yang dilempar dari
+ * Server Action jadi teks generik, sehingga pesan ramah kita tidak akan sampai
+ * ke pengguna. Dengan mengembalikan pesan sebagai nilai balik, pesan tetap utuh
+ * dan bisa ditampilkan lewat notifikasi.
+ */
+export async function deleteMaterialAction(
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    return await deleteMaterial(id);
+    await deleteMaterial(id);
+    return { ok: true };
   } catch (error) {
     console.error("Error in deleteMaterialAction:", error);
-    throw error;
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan saat menghapus barang.";
+    return { ok: false, error: message };
   }
 }
 

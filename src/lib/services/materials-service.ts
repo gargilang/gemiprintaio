@@ -456,14 +456,20 @@ export async function deleteMaterial(id: string): Promise<boolean> {
   try {
     // Cek apakah barang sudah dipakai di pembelian atau penjualan.
     // Kalau iya, tolak dengan pesan yang menyebut nomor transaksi spesifik.
-    const [purchaseItemsRes, saleItemsRes] = await Promise.all([
+    const [purchaseItemsRes, saleItemsRes, componentUsageRes] = await Promise.all([
       db.query<any>("item_pembelian", { where: { barang_id: id } }),
       db.query<any>("item_penjualan", { where: { barang_id: id } }),
+      // Cek apakah barang dipakai sebagai komponen di rakitan/BOM barang lain
+      // (FK barang_komponen.komponen_id tidak cascade, jadi harus diblokir manual).
+      db.query<any>("barang_komponen", { where: { komponen_id: id } }),
     ]);
 
     const purchaseItems = purchaseItemsRes.data || [];
     const saleItems = (saleItemsRes.data || []).filter(
       (it: any) => it.barang_id === id && it.tipe_item !== "MAKLON"
+    );
+    const componentUsage = (componentUsageRes.data || []).filter(
+      (it: any) => it.komponen_id === id && !it.is_deleted
     );
 
     const blockingMessages: string[] = [];
@@ -513,6 +519,22 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       if (saleLabels.length > 0) {
         blockingMessages.push(
           `dipakai di penjualan: ${saleLabels.join(", ")}`
+        );
+      }
+    }
+
+    if (componentUsage.length > 0) {
+      const parentIds = [
+        ...new Set(componentUsage.map((it: any) => it.parent_barang_id as string)),
+      ];
+      const parentLabels: string[] = [];
+      for (const pid of parentIds) {
+        const parent = await db.queryOne<any>("barang", { where: { id: pid } });
+        parentLabels.push(parent.data?.nama || pid);
+      }
+      if (parentLabels.length > 0) {
+        blockingMessages.push(
+          `dipakai sebagai komponen di rakitan: ${parentLabels.join(", ")}`
         );
       }
     }

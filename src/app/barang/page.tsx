@@ -574,7 +574,15 @@ export default function MaterialsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await deleteMaterialAction(material.id);
+          const hasil = await deleteMaterialAction(material.id);
+          if (!hasil.ok) {
+            // Pesan ramah dari server (mis. barang masih dipakai di transaksi/rakitan)
+            showNotification(
+              "error",
+              hasil.error || "Terjadi kesalahan saat menghapus barang",
+            );
+            return;
+          }
           setMaterials((prev: any[]) =>
             prev.filter((m) => m.id !== material.id),
           );
