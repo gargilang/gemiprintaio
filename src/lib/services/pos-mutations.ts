@@ -35,6 +35,7 @@ import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
 import { friendlyPgError } from "../pg-error";
 import { withDuplicateNumberRetry } from "../retry-utils";
+import { computeBomCostPerUnit } from "./bom-service";
 
 // ============================================================================
 // TIPE
@@ -596,9 +597,24 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
               item.barang_id,
               item.harga_satuan_id,
             ));
-          hppSatuan =
+          const baseHppSatuan =
             averageCostPerBaseUnit *
             (positiveNumber(item.faktor_konversi) || 1);
+          // B2.f: tambah biaya BOM per unit produk jual. Kegagalan helper
+          // ditoleransi (bomCostPerUnit = 0) supaya checkout tidak gagal.
+          let bomCostPerUnit = 0;
+          try {
+            bomCostPerUnit = await computeBomCostPerUnit(
+              item.barang_id,
+              item.harga_satuan_id,
+            );
+          } catch (e) {
+            console.warn(
+              `[HPP BOM] Gagal hitung BOM untuk barang ${item.barang_id}:`,
+              e,
+            );
+          }
+          hppSatuan = baseHppSatuan + bomCostPerUnit;
           hppTotal = hppSatuan * item.jumlah;
         }
         const recommendedRollWidth =
