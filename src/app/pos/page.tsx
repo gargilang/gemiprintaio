@@ -416,6 +416,10 @@ export default function POSPage() {
       if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) continue;
       if (m.kategori_nama) names.add(m.kategori_nama);
     }
+    // C6: sertakan kategori dari katalog maklon (dari join kategori_id).
+    for (const k of katalogMaklon) {
+      if (k.kategori_nama) names.add(k.kategori_nama);
+    }
     return [...names].sort((a, b) => {
       const ia = KATEGORI_ORDER.indexOf(a);
       const ib = KATEGORI_ORDER.indexOf(b);
@@ -424,7 +428,7 @@ export default function POSPage() {
       if (ib === -1) return -1;
       return ia - ib;
     });
-  }, [materials]);
+  }, [materials, katalogMaklon]);
 
   // Flatten semua unit_prices menjadi daftar Produk Jual — selalu tampil di POS
   // terlepas dari muncul_di_pos_status barang induk. Placeholder maklon dilewati.
@@ -459,7 +463,7 @@ export default function POSPage() {
         harga_jual: k.harga_jual_default,
         harga_member: k.harga_jual_default,
         faktor_konversi: 1,
-        kategori_nama: k.kategori ?? null,
+        kategori_nama: k.kategori_nama ?? k.kategori ?? null, // join kategori_id (C6), fallback legacy
         sumber: "KATALOG_MAKLON",
         katalog_maklon_id: k.id,
         biaya_subkontrak_default: k.biaya_subkontrak_default,

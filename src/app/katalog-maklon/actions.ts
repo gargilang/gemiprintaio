@@ -12,6 +12,7 @@ import {
   type KatalogMaklon,
 } from "@/lib/services/katalog-maklon-service";
 import type { KatalogMaklonInput } from "@/lib/schemas/katalog-maklon";
+import { getMaterialCategories } from "@/lib/services/materials-service";
 import {
   listPendingMaklon,
   reconcilePendingMaklonItem,
@@ -24,6 +25,12 @@ export async function listKatalogMaklonAction(
   onlyAktif = true,
 ): Promise<KatalogMaklon[]> {
   return listKatalogMaklon(onlyAktif);
+}
+
+/** Ambil daftar kategori barang untuk dropdown kategori katalog. Baca saja. */
+export async function getKategoriBarangAction() {
+  await requireSession();
+  return getMaterialCategories();
 }
 
 export async function createKatalogMaklonAction(input: KatalogMaklonInput) {

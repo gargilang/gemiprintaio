@@ -6,8 +6,10 @@ import { PencilIcon, PlusIcon } from "@/components/icons/ContentIcons";
 import type { Vendor } from "@/lib/services/vendors-service";
 import type { KatalogMaklon } from "@/lib/services/katalog-maklon-service";
 import type { KatalogMaklonInput } from "@/lib/schemas/katalog-maklon";
+import { useCachedData } from "@/lib/use-cached-data";
 import {
   createKatalogMaklonAction,
+  getKategoriBarangAction,
   updateKatalogMaklonAction,
 } from "./actions";
 
@@ -69,6 +71,12 @@ export default function ModalKatalogMaklon({
   const isEdit = Boolean(item);
   const [form, setForm] = useState<FormState>(() => buildInitialForm(item));
   const [saving, setSaving] = useState(false);
+
+  // Daftar kategori barang untuk dropdown (C6). SWR cache key stabil.
+  const { data: kategoriBarang } = useCachedData<
+    { id: string; nama: string }[]
+  >("kategori-barang", getKategoriBarangAction);
+  const kategoriOptions = useMemo(() => kategoriBarang ?? [], [kategoriBarang]);
 
   // Vendor maklon default hanya masuk akal untuk vendor bertipe subkontraktor.
   const vendorSubkontrak = useMemo(
@@ -224,15 +232,26 @@ export default function ModalKatalogMaklon({
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Kategori
             </label>
-            <input
-              type="text"
-              value={form.kategori ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, kategori: e.target.value || null })
-              }
-              placeholder="Contoh: Banner, Stiker"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <select
+              value={form.kategori_id ?? ""}
+              onChange={(e) => {
+                const selected = e.target.options[e.target.selectedIndex];
+                setForm({
+                  ...form,
+                  kategori_id: e.target.value || null,
+                  // Sinkronkan legacy free-text kategori dengan nama terpilih.
+                  kategori: selected ? selected.text : null,
+                });
+              }}
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">— Tanpa kategori —</option>
+              {kategoriOptions.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

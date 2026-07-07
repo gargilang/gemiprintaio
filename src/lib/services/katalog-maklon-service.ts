@@ -32,13 +32,33 @@ export async function listKatalogMaklon(
   onlyAktif = true,
 ): Promise<KatalogMaklon[]> {
   const result = await db.query<KatalogMaklonRow>("katalog_maklon", {
-    orderBy: { column: "urutan", ascending: true },
+    // Populer (C5) tampil lebih dulu, lalu urutan bawaan.
+    orderBy: { column: "populer_status", ascending: false },
   });
   if (result.error) throw friendlyPgError(result.error, "katalog_maklon");
-  return (result.data || []).filter(
+  const rows = (result.data || []).filter(
     (r) =>
       Number(r.is_deleted) !== 1 && (!onlyAktif || Number(r.is_aktif) === 1),
   );
+  // Join kategori_nama di memory (N+1 kecil; tabel kategori_barang bounded).
+  // db-unified mendukung filter IN via bentuk array pada `where`.
+  const kategoriIds = [
+    ...new Set(rows.map((r) => r.kategori_id).filter(Boolean) as string[]),
+  ];
+  const kategoriMap = new Map<string, string>();
+  if (kategoriIds.length) {
+    const katRes = await db.query<{ id: string; nama: string }>(
+      "kategori_barang",
+      { where: { id: kategoriIds } },
+    );
+    for (const k of katRes.data || []) kategoriMap.set(k.id, k.nama);
+  }
+  return rows.map((r) => ({
+    ...r,
+    kategori_nama: r.kategori_id
+      ? (kategoriMap.get(r.kategori_id) ?? null)
+      : null,
+  }));
 }
 
 async function assertNamaUnik(nama_produk: string, exceptId?: string) {
