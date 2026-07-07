@@ -722,16 +722,17 @@ export default function ModalTambahBarang({
                       </span>
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2 space-y-0.5">
-                    • Munculkan di POS: visibilitas barang induk.{" "}
-                    <strong>Produk Jual</strong> di bawah selalu muncul (stok
-                    tetap terlacak).
-                    <br />• Track stok: nonaktifkan untuk barang konsumsi (lem,
-                    tinta, dll).
-                    <br />• Dimensi: untuk banner, vinyl, flexi. Stok dihitung{" "}
-                    <strong>m²</strong>; pembelian meminta panjang × lebar tiap
-                    roll.
-                  </p>
+                  <div className="text-sm text-gray-500 dark:text-slate-400 mt-2 space-y-0.5">
+                    <p>• Munculkan di POS: visibilitas barang induk.</p>
+                    <p>
+                      • Track stok: nonaktifkan untuk barang konsumsi (lem,
+                      tinta, dll).
+                    </p>
+                    <p>
+                      • Dimensi: stok dihitung m²; pembelian meminta panjang ×
+                      lebar tiap roll.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Spesifikasi */}
