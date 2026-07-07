@@ -387,15 +387,12 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   <div class="footer">
     <div class="footer-thanks">Terima Kasih Atas Kunjungan Anda!</div>
     <div>${escapeHtml(shopReceiptNote)}</div>
-    <div style="margin-top: 6px;">Simpan struk ini sebagai bukti pembayaran</div>
-  </div>
+      <div style="margin-top: 6px;">Simpan struk ini sebagai bukti pembayaran</div>
+    </div>
 
-  <script>
-    // Print dialog removed - user can manually print using Ctrl+P or browser print button
-  </script>
-</body>
-</html>
-  `;
+  </body>
+  </html>
+    `;
 }
 
 /**

@@ -42,7 +42,7 @@ export interface SpkDetailModalProps {
   onVoidConsumption: (item: ProductionItem) => void;
   onUpdateOrderStatus: (orderId: string, newStatus: string) => void;
   onEditCustomer: () => void;
-  onPrint: (order: ProductionOrder) => void;
+  onPrint: (order: ProductionOrder) => void | Promise<void>;
 }
 
 // Modal detail SPK (info order + item + konsumsi roll + finishing). Diekstrak (Fase 6 B6).
@@ -260,17 +260,17 @@ export default function SpkDetailModal({
                       item.status,
                     )}`}
                   >
-                    {daftarStatusManualUntukItem({ is_maklon: item.is_maklon }).map(
-                      (s) => (
-                        <option
-                          key={s}
-                          value={s}
-                          className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
-                        >
-                          {labelStatus(s)}
-                        </option>
-                      ),
-                    )}
+                    {daftarStatusManualUntukItem({
+                      is_maklon: item.is_maklon,
+                    }).map((s) => (
+                      <option
+                        key={s}
+                        value={s}
+                        className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                      >
+                        {labelStatus(s)}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -433,8 +433,8 @@ export default function SpkDetailModal({
           </button>
           <button
             type="button"
-            onClick={() => {
-              onPrint(order);
+            onClick={async () => {
+              await onPrint(order);
               onClose();
             }}
             className="px-6 py-2 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center gap-2"
