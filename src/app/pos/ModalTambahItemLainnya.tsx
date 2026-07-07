@@ -9,19 +9,31 @@ export interface TambahItemLainnyaValue {
   jumlah: number;
   nama_satuan: string;
   harga_satuan: number;
-  vendor_subkontrak_id: string;
-  biaya_subkontrak: number;
-  metode_bayar_vendor: "CASH" | "NET30";
+  // Rincian Internal opsional. Kosong = item "pending" vendor/HPP (ditangani
+  // safeguard C2 di pos-mutations / Task 4 saat checkout).
+  vendor_subkontrak_id?: string | null;
+  biaya_subkontrak?: number | null;
+  metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
 }
 
 interface ModalTambahItemLainnyaProps {
   open: boolean;
   subkontraktor: SubkontraktorOption[];
   onClose: () => void;
-  onSave: (value: TambahItemLainnyaValue) => void;
+  onSave: (value: TambahItemLainnyaValue) => void | Promise<void>;
 }
 
-const SATUAN_OPTIONS = ["pcs", "lembar", "set", "rim", "pack", "m²", "meter", "roll", "unit"];
+const SATUAN_OPTIONS = [
+  "pcs",
+  "lembar",
+  "set",
+  "rim",
+  "pack",
+  "m²",
+  "meter",
+  "roll",
+  "unit",
+];
 
 export default function ModalTambahItemLainnya({
   open,
@@ -33,9 +45,11 @@ export default function ModalTambahItemLainnya({
   const [jumlah, setJumlah] = useState("1");
   const [namaSatuan, setNamaSatuan] = useState("pcs");
   const [hargaJual, setHargaJual] = useState("");
-  const [vendorId, setVendorId] = useState("");
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const [biayaSubkontrak, setBiayaSubkontrak] = useState("");
-  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "NET30">("CASH");
+  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "NET30" | "TRANSFER">(
+    "CASH",
+  );
   const [tampilkanInternal, setTampilkanInternal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,7 +59,7 @@ export default function ModalTambahItemLainnya({
     setJumlah("1");
     setNamaSatuan("pcs");
     setHargaJual("");
-    setVendorId("");
+    setVendorId(null);
     setBiayaSubkontrak("");
     setMetodeBayar("CASH");
     setTampilkanInternal(false);
@@ -57,7 +71,7 @@ export default function ModalTambahItemLainnya({
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const parsedJumlah = Number(jumlah);
     const parsedHarga = Number(hargaJual);
     const parsedBiaya = Number(biayaSubkontrak);
@@ -74,22 +88,26 @@ export default function ModalTambahItemLainnya({
       setError("Harga jual tidak valid");
       return;
     }
-    if (!vendorId || !Number.isFinite(parsedBiaya) || parsedBiaya <= 0 || !metodeBayar) {
-      setTampilkanInternal(true);
-      setError("Lengkapi Rincian Internal (vendor, biaya, metode) sebelum simpan.");
-      return;
+    // Vendor/biaya/metode OPSIONAL. Pending (vendor/biaya kosong) ditangani safeguard
+    // C2 di pos-mutations saat checkout. Kalau vendor diisi, biaya wajib > 0.
+    if (vendorId) {
+      if (!Number.isFinite(parsedBiaya) || parsedBiaya <= 0) {
+        setTampilkanInternal(true);
+        setError("Biaya subkontrak harus lebih dari 0 bila vendor dipilih.");
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      onSave({
+      await onSave({
         barang_nama: namaItem.trim(),
         jumlah: parsedJumlah,
         nama_satuan: namaSatuan,
         harga_satuan: parsedHarga,
-        vendor_subkontrak_id: vendorId,
-        biaya_subkontrak: parsedBiaya,
-        metode_bayar_vendor: metodeBayar,
+        vendor_subkontrak_id: vendorId || null,
+        biaya_subkontrak: vendorId ? parsedBiaya : null,
+        metode_bayar_vendor: vendorId ? metodeBayar : null,
       });
       resetForm();
     } finally {
@@ -113,8 +131,18 @@ export default function ModalTambahItemLainnya({
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             aria-label="Tutup"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -151,7 +179,9 @@ export default function ModalTambahItemLainnya({
             Pelanggan
           </p>
           <label className="block text-sm">
-            <span className="text-slate-700 dark:text-slate-200">Nama item</span>
+            <span className="text-slate-700 dark:text-slate-200">
+              Nama item
+            </span>
             <input
               value={namaItem}
               onChange={(e) => setNamaItem(e.target.value)}
@@ -185,7 +215,9 @@ export default function ModalTambahItemLainnya({
             </label>
           </div>
           <label className="block text-sm">
-            <span className="text-slate-700 dark:text-slate-200">Harga jual</span>
+            <span className="text-slate-700 dark:text-slate-200">
+              Harga jual
+            </span>
             <input
               type="number"
               min={0}
@@ -202,22 +234,38 @@ export default function ModalTambahItemLainnya({
             onClick={() => setTampilkanInternal((v) => !v)}
             className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-300"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+              />
             </svg>
             Rincian Internal
           </button>
           {tampilkanInternal && (
             <div className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 p-3">
               <label className="block text-sm">
-                <span className="text-slate-700 dark:text-slate-200">Vendor subkontrak</span>
+                <span className="text-slate-700 dark:text-slate-200">
+                  Vendor subkontrak
+                </span>
                 <select
-                  value={vendorId}
-                  onChange={(e) => setVendorId(e.target.value)}
+                  value={vendorId ?? ""}
+                  onChange={(e) => setVendorId(e.target.value || null)}
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
                 >
-                  <option value="">— Pilih vendor —</option>
+                  <option value="">— Pilih vendor (opsional) —</option>
                   {subkontraktor.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.nama_perusahaan}
@@ -226,7 +274,9 @@ export default function ModalTambahItemLainnya({
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-700 dark:text-slate-200">Biaya subkontrak</span>
+                <span className="text-slate-700 dark:text-slate-200">
+                  Biaya subkontrak
+                </span>
                 <input
                   type="number"
                   min={0}
@@ -236,14 +286,23 @@ export default function ModalTambahItemLainnya({
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-700 dark:text-slate-200">Metode bayar vendor</span>
+                <span className="text-slate-700 dark:text-slate-200">
+                  Metode bayar vendor
+                </span>
                 <select
                   value={metodeBayar}
-                  onChange={(e) => setMetodeBayar(e.target.value as "CASH" | "NET30")}
+                  onChange={(e) =>
+                    setMetodeBayar(
+                      e.target.value as "CASH" | "NET30" | "TRANSFER",
+                    )
+                  }
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
                 >
-                  <option value="CASH">CASH</option>
-                  <option value="NET30">NET30</option>
+                  <option value="CASH">CASH (tunai)</option>
+                  <option value="NET30">NET30 (jadi hutang)</option>
+                  <option value="TRANSFER">
+                    TRANSFER (bayar langsung via bank)
+                  </option>
                 </select>
               </label>
             </div>

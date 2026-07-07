@@ -6,8 +6,10 @@ import { PencilIcon, PlusIcon } from "@/components/icons/ContentIcons";
 import type { Vendor } from "@/lib/services/vendors-service";
 import type { KatalogMaklon } from "@/lib/services/katalog-maklon-service";
 import type { KatalogMaklonInput } from "@/lib/schemas/katalog-maklon";
+import { useCachedData } from "@/lib/use-cached-data";
 import {
   createKatalogMaklonAction,
+  getKategoriBarangAction,
   updateKatalogMaklonAction,
 } from "./actions";
 
@@ -32,6 +34,8 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
       vendor_subkontrak_id_default: null,
       metode_bayar_vendor_default: "CASH",
       kategori: null,
+      kategori_id: null,
+      populer_status: 0,
       catatan_internal: null,
       is_aktif: 1,
       urutan: 0,
@@ -45,6 +49,8 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
     vendor_subkontrak_id_default: item.vendor_subkontrak_id_default,
     metode_bayar_vendor_default: item.metode_bayar_vendor_default,
     kategori: item.kategori,
+    kategori_id: item.kategori_id,
+    populer_status: item.populer_status,
     catatan_internal: item.catatan_internal,
     is_aktif: item.is_aktif,
     urutan: item.urutan,
@@ -66,14 +72,20 @@ export default function ModalKatalogMaklon({
   const [form, setForm] = useState<FormState>(() => buildInitialForm(item));
   const [saving, setSaving] = useState(false);
 
+  // Daftar kategori barang untuk dropdown (C6). SWR cache key stabil.
+  const { data: kategoriBarang } = useCachedData<
+    { id: string; nama: string }[]
+  >("kategori-barang", getKategoriBarangAction);
+  const kategoriOptions = useMemo(() => kategoriBarang ?? [], [kategoriBarang]);
+
   // Vendor maklon default hanya masuk akal untuk vendor bertipe subkontraktor.
   const vendorSubkontrak = useMemo(
     () =>
       vendors.filter(
         (v) =>
-          v.tipe_vendor === "SUBKONTRAKTOR" || v.tipe_vendor === "KEDUANYA"
+          v.tipe_vendor === "SUBKONTRAKTOR" || v.tipe_vendor === "KEDUANYA",
       ),
-    [vendors]
+    [vendors],
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,7 +119,7 @@ export default function ModalKatalogMaklon({
     } catch (error: any) {
       showNotification(
         "error",
-        error?.message || "Gagal menyimpan katalog extra"
+        error?.message || "Gagal menyimpan katalog extra",
       );
     } finally {
       setSaving(false);
@@ -220,15 +232,26 @@ export default function ModalKatalogMaklon({
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Kategori
             </label>
-            <input
-              type="text"
-              value={form.kategori ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, kategori: e.target.value || null })
-              }
-              placeholder="Contoh: Banner, Stiker"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <select
+              value={form.kategori_id ?? ""}
+              onChange={(e) => {
+                const selected = e.target.options[e.target.selectedIndex];
+                setForm({
+                  ...form,
+                  kategori_id: e.target.value || null,
+                  // Sinkronkan legacy free-text kategori dengan nama terpilih.
+                  kategori: selected ? selected.text : null,
+                });
+              }}
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">— Tanpa kategori —</option>
+              {kategoriOptions.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -315,32 +338,38 @@ export default function ModalKatalogMaklon({
                   ...form,
                   metode_bayar_vendor_default: e.target.value as
                     | "CASH"
-                    | "NET30",
+                    | "NET30"
+                    | "TRANSFER",
                 })
               }
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="CASH">CASH (bayar langsung)</option>
               <option value="NET30">NET30 (jadi hutang)</option>
+              <option value="TRANSFER">
+                TRANSFER (bayar langsung via bank)
+              </option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-              Urutan Tampil
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.populer_status === 1}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    populer_status: e.target.checked ? 1 : 0,
+                  })
+                }
+                className="w-4 h-4 rounded text-violet-600 border-gray-300 focus:ring-violet-500"
+              />
+              Tandai Populer
             </label>
-            <input
-              type="number"
-              min={0}
-              step="1"
-              value={form.urutan}
-              onChange={(e) =>
-                setForm({ ...form, urutan: Number(e.target.value || 0) })
-              }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
-            />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Angka kecil tampil lebih dulu di daftar/POS.
+              Item bertanda Populer muncul di atas saat filter Populer ON di
+              POS.
             </p>
           </div>
 

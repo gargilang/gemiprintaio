@@ -6,8 +6,12 @@ export const katalogMaklonInputSchema = z.object({
   harga_jual_default: z.coerce.number().finite().min(0),
   biaya_subkontrak_default: z.coerce.number().finite().min(0),
   vendor_subkontrak_id_default: z.string().nullable().optional(),
-  metode_bayar_vendor_default: z.enum(["CASH", "NET30"]).default("CASH"),
+  metode_bayar_vendor_default: z
+    .enum(["CASH", "NET30", "TRANSFER"])
+    .default("CASH"),
   kategori: z.string().nullable().optional(),
+  kategori_id: z.string().nullable().optional(),
+  populer_status: z.coerce.number().int().min(0).max(1).default(0),
   catatan_internal: z.string().nullable().optional(),
   is_aktif: z.coerce.number().int().min(0).max(1).default(1),
   urutan: z.coerce.number().int().min(0).default(0),

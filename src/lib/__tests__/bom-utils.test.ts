@@ -22,7 +22,12 @@ describe("bom-utils", () => {
         lebar: 2,
         panjang: 3,
         qty: 6,
-      })
+      }),
     ).toContain("1 roll");
+  });
+
+  test("hitungQtyKomponenDimensiM2 dengan jumlahRoll=1 (default BOM B3) = lebar × panjang", () => {
+    // B3: 1 X Banner pakai 1 potong 0.5 × 1.7m = 0.85 m² per unit produk jual.
+    expect(hitungQtyKomponenDimensiM2(1, 1.7, 0.5)).toBeCloseTo(0.85, 4);
   });
 });

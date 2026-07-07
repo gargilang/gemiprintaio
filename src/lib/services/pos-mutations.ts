@@ -35,6 +35,7 @@ import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
 import { friendlyPgError } from "../pg-error";
 import { withDuplicateNumberRetry } from "../retry-utils";
+import { computeBomCostPerUnit } from "./bom-service";
 
 // ============================================================================
 // TIPE
@@ -382,31 +383,33 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
 
     // Validasi maklon per baris. Tampilkan error sebelum membuka transaksi
     // supaya tidak meninggalkan state parsial.
+    //
+    // Safeguard C2: vendor + biaya + metode bayar OPSIONAL. Baris maklon tanpa
+    // vendor/biaya disimpan sebagai pending (pending_vendor_hpp=1, HPP=0,
+    // tanpa PO maklon, tanpa item_produksi) dan dapat direconcile ulang.
+    // deskripsi_pekerjaan tetap wajib karena menjadi label pekerjaan di SPK/faktur.
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
       if (item.tipe_item === "MAKLON") {
-        if (!item.vendor_subkontrak_id) {
-          throw new Error(
-            `Item ${i + 1} (Maklon): vendor subkontraktor wajib dipilih`,
-          );
-        }
-        if (!item.biaya_subkontrak || item.biaya_subkontrak <= 0) {
-          throw new Error(
-            `Item ${i + 1} (Maklon): biaya subkontrak harus lebih dari 0`,
-          );
-        }
-        if (
-          item.metode_bayar_vendor !== "CASH" &&
-          item.metode_bayar_vendor !== "NET30"
-        ) {
-          throw new Error(
-            `Item ${i + 1} (Maklon): metode bayar vendor harus CASH atau NET30`,
-          );
-        }
         if (!item.deskripsi_pekerjaan?.trim()) {
           throw new Error(
             `Item ${i + 1} (Maklon): deskripsi pekerjaan wajib diisi`,
           );
+        }
+        // Hanya validasi metode bayar kalau vendor + biaya benar-benar diisi.
+        // Pending (vendor/biaya kosong) tidak butuh metode bayar.
+        if (
+          item.vendor_subkontrak_id &&
+          (Number(item.biaya_subkontrak) || 0) > 0
+        ) {
+          if (
+            !item.metode_bayar_vendor ||
+            !["CASH", "NET30", "TRANSFER"].includes(item.metode_bayar_vendor)
+          ) {
+            throw new Error(
+              `Item ${i + 1} (Maklon): metode bayar vendor tidak valid (CASH/NET30/TRANSFER)`,
+            );
+          }
         }
       }
     }
@@ -571,17 +574,29 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         const itemId = generateId();
         const isMaklon = item.tipe_item === "MAKLON";
         const isJasa = item.tipe_item === "JASA";
+        // Safeguard C2: maklon tanpa vendor/biaya → pending (HPP=0, no PO, no SPK item).
+        const isPendingMaklon =
+          isMaklon &&
+          (!item.vendor_subkontrak_id ||
+            !item.biaya_subkontrak ||
+            Number(item.biaya_subkontrak) <= 0);
 
         // BARANG: HPP berasal dari biaya rata-rata bergerak barang.
         // MAKLON: HPP = biaya_subkontrak (yang dibayar ke percetakan rekanan).
+        //   Pending maklon (tanpa vendor/biaya) → HPP=0; baru dicatat saat reconcile.
         // JASA: HPP = 0 (tidak ada barang dasar; murni margin).
         let hppSatuan = 0;
         let hppTotal = 0;
         let material: any = null;
         if (isMaklon) {
-          const biaya = Number(item.biaya_subkontrak) || 0;
-          hppTotal = biaya;
-          hppSatuan = item.jumlah > 0 ? biaya / item.jumlah : biaya;
+          if (isPendingMaklon) {
+            hppSatuan = 0;
+            hppTotal = 0;
+          } else {
+            const biaya = Number(item.biaya_subkontrak) || 0;
+            hppTotal = biaya;
+            hppSatuan = item.jumlah > 0 ? biaya / item.jumlah : biaya;
+          }
         } else if (isJasa) {
           hppSatuan = 0;
           hppTotal = 0;
@@ -596,9 +611,24 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
               item.barang_id,
               item.harga_satuan_id,
             ));
-          hppSatuan =
+          const baseHppSatuan =
             averageCostPerBaseUnit *
             (positiveNumber(item.faktor_konversi) || 1);
+          // B2.f: tambah biaya BOM per unit produk jual. Kegagalan helper
+          // ditoleransi (bomCostPerUnit = 0) supaya checkout tidak gagal.
+          let bomCostPerUnit = 0;
+          try {
+            bomCostPerUnit = await computeBomCostPerUnit(
+              item.barang_id,
+              item.harga_satuan_id,
+            );
+          } catch (e) {
+            console.warn(
+              `[HPP BOM] Gagal hitung BOM untuk barang ${item.barang_id}:`,
+              e,
+            );
+          }
+          hppSatuan = baseHppSatuan + bomCostPerUnit;
           hppTotal = hppSatuan * item.jumlah;
         }
         const recommendedRollWidth =
@@ -657,6 +687,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           metode_bayar_vendor: isMaklon ? item.metode_bayar_vendor : null,
           pembelian_id_terkait: null,
           deskripsi_pekerjaan: item.deskripsi_pekerjaan?.trim() || null,
+          // Safeguard C2: tandai baris maklon pending + simpan asal katalog_maklon.
+          pending_vendor_hpp: isPendingMaklon ? 1 : 0,
+          katalog_maklon_id: isMaklon ? item.katalog_maklon_id || null : null,
           dpp_satuan: lineDppSatuan,
           ppn_satuan: linePpnSatuan,
           dpp_total: lineBreakdown.dpp,
@@ -884,6 +917,14 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const isMaklon = item.tipe_item === "MAKLON";
+        // Safeguard C2: maklon pending (tanpa vendor/biaya) tidak dibuatkan
+        // item_produksi — menunggu reconcile vendor/HPP dulu (Task 5).
+        const isPendingMaklon =
+          isMaklon &&
+          (!item.vendor_subkontrak_id ||
+            !item.biaya_subkontrak ||
+            Number(item.biaya_subkontrak) <= 0);
+        if (isMaklon && isPendingMaklon) continue;
 
         // Ambil item_penjualan via ID yang sudah ditangkap saat insert (D-I1).
         // Pakai ID eksplisit, BUKAN offset+orderBy dibuat_pada — timestamp bisa
@@ -993,7 +1034,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         GroupKey,
         {
           vendorId: string;
-          metodeBayar: "CASH" | "NET30";
+          metodeBayar: "CASH" | "NET30" | "TRANSFER";
           items: Array<{
             itemIndex: number;
             saleItemId: string;
@@ -1006,11 +1047,20 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
 
       for (const [idx, saleItemId] of maklonItemIds) {
         const it = data.items[idx];
+        // Safeguard C2: skip pending maklon — PO vendor dibuat saat reconcile (Task 5).
+        const isPending =
+          !it.vendor_subkontrak_id ||
+          !it.biaya_subkontrak ||
+          Number(it.biaya_subkontrak) <= 0;
+        if (isPending) continue;
         const key = `${it.vendor_subkontrak_id}::${it.metode_bayar_vendor}`;
         if (!groups.has(key)) {
           groups.set(key, {
             vendorId: it.vendor_subkontrak_id!,
-            metodeBayar: it.metode_bayar_vendor as "CASH" | "NET30",
+            metodeBayar: it.metode_bayar_vendor as
+              | "CASH"
+              | "NET30"
+              | "TRANSFER",
             items: [],
           });
         }

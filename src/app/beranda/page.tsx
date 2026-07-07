@@ -590,13 +590,18 @@ function ReorderWidget({
       const result = await generateDraftPurchaseOrdersAction(
         vendorIds ?? undefined,
       );
-      onChanged();
       if (result.created.length > 0) {
+        // Navigasi DULU sebelum invalidate SWR — kalau onChanged() dipanggil
+        // lebih dulu, revalidate lokal selesai sebelum soft navigation commit,
+        // men-trigger re-render ReorderWidget di Beranda dan memantulkan
+        // pengguna kembali ke Beranda (race App Router startTransition).
         router.push("/pesanan-pembelian");
+        onChanged(); // fire-and-forget: Beranda segera unmount, cache refresh di background
       } else {
         setError(
           "Tidak ada draf pesanan pembelian yang dibuat. Pastikan vendor sudah aktif.",
         );
+        onChanged(); // tetap di Beranda: refresh widget (stok mungkin berubah oleh action)
       }
     } catch (err) {
       setError(

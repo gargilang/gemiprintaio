@@ -295,7 +295,7 @@ export default function ModalBayarPiutang({
                                 <span className="text-gray-600 dark:text-slate-300">
                                   Sisa:
                                 </span>{" "}
-                                <span className="font-bold text-red-600">
+                                <span className="font-bold text-red-600 dark:text-red-400">
                                   {formatRupiah(receivable.sisa_piutang)}
                                 </span>
                               </div>
@@ -354,7 +354,7 @@ export default function ModalBayarPiutang({
                       </div>
                     )}
 
-                    <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-[#00afef]/30 rounded-lg">
+                    <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 border-2 border-[#00afef]/30 dark:border-[#00afef]/40 rounded-lg">
                       <div className="text-sm text-gray-600 dark:text-slate-300 mb-2">
                         Faktur: {selectedReceivable.nomor_faktur}
                       </div>
@@ -375,7 +375,7 @@ export default function ModalBayarPiutang({
                         step="0.01"
                         value={jumlahBayar}
                         onChange={(e) => setJumlahBayar(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         required
                       />
                       <div className="mt-2 flex gap-2">
@@ -414,7 +414,7 @@ export default function ModalBayarPiutang({
                         type="date"
                         value={tanggalBayar}
                         onChange={(e) => setTanggalBayar(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         required
                       />
                     </div>
@@ -426,7 +426,7 @@ export default function ModalBayarPiutang({
                       <select
                         value={metodePembayaran}
                         onChange={(e) => setMetodePembayaran(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                       >
                         <option value="CASH">Cash</option>
                         <option value="TRANSFER">Transfer</option>
@@ -443,7 +443,7 @@ export default function ModalBayarPiutang({
                         type="text"
                         value={referensi}
                         onChange={(e) => setReferensi(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         placeholder="Opsional"
                       />
                     </div>
@@ -456,7 +456,7 @@ export default function ModalBayarPiutang({
                         value={catatan}
                         onChange={(e) => setCatatan(e.target.value)}
                         rows={3}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
                         placeholder="Catatan tambahan..."
                       />
                     </div>
@@ -472,7 +472,7 @@ export default function ModalBayarPiutang({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>

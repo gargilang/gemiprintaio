@@ -67,10 +67,11 @@ CREATE TABLE IF NOT EXISTS barang_komponen (
   parent_barang_id   TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
   komponen_id        TEXT NOT NULL REFERENCES barang(id),
   qty                REAL NOT NULL DEFAULT 1,
-  jumlah_roll        INTEGER,
+  jumlah_roll        INTEGER NOT NULL DEFAULT 1,
   panjang            REAL,
   lebar              REAL,
   satuan             TEXT,
+  unit_price_id      TEXT REFERENCES harga_barang_satuan(id) ON DELETE CASCADE,
   catatan            TEXT,
   dibuat_oleh        TEXT,
   dibuat_pada        TEXT,
@@ -87,6 +88,7 @@ CREATE TABLE IF NOT EXISTS barang_komponen (
 );
 
 CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+CREATE INDEX IF NOT EXISTS idx_barang_komponen_unit_price ON barang_komponen(parent_barang_id, unit_price_id);
 CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);
 
 -- Table: inventory_movements
@@ -185,6 +187,7 @@ CREATE TABLE "harga_barang_satuan" (
         default_status INTEGER DEFAULT 0,
         urutan_tampilan INTEGER DEFAULT 0,
         nama_produk_jual TEXT,
+        populer_status INTEGER NOT NULL DEFAULT 0,
         dibuat_pada TEXT DEFAULT (datetime('now')),
         diperbarui_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
         FOREIGN KEY (barang_id) REFERENCES "barang"(id) ON DELETE CASCADE
@@ -384,8 +387,10 @@ CREATE TABLE katalog_maklon (
       harga_jual_default REAL NOT NULL DEFAULT 0,
       biaya_subkontrak_default REAL NOT NULL DEFAULT 0,
       vendor_subkontrak_id_default TEXT,
-      metode_bayar_vendor_default TEXT NOT NULL DEFAULT 'CASH' CHECK(metode_bayar_vendor_default IN ('CASH','NET30')),
+      metode_bayar_vendor_default TEXT NOT NULL DEFAULT 'CASH' CHECK(metode_bayar_vendor_default IN ('CASH','NET30','TRANSFER')),
       kategori TEXT,
+      kategori_id TEXT,
+      populer_status INTEGER NOT NULL DEFAULT 0,
       catatan_internal TEXT,
       is_aktif INTEGER NOT NULL DEFAULT 1,
       urutan INTEGER NOT NULL DEFAULT 0,
@@ -402,6 +407,7 @@ CREATE TABLE katalog_maklon (
       deleted_at TEXT,
       client_mutation_id TEXT,
       FOREIGN KEY (vendor_subkontrak_id_default) REFERENCES vendor(id) ON DELETE SET NULL,
+      FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
       FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)
     );
 CREATE INDEX idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan);
@@ -692,7 +698,7 @@ CREATE TABLE item_penjualan (
       tipe_item TEXT NOT NULL DEFAULT 'BARANG' CHECK(tipe_item IN ('BARANG','JASA','MAKLON')),
       vendor_subkontrak_id TEXT,
       biaya_subkontrak REAL,
-      metode_bayar_vendor TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH','NET30')),
+      metode_bayar_vendor TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH','NET30','TRANSFER')),
       pembelian_id_terkait TEXT,
       deskripsi_pekerjaan TEXT,
       dpp_satuan REAL NOT NULL DEFAULT 0,
@@ -703,12 +709,15 @@ CREATE TABLE item_penjualan (
       billed_lebar REAL,
       recommended_roll_width_m REAL,
       roll_inventory_deferred INTEGER NOT NULL DEFAULT 0,
+      pending_vendor_hpp INTEGER NOT NULL DEFAULT 0,
+      katalog_maklon_id TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
       FOREIGN KEY (barang_id) REFERENCES "barang"(id),
       FOREIGN KEY (harga_satuan_id) REFERENCES "harga_barang_satuan"(id),
       FOREIGN KEY (vendor_subkontrak_id) REFERENCES vendor(id) ON DELETE SET NULL,
-      FOREIGN KEY (pembelian_id_terkait) REFERENCES pembelian(id) ON DELETE SET NULL
+      FOREIGN KEY (pembelian_id_terkait) REFERENCES pembelian(id) ON DELETE SET NULL,
+      FOREIGN KEY (katalog_maklon_id) REFERENCES katalog_maklon(id) ON DELETE SET NULL
     );
 
 -- Indexes for item_penjualan

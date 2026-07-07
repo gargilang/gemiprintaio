@@ -21,13 +21,12 @@ import {
   updateSaleCustomerAction,
   getPelangganRingkasAction,
 } from "./actions";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import SpkDetailModal from "./components/SpkDetailModal";
 import { generateSPKHTML } from "./components/spk-print";
+import { preparePrintHtml } from "@/lib/print-embed-client";
+import { openPrintDocument } from "@/lib/print-fonts";
 import { getStatusColor, getPriorityColor } from "./components/spk-status";
 
 interface User {
@@ -65,7 +64,7 @@ export default function ProductionPage() {
   // + tabel), konsisten dengan riwayat penjualan & buku keuangan.
   const visibleOrders = useMemo(
     () => orders.filter((o) => !o.penjualan_dibatalkan),
-    [orders]
+    [orders],
   );
   const loading = currentUser === null && ordersLoading;
   const invalidate = useInvalidate();
@@ -78,7 +77,7 @@ export default function ProductionPage() {
   const [filterPriority, setFilterPriority] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(
-    null
+    null,
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
@@ -86,7 +85,10 @@ export default function ProductionPage() {
     Record<string, RollVariantOption[]>
   >({});
   const [consumptionDrafts, setConsumptionDrafts] = useState<
-    Record<string, { roll_variant_id: string; linear_used_m: string; catatan: string }>
+    Record<
+      string,
+      { roll_variant_id: string; linear_used_m: string; catatan: string }
+    >
   >({});
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function ProductionPage() {
   useEffect(() => {
     if (!showDetailModal || !selectedOrder) return;
     const pendingItems = (selectedOrder.items || []).filter(
-      (item) => item.roll_inventory_status === "PENDING"
+      (item) => item.roll_inventory_status === "PENDING",
     );
     if (pendingItems.length === 0) return;
 
@@ -117,13 +119,15 @@ export default function ProductionPage() {
       const entries = await Promise.all(
         pendingItems.map(async (item) => {
           try {
-            const variants = await getRollVariantsForProductionItemAction(item.id);
+            const variants = await getRollVariantsForProductionItemAction(
+              item.id,
+            );
             return [item.id, variants as RollVariantOption[]] as const;
           } catch (error) {
             console.error("Error loading roll variants:", error);
             return [item.id, [] as RollVariantOption[]] as const;
           }
-        })
+        }),
       );
       if (cancelled) return;
       setRollVariantsByItem((prev) => {
@@ -137,13 +141,15 @@ export default function ProductionPage() {
         const next = { ...prev };
         for (const item of pendingItems) {
           if (next[item.id]) continue;
-          const variants = entries.find(([itemId]) => itemId === item.id)?.[1] || [];
+          const variants =
+            entries.find(([itemId]) => itemId === item.id)?.[1] || [];
           const preferred =
             variants.find(
               (v) =>
                 Math.abs(
-                  Number(v.lebar_m) - Number(item.recommended_roll_width_m || 0)
-                ) < 0.000001
+                  Number(v.lebar_m) -
+                    Number(item.recommended_roll_width_m || 0),
+                ) < 0.000001,
             ) || variants[0];
           next[item.id] = {
             roll_variant_id: preferred?.id || "",
@@ -177,7 +183,7 @@ export default function ProductionPage() {
         (order) =>
           order.nomor_spk.toLowerCase().includes(query) ||
           order.nomor_faktur?.toLowerCase().includes(query) ||
-          order.pelanggan_nama?.toLowerCase().includes(query)
+          order.pelanggan_nama?.toLowerCase().includes(query),
       );
     }
 
@@ -204,7 +210,7 @@ export default function ProductionPage() {
     if (!selectedOrder) return;
     const refreshed = await getProductionOrdersAction();
     const next = (refreshed as ProductionOrder[]).find(
-      (order) => order.id === selectedOrder.id
+      (order) => order.id === selectedOrder.id,
     );
     if (next) setSelectedOrder(next);
   };
@@ -299,7 +305,11 @@ export default function ProductionPage() {
 
   const patchConsumptionDraft = (
     itemId: string,
-    patch: Partial<{ roll_variant_id: string; linear_used_m: string; catatan: string }>
+    patch: Partial<{
+      roll_variant_id: string;
+      linear_used_m: string;
+      catatan: string;
+    }>,
   ) => {
     setConsumptionDrafts((prev) => ({
       ...prev,
@@ -324,9 +334,7 @@ export default function ProductionPage() {
       await postProductionMaterialConsumptionAction({
         item_produksi_id: item.id,
         roll_variant_id: draft.roll_variant_id,
-        linear_used_m: draft.linear_used_m
-          ? Number(draft.linear_used_m)
-          : null,
+        linear_used_m: draft.linear_used_m ? Number(draft.linear_used_m) : null,
         operator_id: currentUser?.id || null,
         catatan: draft.catatan,
       });
@@ -345,7 +353,7 @@ export default function ProductionPage() {
       await voidProductionMaterialConsumptionAction(
         item.consumption.id,
         "Koreksi konsumsi produksi",
-        currentUser?.id || null
+        currentUser?.id || null,
       );
       showMsg("success", "Konsumsi bahan dibatalkan");
       await loadOrders();
@@ -356,19 +364,21 @@ export default function ProductionPage() {
     }
   };
 
-  const handlePrintSPK = (order: ProductionOrder) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      showMsg("error", "Gagal membuka window print");
-      return;
+  const handlePrintSPK = async (order: ProductionOrder) => {
+    try {
+      const spkContent = generateSPKHTML(order);
+      const prepared = await preparePrintHtml(spkContent);
+      const opened = openPrintDocument(prepared, "Cetak struk SPK");
+      if (!opened) {
+        showMsg(
+          "error",
+          "Gagal membuka window print. Izinkan pop-up untuk situs ini.",
+        );
+      }
+    } catch (err) {
+      console.error("Error mencetak SPK:", err);
+      showMsg("error", "Gagal menyiapkan dokumen SPK untuk dicetak.");
     }
-
-    const spkContent = generateSPKHTML(order);
-    printWindow.document.write(spkContent);
-    printWindow.document.close();
-    printWindow.focus();
-
-    // Auto-print removed - user can manually trigger print with Ctrl+P
   };
 
   if (loading && orders.length === 0) {
@@ -650,7 +660,9 @@ export default function ProductionPage() {
                   <tr
                     key={order.id}
                     className={`hover:bg-amber-50 transition-colors ${
-                      idx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-gray-50 dark:bg-slate-800"
+                      idx % 2 === 0
+                        ? "bg-white dark:bg-slate-900"
+                        : "bg-gray-50 dark:bg-slate-800"
                     }`}
                   >
                     <td className="px-6 py-4">
@@ -676,7 +688,7 @@ export default function ProductionPage() {
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-bold ${getPriorityColor(
-                          order.prioritas
+                          order.prioritas,
                         )}`}
                       >
                         {order.prioritas}
@@ -685,7 +697,7 @@ export default function ProductionPage() {
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(
-                          order.status
+                          order.status,
                         )}`}
                       >
                         {order.status}
@@ -694,7 +706,7 @@ export default function ProductionPage() {
                     <td className="px-6 py-4 text-center text-base text-gray-600 dark:text-slate-300">
                       {order.dibuat_pada
                         ? new Date(order.dibuat_pada).toLocaleDateString(
-                            "id-ID"
+                            "id-ID",
                           )
                         : "-"}
                     </td>

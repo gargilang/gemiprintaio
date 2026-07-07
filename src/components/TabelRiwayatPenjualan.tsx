@@ -336,7 +336,7 @@ export default function TabelRiwayatPenjualan({
       const total = sale.total_jumlah;
       const bayar =
         sale.jumlah_dibayar ?? sale.total_jumlah - sale.sisa_piutang;
-      printThermalInvoice({
+      await printThermalInvoice({
         nomor_faktur: sale.nomor_faktur,
         tanggal: sale.dibuat_pada,
         shop,

@@ -1,7 +1,9 @@
 import { resetMockDb } from "./helpers/mock-db";
 
 jest.mock("@/lib/db-unified", () => {
-  const real = jest.requireActual("./helpers/mock-db") as typeof import("./helpers/mock-db");
+  const real = jest.requireActual(
+    "./helpers/mock-db",
+  ) as typeof import("./helpers/mock-db");
   return {
     db: real.__mock.db,
     generateId: real.__mock.generateId,
@@ -29,10 +31,11 @@ describe("katalog-maklon-service", () => {
         harga_jual_default: 75000,
         biaya_subkontrak_default: 50000,
         metode_bayar_vendor_default: "CASH",
+        populer_status: 0,
         is_aktif: 1,
         urutan: 0,
       },
-      "user-1"
+      "user-1",
     );
     expect(result.id).toBeTruthy();
     expect(result.nama_produk).toBe("Banner Spanduk 3x1");
@@ -50,10 +53,11 @@ describe("katalog-maklon-service", () => {
         harga_jual_default: 1,
         biaya_subkontrak_default: 1,
         metode_bayar_vendor_default: "CASH",
+        populer_status: 0,
         is_aktif: 1,
         urutan: 0,
       },
-      "u"
+      "u",
     );
     await expect(
       createKatalogMaklon(
@@ -63,11 +67,12 @@ describe("katalog-maklon-service", () => {
           harga_jual_default: 1,
           biaya_subkontrak_default: 1,
           metode_bayar_vendor_default: "CASH",
+          populer_status: 0,
           is_aktif: 1,
           urutan: 0,
         },
-        "u"
-      )
+        "u",
+      ),
     ).rejects.toThrow(/sudah ada/i);
   });
 
@@ -79,10 +84,11 @@ describe("katalog-maklon-service", () => {
         harga_jual_default: 10,
         biaya_subkontrak_default: 5,
         metode_bayar_vendor_default: "NET30",
+        populer_status: 0,
         is_aktif: 1,
         urutan: 2,
       },
-      "u"
+      "u",
     );
     await updateKatalogMaklon(created.id, {
       nama_produk: "Y2",
@@ -90,6 +96,7 @@ describe("katalog-maklon-service", () => {
       harga_jual_default: 12,
       biaya_subkontrak_default: 6,
       metode_bayar_vendor_default: "NET30",
+      populer_status: 0,
       is_aktif: 1,
       urutan: 2,
     });
@@ -106,10 +113,11 @@ describe("katalog-maklon-service", () => {
         harga_jual_default: 1,
         biaya_subkontrak_default: 1,
         metode_bayar_vendor_default: "CASH",
+        populer_status: 0,
         is_aktif: 1,
         urutan: 0,
       },
-      "u"
+      "u",
     );
     await deleteKatalogMaklon(created.id);
     const all = await listKatalogMaklon();

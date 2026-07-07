@@ -33,7 +33,7 @@ export interface QuotationItemInput {
   tipe_item?: "BARANG" | "JASA" | "MAKLON";
   vendor_subkontrak_id?: string | null;
   biaya_subkontrak?: number | null;
-  metode_bayar_vendor?: "CASH" | "NET30" | null;
+  metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
   deskripsi_pekerjaan?: string | null;
 }
 
@@ -86,7 +86,7 @@ async function enrichQuotations(rows: any[]) {
   const itemsByQuote = await fetchChildrenByForeignKey<any>(
     "item_penawaran",
     "penawaran_id",
-    quoteIds
+    quoteIds,
   );
 
   const barangIds = [...itemsByQuote.values()]
@@ -96,7 +96,7 @@ async function enrichQuotations(rows: any[]) {
   const barangMap = await buildLookupMap<{ id: string; nama: string }>(
     "barang",
     barangIds,
-    "nama"
+    "nama",
   );
 
   return rows.map((row) => ({
@@ -117,7 +117,9 @@ export async function getQuotations(limit = 200) {
     limit,
   });
   if (result.error) throw result.error;
-  const rows = (result.data || []).filter((row) => Number(row.is_deleted) !== 1);
+  const rows = (result.data || []).filter(
+    (row) => Number(row.is_deleted) !== 1,
+  );
   return enrichQuotations(rows);
 }
 
@@ -129,19 +131,30 @@ export async function getQuotationById(id: string) {
   return quote;
 }
 
-export async function createQuotation(input: UpsertQuotationInput): Promise<{ id: string; nomor_penawaran: string }> {
+export async function createQuotation(
+  input: UpsertQuotationInput,
+): Promise<{ id: string; nomor_penawaran: string }> {
   if (!input.items?.length) throw new Error("Minimal satu item penawaran");
   const tanggal = input.tanggal || todayJakarta();
   const items = normalizeItems(input);
   const total = items.reduce((sum, item) => sum + item.subtotal, 0);
   const headerBreakdown =
     input.kena_ppn && numeric(input.ppn_persen) > 0
-      ? hitungPpn(total, numeric(input.ppn_persen), input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF")
+      ? hitungPpn(
+          total,
+          numeric(input.ppn_persen),
+          input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF",
+        )
       : { dpp: total, ppn: 0, total };
   const id = generateId();
   const nomor =
     input.nomor_penawaran?.trim() ||
-    (await generateDailyDocumentNumber("penawaran", "nomor_penawaran", "QUO", tanggal));
+    (await generateDailyDocumentNumber(
+      "penawaran",
+      "nomor_penawaran",
+      "QUO",
+      tanggal,
+    ));
 
   await db.transaction(async () => {
     const ins = await db.insert("penawaran", {
@@ -207,7 +220,11 @@ export async function updateQuotation(id: string, input: UpsertQuotationInput) {
   const total = items.reduce((sum, item) => sum + item.subtotal, 0);
   const headerBreakdown =
     input.kena_ppn && numeric(input.ppn_persen) > 0
-      ? hitungPpn(total, numeric(input.ppn_persen), input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF")
+      ? hitungPpn(
+          total,
+          numeric(input.ppn_persen),
+          input.ppn_metode === "INKLUSIF" ? "INKLUSIF" : "EKSKLUSIF",
+        )
       : { dpp: total, ppn: 0, total };
 
   await db.transaction(async () => {
@@ -267,7 +284,10 @@ export async function updateQuotation(id: string, input: UpsertQuotationInput) {
   });
 }
 
-export async function updateQuotationStatus(id: string, status: QuotationStatus) {
+export async function updateQuotationStatus(
+  id: string,
+  status: QuotationStatus,
+) {
   const upd = await db.update("penawaran", id, { status });
   if (upd.error) throw upd.error;
 }
@@ -303,12 +323,18 @@ export async function convertQuotationToSale(
   id: string,
   payment: Pick<
     CreateSaleData,
-    "metode_pembayaran" | "jumlah_dibayar" | "jumlah_kembalian" | "kasir_id" | "tanggal" | "prioritas"
-  > & { catatan?: string }
+    | "metode_pembayaran"
+    | "jumlah_dibayar"
+    | "jumlah_kembalian"
+    | "kasir_id"
+    | "tanggal"
+    | "prioritas"
+  > & { catatan?: string },
 ) {
   const quote = await getQuotationById(id);
   if (!quote) throw new Error("Penawaran tidak ditemukan");
-  if (quote.status === "CONVERTED") throw new Error("Penawaran sudah dikonversi");
+  if (quote.status === "CONVERTED")
+    throw new Error("Penawaran sudah dikonversi");
   if (quote.status === "CANCELLED" || quote.status === "EXPIRED") {
     throw new Error("Penawaran sudah batal/kedaluwarsa");
   }
@@ -338,7 +364,8 @@ export async function convertQuotationToSale(
     jumlah_dibayar: Number(payment.jumlah_dibayar || 0),
     jumlah_kembalian: Number(payment.jumlah_kembalian || 0),
     metode_pembayaran: payment.metode_pembayaran || "NET30",
-    catatan: payment.catatan || quote.catatan || `Konversi ${quote.nomor_penawaran}`,
+    catatan:
+      payment.catatan || quote.catatan || `Konversi ${quote.nomor_penawaran}`,
     kasir_id: payment.kasir_id,
     tanggal: payment.tanggal || todayJakarta(),
     prioritas: payment.prioritas || "NORMAL",
