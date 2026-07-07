@@ -925,6 +925,11 @@ export default function ModalTambahBarang({
                     satuan_dasar: m.satuan_dasar || "",
                     butuh_dimensi_status: m.butuh_dimensi_status ?? 0,
                   }))}
+                  unitPrices={unitPrices.map((up) => ({
+                    id: up.id,
+                    nama_satuan: up.nama_satuan,
+                    nama_produk_jual: up.nama_produk_jual,
+                  }))}
                 />
               </div>
             )}

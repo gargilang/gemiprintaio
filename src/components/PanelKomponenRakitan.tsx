@@ -6,6 +6,13 @@ import {
   hitungQtyKomponenDimensiM2,
   isBarangBerdimensi,
 } from "@/lib/bom-utils";
+import type { UnitPrice } from "./barang/types-barang";
+
+/** B2: hanya butuh id + label untuk pilih scope produk jual di PanelKomponenRakitan. */
+export type UnitPriceOption = Pick<
+  UnitPrice,
+  "id" | "nama_satuan" | "nama_produk_jual"
+>;
 
 interface KomponenRow {
   id: string;
@@ -19,6 +26,8 @@ interface KomponenRow {
   lebar?: number | null;
   satuan: string | null;
   catatan: string | null;
+  /** B2: produk jual yang berlaku untuk komponen ini. null = semua produk jual. */
+  unit_price_id?: string | null;
 }
 
 interface BarangOption {
@@ -32,32 +41,41 @@ interface Props {
   parentBarangId: string;
   /** Semua barang untuk pilih komponen — dikirim dari parent agar tidak double-fetch */
   allBarang: BarangOption[];
+  /** B2: produk jual (harga_barang_satuan) parent barang untuk pilih scope BOM. */
+  unitPrices: UnitPriceOption[];
 }
 
-export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Props) {
+export default function PanelKomponenRakitan({
+  parentBarangId,
+  allBarang,
+  unitPrices,
+}: Props) {
   const [rows, setRows] = useState<KomponenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const [selectedKomponenId, setSelectedKomponenId] = useState("");
+  // B2: scope produk jual. "" = Semua Produk Jual (unit_price_id null).
+  const [selectedUnitPriceId, setSelectedUnitPriceId] = useState("");
   const [qty, setQty] = useState("1");
+  // B3: jumlah_roll selalu 1 per unit produk jual — input di-hide di UI.
   const [jumlahRoll, setJumlahRoll] = useState("1");
   const [lebar, setLebar] = useState("");
   const [panjang, setPanjang] = useState("");
 
   const candidateBarang = useMemo(
     () => allBarang.filter((b) => b.id !== parentBarangId),
-    [allBarang, parentBarangId]
+    [allBarang, parentBarangId],
   );
 
   const selectedKomponen = useMemo(
     () => candidateBarang.find((b) => b.id === selectedKomponenId) ?? null,
-    [candidateBarang, selectedKomponenId]
+    [candidateBarang, selectedKomponenId],
   );
 
   const komponenBerdimensi = isBarangBerdimensi(
-    selectedKomponen?.butuh_dimensi_status
+    selectedKomponen?.butuh_dimensi_status,
   );
 
   useEffect(() => {
@@ -77,14 +95,14 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
       try {
         const res = await fetch(
           `/api/barang-komponen?parent_barang_id=${encodeURIComponent(parentBarangId)}`,
-          { signal: ac.signal }
+          { signal: ac.signal },
         );
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           setError(
             typeof data.error === "string" && data.error
               ? data.error
-              : "Gagal memuat komponen."
+              : "Gagal memuat komponen.",
           );
           setRows([]);
           return;
@@ -108,14 +126,14 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
     setError("");
     try {
       const res = await fetch(
-        `/api/barang-komponen?parent_barang_id=${encodeURIComponent(parentBarangId)}`
+        `/api/barang-komponen?parent_barang_id=${encodeURIComponent(parentBarangId)}`,
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(
           typeof data.error === "string" && data.error
             ? data.error
-            : "Gagal memuat komponen."
+            : "Gagal memuat komponen.",
         );
         setRows([]);
         return;
@@ -135,14 +153,18 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
     let payload: Record<string, unknown> = {
       parent_barang_id: parentBarangId,
       komponen_id: selectedKomponenId,
+      unit_price_id: selectedUnitPriceId || null,
     };
 
     if (komponenBerdimensi) {
-      const rolls = Math.max(1, Math.round(parseFloat(jumlahRoll) || 0));
+      // B3: jumlah_roll selalu 1 per unit produk jual (input di-hide di UI).
+      const rolls = 1;
       const lebarNum = parseFloat(lebar);
       const panjangNum = parseFloat(panjang);
       if (!lebarNum || lebarNum <= 0 || !panjangNum || panjangNum <= 0) {
-        return setError("Lebar dan panjang harus diisi (meter) untuk barang berdimensi.");
+        return setError(
+          "Lebar dan panjang harus diisi (meter) untuk barang berdimensi.",
+        );
       }
       const qtyM2 = hitungQtyKomponenDimensiM2(rolls, panjangNum, lebarNum);
       if (qtyM2 <= 0) {
@@ -174,6 +196,7 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
         return setError(d.error || "Gagal menyimpan.");
       }
       setSelectedKomponenId("");
+      setSelectedUnitPriceId("");
       setQty("1");
       setJumlahRoll("1");
       setLebar("");
@@ -185,8 +208,16 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
   }
 
   async function handleHapus(id: string) {
-    const res = await fetch(`/api/barang-komponen?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/barang-komponen?id=${id}`, {
+      method: "DELETE",
+    });
     if (res.ok) await reload();
+  }
+
+  function labelUnitPrice(unitPriceId: string | null | undefined): string {
+    if (!unitPriceId) return "Semua";
+    const up = unitPrices.find((u) => u.id === unitPriceId);
+    return up?.nama_produk_jual || up?.nama_satuan || "Produk jual";
   }
 
   function renderQtyCell(r: KomponenRow) {
@@ -196,21 +227,24 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
         <div className="text-right">
           <div className="text-slate-800 dark:text-slate-100">{dimLabel}</div>
           <div className="text-base text-slate-500 dark:text-slate-400">
-            = {Number(r.qty).toLocaleString("id-ID", { maximumFractionDigits: 4 })} m² / unit
+            ={" "}
+            {Number(r.qty).toLocaleString("id-ID", {
+              maximumFractionDigits: 4,
+            })}{" "}
+            m² / unit
           </div>
         </div>
       );
     }
-    return (
-      <span className="text-slate-800 dark:text-slate-100">{r.qty}</span>
-    );
+    return <span className="text-slate-800 dark:text-slate-100">{r.qty}</span>;
   }
 
   return (
     <div className="space-y-4">
       <p className="text-base text-slate-500 dark:text-slate-400">
-        Saat SPK barang ini diselesaikan, stok komponen di bawah akan berkurang otomatis.
-        Barang berdimensi memakai input Lebar × Panjang (m) dan jumlah roll.
+        Saat SPK barang ini diselesaikan, stok komponen di bawah akan berkurang
+        otomatis. Barang berdimensi memakai input Lebar × Panjang (m) = m² per
+        unit produk jual.
       </p>
 
       {!loading && error && (
@@ -218,7 +252,9 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
       )}
 
       {loading ? (
-        <p className="text-base text-slate-400 dark:text-slate-500">Memuat...</p>
+        <p className="text-base text-slate-400 dark:text-slate-500">
+          Memuat...
+        </p>
       ) : rows.length === 0 ? (
         <p className="text-base text-slate-400 dark:text-slate-500 italic">
           Belum ada komponen. Tambahkan di bawah.
@@ -237,16 +273,29 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
                 <th className="px-3 py-2.5 text-left font-medium text-slate-700 dark:text-slate-300">
                   Satuan
                 </th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-700 dark:text-slate-300">
+                  Berlaku untuk
+                </th>
                 <th className="px-3 py-2.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                  <td className="px-3 py-2.5 text-slate-800 dark:text-slate-100">{r.komponen_nama}</td>
+                <tr
+                  key={r.id}
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                >
+                  <td className="px-3 py-2.5 text-slate-800 dark:text-slate-100">
+                    {r.komponen_nama}
+                  </td>
                   <td className="px-3 py-2.5 text-right">{renderQtyCell(r)}</td>
                   <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400">
                     {r.satuan || r.komponen_satuan}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-base font-medium text-slate-700 dark:text-slate-200">
+                      {labelUnitPrice(r.unit_price_id)}
+                    </span>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <button
@@ -285,21 +334,27 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
             </select>
           </div>
 
+          {/* B2: scope produk jual — null = berlaku untuk semua produk jual. */}
+          <div className="w-56">
+            <label className="block text-base font-medium text-slate-600 dark:text-slate-400 mb-1">
+              Berlaku untuk Produk Jual
+            </label>
+            <select
+              value={selectedUnitPriceId}
+              onChange={(e) => setSelectedUnitPriceId(e.target.value)}
+              className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base px-2 py-1.5"
+            >
+              <option value="">Semua Produk Jual</option>
+              {unitPrices.map((up) => (
+                <option key={up.id} value={up.id}>
+                  {up.nama_produk_jual || up.nama_satuan}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {komponenBerdimensi ? (
             <>
-              <div className="w-20">
-                <label className="block text-base font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Jumlah roll
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={jumlahRoll}
-                  onChange={(e) => setJumlahRoll(e.target.value)}
-                  className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base px-2 py-1.5"
-                />
-              </div>
               <div className="w-24">
                 <label className="block text-base font-medium text-slate-600 dark:text-slate-400 mb-1">
                   Lebar (m)
@@ -357,13 +412,13 @@ export default function PanelKomponenRakitan({ parentBarangId, allBarang }: Prop
 
         {komponenBerdimensi && lebar && panjang && (
           <p className="text-base text-blue-700 dark:text-blue-300">
-            Per unit rakitan:{" "}
+            Lebar × Panjang (m) ={" "}
             {hitungQtyKomponenDimensiM2(
-              Math.max(1, Math.round(parseFloat(jumlahRoll) || 1)),
+              1,
               parseFloat(panjang) || 0,
-              parseFloat(lebar) || 0
+              parseFloat(lebar) || 0,
             ).toLocaleString("id-ID", { maximumFractionDigits: 4 })}{" "}
-            m²
+            m² per unit produk jual
           </p>
         )}
       </div>
