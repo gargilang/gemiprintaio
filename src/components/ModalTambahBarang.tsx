@@ -258,7 +258,9 @@ export default function ModalTambahBarang({
     setUnitPrices([
       ...unitPrices,
       {
-        nama_satuan: "",
+        // B1: default satuan dasar barang induk supaya produk jual kedua dst.
+        // tidak kosong. fallback "" kalau base_unit belum terisi (kasus edge).
+        nama_satuan: formData.base_unit || "",
         faktor_konversi: 1,
         harga_beli: refUnit?.harga_beli || 0,
         harga_jual: refUnit?.harga_jual || 0,
