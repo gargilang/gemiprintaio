@@ -19,6 +19,8 @@ const KomponenSchema = z
     lebar: z.coerce.number().finite().positive().optional().nullable(),
     satuan: z.string().optional().nullable(),
     catatan: z.string().optional().nullable(),
+    // B2: kaitkan komponen ke produk jual tertentu (harga_barang_satuan).
+    unit_price_id: z.string().min(1).optional().nullable(),
   })
   .passthrough();
 
@@ -29,16 +31,20 @@ async function validateKomponenDimensi(data: z.infer<typeof KomponenSchema>) {
   if (komponenRes.error) throw komponenRes.error;
   const komponen = komponenRes.data;
   if (!komponen) {
-    return { ok: false as const, status: 422, error: "Barang komponen tidak ditemukan" };
+    return {
+      ok: false as const,
+      status: 422,
+      error: "Barang komponen tidak ditemukan",
+    };
   }
 
   const berdimensi = isBarangBerdimensi(komponen.butuh_dimensi_status);
   if (berdimensi) {
-    const rolls = data.jumlah_roll != null ? Number(data.jumlah_roll) : null;
+    // B3: jumlah_roll default 1 (1 unit produk jual = 1 potong komponen).
+    const rolls = data.jumlah_roll != null ? Number(data.jumlah_roll) : 1;
     const panjang = data.panjang != null ? Number(data.panjang) : null;
     const lebar = data.lebar != null ? Number(data.lebar) : null;
     if (
-      rolls == null ||
       panjang == null ||
       lebar == null ||
       rolls < 1 ||
@@ -48,8 +54,7 @@ async function validateKomponenDimensi(data: z.infer<typeof KomponenSchema>) {
       return {
         ok: false as const,
         status: 422,
-        error:
-          "Komponen berdimensi wajib diisi: jumlah roll, lebar (m), dan panjang (m).",
+        error: "Komponen berdimensi wajib diisi: lebar (m) dan panjang (m).",
       };
     }
     const qtyM2 = hitungQtyKomponenDimensiM2(rolls, panjang, lebar);
@@ -63,11 +68,7 @@ async function validateKomponenDimensi(data: z.infer<typeof KomponenSchema>) {
     return { ok: true as const, berdimensi: true, komponen };
   }
 
-  if (
-    data.jumlah_roll != null ||
-    data.panjang != null ||
-    data.lebar != null
-  ) {
+  if (data.jumlah_roll != null || data.panjang != null || data.lebar != null) {
     return {
       ok: false as const,
       status: 422,
@@ -84,11 +85,21 @@ export async function GET(req: NextRequest) {
     await requireSession();
     const parentId = req.nextUrl.searchParams.get("parent_barang_id");
     if (!parentId) {
-      return NextResponse.json({ error: "parent_barang_id wajib diisi" }, { status: 400 });
+      return NextResponse.json(
+        { error: "parent_barang_id wajib diisi" },
+        { status: 400 },
+      );
     }
-    const res = await db.query<any>("barang_komponen", {
-      where: { parent_barang_id: parentId, is_deleted: 0 },
-    });
+    const unitPriceId = req.nextUrl.searchParams.get("unit_price_id");
+    const where: Record<string, unknown> = {
+      parent_barang_id: parentId,
+      is_deleted: 0,
+    };
+    // B2: filter opsional per produk jual. null string ("") → scope barang-level.
+    if (unitPriceId !== null) {
+      where.unit_price_id = unitPriceId === "" ? null : unitPriceId;
+    }
+    const res = await db.query<any>("barang_komponen", { where });
     if (res.error) throw res.error;
 
     const komponents = res.data || [];
@@ -119,7 +130,7 @@ export async function GET(req: NextRequest) {
     console.error("GET /api/barang-komponen:", e);
     return NextResponse.json(
       { error: friendlyPgError(e, "barang_komponen") },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -131,16 +142,41 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = KomponenSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Input tidak valid", details: parsed.error.issues }, { status: 422 });
+      return NextResponse.json(
+        { error: "Input tidak valid", details: parsed.error.issues },
+        { status: 422 },
+      );
     }
     const data = parsed.data;
     if (data.parent_barang_id === data.komponen_id) {
-      return NextResponse.json({ error: "Barang tidak bisa menjadi komponen dirinya sendiri" }, { status: 422 });
+      return NextResponse.json(
+        { error: "Barang tidak bisa menjadi komponen dirinya sendiri" },
+        { status: 422 },
+      );
     }
 
     const dimCheck = await validateKomponenDimensi(data);
     if (!dimCheck.ok) {
-      return NextResponse.json({ error: dimCheck.error }, { status: dimCheck.status });
+      return NextResponse.json(
+        { error: dimCheck.error },
+        { status: dimCheck.status },
+      );
+    }
+
+    // B2: validasi unit_price_id milik parent_barang_id.
+    let unitPriceId: string | null = null;
+    if (data.unit_price_id) {
+      const upRes = await db.queryOne<any>("harga_barang_satuan", {
+        where: { id: data.unit_price_id },
+      });
+      if (upRes.error) throw upRes.error;
+      if (!upRes.data || upRes.data.barang_id !== data.parent_barang_id) {
+        return NextResponse.json(
+          { error: "Produk jual tidak milik barang ini" },
+          { status: 422 },
+        );
+      }
+      unitPriceId = data.unit_price_id;
     }
 
     const now = getCurrentTimestamp();
@@ -149,11 +185,16 @@ export async function POST(req: NextRequest) {
       parent_barang_id: data.parent_barang_id,
       komponen_id: data.komponen_id,
       qty: data.qty,
-      jumlah_roll: dimCheck.berdimensi ? data.jumlah_roll : null,
+      jumlah_roll: dimCheck.berdimensi
+        ? data.jumlah_roll != null
+          ? Number(data.jumlah_roll)
+          : 1
+        : null,
       panjang: dimCheck.berdimensi ? data.panjang : null,
       lebar: dimCheck.berdimensi ? data.lebar : null,
       satuan: data.satuan ?? dimCheck.komponen?.satuan_dasar ?? null,
       catatan: data.catatan ?? null,
+      unit_price_id: unitPriceId,
       dibuat_oleh: session.uid,
       dibuat_pada: now,
       diperbarui_pada: now,
@@ -169,7 +210,7 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/barang-komponen:", e);
     return NextResponse.json(
       { error: friendlyPgError(e, "barang_komponen") },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -195,7 +236,7 @@ export async function DELETE(req: NextRequest) {
     console.error("DELETE /api/barang-komponen:", e);
     return NextResponse.json(
       { error: friendlyPgError(e, "barang_komponen") },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
