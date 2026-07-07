@@ -353,21 +353,23 @@ export default function ModalKatalogMaklon({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-              Urutan Tampil
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.populer_status === 1}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    populer_status: e.target.checked ? 1 : 0,
+                  })
+                }
+                className="w-4 h-4 rounded text-violet-600 border-gray-300 focus:ring-violet-500"
+              />
+              Tandai Populer
             </label>
-            <input
-              type="number"
-              min={0}
-              step="1"
-              value={form.urutan}
-              onChange={(e) =>
-                setForm({ ...form, urutan: Number(e.target.value || 0) })
-              }
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
-            />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Angka kecil tampil lebih dulu di daftar/POS.
+              Item bertanda Populer muncul di atas saat filter Populer ON di
+              POS.
             </p>
           </div>
 

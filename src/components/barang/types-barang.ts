@@ -11,4 +11,6 @@ export interface UnitPrice {
   default_status?: boolean;
   urutan_tampilan?: number;
   nama_produk_jual?: string | null;
+  /** C5: manual override Populer (0/1). */
+  populer_status?: number;
 }

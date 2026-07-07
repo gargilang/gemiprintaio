@@ -253,6 +253,22 @@ export default function PanelHargaSatuan({
                 </p>
               </div>
             </div>
+
+            {/* C5: Tandai Populer — manual override untuk sort Populer di POS */}
+            <label className="flex items-center gap-2 mt-3 text-sm font-semibold text-gray-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Number(up.populer_status) === 1}
+                onChange={(e) =>
+                  onUpdate(index, "populer_status", e.target.checked ? 1 : 0)
+                }
+                className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              Tandai Populer
+              <span className="text-xs font-normal text-gray-500 dark:text-slate-400">
+                — muncul di atas saat filter Populer ON di POS
+              </span>
+            </label>
           </div>
         ))}
         <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">

@@ -24,7 +24,7 @@ function toDbIntBoolean(value: unknown): 0 | 1 {
 
 function compactObject<T extends Record<string, any>>(obj: T): Partial<T> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([, value]) => value !== undefined)
+    Object.entries(obj).filter(([, value]) => value !== undefined),
   ) as Partial<T>;
 }
 
@@ -66,6 +66,8 @@ export interface UnitPrice {
   default_status: boolean | number;
   urutan_tampilan?: number;
   nama_produk_jual?: string | null;
+  /** C5: manual override Populer (0/1). */
+  populer_status?: number;
 }
 
 /**
@@ -92,9 +94,12 @@ export async function getMaterials(): Promise<Material[]> {
     const subcategories = subcategoriesResult.data || [];
 
     // Batch-load semua unit prices dan roll variants sekaligus (hindari N+1 query)
-    const allUnitPricesResult = await db.query<UnitPrice>("harga_barang_satuan", {
-      orderBy: { column: "urutan_tampilan", ascending: true },
-    });
+    const allUnitPricesResult = await db.query<UnitPrice>(
+      "harga_barang_satuan",
+      {
+        orderBy: { column: "urutan_tampilan", ascending: true },
+      },
+    );
     const allRollVariantsResult = await db.query<any>("barang_roll_variants", {
       orderBy: { column: "lebar_m", ascending: true },
     });
@@ -120,8 +125,12 @@ export async function getMaterials(): Promise<Material[]> {
 
     // Enrich materials dengan category names dan unit prices
     const materialsWithUnits = materials.map((material: Material) => {
-      const category = categories.find((c: any) => c.id === material.kategori_id);
-      const subcategory = subcategories.find((sc: any) => sc.id === material.subkategori_id);
+      const category = categories.find(
+        (c: any) => c.id === material.kategori_id,
+      );
+      const subcategory = subcategories.find(
+        (sc: any) => sc.id === material.subkategori_id,
+      );
       return {
         ...material,
         category_name: category?.nama || undefined,
@@ -187,7 +196,7 @@ export async function getMaterialById(id: string): Promise<Material | null> {
       ...material,
       unit_prices: unitPricesResult.data || [],
       roll_variants: (rollVariantsResult.data || []).filter(
-        (row: any) => Number(row.aktif_status) !== 0
+        (row: any) => Number(row.aktif_status) !== 0,
       ),
     };
   } catch (error) {
@@ -200,7 +209,7 @@ export async function getMaterialById(id: string): Promise<Material | null> {
  * Create new material with unit prices
  */
 export async function createMaterial(
-  material: Omit<Material, "id" | "category_name" | "subcategory_name">
+  material: Omit<Material, "id" | "category_name" | "subcategory_name">,
 ): Promise<{ id: string } | null> {
   try {
     const materialId = crypto.randomUUID();
@@ -221,7 +230,8 @@ export async function createMaterial(
     }
 
     // Insert material
-    const isDimensional = toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
+    const isDimensional =
+      toDbIntBoolean(materialData.butuh_dimensi_status) === 1;
     const defaultUnitPrice =
       Array.isArray(unit_prices) && unit_prices.length > 0
         ? getReferensiUnitPrice(unit_prices)
@@ -237,11 +247,13 @@ export async function createMaterial(
       // Force m² unit and zero stock for dimensional materials so the
       // inventory accounting stays in square meters.
       satuan_dasar: isDimensional ? "m²" : materialData.satuan_dasar,
-      jumlah_stok: isDimensional ? 0 : materialData.jumlah_stok ?? 0,
+      jumlah_stok: isDimensional ? 0 : (materialData.jumlah_stok ?? 0),
       level_stok_minimum: isDimensional
         ? 0
-        : materialData.level_stok_minimum ?? 0,
-      lacak_inventori_status: toDbIntBoolean(materialData.lacak_inventori_status),
+        : (materialData.level_stok_minimum ?? 0),
+      lacak_inventori_status: toDbIntBoolean(
+        materialData.lacak_inventori_status,
+      ),
       butuh_dimensi_status: toDbIntBoolean(materialData.butuh_dimensi_status),
       roll_inventory_status: isDimensional
         ? 1
@@ -251,7 +263,8 @@ export async function createMaterial(
           ? toDbIntBoolean(materialData.muncul_di_pos_status)
           : 1,
       average_cost_per_base_unit:
-        materialData.average_cost_per_base_unit ?? initialAverageCostPerBaseUnit,
+        materialData.average_cost_per_base_unit ??
+        initialAverageCostPerBaseUnit,
       dibuat_pada: new Date().toISOString(),
       diperbarui_pada: new Date().toISOString(),
     });
@@ -281,14 +294,11 @@ export async function createMaterial(
 
 async function deleteOrphanUnitPricesSafe(
   barangId: string,
-  keepIds: string[]
+  keepIds: string[],
 ): Promise<void> {
-  const existingResult = await db.query<{ id: string }>(
-    "harga_barang_satuan",
-    {
-      where: { barang_id: barangId },
-    }
-  );
+  const existingResult = await db.query<{ id: string }>("harga_barang_satuan", {
+    where: { barang_id: barangId },
+  });
 
   const existingIds = (existingResult.data || []).map((r) => r.id);
   const idsToDelete = existingIds.filter((uid) => !keepIds.includes(uid));
@@ -305,10 +315,10 @@ async function deleteOrphanUnitPricesSafe(
       UNION
       SELECT harga_satuan_id FROM item_penjualan WHERE harga_satuan_id IN (${placeholders})
     )`,
-      [...idsToDelete, ...idsToDelete]
+      [...idsToDelete, ...idsToDelete],
     );
     refSet = new Set(
-      (referenced || []).map((r) => r.harga_satuan_id).filter(Boolean)
+      (referenced || []).map((r) => r.harga_satuan_id).filter(Boolean),
     );
   }
   const safeToDelete = idsToDelete.filter((uid) => !refSet.has(uid));
@@ -323,7 +333,7 @@ async function deleteOrphanUnitPricesSafe(
  */
 export async function updateMaterial(
   id: string,
-  material: Partial<Material>
+  material: Partial<Material>,
 ): Promise<boolean> {
   try {
     // Separate unit_prices from material data
@@ -338,7 +348,11 @@ export async function updateMaterial(
         ? normalizeDefaultStatusForSave(rawUnitPrices)
         : rawUnitPrices;
 
-    if (unit_prices !== undefined && Array.isArray(unit_prices) && unit_prices.length > 0) {
+    if (
+      unit_prices !== undefined &&
+      Array.isArray(unit_prices) &&
+      unit_prices.length > 0
+    ) {
       const duplicateNama = findDuplicateNamaProduk(unit_prices);
       if (duplicateNama) {
         throw new Error(
@@ -382,16 +396,19 @@ export async function updateMaterial(
       ...materialData,
       ...(materialData.lacak_inventori_status !== undefined
         ? {
-            lacak_inventori_status:
-              toDbIntBoolean(materialData.lacak_inventori_status),
+            lacak_inventori_status: toDbIntBoolean(
+              materialData.lacak_inventori_status,
+            ),
           }
         : {}),
       ...(materialData.butuh_dimensi_status !== undefined
         ? {
-            butuh_dimensi_status:
-              toDbIntBoolean(materialData.butuh_dimensi_status),
-            roll_inventory_status:
-              toDbIntBoolean(materialData.butuh_dimensi_status),
+            butuh_dimensi_status: toDbIntBoolean(
+              materialData.butuh_dimensi_status,
+            ),
+            roll_inventory_status: toDbIntBoolean(
+              materialData.butuh_dimensi_status,
+            ),
           }
         : {}),
       ...(materialData.muncul_di_pos_status !== undefined
@@ -424,12 +441,18 @@ export async function updateMaterial(
           default_status: toDbIntBoolean(unitPrice.default_status),
           urutan_tampilan: unitPrice.urutan_tampilan,
           nama_produk_jual: unitPrice.nama_produk_jual ?? null,
+          // C5: manual override Populer. Default 0 bila tidak diset.
+          populer_status: unitPrice.populer_status ?? 0,
           diperbarui_pada: new Date().toISOString(),
         });
 
         if (unitPrice.id) {
           // Update existing
-          await db.update("harga_barang_satuan", unitPrice.id, unitPricePayload);
+          await db.update(
+            "harga_barang_satuan",
+            unitPrice.id,
+            unitPricePayload,
+          );
         } else {
           // Insert new
           await db.insert("harga_barang_satuan", {
@@ -456,27 +479,30 @@ export async function deleteMaterial(id: string): Promise<boolean> {
   try {
     // Cek apakah barang sudah dipakai di pembelian atau penjualan.
     // Kalau iya, tolak dengan pesan yang menyebut nomor transaksi spesifik.
-    const [purchaseItemsRes, saleItemsRes, componentUsageRes] = await Promise.all([
-      db.query<any>("item_pembelian", { where: { barang_id: id } }),
-      db.query<any>("item_penjualan", { where: { barang_id: id } }),
-      // Cek apakah barang dipakai sebagai komponen di rakitan/BOM barang lain
-      // (FK barang_komponen.komponen_id tidak cascade, jadi harus diblokir manual).
-      db.query<any>("barang_komponen", { where: { komponen_id: id } }),
-    ]);
+    const [purchaseItemsRes, saleItemsRes, componentUsageRes] =
+      await Promise.all([
+        db.query<any>("item_pembelian", { where: { barang_id: id } }),
+        db.query<any>("item_penjualan", { where: { barang_id: id } }),
+        // Cek apakah barang dipakai sebagai komponen di rakitan/BOM barang lain
+        // (FK barang_komponen.komponen_id tidak cascade, jadi harus diblokir manual).
+        db.query<any>("barang_komponen", { where: { komponen_id: id } }),
+      ]);
 
     const purchaseItems = purchaseItemsRes.data || [];
     const saleItems = (saleItemsRes.data || []).filter(
-      (it: any) => it.barang_id === id && it.tipe_item !== "MAKLON"
+      (it: any) => it.barang_id === id && it.tipe_item !== "MAKLON",
     );
     const componentUsage = (componentUsageRes.data || []).filter(
-      (it: any) => it.komponen_id === id && !it.is_deleted
+      (it: any) => it.komponen_id === id && !it.is_deleted,
     );
 
     const blockingMessages: string[] = [];
 
     if (purchaseItems.length > 0) {
       // Resolve nomor pembelian
-      const purchaseIds = [...new Set(purchaseItems.map((it: any) => it.pembelian_id as string))];
+      const purchaseIds = [
+        ...new Set(purchaseItems.map((it: any) => it.pembelian_id as string)),
+      ];
       const purchaseLabels: string[] = [];
       for (const pid of purchaseIds) {
         const p = await db.queryOne<any>("pembelian", { where: { id: pid } });
@@ -494,13 +520,15 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       }
       if (purchaseLabels.length > 0) {
         blockingMessages.push(
-          `dipakai di pembelian: ${purchaseLabels.join(", ")}`
+          `dipakai di pembelian: ${purchaseLabels.join(", ")}`,
         );
       }
     }
 
     if (saleItems.length > 0) {
-      const saleIds = [...new Set(saleItems.map((it: any) => it.penjualan_id as string))];
+      const saleIds = [
+        ...new Set(saleItems.map((it: any) => it.penjualan_id as string)),
+      ];
       const saleLabels: string[] = [];
       for (const sid of saleIds) {
         const s = await db.queryOne<any>("penjualan", { where: { id: sid } });
@@ -517,15 +545,15 @@ export async function deleteMaterial(id: string): Promise<boolean> {
         }
       }
       if (saleLabels.length > 0) {
-        blockingMessages.push(
-          `dipakai di penjualan: ${saleLabels.join(", ")}`
-        );
+        blockingMessages.push(`dipakai di penjualan: ${saleLabels.join(", ")}`);
       }
     }
 
     if (componentUsage.length > 0) {
       const parentIds = [
-        ...new Set(componentUsage.map((it: any) => it.parent_barang_id as string)),
+        ...new Set(
+          componentUsage.map((it: any) => it.parent_barang_id as string),
+        ),
       ];
       const parentLabels: string[] = [];
       for (const pid of parentIds) {
@@ -534,7 +562,7 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       }
       if (parentLabels.length > 0) {
         blockingMessages.push(
-          `dipakai sebagai komponen di rakitan: ${parentLabels.join(", ")}`
+          `dipakai sebagai komponen di rakitan: ${parentLabels.join(", ")}`,
         );
       }
     }
@@ -542,7 +570,7 @@ export async function deleteMaterial(id: string): Promise<boolean> {
     if (blockingMessages.length > 0) {
       throw new Error(
         `Barang tidak bisa dihapus karena sudah ${blockingMessages.join("; ")}. ` +
-          `Batalkan atau hapus transaksi tersebut dulu sebelum menghapus barang ini.`
+          `Batalkan atau hapus transaksi tersebut dulu sebelum menghapus barang ini.`,
       );
     }
 
@@ -629,4 +657,3 @@ export const getKategoriBarang = getMaterialCategories;
 export const getSubkategoriBarang = getMaterialSubcategories;
 /** Ambil daftar satuan. Lihat `getUnits`. */
 export const getSatuan = getUnits;
-
