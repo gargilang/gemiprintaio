@@ -48,7 +48,7 @@ export default function ModalBayarHutang({
   const [jumlahBayar, setJumlahBayar] = useState("");
   const [metodePembayaran, setMetodePembayaran] = useState("CASH");
   const [tanggalBayar, setTanggalBayar] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [referensi, setReferensi] = useState("");
   const [catatan, setCatatan] = useState("");
@@ -61,7 +61,7 @@ export default function ModalBayarHutang({
     () => {
       if (!loading) onClose();
     },
-    isOpen
+    isOpen,
   );
 
   useEffect(() => {
@@ -295,7 +295,7 @@ export default function ModalBayarHutang({
                             <div className="text-base text-gray-500 dark:text-slate-400">
                               Sisa Tagihan
                             </div>
-                            <div className="text-lg font-bold text-red-600">
+                            <div className="text-lg font-bold text-red-600 dark:text-red-400">
                               {formatRupiah(debt.sisa_hutang)}
                             </div>
                           </div>
@@ -342,7 +342,7 @@ export default function ModalBayarHutang({
                       </div>
                       <div className="text-base text-gray-600 dark:text-slate-300">
                         Sisa Tagihan:{" "}
-                        <span className="font-bold text-red-600">
+                        <span className="font-bold text-red-600 dark:text-red-400">
                           {formatRupiah(selectedDebt.sisa_hutang)}
                         </span>
                       </div>
@@ -356,7 +356,7 @@ export default function ModalBayarHutang({
                         type="date"
                         value={tanggalBayar}
                         onChange={(e) => setTanggalBayar(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -369,7 +369,7 @@ export default function ModalBayarHutang({
                         type="number"
                         value={jumlahBayar}
                         onChange={(e) => setJumlahBayar(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         placeholder="Masukkan jumlah pembayaran"
                         min="0"
                         step="0.01"
@@ -389,7 +389,7 @@ export default function ModalBayarHutang({
                           type="button"
                           onClick={() =>
                             setJumlahBayar(
-                              (selectedDebt.sisa_hutang / 2).toString()
+                              (selectedDebt.sisa_hutang / 2).toString(),
                             )
                           }
                           className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-base font-semibold hover:bg-blue-200 transition-colors"
@@ -406,7 +406,7 @@ export default function ModalBayarHutang({
                       <select
                         value={metodePembayaran}
                         onChange={(e) => setMetodePembayaran(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
                       >
                         <option value="CASH">Cash</option>
@@ -424,7 +424,7 @@ export default function ModalBayarHutang({
                         type="text"
                         value={referensi}
                         onChange={(e) => setReferensi(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         placeholder="Opsional"
                       />
                     </div>
@@ -436,7 +436,7 @@ export default function ModalBayarHutang({
                       <textarea
                         value={catatan}
                         onChange={(e) => setCatatan(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         rows={3}
                         placeholder="Catatan pembayaran (opsional)"
                       />
@@ -462,7 +462,7 @@ export default function ModalBayarHutang({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+            className="px-6 py-2.5 bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-semibold disabled:opacity-50"
           >
             Batal
           </button>
