@@ -9,16 +9,18 @@ export interface TambahItemLainnyaValue {
   jumlah: number;
   nama_satuan: string;
   harga_satuan: number;
-  vendor_subkontrak_id: string;
-  biaya_subkontrak: number;
-  metode_bayar_vendor: "CASH" | "NET30" | "TRANSFER";
+  // Rincian Internal opsional. Kosong = item "pending" vendor/HPP (ditangani
+  // safeguard C2 di pos-mutations / Task 4 saat checkout).
+  vendor_subkontrak_id?: string | null;
+  biaya_subkontrak?: number | null;
+  metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
 }
 
 interface ModalTambahItemLainnyaProps {
   open: boolean;
   subkontraktor: SubkontraktorOption[];
   onClose: () => void;
-  onSave: (value: TambahItemLainnyaValue) => void;
+  onSave: (value: TambahItemLainnyaValue) => void | Promise<void>;
 }
 
 const SATUAN_OPTIONS = [
@@ -43,7 +45,7 @@ export default function ModalTambahItemLainnya({
   const [jumlah, setJumlah] = useState("1");
   const [namaSatuan, setNamaSatuan] = useState("pcs");
   const [hargaJual, setHargaJual] = useState("");
-  const [vendorId, setVendorId] = useState("");
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const [biayaSubkontrak, setBiayaSubkontrak] = useState("");
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "NET30" | "TRANSFER">(
     "CASH",
@@ -57,7 +59,7 @@ export default function ModalTambahItemLainnya({
     setJumlah("1");
     setNamaSatuan("pcs");
     setHargaJual("");
-    setVendorId("");
+    setVendorId(null);
     setBiayaSubkontrak("");
     setMetodeBayar("CASH");
     setTampilkanInternal(false);
@@ -69,7 +71,7 @@ export default function ModalTambahItemLainnya({
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const parsedJumlah = Number(jumlah);
     const parsedHarga = Number(hargaJual);
     const parsedBiaya = Number(biayaSubkontrak);
@@ -86,29 +88,26 @@ export default function ModalTambahItemLainnya({
       setError("Harga jual tidak valid");
       return;
     }
-    if (
-      !vendorId ||
-      !Number.isFinite(parsedBiaya) ||
-      parsedBiaya <= 0 ||
-      !metodeBayar
-    ) {
-      setTampilkanInternal(true);
-      setError(
-        "Lengkapi Rincian Internal (vendor, biaya, metode) sebelum simpan.",
-      );
-      return;
+    // Vendor/biaya/metode OPSIONAL. Pending (vendor/biaya kosong) ditangani safeguard
+    // C2 di pos-mutations saat checkout. Kalau vendor diisi, biaya wajib > 0.
+    if (vendorId) {
+      if (!Number.isFinite(parsedBiaya) || parsedBiaya <= 0) {
+        setTampilkanInternal(true);
+        setError("Biaya subkontrak harus lebih dari 0 bila vendor dipilih.");
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      onSave({
+      await onSave({
         barang_nama: namaItem.trim(),
         jumlah: parsedJumlah,
         nama_satuan: namaSatuan,
         harga_satuan: parsedHarga,
-        vendor_subkontrak_id: vendorId,
-        biaya_subkontrak: parsedBiaya,
-        metode_bayar_vendor: metodeBayar,
+        vendor_subkontrak_id: vendorId || null,
+        biaya_subkontrak: vendorId ? parsedBiaya : null,
+        metode_bayar_vendor: vendorId ? metodeBayar : null,
       });
       resetForm();
     } finally {
@@ -262,11 +261,11 @@ export default function ModalTambahItemLainnya({
                   Vendor subkontrak
                 </span>
                 <select
-                  value={vendorId}
-                  onChange={(e) => setVendorId(e.target.value)}
+                  value={vendorId ?? ""}
+                  onChange={(e) => setVendorId(e.target.value || null)}
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
                 >
-                  <option value="">— Pilih vendor —</option>
+                  <option value="">— Pilih vendor (opsional) —</option>
                   {subkontraktor.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.nama_perusahaan}

@@ -56,8 +56,9 @@ import {
 } from "./keranjang-tersimpan-actions";
 import type { ParkedCart } from "@/lib/services/keranjang-tersimpan-service";
 import type { QuotationItemInput } from "@/lib/services/quotation-service";
+import { createKatalogMaklonAction } from "@/app/katalog-maklon/actions";
 import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
-import { useCachedData } from "@/lib/use-cached-data";
+import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import {
   ID_BARANG_PLACEHOLDER_MAKLON,
   ID_HARGA_PLACEHOLDER_MAKLON,
@@ -130,6 +131,8 @@ export default function POSPage() {
     },
   );
   const tokoPkp = statusPkpData === 1;
+
+  const invalidate = useInvalidate();
 
   const { data: shopSettingsData } = useCachedData(
     "pos-shop-settings",
@@ -806,7 +809,34 @@ export default function POSPage() {
     }
   };
 
-  const handleSaveTambahItemLainnya = (v: TambahItemLainnyaValue) => {
+  const handleSaveTambahItemLainnya = async (v: TambahItemLainnyaValue) => {
+    // 1. Simpan ke katalog_maklon supaya item muncul di halaman Katalog Extra
+    //    untuk pelengkapan vendor/HPP belakangan. Vendor=null/biaya=null =
+    //    item "pending" (safeguard C2/Task 4 menangani saat checkout).
+    let katalogMaklonId: string | undefined;
+    try {
+      const created = await createKatalogMaklonAction({
+        nama_produk: v.barang_nama,
+        nama_satuan: v.nama_satuan,
+        harga_jual_default: v.harga_satuan,
+        biaya_subkontrak_default: v.biaya_subkontrak ?? 0,
+        vendor_subkontrak_id_default: v.vendor_subkontrak_id ?? null,
+        metode_bayar_vendor_default: v.metode_bayar_vendor ?? "CASH",
+        kategori: null,
+        kategori_id: null,
+        populer_status: 0,
+        is_aktif: 1,
+        urutan: 0,
+      });
+      katalogMaklonId = (created as { id?: string })?.id;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showMsg("error", `Gagal simpan ke katalog: ${msg}`);
+      return; // jangan tambah ke cart bila gagal simpan katalog
+    }
+
+    // 2. Tambah ke cart dengan katalog_maklon_id. pending_vendor_hpp di-set di
+    //    service (Task 4) berdasarkan vendor/biaya kosong — cart tidak perlu flag.
     const vendor = subkontraktor.find((s) => s.id === v.vendor_subkontrak_id);
     const newItem: CartItem = {
       barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
@@ -819,14 +849,17 @@ export default function POSPage() {
       subtotalRaw: v.jumlah * v.harga_satuan,
       originalHargaSatuan: v.harga_satuan,
       tipe_item: "MAKLON",
-      vendor_subkontrak_id: v.vendor_subkontrak_id,
+      katalog_maklon_id: katalogMaklonId,
+      vendor_subkontrak_id: v.vendor_subkontrak_id ?? undefined,
       vendor_subkontrak_nama: vendor?.nama_perusahaan,
-      biaya_subkontrak: v.biaya_subkontrak,
-      metode_bayar_vendor: v.metode_bayar_vendor,
+      biaya_subkontrak: v.biaya_subkontrak ?? undefined,
+      metode_bayar_vendor: v.metode_bayar_vendor ?? undefined,
       deskripsi_pekerjaan: v.barang_nama,
     };
     setCart((prev) => [...prev, newItem]);
     setShowTambahItemLainnya(false);
+    // 3. Bust cache katalog supaya item muncul di halaman Katalog Extra.
+    invalidate("katalog-maklon");
   };
 
   const handleSaveRincianInternal = (index: number, v: Partial<CartItem>) => {
