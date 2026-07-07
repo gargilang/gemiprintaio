@@ -296,22 +296,10 @@ export default function KatalogMaklonPage() {
                     Harga Jual
                   </th>
                   <th className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">
-                    Biaya Subkontrak
+                    HPP
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Vendor Bawaan
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Metode
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
-                    Kategori
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
-                    Aktif
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
-                    Urutan
+                    Vendor
                   </th>
                   <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                     Aksi
@@ -322,7 +310,7 @@ export default function KatalogMaklonPage() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={6}
                       className="px-4 py-12 text-center text-gray-500 dark:text-slate-400"
                     >
                       Memuat...
@@ -330,7 +318,7 @@ export default function KatalogMaklonPage() {
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500">
                         <PrinterIcon size={48} className="mb-3 opacity-50" />
                         <p className="text-lg font-semibold text-gray-600 dark:text-slate-300">
@@ -381,33 +369,6 @@ export default function KatalogMaklonPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
-                          <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded font-semibold text-xs">
-                            {item.metode_bayar_vendor_default}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
-                          {item.kategori || (
-                            <span className="text-gray-400 dark:text-slate-500">
-                              —
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {item.is_aktif === 1 ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold">
-                              <CheckIcon size={14} />
-                              Aktif
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-semibold">
-                              Non-Aktif
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-slate-300">
-                          {item.urutan}
-                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -442,14 +403,14 @@ export default function KatalogMaklonPage() {
               <PencilIcon size={18} className="text-white" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-bold uppercase tracking-wide truncate">
+              <h3 className="text-lg font-bold uppercase tracking-wide truncate">
                 Pending Vendor/HPP
               </h3>
-              <p className="text-white/90 text-xs truncate">
+              <p className="text-white/90 text-sm truncate">
                 Baris maklon yang belum diisi vendor & biaya — perlu reconcile
               </p>
             </div>
-            <span className="ml-auto inline-flex items-center px-2.5 py-1 bg-white/20 rounded-full text-xs font-bold">
+            <span className="ml-auto inline-flex items-center px-2.5 py-1 bg-white/20 rounded-full text-sm font-bold">
               {pendingItems.length}
             </span>
           </div>
@@ -457,25 +418,25 @@ export default function KatalogMaklonPage() {
             <table className="w-full">
               <thead className="bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-200 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Faktur
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Tanggal
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Pelanggan
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider">
                     Pekerjaan
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">
                     Jumlah
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-sm font-bold uppercase tracking-wider">
                     Harga Jual
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-sm font-bold uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
@@ -494,11 +455,11 @@ export default function KatalogMaklonPage() {
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                        <CheckIcon size={36} className="mb-2 opacity-60" />
-                        <p className="text-sm font-semibold text-gray-600 dark:text-slate-300">
+                        <CheckIcon size={40} className="mb-2 opacity-60" />
+                        <p className="text-base font-semibold text-gray-600 dark:text-slate-300">
                           Tidak ada baris pending
                         </p>
-                        <p className="text-xs mt-1">
+                        <p className="text-sm mt-1">
                           Semua baris maklon sudah berisi vendor & HPP
                         </p>
                       </div>
@@ -514,38 +475,38 @@ export default function KatalogMaklonPage() {
                           : "bg-amber-50/40 dark:bg-slate-800/40"
                       }
                     >
-                      <td className="px-4 py-3 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                      <td className="px-4 py-3 text-base font-semibold text-gray-800 dark:text-slate-100">
                         {row.nomor_faktur || (
                           <span className="text-gray-400 dark:text-slate-500">
                             —
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
                         {row.tanggal || "—"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
                         {row.pelanggan_nama || (
                           <span className="text-gray-400 dark:text-slate-500">
                             —
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-base text-gray-700 dark:text-slate-300">
                         {row.deskripsi_pekerjaan || "—"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-base text-right text-gray-700 dark:text-slate-300">
                         {row.jumlah}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-slate-300">
+                      <td className="px-4 py-3 text-base text-right text-gray-700 dark:text-slate-300">
                         {money(row.subtotal)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setReconcileItem(row)}
-                          className="px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-colors text-xs inline-flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-colors text-sm inline-flex items-center gap-1.5"
                         >
-                          <PencilIcon size={14} />
+                          <PencilIcon size={16} />
                           Isi Vendor & HPP
                         </button>
                       </td>
