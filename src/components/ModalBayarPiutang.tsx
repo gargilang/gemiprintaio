@@ -295,7 +295,7 @@ export default function ModalBayarPiutang({
                                 <span className="text-gray-600 dark:text-slate-300">
                                   Sisa:
                                 </span>{" "}
-                                <span className="font-bold text-red-600">
+                                <span className="font-bold text-red-600 dark:text-red-400">
                                   {formatRupiah(receivable.sisa_piutang)}
                                 </span>
                               </div>
