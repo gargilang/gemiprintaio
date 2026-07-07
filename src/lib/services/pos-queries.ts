@@ -160,6 +160,13 @@ export interface CreateSaleData {
     metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
     /** Deskripsi bebas yang dipakai di faktur + struk thermal untuk baris maklon. */
     deskripsi_pekerjaan?: string | null;
+    /**
+     * ID katalog maklon (katalog_maklon) yang dipakai sebagai sumber baris ini.
+     * Dipakai oleh safeguard C2: baris maklon tanpa vendor/biaya disimpan
+     * sebagai pending (`pending_vendor_hpp=1`) dan dapat direconcile ulang
+     * lewat katalog_maklon_id ini.
+     */
+    katalog_maklon_id?: string | null;
   }>;
   total_jumlah: number;
   jumlah_dibayar: number;
