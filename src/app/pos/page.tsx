@@ -1353,7 +1353,7 @@ export default function POSPage() {
         try {
           if (printType === "thermal" || printType === "both") {
             const { printThermalInvoice } = await import("@/lib/thermal-print");
-            const printed = printThermalInvoice(buildThermalData());
+            const printed = await printThermalInvoice(buildThermalData());
             if (!printed) {
               showMsg(
                 "error",

@@ -1,3 +1,6 @@
+import { preparePrintHtml } from "@/lib/print-embed-client";
+import { openPrintDocument } from "@/lib/print-fonts";
+
 export interface ThermalInvoiceData {
   nomor_faktur: string;
   tanggal: string;
@@ -395,57 +398,16 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
   `;
 }
 
-function writeInvoiceToWindow(target: Window, invoiceHTML: string): void {
-  target.document.open();
-  target.document.write(invoiceHTML);
-  target.document.close();
-  target.focus();
-}
-
-function printAfterAssetsReady(target: Window): void {
-  const print = () => {
-    try {
-      target.focus();
-      target.print();
-    } catch {
-      // print() may be blocked; preview is still available in the target document
-    }
-  };
-
-  const fontsReady = target.document.fonts?.ready ?? Promise.resolve();
-  fontsReady.then(print).catch(print);
-}
-
-/** Returns true if a print preview window was opened. */
-export function printThermalInvoice(data: ThermalInvoiceData): boolean {
+/**
+ * Buka popup cetak struk 80mm dengan font branded ter-embed.
+ * Rute HTML via `preparePrintHtml` (embed base64 via server action) lalu
+ * `openPrintDocument` (popup + `<base href>` + tunggu font ready).
+ * Return true bila popup/iframe berhasil dibuka.
+ */
+export async function printThermalInvoice(
+  data: ThermalInvoiceData,
+): Promise<boolean> {
   const invoiceHTML = generateThermalInvoice(data);
-
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    writeInvoiceToWindow(printWindow, invoiceHTML);
-    return true;
-  }
-
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "Cetak struk");
-  iframe.style.cssText =
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
-  document.body.appendChild(iframe);
-
-  const frameWindow = iframe.contentWindow;
-  if (!frameWindow) {
-    document.body.removeChild(iframe);
-    return false;
-  }
-
-  writeInvoiceToWindow(frameWindow, invoiceHTML);
-  printAfterAssetsReady(frameWindow);
-
-  window.setTimeout(() => {
-    if (iframe.parentNode) {
-      document.body.removeChild(iframe);
-    }
-  }, 120_000);
-
-  return true;
+  const prepared = await preparePrintHtml(invoiceHTML);
+  return openPrintDocument(prepared, "Cetak struk penjualan");
 }

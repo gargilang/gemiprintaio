@@ -273,13 +273,6 @@ export function generateSPKHTML(order: ProductionOrder): string {
     <div style="margin-top: 4px;">www.gemiprint.com</div>
   </div>
 
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 100);
-    }
-  </script>
 </body>
 </html>
     `;
