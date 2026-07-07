@@ -1588,6 +1588,239 @@ class UnifiedDatabase {
       }
     }
 
+    // Migrasi (20260707000003): item_penjualan kolom pending + katalog_maklon_id.
+    {
+      const cols = (
+        db.prepare("PRAGMA table_info(item_penjualan)").all() as Array<{
+          name: string;
+        }>
+      ).map((c) => c.name);
+      if (!cols.includes("pending_vendor_hpp")) {
+        db.exec(
+          "ALTER TABLE item_penjualan ADD COLUMN pending_vendor_hpp INTEGER NOT NULL DEFAULT 0",
+        );
+      }
+      if (!cols.includes("katalog_maklon_id")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN katalog_maklon_id TEXT");
+      }
+    }
+
+    // Migrasi (20260707000003): katalog_maklon kolom populer_status + kategori_id.
+    {
+      const cols = (
+        db.prepare("PRAGMA table_info(katalog_maklon)").all() as Array<{
+          name: string;
+        }>
+      ).map((c) => c.name);
+      if (!cols.includes("populer_status")) {
+        db.exec(
+          "ALTER TABLE katalog_maklon ADD COLUMN populer_status INTEGER NOT NULL DEFAULT 0",
+        );
+      }
+      if (!cols.includes("kategori_id")) {
+        db.exec("ALTER TABLE katalog_maklon ADD COLUMN kategori_id TEXT");
+      }
+      // Migrasi data free-text kategori -> kategori_id (selaras dengan migrasi Supabase).
+      // Idempoten: hanya isi jika kategori_id masih NULL dan kategori cocok nama kategori_barang.
+      try {
+        db.exec(
+          `UPDATE katalog_maklon SET kategori_id = (
+             SELECT kb.id FROM kategori_barang kb WHERE kb.nama = katalog_maklon.kategori
+           ) WHERE kategori_id IS NULL AND kategori IS NOT NULL`,
+        );
+      } catch (_e) {
+        // Toleransi: kategori_barang mungkin belum ada di fresh install.
+      }
+    }
+
+    // Migrasi (20260707000003): harga_barang_satuan kolom populer_status.
+    {
+      const cols = (
+        db.prepare("PRAGMA table_info(harga_barang_satuan)").all() as Array<{
+          name: string;
+        }>
+      ).map((c) => c.name);
+      if (!cols.includes("populer_status")) {
+        db.exec(
+          "ALTER TABLE harga_barang_satuan ADD COLUMN populer_status INTEGER NOT NULL DEFAULT 0",
+        );
+      }
+    }
+
+    // Migrasi (20260707000003): lebarkan CHECK metode_bayar_vendor di item_penjualan
+    // supaya menerima 'TRANSFER'. SQLite tidak bisa DROP CONSTRAINT → rebuild tabel.
+    // Idempoten: setelah rebuild, sql LIKE tidak match lagi → skip.
+    {
+      const oldCheck = db
+        .prepare(
+          `SELECT 1 FROM sqlite_master WHERE type='table' AND name='item_penjualan'
+           AND sql LIKE '%metode_bayar_vendor IN (''CASH'',''NET30''))%' AND sql NOT LIKE '%TRANSFER%' LIMIT 1`,
+        )
+        .get();
+      if (oldCheck) {
+        const colInfo = (
+          db.prepare("PRAGMA table_info(item_penjualan)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).filter((c) => !c.pk);
+        const pkCol = (
+          db.prepare("PRAGMA table_info(item_penjualan)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).find((c) => c.pk);
+        const colDefs = [
+          pkCol
+            ? `"${pkCol.name}" ${pkCol.type || "TEXT"} PRIMARY KEY`
+            : '"id" TEXT PRIMARY KEY',
+          ...colInfo.map((c) => {
+            // Injeksi CHECK baru untuk kolom metode_bayar_vendor (lebarkan ke TRANSFER).
+            if (c.name === "metode_bayar_vendor") {
+              return `"metode_bayar_vendor" TEXT CHECK(metode_bayar_vendor IS NULL OR metode_bayar_vendor IN ('CASH','NET30','TRANSFER'))`;
+            }
+            let sql = `"${c.name}" ${c.type || "TEXT"}`;
+            if (c.notnull) sql += " NOT NULL";
+            if (c.dflt_value != null) {
+              // Literal (angka/string/true/false/null) langsung; ekspresi (mis. datetime('now')) bungkus parens.
+              const dv = c.dflt_value;
+              const isLiteral =
+                /^[-'0-9]/.test(dv) || /^(true|false|null)$/i.test(dv);
+              sql += ` DEFAULT ${isLiteral ? dv : `(${dv})`}`;
+            }
+            return sql;
+          }),
+          "FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE",
+          "FOREIGN KEY (barang_id) REFERENCES barang(id)",
+          "FOREIGN KEY (harga_satuan_id) REFERENCES harga_barang_satuan(id)",
+          "FOREIGN KEY (vendor_subkontrak_id) REFERENCES vendor(id) ON DELETE SET NULL",
+          "FOREIGN KEY (pembelian_id_terkait) REFERENCES pembelian(id) ON DELETE SET NULL",
+          "FOREIGN KEY (katalog_maklon_id) REFERENCES katalog_maklon(id) ON DELETE SET NULL",
+        ].join(",\n              ");
+        const colList = (
+          db.prepare("PRAGMA table_info(item_penjualan)").all() as Array<{
+            name: string;
+          }>
+        )
+          .map((c) => `"${c.name}"`)
+          .join(", ");
+
+        const rebuild = db.transaction(() => {
+          db.pragma("foreign_keys = OFF");
+          db.exec(`
+            CREATE TABLE item_penjualan__new (
+              ${colDefs}
+            )
+          `);
+          db.exec(
+            `INSERT INTO item_penjualan__new (${colList})
+             SELECT ${colList} FROM item_penjualan`,
+          );
+          db.exec("DROP TABLE item_penjualan");
+          db.exec("ALTER TABLE item_penjualan__new RENAME TO item_penjualan");
+          db.exec(
+            "CREATE INDEX IF NOT EXISTS idx_item_penjualan_sync_status ON item_penjualan(sync_status)",
+          );
+          db.exec(
+            "CREATE INDEX IF NOT EXISTS idx_item_penjualan_tipe_item ON item_penjualan(tipe_item)",
+          );
+          db.exec(
+            "CREATE INDEX IF NOT EXISTS idx_item_penjualan_pembelian_terkait ON item_penjualan(pembelian_id_terkait)",
+          );
+          db.pragma("foreign_keys = ON");
+        });
+        rebuild();
+      }
+    }
+
+    // Migrasi (20260707000003): lebarkan CHECK metode_bayar_vendor_default di
+    // katalog_maklon supaya menerima 'TRANSFER'. Rebuild tabel (sama pola di atas).
+    {
+      const oldCheck = db
+        .prepare(
+          `SELECT 1 FROM sqlite_master WHERE type='table' AND name='katalog_maklon'
+           AND sql LIKE '%metode_bayar_vendor_default IN (''CASH'',''NET30''))%' AND sql NOT LIKE '%TRANSFER%' LIMIT 1`,
+        )
+        .get();
+      if (oldCheck) {
+        const colInfo = (
+          db.prepare("PRAGMA table_info(katalog_maklon)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).filter((c) => !c.pk);
+        const pkCol = (
+          db.prepare("PRAGMA table_info(katalog_maklon)").all() as Array<{
+            name: string;
+            type: string;
+            notnull: number;
+            dflt_value: string | null;
+            pk: number;
+          }>
+        ).find((c) => c.pk);
+        const colDefs = [
+          pkCol
+            ? `"${pkCol.name}" ${pkCol.type || "TEXT"} PRIMARY KEY`
+            : '"id" TEXT PRIMARY KEY',
+          ...colInfo.map((c) => {
+            // Injeksi CHECK baru untuk kolom metode_bayar_vendor_default.
+            if (c.name === "metode_bayar_vendor_default") {
+              return `"metode_bayar_vendor_default" TEXT NOT NULL DEFAULT 'CASH' CHECK(metode_bayar_vendor_default IN ('CASH','NET30','TRANSFER'))`;
+            }
+            let sql = `"${c.name}" ${c.type || "TEXT"}`;
+            if (c.notnull) sql += " NOT NULL";
+            if (c.dflt_value != null) {
+              // Literal (angka/string/true/false/null) langsung; ekspresi (mis. datetime('now')) bungkus parens.
+              const dv = c.dflt_value;
+              const isLiteral =
+                /^[-'0-9]/.test(dv) || /^(true|false|null)$/i.test(dv);
+              sql += ` DEFAULT ${isLiteral ? dv : `(${dv})`}`;
+            }
+            return sql;
+          }),
+          "FOREIGN KEY (vendor_subkontrak_id_default) REFERENCES vendor(id) ON DELETE SET NULL",
+          "FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL",
+          "FOREIGN KEY (dibuat_oleh) REFERENCES profil(id)",
+        ].join(",\n              ");
+        const colList = (
+          db.prepare("PRAGMA table_info(katalog_maklon)").all() as Array<{
+            name: string;
+          }>
+        )
+          .map((c) => `"${c.name}"`)
+          .join(", ");
+
+        const rebuild = db.transaction(() => {
+          db.pragma("foreign_keys = OFF");
+          db.exec(`
+            CREATE TABLE katalog_maklon__new (
+              ${colDefs}
+            )
+          `);
+          db.exec(
+            `INSERT INTO katalog_maklon__new (${colList})
+             SELECT ${colList} FROM katalog_maklon`,
+          );
+          db.exec("DROP TABLE katalog_maklon");
+          db.exec("ALTER TABLE katalog_maklon__new RENAME TO katalog_maklon");
+          db.exec(
+            "CREATE INDEX IF NOT EXISTS idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan)",
+          );
+          db.pragma("foreign_keys = ON");
+        });
+        rebuild();
+      }
+    }
+
     // Migrasi: unik produk jual per barang (ganti unik satuan legacy)
     {
       const legacyUnique = db
@@ -1774,8 +2007,10 @@ class UnifiedDatabase {
         harga_jual_default REAL NOT NULL DEFAULT 0,
         biaya_subkontrak_default REAL NOT NULL DEFAULT 0,
         vendor_subkontrak_id_default TEXT,
-        metode_bayar_vendor_default TEXT NOT NULL DEFAULT 'CASH',
+        metode_bayar_vendor_default TEXT NOT NULL DEFAULT 'CASH' CHECK(metode_bayar_vendor_default IN ('CASH','NET30','TRANSFER')),
         kategori TEXT,
+        kategori_id TEXT,
+        populer_status INTEGER NOT NULL DEFAULT 0,
         catatan_internal TEXT,
         is_aktif INTEGER NOT NULL DEFAULT 1,
         urutan INTEGER NOT NULL DEFAULT 0,
