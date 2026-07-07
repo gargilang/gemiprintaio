@@ -13,9 +13,13 @@ import {
   type RollVariant,
 } from "./inventory-service";
 import { getShopSettings } from "./shop-settings-service";
-import { deriveOrderStatus, statusProduksiSelesaiUntukItem } from "@/lib/produksi/status-produksi";
+import {
+  deriveOrderStatus,
+  statusProduksiSelesaiUntukItem,
+} from "@/lib/produksi/status-produksi";
 import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 import { hitungQtyKomponenDimensiM2 } from "../bom-utils";
+import { resolveBomForUnitPrice } from "./bom-service";
 
 export interface ProductionOrder {
   id: string;
@@ -989,6 +993,7 @@ export async function voidProductionMaterialConsumption(
  */
 export async function deductBomComponents({
   barangId,
+  unitPriceId,
   qtySPK,
   spkId,
   nomorSpk,
@@ -996,16 +1001,15 @@ export async function deductBomComponents({
   itemProduksiId,
 }: {
   barangId: string;
+  /** B2: produk jual untuk resolusi BOM (null = scope barang-level). */
+  unitPriceId?: string | null;
   qtySPK: number;
   spkId: string;
   nomorSpk: string;
   dibuatOleh: string;
   itemProduksiId?: string;
 }): Promise<void> {
-  const res = await db.query<any>("barang_komponen", {
-    where: { parent_barang_id: barangId, is_deleted: 0 },
-  });
-  const komponen = res.data || [];
+  const komponen = await resolveBomForUnitPrice(barangId, unitPriceId ?? null);
   if (komponen.length === 0) return;
 
   for (const k of komponen) {
@@ -1145,13 +1149,23 @@ export async function updateProductionItemStatus(
       const barangId = itemFull.data?.barang_id;
       const qtySPK = Number(itemFull.data?.jumlah || 1);
       const orderId = itemFull.data?.order_produksi_id;
+      const itemPenjualanId = itemFull.data?.item_penjualan_id;
       if (barangId && orderId) {
         const orderData = await db.queryOne<any>("order_produksi", {
           where: { id: orderId },
         });
         const nomorSpk = String(orderData.data?.nomor_spk || orderId);
+        // B2: ambil harga_satuan_id dari item_penjualan (produk jual yang dipesan).
+        let unitPriceId: string | null = null;
+        if (itemPenjualanId) {
+          const ipRes = await db.queryOne<any>("item_penjualan", {
+            where: { id: itemPenjualanId },
+          });
+          unitPriceId = ipRes.data?.harga_satuan_id ?? null;
+        }
         await deductBomComponents({
           barangId,
+          unitPriceId,
           qtySPK,
           spkId: orderId,
           nomorSpk,
@@ -1184,7 +1198,9 @@ export async function updateProductionItemStatus(
  * Item yang terhalang dilewati & dilaporkan.
  * Setelah cascade, order di-set SIAP_AMBIL dengan override manual.
  */
-export async function setOrderStatusSiapDiambilCascade(orderId: string): Promise<{
+export async function setOrderStatusSiapDiambilCascade(
+  orderId: string,
+): Promise<{
   selesai: string[];
   terhalang: { id: string; nama: string }[];
   statusOrderAkhir: string;
