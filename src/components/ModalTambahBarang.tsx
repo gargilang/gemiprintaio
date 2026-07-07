@@ -285,11 +285,7 @@ export default function ModalTambahBarang({
     const refIndex = refUnit ? unitPrices.indexOf(refUnit) : 0;
 
     // Kalau faktor konversi diubah, hitung otomatis harga berdasar satuan referensi
-    if (
-      field === "faktor_konversi" &&
-      refUnit &&
-      index !== refIndex
-    ) {
+    if (field === "faktor_konversi" && refUnit && index !== refIndex) {
       const newConversion = parseFloat(value) || 1;
       updated[index] = {
         ...updated[index],
@@ -664,10 +660,10 @@ export default function ModalTambahBarang({
                       ))
                     )}
                   </select>
-                  <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                     {formData.requires_dimension
-                      ? "Dikunci ke m² karena dimensi diaktifkan. Stok dihitung total area."
-                      : "Satuan terkecil untuk menghitung stok (contoh: pcs, meter, lembar)"}
+                      ? "Dikunci ke m². Stok dihitung total area."
+                      : "Satuan terkecil (contoh: pcs, meter, lembar)"}
                   </p>
                 </div>
 
@@ -724,15 +720,15 @@ export default function ModalTambahBarang({
                       </span>
                     </label>
                   </div>
-                  <p className="text-base text-gray-500 dark:text-slate-400 mt-2">
-                    • Munculkan di POS: Mengontrol visibilitas barang induk di
-                    POS. <strong>Produk Jual</strong> di bagian bawah selalu
-                    muncul di POS (stok tetap terlacak).
-                    <br />• Track stok: Nonaktifkan untuk barang konsumsi (lem,
-                    tinta, dll)
-                    <br />• Dimensi: Aktifkan untuk banner, vinyl, flexi. Stok
-                    dihitung dalam <strong>m²</strong>; pembelian akan meminta
-                    panjang × lebar tiap roll dari faktur.
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-2 space-y-0.5">
+                    • Munculkan di POS: visibilitas barang induk.{" "}
+                    <strong>Produk Jual</strong> di bawah selalu muncul (stok
+                    tetap terlacak).
+                    <br />• Track stok: nonaktifkan untuk barang konsumsi (lem,
+                    tinta, dll).
+                    <br />• Dimensi: untuk banner, vinyl, flexi. Stok dihitung{" "}
+                    <strong>m²</strong>; pembelian meminta panjang × lebar tiap
+                    roll.
                   </p>
                 </div>
 
@@ -878,8 +874,8 @@ export default function ModalTambahBarang({
                     placeholder="0"
                     className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                   />
-                  <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
-                    Jumlah stok dalam satuan dasar ({formData.base_unit})
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    Stok dalam satuan dasar ({formData.base_unit})
                   </p>
                 </div>
 
@@ -902,7 +898,7 @@ export default function ModalTambahBarang({
                       placeholder="0"
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-800 dark:text-slate-100"
                     />
-                    <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                       Warning jika stok di bawah nilai ini
                     </p>
                   </div>

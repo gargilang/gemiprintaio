@@ -116,10 +116,10 @@ export default function PanelHargaSatuan({
                     onUpdate(index, "nama_produk_jual", e.target.value || null)
                   }
                   placeholder="Nama tampil di POS (opsional)"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
-                  Wajib unik per barang. Kosong = pakai nama satuan
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  Kosong = Nama Satuan
                 </p>
               </div>
 
@@ -134,7 +134,7 @@ export default function PanelHargaSatuan({
                   onChange={(e) =>
                     onUpdate(index, "nama_satuan", e.target.value)
                   }
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                   disabled={loadingMaster}
                 >
                   <option value="">Pilih satuan...</option>
@@ -144,7 +144,7 @@ export default function PanelHargaSatuan({
                     </option>
                   ))}
                 </select>
-                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                   Tidak ada?{" "}
                   <button
                     type="button"
@@ -174,9 +174,9 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="1"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
-                <p className="text-base text-gray-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                   1 {up.nama_satuan} = {up.faktor_konversi} {baseUnit}
                 </p>
               </div>
@@ -198,7 +198,7 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_beli)}
@@ -222,7 +222,7 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_jual)}
@@ -246,7 +246,7 @@ export default function PanelHargaSatuan({
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <p className="text-base text-emerald-600 dark:text-emerald-300 mt-1 font-medium">
                   {formatRupiah(up.harga_member)}
@@ -255,17 +255,16 @@ export default function PanelHargaSatuan({
             </div>
           </div>
         ))}
-        <p className="text-base text-blue-700 dark:text-blue-300 mt-3">
-          Setiap produk di bawah selalu muncul sebagai kartu terpisah di POS,
-          terlepas dari centang &quot;Munculkan di POS&quot; pada barang induk.
+        <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+          Produk di bawah selalu muncul di POS
         </p>
       </div>
 
-      <div className="mt-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 rounded-lg p-3">
-        <p className="text-base text-blue-800 dark:text-blue-200 font-semibold mb-1">
-          Contoh Penggunaan:
-        </p>
-        <ul className="text-base text-blue-700 dark:text-blue-300 space-y-1 ml-4">
+      <details className="mt-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-800/50 rounded-lg p-3">
+        <summary className="text-xs text-blue-800 dark:text-blue-200 font-semibold cursor-pointer">
+          Contoh Penggunaan
+        </summary>
+        <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4 mt-2">
           <li>
             • <strong>Flexi Banner:</strong> Nama Produk "Print Banner per m²",
             Satuan "m²", Konversi 1
@@ -279,7 +278,7 @@ export default function PanelHargaSatuan({
             "lembar", Konversi 1
           </li>
         </ul>
-      </div>
+      </details>
     </div>
   );
 }
