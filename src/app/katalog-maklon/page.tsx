@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCachedData } from "@/lib/use-cached-data";
+import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import { PrinterIcon } from "@/components/icons/PageIcons";
 import {
   CheckIcon,
@@ -15,12 +15,15 @@ import ToastNotifikasi, {
 } from "@/components/ToastNotifikasi";
 import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ModalKatalogMaklon from "./ModalKatalogMaklon";
+import ModalReconcilePendingMaklon from "./ModalReconcilePendingMaklon";
 import type { Vendor } from "@/lib/services/vendors-service";
 import type { KatalogMaklon } from "@/lib/services/katalog-maklon-service";
+import type { PendingMaklonRow } from "@/lib/services/pending-maklon-service";
 import { getVendorsAction } from "@/app/vendors/actions";
 import {
   deleteKatalogMaklonAction,
   listKatalogMaklonAction,
+  listPendingMaklonAction,
 } from "./actions";
 
 const money = (value: number) =>
@@ -37,7 +40,7 @@ export default function KatalogMaklonPage() {
     isLoading,
     mutate,
   } = useCachedData<KatalogMaklon[]>("katalog-maklon", () =>
-    listKatalogMaklonAction(false)
+    listKatalogMaklonAction(false),
   );
   const items = useMemo(() => itemsData ?? [], [itemsData]);
 
@@ -63,6 +66,20 @@ export default function KatalogMaklonPage() {
     message: string;
     onConfirm: () => void;
   } | null>(null);
+  const [reconcileItem, setReconcileItem] = useState<PendingMaklonRow | null>(
+    null,
+  );
+
+  // Queue "Pending Vendor/HPP" — baris maklon yang di-checkout tanpa vendor/biaya.
+  const {
+    data: pendingData,
+    isLoading: pendingLoading,
+    mutate: mutatePending,
+  } = useCachedData<PendingMaklonRow[]>("pending-maklon-v1", () =>
+    listPendingMaklonAction(),
+  );
+  const pendingItems = useMemo(() => pendingData ?? [], [pendingData]);
+  const invalidate = useInvalidate();
 
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
@@ -71,6 +88,15 @@ export default function KatalogMaklonPage() {
 
   const reload = async () => {
     await mutate();
+  };
+
+  // Setelah reconcile: muat ulang queue + invalidasi cache keuangan & penjualan
+  // supaya laporan/Buku Kas mencerminkan HPP + PO maklon baru.
+  const reloadAfterReconcile = async () => {
+    await mutatePending();
+    invalidate("keuangan");
+    invalidate("penjualan");
+    invalidate("riwayat");
   };
 
   const kategoriOptions = useMemo(() => {
@@ -87,7 +113,7 @@ export default function KatalogMaklonPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((item) =>
-        item.nama_produk.toLowerCase().includes(query)
+        item.nama_produk.toLowerCase().includes(query),
       );
     }
 
@@ -166,9 +192,7 @@ export default function KatalogMaklonPage() {
               </div>
             </div>
             <p className="text-3xl font-bold">{totalItems}</p>
-            <p className="text-sm mt-2 text-violet-100">
-              Terdaftar di katalog
-            </p>
+            <p className="text-sm mt-2 text-violet-100">Terdaftar di katalog</p>
           </div>
 
           <div className="bg-gradient-to-br from-fuchsia-600 to-violet-600 rounded-xl shadow-lg p-6 text-white">
@@ -410,6 +434,128 @@ export default function KatalogMaklonPage() {
             </table>
           </div>
         </div>
+
+        {/* Section: Pending Vendor/HPP */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-amber-300 dark:border-amber-900/50 overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white flex items-center gap-2">
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <PencilIcon size={18} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-bold uppercase tracking-wide truncate">
+                Pending Vendor/HPP
+              </h3>
+              <p className="text-white/90 text-xs truncate">
+                Baris maklon yang belum diisi vendor & biaya — perlu reconcile
+              </p>
+            </div>
+            <span className="ml-auto inline-flex items-center px-2.5 py-1 bg-white/20 rounded-full text-xs font-bold">
+              {pendingItems.length}
+            </span>
+          </div>
+          <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+            <table className="w-full">
+              <thead className="bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-200 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                    Faktur
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                    Tanggal
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                    Pelanggan
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
+                    Pekerjaan
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                    Jumlah
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider">
+                    Harga Jual
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
+                {pendingLoading && pendingItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-10 text-center text-gray-500 dark:text-slate-400"
+                    >
+                      Memuat...
+                    </td>
+                  </tr>
+                ) : pendingItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center">
+                      <div className="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500">
+                        <CheckIcon size={36} className="mb-2 opacity-60" />
+                        <p className="text-sm font-semibold text-gray-600 dark:text-slate-300">
+                          Tidak ada baris pending
+                        </p>
+                        <p className="text-xs mt-1">
+                          Semua baris maklon sudah berisi vendor & HPP
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  pendingItems.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      className={
+                        idx % 2 === 0
+                          ? "bg-white dark:bg-slate-900"
+                          : "bg-amber-50/40 dark:bg-slate-800/40"
+                      }
+                    >
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                        {row.nomor_faktur || (
+                          <span className="text-gray-400 dark:text-slate-500">
+                            —
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                        {row.tanggal || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                        {row.pelanggan_nama || (
+                          <span className="text-gray-400 dark:text-slate-500">
+                            —
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300">
+                        {row.deskripsi_pekerjaan || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-slate-300">
+                        {row.jumlah}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-slate-300">
+                        {money(row.subtotal)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setReconcileItem(row)}
+                          className="px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-colors text-xs inline-flex items-center gap-1.5"
+                        >
+                          <PencilIcon size={14} />
+                          Isi Vendor & HPP
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {showModal && (
@@ -418,6 +564,16 @@ export default function KatalogMaklonPage() {
           vendors={vendors}
           onClose={() => setShowModal(false)}
           onSuccess={reload}
+          showNotification={showMsg}
+        />
+      )}
+
+      {reconcileItem && (
+        <ModalReconcilePendingMaklon
+          item={reconcileItem}
+          vendors={vendors}
+          onClose={() => setReconcileItem(null)}
+          onSuccess={reloadAfterReconcile}
           showNotification={showMsg}
         />
       )}
