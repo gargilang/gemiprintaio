@@ -1695,7 +1695,7 @@ class UnifiedDatabase {
         )
         .get();
       if (tableExists) {
-        const cols = (
+        let cols = (
           db.prepare("PRAGMA table_info(barang_komponen)").all() as Array<{
             name: string;
           }>
@@ -1708,6 +1708,26 @@ class UnifiedDatabase {
         }
         if (!cols.includes("lebar")) {
           db.exec("ALTER TABLE barang_komponen ADD COLUMN lebar REAL");
+        }
+        // B2: scope BOM per produk jual — kolom unit_price_id (FK ke harga_barang_satuan).
+        // Refresh cols supaya cek unit_price_id idempoten setelah ALTER di atas.
+        cols = (
+          db.prepare("PRAGMA table_info(barang_komponen)").all() as Array<{
+            name: string;
+          }>
+        ).map((c) => c.name);
+        if (!cols.includes("unit_price_id")) {
+          db.exec(
+            "ALTER TABLE barang_komponen ADD COLUMN unit_price_id TEXT REFERENCES harga_barang_satuan(id) ON DELETE CASCADE",
+          );
+        }
+        // B3: backfill NULL → 1. SQLite tidak support SET DEFAULT after ADD easily.
+        try {
+          db.exec(
+            "UPDATE barang_komponen SET jumlah_roll = 1 WHERE jumlah_roll IS NULL",
+          );
+        } catch (_e) {
+          // Toleransi: kolom mungkin belum ada di fresh install.
         }
       }
     }
@@ -1741,7 +1761,9 @@ class UnifiedDatabase {
         client_mutation_id TEXT
       )
     `);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_keranjang_tersimpan_status ON keranjang_tersimpan(status, kedaluwarsa_pada)`);
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_keranjang_tersimpan_status ON keranjang_tersimpan(status, kedaluwarsa_pada)`,
+    );
 
     // Katalog produk maklon berulang.
     db.exec(`
@@ -1771,7 +1793,9 @@ class UnifiedDatabase {
         client_mutation_id TEXT
       )
     `);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan)`);
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_katalog_maklon_aktif_urutan ON katalog_maklon(is_aktif, urutan)`,
+    );
 
     // Tabel laporan_bulanan: riwayat laporan bulanan digenerate
     db.exec(`

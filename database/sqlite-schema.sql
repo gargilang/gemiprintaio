@@ -67,10 +67,11 @@ CREATE TABLE IF NOT EXISTS barang_komponen (
   parent_barang_id   TEXT NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
   komponen_id        TEXT NOT NULL REFERENCES barang(id),
   qty                REAL NOT NULL DEFAULT 1,
-  jumlah_roll        INTEGER,
+  jumlah_roll        INTEGER NOT NULL DEFAULT 1,
   panjang            REAL,
   lebar              REAL,
   satuan             TEXT,
+  unit_price_id      TEXT REFERENCES harga_barang_satuan(id) ON DELETE CASCADE,
   catatan            TEXT,
   dibuat_oleh        TEXT,
   dibuat_pada        TEXT,
@@ -87,6 +88,7 @@ CREATE TABLE IF NOT EXISTS barang_komponen (
 );
 
 CREATE INDEX IF NOT EXISTS idx_barang_komponen_parent ON barang_komponen(parent_barang_id);
+CREATE INDEX IF NOT EXISTS idx_barang_komponen_unit_price ON barang_komponen(parent_barang_id, unit_price_id);
 CREATE INDEX IF NOT EXISTS idx_barang_komponen_sync ON barang_komponen(sync_status);
 
 -- Table: inventory_movements
