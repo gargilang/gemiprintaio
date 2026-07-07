@@ -918,7 +918,8 @@ export default function POSPage() {
     tipe_item: (item.tipe_item as "BARANG" | "JASA" | "MAKLON") || "BARANG",
     vendor_subkontrak_id: item.vendor_subkontrak_id || null,
     biaya_subkontrak: item.biaya_subkontrak ?? null,
-    metode_bayar_vendor: (item.metode_bayar_vendor as "CASH" | "NET30") || null,
+    metode_bayar_vendor:
+      (item.metode_bayar_vendor as "CASH" | "NET30" | "TRANSFER") || null,
     deskripsi_pekerjaan: item.deskripsi_pekerjaan || null,
   });
 

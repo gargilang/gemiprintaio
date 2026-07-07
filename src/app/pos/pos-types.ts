@@ -25,6 +25,8 @@ export interface UnitPrice {
   harga_member: number;
   default_status: number;
   nama_produk_jual?: string | null;
+  /** Flag populer manual override (C5). */
+  populer_status?: number;
 }
 
 export interface Material {
@@ -80,7 +82,7 @@ export interface CartItem {
   vendor_subkontrak_id?: string;
   vendor_subkontrak_nama?: string;
   biaya_subkontrak?: number;
-  metode_bayar_vendor?: "CASH" | "NET30";
+  metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER";
   deskripsi_pekerjaan?: string;
   /** Referensi entri katalog maklon jika baris berasal dari template. */
   katalog_maklon_id?: string;
@@ -143,5 +145,5 @@ export interface ProdukJualFlat {
   katalog_maklon_id?: string;
   biaya_subkontrak_default?: number;
   vendor_subkontrak_id_default?: string | null;
-  metode_bayar_vendor_default?: "CASH" | "NET30";
+  metode_bayar_vendor_default?: "CASH" | "NET30" | "TRANSFER";
 }

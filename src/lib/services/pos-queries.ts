@@ -157,7 +157,7 @@ export interface CreateSaleData {
     /** Total biaya subkontrak untuk baris ini (jadi HPP + baris PO maklon). */
     biaya_subkontrak?: number | null;
     /** Wajib saat `tipe_item === 'MAKLON'`. */
-    metode_bayar_vendor?: "CASH" | "NET30" | null;
+    metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
     /** Deskripsi bebas yang dipakai di faktur + struk thermal untuk baris maklon. */
     deskripsi_pekerjaan?: string | null;
   }>;

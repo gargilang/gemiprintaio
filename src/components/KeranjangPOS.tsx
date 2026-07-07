@@ -48,7 +48,7 @@ interface CartItem {
   tipe_item?: "BARANG" | "MAKLON";
   vendor_subkontrak_nama?: string;
   biaya_subkontrak?: number;
-  metode_bayar_vendor?: "CASH" | "NET30";
+  metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER";
   deskripsi_pekerjaan?: string;
 }
 

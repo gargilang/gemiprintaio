@@ -397,11 +397,11 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           );
         }
         if (
-          item.metode_bayar_vendor !== "CASH" &&
-          item.metode_bayar_vendor !== "NET30"
+          !item.metode_bayar_vendor ||
+          !["CASH", "NET30", "TRANSFER"].includes(item.metode_bayar_vendor)
         ) {
           throw new Error(
-            `Item ${i + 1} (Maklon): metode bayar vendor harus CASH atau NET30`,
+            `Item ${i + 1} (Maklon): metode bayar vendor tidak valid (CASH/NET30/TRANSFER)`,
           );
         }
         if (!item.deskripsi_pekerjaan?.trim()) {
@@ -1009,7 +1009,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         GroupKey,
         {
           vendorId: string;
-          metodeBayar: "CASH" | "NET30";
+          metodeBayar: "CASH" | "NET30" | "TRANSFER";
           items: Array<{
             itemIndex: number;
             saleItemId: string;
@@ -1026,7 +1026,10 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         if (!groups.has(key)) {
           groups.set(key, {
             vendorId: it.vendor_subkontrak_id!,
-            metodeBayar: it.metode_bayar_vendor as "CASH" | "NET30",
+            metodeBayar: it.metode_bayar_vendor as
+              | "CASH"
+              | "NET30"
+              | "TRANSFER",
             items: [],
           });
         }

@@ -1,7 +1,10 @@
 import "server-only";
 import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
 import { friendlyPgError } from "@/lib/pg-error";
-import { katalogMaklonInputSchema, type KatalogMaklonInput } from "@/lib/schemas/katalog-maklon";
+import {
+  katalogMaklonInputSchema,
+  type KatalogMaklonInput,
+} from "@/lib/schemas/katalog-maklon";
 
 export interface KatalogMaklon {
   id: string;
@@ -10,8 +13,11 @@ export interface KatalogMaklon {
   harga_jual_default: number;
   biaya_subkontrak_default: number;
   vendor_subkontrak_id_default: string | null;
-  metode_bayar_vendor_default: "CASH" | "NET30";
-  kategori: string | null;
+  metode_bayar_vendor_default: "CASH" | "NET30" | "TRANSFER";
+  kategori: string | null; // legacy free-text, tetap disimpan
+  kategori_id: string | null; // FK ke kategori_barang
+  kategori_nama?: string | null; // dari join, untuk POS/modal
+  populer_status: number; // 0/1 manual override (C5)
   catatan_internal: string | null;
   is_aktif: number;
   urutan: number;
@@ -22,23 +28,37 @@ export interface KatalogMaklon {
 
 type KatalogMaklonRow = KatalogMaklon & { is_deleted?: number };
 
-export async function listKatalogMaklon(onlyAktif = true): Promise<KatalogMaklon[]> {
+export async function listKatalogMaklon(
+  onlyAktif = true,
+): Promise<KatalogMaklon[]> {
   const result = await db.query<KatalogMaklonRow>("katalog_maklon", {
     orderBy: { column: "urutan", ascending: true },
   });
   if (result.error) throw friendlyPgError(result.error, "katalog_maklon");
-  return (result.data || []).filter((r) => Number(r.is_deleted) !== 1 && (!onlyAktif || Number(r.is_aktif) === 1));
+  return (result.data || []).filter(
+    (r) =>
+      Number(r.is_deleted) !== 1 && (!onlyAktif || Number(r.is_aktif) === 1),
+  );
 }
 
 async function assertNamaUnik(nama_produk: string, exceptId?: string) {
   const all = await listKatalogMaklon(false);
-  const clash = all.find((r) => r.nama_produk.toLowerCase() === nama_produk.toLowerCase() && r.id !== exceptId);
-  if (clash) throw new Error(`Nama produk "${nama_produk}" sudah ada di katalog maklon`);
+  const clash = all.find(
+    (r) =>
+      r.nama_produk.toLowerCase() === nama_produk.toLowerCase() &&
+      r.id !== exceptId,
+  );
+  if (clash)
+    throw new Error(`Nama produk "${nama_produk}" sudah ada di katalog maklon`);
 }
 
-export async function createKatalogMaklon(input: KatalogMaklonInput, dibuatOleh: string): Promise<KatalogMaklon> {
+export async function createKatalogMaklon(
+  input: KatalogMaklonInput,
+  dibuatOleh: string,
+): Promise<KatalogMaklon> {
   const parsed = katalogMaklonInputSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join("; "));
+  if (!parsed.success)
+    throw new Error(parsed.error.issues.map((i) => i.message).join("; "));
   const data = parsed.data;
   await assertNamaUnik(data.nama_produk);
   const id = generateId();
@@ -52,6 +72,8 @@ export async function createKatalogMaklon(input: KatalogMaklonInput, dibuatOleh:
     vendor_subkontrak_id_default: data.vendor_subkontrak_id_default || null,
     metode_bayar_vendor_default: data.metode_bayar_vendor_default,
     kategori: data.kategori || null,
+    kategori_id: data.kategori_id || null,
+    populer_status: data.populer_status,
     catatan_internal: data.catatan_internal || null,
     is_aktif: data.is_aktif,
     urutan: data.urutan,
@@ -60,12 +82,23 @@ export async function createKatalogMaklon(input: KatalogMaklonInput, dibuatOleh:
     diperbarui_pada: now,
   });
   if (ins.error) throw friendlyPgError(ins.error, "katalog_maklon");
-  return { id, ...data, vendor_subkontrak_id_default: data.vendor_subkontrak_id_default || null, dibuat_oleh: dibuatOleh || null, dibuat_pada: now, diperbarui_pada: now } as KatalogMaklon;
+  return {
+    id,
+    ...data,
+    vendor_subkontrak_id_default: data.vendor_subkontrak_id_default || null,
+    dibuat_oleh: dibuatOleh || null,
+    dibuat_pada: now,
+    diperbarui_pada: now,
+  } as KatalogMaklon;
 }
 
-export async function updateKatalogMaklon(id: string, input: KatalogMaklonInput): Promise<void> {
+export async function updateKatalogMaklon(
+  id: string,
+  input: KatalogMaklonInput,
+): Promise<void> {
   const parsed = katalogMaklonInputSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join("; "));
+  if (!parsed.success)
+    throw new Error(parsed.error.issues.map((i) => i.message).join("; "));
   const data = parsed.data;
   await assertNamaUnik(data.nama_produk, id);
   const upd = await db.update("katalog_maklon", id, {
@@ -76,6 +109,8 @@ export async function updateKatalogMaklon(id: string, input: KatalogMaklonInput)
     vendor_subkontrak_id_default: data.vendor_subkontrak_id_default || null,
     metode_bayar_vendor_default: data.metode_bayar_vendor_default,
     kategori: data.kategori || null,
+    kategori_id: data.kategori_id || null,
+    populer_status: data.populer_status,
     catatan_internal: data.catatan_internal || null,
     is_aktif: data.is_aktif,
     urutan: data.urutan,

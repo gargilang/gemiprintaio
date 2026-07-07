@@ -32,6 +32,8 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
       vendor_subkontrak_id_default: null,
       metode_bayar_vendor_default: "CASH",
       kategori: null,
+      kategori_id: null,
+      populer_status: 0,
       catatan_internal: null,
       is_aktif: 1,
       urutan: 0,
@@ -45,6 +47,8 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
     vendor_subkontrak_id_default: item.vendor_subkontrak_id_default,
     metode_bayar_vendor_default: item.metode_bayar_vendor_default,
     kategori: item.kategori,
+    kategori_id: item.kategori_id,
+    populer_status: item.populer_status,
     catatan_internal: item.catatan_internal,
     is_aktif: item.is_aktif,
     urutan: item.urutan,
@@ -71,9 +75,9 @@ export default function ModalKatalogMaklon({
     () =>
       vendors.filter(
         (v) =>
-          v.tipe_vendor === "SUBKONTRAKTOR" || v.tipe_vendor === "KEDUANYA"
+          v.tipe_vendor === "SUBKONTRAKTOR" || v.tipe_vendor === "KEDUANYA",
       ),
-    [vendors]
+    [vendors],
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,7 +111,7 @@ export default function ModalKatalogMaklon({
     } catch (error: any) {
       showNotification(
         "error",
-        error?.message || "Gagal menyimpan katalog extra"
+        error?.message || "Gagal menyimpan katalog extra",
       );
     } finally {
       setSaving(false);
@@ -315,13 +319,17 @@ export default function ModalKatalogMaklon({
                   ...form,
                   metode_bayar_vendor_default: e.target.value as
                     | "CASH"
-                    | "NET30",
+                    | "NET30"
+                    | "TRANSFER",
                 })
               }
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="CASH">CASH (bayar langsung)</option>
               <option value="NET30">NET30 (jadi hutang)</option>
+              <option value="TRANSFER">
+                TRANSFER (bayar langsung via bank)
+              </option>
             </select>
           </div>
 
