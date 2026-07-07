@@ -37,6 +37,10 @@ export interface Material {
   muncul_di_pos_status?: number;
   kategori_nama?: string;
   unit_prices: UnitPrice[];
+  // Flag virtual: true bila material ini adalah proxy untuk entri katalog_maklon
+  // (TIDAK ada di tabel barang asli). Dipakai form POS untuk hide finishing/roll.
+  _isKatalogMaklon?: boolean;
+  _katalogMaklonId?: string;
 }
 
 export interface FinishingItem {
