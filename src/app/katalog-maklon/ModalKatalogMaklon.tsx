@@ -352,27 +352,6 @@ export default function ModalKatalogMaklon({
             </select>
           </div>
 
-          <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.populer_status === 1}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    populer_status: e.target.checked ? 1 : 0,
-                  })
-                }
-                className="w-4 h-4 rounded text-violet-600 border-gray-300 focus:ring-violet-500"
-              />
-              Tandai Populer
-            </label>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Item bertanda Populer muncul di atas saat filter Populer ON di
-              POS.
-            </p>
-          </div>
-
           <div className="md:col-span-2">
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Catatan Internal
