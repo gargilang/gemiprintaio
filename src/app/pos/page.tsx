@@ -883,7 +883,7 @@ export default function POSPage() {
     setLoadedParkedId(null);
     setShowParkirModal(false);
     await refreshParked();
-    showMsg("success", "Keranjang diparkir");
+    showMsg("success", "Keranjang disimpan");
   };
 
   const handleLoadParked = async (id: string) => {

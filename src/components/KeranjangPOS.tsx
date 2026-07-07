@@ -320,7 +320,7 @@ export default function KeranjangPOS({
                 onClick={onParkClick}
                 disabled={cart.length === 0}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold disabled:opacity-50"
-                title="Parkir keranjang"
+                title="Simpan keranjang"
               >
                 <svg
                   className="w-3 h-3"
@@ -335,7 +335,7 @@ export default function KeranjangPOS({
                     d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
                   />
                 </svg>
-                Parkir
+                Simpan
               </button>
             )}
             {onLoadParked && onJadikanPenawaran && onDeleteParked && (
