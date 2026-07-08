@@ -4,10 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PackageIcon } from "@/components/icons/PageIcons";
 import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import type { PengambilanRow } from "@/lib/services/pengambilan-service";
 import {
   listPengambilanBelumAction,
@@ -47,17 +44,24 @@ export default function PengambilanPage() {
     data: belumData,
     isLoading: belumLoading,
     mutate: mutateBelum,
-  } = useCachedData<PengambilanRow[]>("pengambilan-belum", listPengambilanBelumAction);
+  } = useCachedData<PengambilanRow[]>(
+    "pengambilan-belum",
+    listPengambilanBelumAction,
+  );
   const {
     data: sudahData,
     isLoading: sudahLoading,
     mutate: mutateSudah,
-  } = useCachedData<PengambilanRow[]>("pengambilan-sudah", listPengambilanSudahAction);
+  } = useCachedData<PengambilanRow[]>(
+    "pengambilan-sudah",
+    listPengambilanSudahAction,
+  );
 
   const belum = useMemo(() => belumData ?? [], [belumData]);
   const sudah = useMemo(() => sudahData ?? [], [sudahData]);
   const rows = tab === "belum" ? belum : sudah;
-  const loading = tab === "belum" ? belumLoading && !belumData : sudahLoading && !sudahData;
+  const loading =
+    tab === "belum" ? belumLoading && !belumData : sudahLoading && !sudahData;
 
   useEffect(() => {
     const cached = getCachedSessionUser();
@@ -92,7 +96,9 @@ export default function PengambilanPage() {
       }
       await reload();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal menandai diambil");
+      setNotice(
+        error instanceof Error ? error.message : "Gagal menandai diambil",
+      );
     } finally {
       setSaving(false);
     }
@@ -107,9 +113,12 @@ export default function PengambilanPage() {
               <PackageIcon size={28} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold uppercase tracking-wide">Pengambilan</h2>
+              <h2 className="text-2xl font-bold uppercase tracking-wide">
+                Pengambilan
+              </h2>
               <p className="text-white/90 text-sm">
-                SPK siap diambil, status bayar faktur, dan tandai sudah diambil pelanggan.
+                SPK siap diambil, status bayar faktur, dan tandai sudah diambil
+                pelanggan.
               </p>
             </div>
           </div>
@@ -156,19 +165,25 @@ export default function PengambilanPage() {
               <th className="p-3">Item</th>
               <th className="p-3">Status Bayar</th>
               <th className="p-3 text-right">Sisa Tagihan</th>
-              {tab === "belum" ? <th className="p-3">Aksi</th> : null}
+              <th className="p-3">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="p-4 text-slate-500 dark:text-slate-400" colSpan={tab === "belum" ? 7 : 6}>
+                <td
+                  className="p-4 text-slate-500 dark:text-slate-400"
+                  colSpan={7}
+                >
                   Memuat...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="p-4 text-slate-500 dark:text-slate-400" colSpan={tab === "belum" ? 7 : 6}>
+                <td
+                  className="p-4 text-slate-500 dark:text-slate-400"
+                  colSpan={7}
+                >
                   {tab === "belum"
                     ? "Tidak ada SPK siap diambil."
                     : "Belum ada riwayat pengambilan."}
@@ -197,19 +212,19 @@ export default function PengambilanPage() {
                     </span>
                   </td>
                   <td className="p-3 text-right">{money(row.sisa_piutang)}</td>
-                  {tab === "belum" ? (
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-2">
-                        {row.sisa_piutang > 0 && row.piutang_id ? (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => setPiutangRow(row)}
-                            className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50"
-                          >
-                            Terima Piutang
-                          </button>
-                        ) : null}
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {row.sisa_piutang > 0 && row.piutang_id ? (
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => setPiutangRow(row)}
+                          className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          Terima Piutang
+                        </button>
+                      ) : null}
+                      {tab === "belum" ? (
                         <button
                           type="button"
                           disabled={saving}
@@ -218,9 +233,9 @@ export default function PengambilanPage() {
                         >
                           Sudah Diambil
                         </button>
-                      </div>
-                    </td>
-                  ) : null}
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}

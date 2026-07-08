@@ -188,23 +188,50 @@ export default function SpkDetailModal({
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
                 Status
               </div>
-              <select
-                value={order.status}
-                onChange={(e) => onUpdateOrderStatus(order.id, e.target.value)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
-                  order.status,
-                )}`}
-              >
-                {STATUS_ORDER.filter((s) => s !== "SELESAI").map((s) => (
-                  <option
-                    key={s}
-                    value={s}
-                    className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+              {order.status === "SELESAI" ? (
+                <span
+                  className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
+                    order.status,
+                  )}`}
+                >
+                  {labelStatus(order.status)}
+                </span>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={order.status}
+                    onChange={(e) =>
+                      onUpdateOrderStatus(order.id, e.target.value)
+                    }
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
+                      order.status,
+                    )}`}
                   >
-                    {labelStatus(s)}
-                  </option>
-                ))}
-              </select>
+                    {STATUS_ORDER.filter(
+                      (s) => s !== "SELESAI" && s !== "SIAP_AMBIL",
+                    ).map((s) => (
+                      <option
+                        key={s}
+                        value={s}
+                        className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                      >
+                        {labelStatus(s)}
+                      </option>
+                    ))}
+                  </select>
+                  {order.status === "PROSES" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateOrderStatus(order.id, "SIAP_AMBIL")
+                      }
+                      className="px-3 py-1 rounded-full text-xs font-semibold border-2 border-teal-300 bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-900/50"
+                    >
+                      Siap Diambil
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

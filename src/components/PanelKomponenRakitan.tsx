@@ -59,8 +59,6 @@ export default function PanelKomponenRakitan({
   // B2: scope produk jual. "" = Semua Produk Jual (unit_price_id null).
   const [selectedUnitPriceId, setSelectedUnitPriceId] = useState("");
   const [qty, setQty] = useState("1");
-  // B3: jumlah_roll selalu 1 per unit produk jual — input di-hide di UI.
-  const [jumlahRoll, setJumlahRoll] = useState("1");
   const [lebar, setLebar] = useState("");
   const [panjang, setPanjang] = useState("");
 
@@ -80,7 +78,6 @@ export default function PanelKomponenRakitan({
 
   useEffect(() => {
     if (!komponenBerdimensi) {
-      setJumlahRoll("1");
       setLebar("");
       setPanjang("");
     }
@@ -157,8 +154,6 @@ export default function PanelKomponenRakitan({
     };
 
     if (komponenBerdimensi) {
-      // B3: jumlah_roll selalu 1 per unit produk jual (input di-hide di UI).
-      const rolls = 1;
       const lebarNum = parseFloat(lebar);
       const panjangNum = parseFloat(panjang);
       if (!lebarNum || lebarNum <= 0 || !panjangNum || panjangNum <= 0) {
@@ -166,14 +161,15 @@ export default function PanelKomponenRakitan({
           "Lebar dan panjang harus diisi (meter) untuk barang berdimensi.",
         );
       }
-      const qtyM2 = hitungQtyKomponenDimensiM2(rolls, panjangNum, lebarNum);
+      const qtyM2 = hitungQtyKomponenDimensiM2(1, panjangNum, lebarNum);
       if (qtyM2 <= 0) {
         return setError("Luas komponen tidak valid.");
       }
       payload = {
         ...payload,
         qty: qtyM2,
-        jumlah_roll: rolls,
+        // Nilai legacy untuk kolom DB lama; bukan jumlah roll fisik.
+        jumlah_roll: 1,
         lebar: lebarNum,
         panjang: panjangNum,
       };
@@ -198,7 +194,6 @@ export default function PanelKomponenRakitan({
       setSelectedKomponenId("");
       setSelectedUnitPriceId("");
       setQty("1");
-      setJumlahRoll("1");
       setLebar("");
       setPanjang("");
       await reload();
@@ -345,8 +340,11 @@ export default function PanelKomponenRakitan({
               className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base px-2 py-1.5"
             >
               <option value="">Semua Produk Jual</option>
-              {unitPrices.map((up) => (
-                <option key={up.id} value={up.id}>
+              {unitPrices.map((up, index) => (
+                <option
+                  key={up.id || `produk-jual-${index}`}
+                  value={up.id || ""}
+                >
                   {up.nama_produk_jual || up.nama_satuan}
                 </option>
               ))}

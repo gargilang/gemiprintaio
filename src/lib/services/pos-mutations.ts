@@ -668,6 +668,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             : item.harga_satuan_id || null,
           jumlah: item.jumlah,
           nama_satuan: item.nama_satuan,
+          nama_produk_jual: item.nama_produk_jual?.trim() || null,
           faktor_konversi: item.faktor_konversi,
           harga_satuan: item.harga_satuan,
           subtotal: item.subtotal,
@@ -1058,9 +1059,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           groups.set(key, {
             vendorId: it.vendor_subkontrak_id!,
             metodeBayar: it.metode_bayar_vendor as
-              | "CASH"
-              | "NET30"
-              | "TRANSFER",
+              "CASH" | "NET30" | "TRANSFER",
             items: [],
           });
         }

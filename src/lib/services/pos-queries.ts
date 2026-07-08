@@ -73,6 +73,7 @@ export interface SaleItem {
   penjualan_id: string;
   barang_id: string;
   barang_nama?: string;
+  nama_produk_jual?: string | null;
   harga_satuan_id?: string | null;
   jumlah: number;
   nama_satuan: string;
@@ -132,6 +133,7 @@ export interface CreateSaleData {
     harga_satuan_id?: string;
     jumlah: number;
     nama_satuan: string;
+    nama_produk_jual?: string | null;
     faktor_konversi: number;
     harga_satuan: number;
     subtotal: number;
@@ -172,12 +174,7 @@ export interface CreateSaleData {
   jumlah_dibayar: number;
   jumlah_kembalian: number;
   metode_pembayaran:
-    | "CASH"
-    | "TRANSFER"
-    | "QRIS"
-    | "DEBIT"
-    | "DOWN_PAYMENT"
-    | "NET30";
+    "CASH" | "TRANSFER" | "QRIS" | "DEBIT" | "DOWN_PAYMENT" | "NET30";
   catatan?: string;
   kasir_id?: string;
   tanggal?: string;
@@ -520,6 +517,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         usersRes,
         pelunasanRes,
         biayaTambahanRes,
+        unitPricesRes,
       ] = await Promise.all([
         supabase.from("item_penjualan").select("*").in("penjualan_id", saleIds),
         supabase
@@ -545,10 +543,12 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
           .from("biaya_tambahan_penjualan")
           .select("*")
           .in("penjualan_id", saleIds),
+        supabase.from("harga_barang_satuan").select("id,nama_produk_jual"),
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
       if (piutangRes.error) throw piutangRes.error;
+      if (unitPricesRes.error) throw unitPricesRes.error;
 
       const allItems: any[] = itemsRes.data || [];
       const allPiutang: any[] = piutangRes.data || [];
@@ -556,6 +556,11 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       const allUsers: any[] = usersRes.data || [];
       const allPelunasan: any[] = pelunasanRes.data || [];
       const allBiayaTambahan: any[] = biayaTambahanRes.data || [];
+      const unitPriceNameMap = new Map<string, string>();
+      for (const up of unitPricesRes.data || []) {
+        if (up.nama_produk_jual)
+          unitPriceNameMap.set(up.id, up.nama_produk_jual);
+      }
 
       // Ambil nama barang untuk semua barang_id unik dalam satu query
       const barangIds = [
@@ -579,6 +584,11 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
         list.push({
           ...item,
           barang_nama: barangMap.get(item.barang_id) || "",
+          nama_produk_jual:
+            item.nama_produk_jual ||
+            (item.harga_satuan_id
+              ? unitPriceNameMap.get(item.harga_satuan_id) || null
+              : null),
         });
         itemsByPenjualanId.set(item.penjualan_id, list);
       }
@@ -675,6 +685,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       allBarangResult,
       allPelunasanResult,
       allBiayaResult,
+      allUnitPricesResult,
     ] = await Promise.all([
       db.query("pelanggan"),
       db.query("profil"),
@@ -683,6 +694,7 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       db.query("barang"),
       db.query("pelunasan_piutang"),
       db.query<any>("biaya_tambahan_penjualan"),
+      db.query<any>("harga_barang_satuan"),
     ]);
 
     const customers = customersResult.data || [];
@@ -690,6 +702,11 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
     const piutangList = (piutangResult.data || []).filter((p: any) =>
       saleIdSet.has(p.id_penjualan),
     );
+
+    const unitPriceNameMap = new Map<string, string>();
+    for (const up of (allUnitPricesResult.data || []) as any[]) {
+      if (up.nama_produk_jual) unitPriceNameMap.set(up.id, up.nama_produk_jual);
+    }
 
     // Peta nama barang (katalog, jumlahnya terbatas).
     const barangNameMap = new Map<string, string>();
@@ -705,6 +722,11 @@ export async function getSales(limit: number = 100): Promise<Sale[]> {
       list.push({
         ...item,
         barang_nama: barangNameMap.get(item.barang_id) || "",
+        nama_produk_jual:
+          item.nama_produk_jual ||
+          (item.harga_satuan_id
+            ? unitPriceNameMap.get(item.harga_satuan_id) || null
+            : null),
       });
       itemsByPenjualanId.set(item.penjualan_id, list);
     }

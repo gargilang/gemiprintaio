@@ -1603,6 +1603,9 @@ class UnifiedDatabase {
       if (!cols.includes("katalog_maklon_id")) {
         db.exec("ALTER TABLE item_penjualan ADD COLUMN katalog_maklon_id TEXT");
       }
+      if (!cols.includes("nama_produk_jual")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN nama_produk_jual TEXT");
+      }
     }
 
     // Migrasi (20260707000003): katalog_maklon kolom populer_status + kategori_id.
@@ -1832,6 +1835,31 @@ class UnifiedDatabase {
            LIMIT 1`,
         )
         .get();
+      const legacyUniqueIndexes = (
+        db.prepare("PRAGMA index_list(harga_barang_satuan)").all() as Array<{
+          name: string;
+          unique: number;
+          origin?: string;
+        }>
+      ).filter((idx) => {
+        if (
+          !idx.unique ||
+          idx.name === "idx_harga_barang_satuan_nama_produk_unik"
+        ) {
+          return false;
+        }
+        const cols = db
+          .prepare(`PRAGMA index_info(${JSON.stringify(idx.name)})`)
+          .all() as Array<{ name: string }>;
+        return (
+          cols.length === 2 &&
+          cols[0]?.name === "barang_id" &&
+          cols[1]?.name === "nama_satuan"
+        );
+      });
+      for (const idx of legacyUniqueIndexes) {
+        db.exec(`DROP INDEX IF EXISTS "${idx.name.replace(/"/g, '""')}"`);
+      }
       const newIndexExists = db
         .prepare(
           `SELECT 1 FROM sqlite_master

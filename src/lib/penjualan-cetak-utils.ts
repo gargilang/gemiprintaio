@@ -122,6 +122,7 @@ export function formatDimensiBarisThermal(
 /** Map baris penjualan / keranjang ke format tabel faktur A4. */
 export function mapPenjualanItemKeFaktur(item: {
   barang_nama?: string;
+  nama_produk_jual?: string | null;
   barang_id?: string;
   deskripsi_pekerjaan?: string | null;
   tipe_item?: string;
@@ -143,7 +144,10 @@ export function mapPenjualanItemKeFaktur(item: {
   const nama =
     item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
       ? item.deskripsi_pekerjaan
-      : item.barang_nama || item.barang_id || "—";
+      : item.nama_produk_jual?.trim() ||
+        item.barang_nama ||
+        item.barang_id ||
+        "—";
 
   return {
     nama,

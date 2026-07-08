@@ -28,6 +28,7 @@ import { generateSPKHTML } from "./components/spk-print";
 import { preparePrintHtml } from "@/lib/print-embed-client";
 import { openPrintDocument } from "@/lib/print-fonts";
 import { getStatusColor, getPriorityColor } from "./components/spk-status";
+import { labelStatus } from "@/lib/produksi/status-produksi";
 
 interface User {
   id: string;
@@ -700,7 +701,7 @@ export default function ProductionPage() {
                           order.status,
                         )}`}
                       >
-                        {order.status}
+                        {labelStatus(order.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center text-base text-gray-600 dark:text-slate-300">
@@ -740,6 +741,17 @@ export default function ProductionPage() {
                             />
                           </svg>
                         </button>
+                        {order.status === "PROSES" && (
+                          <button
+                            onClick={() =>
+                              handleUpdateStatus(order.id, "SIAP_AMBIL")
+                            }
+                            className="px-2.5 py-2 text-xs font-semibold text-teal-700 dark:text-teal-200 bg-teal-100 dark:bg-teal-900/30 hover:bg-teal-200 dark:hover:bg-teal-900/50 rounded-lg transition-colors"
+                            title="Tandai siap diambil"
+                          >
+                            Siap Diambil
+                          </button>
+                        )}
                         <button
                           onClick={() => handlePrintSPK(order)}
                           className="p-2 text-orange-600 dark:text-orange-300 hover:bg-slate-100 dark:hover:bg-white/10 dark:bg-orange-900/30 rounded-lg transition-colors"

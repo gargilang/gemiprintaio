@@ -4,11 +4,17 @@ import { useState } from "react";
 import ModalFormShell from "@/components/ModalFormShell";
 import type { SubkontraktorOption } from "./pos-types";
 
+type KategoriOption = {
+  id: string;
+  nama: string;
+};
+
 export interface TambahItemLainnyaValue {
   barang_nama: string;
-  jumlah: number;
   nama_satuan: string;
   harga_satuan: number;
+  kategori_id?: string | null;
+  kategori?: string | null;
   // Rincian Internal opsional. Kosong = item "pending" vendor/HPP (ditangani
   // safeguard C2 di pos-mutations / Task 4 saat checkout).
   vendor_subkontrak_id?: string | null;
@@ -19,6 +25,7 @@ export interface TambahItemLainnyaValue {
 interface ModalTambahItemLainnyaProps {
   open: boolean;
   subkontraktor: SubkontraktorOption[];
+  kategoriOptions: KategoriOption[];
   onClose: () => void;
   onSave: (value: TambahItemLainnyaValue) => void | Promise<void>;
 }
@@ -38,13 +45,15 @@ const SATUAN_OPTIONS = [
 export default function ModalTambahItemLainnya({
   open,
   subkontraktor,
+  kategoriOptions,
   onClose,
   onSave,
 }: ModalTambahItemLainnyaProps) {
   const [namaItem, setNamaItem] = useState("");
-  const [jumlah, setJumlah] = useState("1");
   const [namaSatuan, setNamaSatuan] = useState("pcs");
   const [hargaJual, setHargaJual] = useState("");
+  const [kategoriId, setKategoriId] = useState<string | null>(null);
+  const [kategoriNama, setKategoriNama] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [biayaSubkontrak, setBiayaSubkontrak] = useState("");
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "NET30" | "TRANSFER">(
@@ -56,9 +65,10 @@ export default function ModalTambahItemLainnya({
 
   const resetForm = () => {
     setNamaItem("");
-    setJumlah("1");
     setNamaSatuan("pcs");
     setHargaJual("");
+    setKategoriId(null);
+    setKategoriNama(null);
     setVendorId(null);
     setBiayaSubkontrak("");
     setMetodeBayar("CASH");
@@ -72,16 +82,11 @@ export default function ModalTambahItemLainnya({
   };
 
   const handleSubmit = async () => {
-    const parsedJumlah = Number(jumlah);
     const parsedHarga = Number(hargaJual);
     const parsedBiaya = Number(biayaSubkontrak);
 
     if (!namaItem.trim()) {
       setError("Nama item wajib diisi");
-      return;
-    }
-    if (!Number.isFinite(parsedJumlah) || parsedJumlah <= 0) {
-      setError("Jumlah harus lebih dari 0");
       return;
     }
     if (!Number.isFinite(parsedHarga) || parsedHarga < 0) {
@@ -102,9 +107,10 @@ export default function ModalTambahItemLainnya({
     try {
       await onSave({
         barang_nama: namaItem.trim(),
-        jumlah: parsedJumlah,
         nama_satuan: namaSatuan,
         harga_satuan: parsedHarga,
+        kategori_id: kategoriId,
+        kategori: kategoriNama,
         vendor_subkontrak_id: vendorId || null,
         biaya_subkontrak: vendorId ? parsedBiaya : null,
         metode_bayar_vendor: vendorId ? metodeBayar : null,
@@ -188,32 +194,20 @@ export default function ModalTambahItemLainnya({
               className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
             />
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="text-slate-700 dark:text-slate-200">Jumlah</span>
-              <input
-                type="number"
-                min={1}
-                value={jumlah}
-                onChange={(e) => setJumlah(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-slate-700 dark:text-slate-200">Satuan</span>
-              <select
-                value={namaSatuan}
-                onChange={(e) => setNamaSatuan(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
-              >
-                {SATUAN_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="block text-sm">
+            <span className="text-slate-700 dark:text-slate-200">Satuan</span>
+            <select
+              value={namaSatuan}
+              onChange={(e) => setNamaSatuan(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
+            >
+              {SATUAN_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block text-sm">
             <span className="text-slate-700 dark:text-slate-200">
               Harga jual
@@ -225,6 +219,25 @@ export default function ModalTambahItemLainnya({
               onChange={(e) => setHargaJual(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
             />
+          </label>
+          <label className="block text-sm">
+            <span className="text-slate-700 dark:text-slate-200">Kategori</span>
+            <select
+              value={kategoriId ?? ""}
+              onChange={(e) => {
+                const selected = e.target.options[e.target.selectedIndex];
+                setKategoriId(e.target.value || null);
+                setKategoriNama(e.target.value ? selected.text : null);
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
+            >
+              <option value="">— Tanpa kategori —</option>
+              {kategoriOptions.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 

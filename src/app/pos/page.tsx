@@ -57,7 +57,10 @@ import {
 } from "./keranjang-tersimpan-actions";
 import type { ParkedCart } from "@/lib/services/keranjang-tersimpan-service";
 import type { QuotationItemInput } from "@/lib/services/quotation-service";
-import { createKatalogMaklonAction } from "@/app/katalog-maklon/actions";
+import {
+  createKatalogMaklonAction,
+  getKategoriBarangAction,
+} from "@/app/katalog-maklon/actions";
 import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import {
@@ -178,6 +181,15 @@ export default function POSPage() {
     barangUnitPriceIds: Set<string>;
     katalogMaklonIds: Set<string>;
   } | null>("pos-populer-v1", getPopularItemsAction);
+
+  const { data: kategoriBarangData } = useCachedData(
+    "kategori-barang",
+    getKategoriBarangAction,
+  );
+  const kategoriBarangOptions = useMemo(
+    () => kategoriBarangData ?? [],
+    [kategoriBarangData],
+  );
   const [refreshing, setRefreshing] = useState(false);
   const historyLoading = (posInitLoading && !posInitData) || refreshing;
   const patchPos = useCallback(
@@ -425,9 +437,12 @@ export default function POSPage() {
       if (m.id === ID_BARANG_PLACEHOLDER_MAKLON) continue;
       if (m.kategori_nama) names.add(m.kategori_nama);
     }
-    // C6: sertakan kategori dari katalog maklon (dari join kategori_id).
+    // C6: sertakan kategori dari katalog maklon. Item yang baru dibuat dari
+    // modal POS belum punya hasil join `kategori_nama`, jadi pakai fallback
+    // legacy `kategori` agar kategori langsung muncul tanpa muat ulang.
     for (const k of katalogMaklon) {
-      if (k.kategori_nama) names.add(k.kategori_nama);
+      const namaKategori = k.kategori_nama ?? k.kategori;
+      if (namaKategori) names.add(namaKategori);
     }
     return [...names].sort((a, b) => {
       const ia = KATEGORI_ORDER.indexOf(a);
@@ -648,13 +663,14 @@ export default function POSPage() {
       .filter((b) => b.label.trim() && b.nominal > 0)
       .map((b) => ({ label: b.label.trim(), nominal: b.nominal }));
 
-    // Branch maklon (katalog extra, C3): CartItem MAKLON tanpa finishing/roll.
-    // Vendor/biaya/metode tidak di-set di sini — di-isi default dari katalog
-    // saat checkout, atau diedit via Rincian Internal (handleEditCartItem).
+    // Branch Katalog Extra: tetap CartItem MAKLON untuk alur vendor/biaya
+    // subkontrak, tetapi finishing dari form tetap ikut disimpan.
     if (selectedMaterial._isKatalogMaklon) {
       return {
         barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
         barang_nama: selectedMaterial.nama,
+        nama_produk_jual:
+          selectedUnit?.nama_produk_jual ?? selectedMaterial.nama,
         harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
         nama_satuan: selectedUnit!.nama_satuan,
         faktor_konversi: 1,
@@ -662,6 +678,7 @@ export default function POSPage() {
         jumlah: finalQuantity,
         subtotalRaw,
         originalHargaSatuan: hargaKatalog,
+        finishing: formFinishing.length > 0 ? [...formFinishing] : undefined,
         biaya_tambahan:
           validFormBiayaTambahan.length > 0
             ? validFormBiayaTambahan
@@ -675,6 +692,7 @@ export default function POSPage() {
     return {
       barang_id: selectedMaterial.id,
       barang_nama: selectedMaterial.nama,
+      nama_produk_jual: selectedUnit.nama_produk_jual ?? null,
       harga_satuan_id: selectedUnit.id,
       nama_satuan: selectedUnit.nama_satuan,
       faktor_konversi: selectedUnit.faktor_konversi,
@@ -701,8 +719,7 @@ export default function POSPage() {
   const handleProdukJualClick = useCallback(
     (produk: ProdukJualFlat) => {
       if (produk.sumber === "KATALOG_MAKLON") {
-        // Set virtual material + unit supaya form Pilih Barang muncul (C3).
-        // Form tampilkan qty + ubah harga + biaya tambahan, TANPA finishing/roll.
+        // Set virtual material + unit supaya form Pilih Barang muncul.
         // Vendor/biaya/metode di-isi default dari katalog; bisa diedit via
         // Rincian Internal setelah masuk keranjang (handleEditCartItem).
         setSelectedMaterial({
@@ -728,7 +745,7 @@ export default function POSPage() {
         setQuantity("1");
         setUseRounding(false);
         setSelectedRollSize(null);
-        setFormFinishing([]); // maklon tidak ada finishing
+        setFormFinishing([]);
         setFormHargaSatuan(null);
         setFormBiayaTambahan([]);
         setEditingCartIndex(null);
@@ -805,7 +822,7 @@ export default function POSPage() {
       setQuantity(String(item.jumlah));
       setUseRounding(false);
       setSelectedRollSize(null);
-      setFormFinishing([]);
+      setFormFinishing(item.finishing ? [...item.finishing] : []);
       setFormBiayaTambahan(
         item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : [],
       );
@@ -916,7 +933,6 @@ export default function POSPage() {
     // 1. Simpan ke katalog_maklon supaya item muncul di halaman Katalog Extra
     //    untuk pelengkapan vendor/HPP belakangan. Vendor=null/biaya=null =
     //    item "pending" (safeguard C2/Task 4 menangani saat checkout).
-    let katalogMaklonId: string | undefined;
     try {
       const created = await createKatalogMaklonAction({
         nama_produk: v.barang_nama,
@@ -925,43 +941,41 @@ export default function POSPage() {
         biaya_subkontrak_default: v.biaya_subkontrak ?? 0,
         vendor_subkontrak_id_default: v.vendor_subkontrak_id ?? null,
         metode_bayar_vendor_default: v.metode_bayar_vendor ?? "CASH",
-        kategori: null,
-        kategori_id: null,
+        kategori: v.kategori ?? null,
+        kategori_id: v.kategori_id ?? null,
         populer_status: 0,
         is_aktif: 1,
         urutan: 0,
       });
-      katalogMaklonId = (created as { id?: string })?.id;
+      const createdKatalog = created as NonNullable<
+        POSInitData["katalogMaklon"]
+      >[number];
+      const katalogUntukCache = {
+        ...createdKatalog,
+        kategori_nama: createdKatalog.kategori_nama ?? v.kategori ?? null,
+      };
+      if (createdKatalog.id) {
+        void mutatePosInit(
+          (prev) => {
+            const base = prev ?? EMPTY_POS_INIT;
+            const current = base.katalogMaklon ?? [];
+            return {
+              ...base,
+              katalogMaklon: [katalogUntukCache, ...current],
+            };
+          },
+          { revalidate: false },
+        );
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       showMsg("error", `Gagal simpan ke katalog: ${msg}`);
       return; // jangan tambah ke cart bila gagal simpan katalog
     }
 
-    // 2. Tambah ke cart dengan katalog_maklon_id. pending_vendor_hpp di-set di
-    //    service (Task 4) berdasarkan vendor/biaya kosong — cart tidak perlu flag.
-    const vendor = subkontraktor.find((s) => s.id === v.vendor_subkontrak_id);
-    const newItem: CartItem = {
-      barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
-      barang_nama: v.barang_nama,
-      harga_satuan_id: ID_HARGA_PLACEHOLDER_MAKLON,
-      nama_satuan: v.nama_satuan,
-      faktor_konversi: 1,
-      harga_satuan: v.harga_satuan,
-      jumlah: v.jumlah,
-      subtotalRaw: v.jumlah * v.harga_satuan,
-      originalHargaSatuan: v.harga_satuan,
-      tipe_item: "MAKLON",
-      katalog_maklon_id: katalogMaklonId,
-      vendor_subkontrak_id: v.vendor_subkontrak_id ?? undefined,
-      vendor_subkontrak_nama: vendor?.nama_perusahaan,
-      biaya_subkontrak: v.biaya_subkontrak ?? undefined,
-      metode_bayar_vendor: v.metode_bayar_vendor ?? undefined,
-      deskripsi_pekerjaan: v.barang_nama,
-    };
-    setCart((prev) => [...prev, newItem]);
     setShowTambahItemLainnya(false);
-    // 3. Bust cache katalog supaya item muncul di halaman Katalog Extra.
+    showMsg("success", "Item berhasil ditambahkan ke Pilih Barang");
+    // Bust cache katalog supaya item muncul di halaman Katalog Extra.
     invalidate("katalog-maklon");
   };
 
@@ -1225,6 +1239,7 @@ export default function POSPage() {
         harga_satuan_id: item.harga_satuan_id,
         jumlah: item.jumlah,
         nama_satuan: item.nama_satuan,
+        nama_produk_jual: item.nama_produk_jual ?? null,
         faktor_konversi: item.faktor_konversi,
         harga_satuan:
           item.jumlah > 0
@@ -1259,12 +1274,7 @@ export default function POSPage() {
         jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
         jumlah_kembalian: kembalian,
         metode_pembayaran: paymentMethod as
-          | "CASH"
-          | "TRANSFER"
-          | "QRIS"
-          | "DEBIT"
-          | "DOWN_PAYMENT"
-          | "NET30",
+          "CASH" | "TRANSFER" | "QRIS" | "DEBIT" | "DOWN_PAYMENT" | "NET30",
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
@@ -1364,7 +1374,7 @@ export default function POSPage() {
               nama:
                 item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
                   ? item.deskripsi_pekerjaan
-                  : item.barang_nama,
+                  : item.nama_produk_jual?.trim() || item.barang_nama,
               jumlah: qty,
               satuan,
               harga: qty > 0 ? lineTotal / qty : item.harga_satuan,
@@ -1462,6 +1472,7 @@ export default function POSPage() {
               const lineTotal = lineCharges[index];
               return mapPenjualanItemKeFaktur({
                 barang_nama: item.barang_nama,
+                nama_produk_jual: item.nama_produk_jual,
                 tipe_item: item.tipe_item,
                 deskripsi_pekerjaan: item.deskripsi_pekerjaan,
                 jumlah: item.jumlah,
@@ -1934,10 +1945,7 @@ export default function POSPage() {
                                 ? selectedUnit?.harga_member ||
                                   selectedUnit?.harga_jual
                                 : selectedUnit?.harga_jual
-                              )?.toLocaleString("id-ID")}{" "}
-                              <span className="text-xs text-gray-500 dark:text-slate-400">
-                                (maklon)
-                              </span>
+                              )?.toLocaleString("id-ID")}
                             </div>
                           ) : (
                             <select
@@ -2027,43 +2035,34 @@ export default function POSPage() {
                           )}
 
                         {/* Finishing, ubah harga, biaya tambahan — diisi sebelum masuk keranjang */}
-                        {/* Maklon (C3): finishing disembunyikan (outsourced, tidak relevan). */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
-                          <div
-                            className={`grid gap-1.5 ${
-                              selectedMaterial._isKatalogMaklon
-                                ? "grid-cols-1"
-                                : "grid-cols-2"
-                            }`}
-                          >
-                            {!selectedMaterial._isKatalogMaklon && (
-                              <button
-                                type="button"
-                                onClick={() => setShowFormFinishingModal(true)}
-                                className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
-                                  formFinishing.length > 0
-                                    ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
-                                    : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
-                                }`}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setShowFormFinishingModal(true)}
+                              className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
+                                formFinishing.length > 0
+                                  ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
+                                  : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
+                              }`}
+                            >
+                              <svg
+                                className="w-3 h-3 shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                <svg
-                                  className="w-3 h-3 shrink-0"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                                  />
-                                </svg>
-                                {formFinishing.length > 0
-                                  ? `Finishing (${formFinishing.length})`
-                                  : "+ Finishing"}
-                              </button>
-                            )}
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                                />
+                              </svg>
+                              {formFinishing.length > 0
+                                ? `Finishing (${formFinishing.length})`
+                                : "+ Finishing"}
+                            </button>
                             <button
                               type="button"
                               onClick={() => setShowFormHargaModal(true)}
@@ -2456,6 +2455,7 @@ export default function POSPage() {
       <ModalTambahItemLainnya
         open={showTambahItemLainnya}
         subkontraktor={subkontraktor}
+        kategoriOptions={kategoriBarangOptions}
         onClose={() => setShowTambahItemLainnya(false)}
         onSave={handleSaveTambahItemLainnya}
       />

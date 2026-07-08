@@ -61,7 +61,6 @@ export default function ModalTambahBarang({
     min_stock_level: "0",
     track_inventory: true,
     requires_dimension: false,
-    show_in_pos: true,
   });
 
   const [unitPrices, setUnitPrices] = useState<UnitPrice[]>([]);
@@ -145,7 +144,6 @@ export default function ModalTambahBarang({
         min_stock_level: editData.level_stok_minimum?.toString() || "0",
         track_inventory: editData.lacak_inventori_status !== 0,
         requires_dimension: editData.butuh_dimensi_status === 1,
-        show_in_pos: editData.muncul_di_pos_status !== 0,
       });
 
       setUnitPrices(editData.unit_prices || []);
@@ -169,7 +167,6 @@ export default function ModalTambahBarang({
         min_stock_level: "0",
         track_inventory: true,
         requires_dimension: isMediaCetak, // Auto-check for Media Cetak
-        show_in_pos: true,
       });
 
       // Inisialisasi dengan satu baris harga satuan default
@@ -396,7 +393,8 @@ export default function ModalTambahBarang({
           level_stok_minimum: minStokFinal,
           lacak_inventori_status: formData.track_inventory,
           butuh_dimensi_status: formData.requires_dimension,
-          muncul_di_pos_status: formData.show_in_pos,
+          // Flag legacy: POS sekarang menampilkan Produk Jual, bukan barang induk.
+          muncul_di_pos_status: true,
           unit_prices: normalizeDefaultStatusForSave(
             unitPrices.map((up, index) => ({
               ...up,
@@ -669,29 +667,12 @@ export default function ModalTambahBarang({
                   </p>
                 </div>
 
-                {/* Track Inventory */}
+                {/* Pengaturan inventori */}
                 <div>
                   <label className="block text-base font-semibold text-gray-700 dark:text-slate-300 mb-2">
-                    Pengaturan POS
+                    Pengaturan Inventori
                   </label>
                   <div className="space-y-2 mt-3">
-                    {/* Munculkan di POS — harus di paling atas */}
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.show_in_pos}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            show_in_pos: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <span className="text-base text-gray-700 dark:text-slate-300">
-                        Munculkan di POS
-                      </span>
-                    </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -723,7 +704,6 @@ export default function ModalTambahBarang({
                     </label>
                   </div>
                   <div className="text-sm text-gray-500 dark:text-slate-400 mt-2 space-y-0.5">
-                    <p>• Munculkan di POS: visibilitas barang induk.</p>
                     <p>
                       • Track stok: nonaktifkan untuk barang konsumsi (lem,
                       tinta, dll).
@@ -926,11 +906,13 @@ export default function ModalTambahBarang({
                     satuan_dasar: m.satuan_dasar || "",
                     butuh_dimensi_status: m.butuh_dimensi_status ?? 0,
                   }))}
-                  unitPrices={unitPrices.map((up) => ({
-                    id: up.id,
-                    nama_satuan: up.nama_satuan,
-                    nama_produk_jual: up.nama_produk_jual,
-                  }))}
+                  unitPrices={unitPrices
+                    .filter((up) => Boolean(up.id))
+                    .map((up) => ({
+                      id: up.id,
+                      nama_satuan: up.nama_satuan,
+                      nama_produk_jual: up.nama_produk_jual,
+                    }))}
                 />
               </div>
             )}

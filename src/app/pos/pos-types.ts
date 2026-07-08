@@ -56,6 +56,7 @@ export interface BiayaTambahanItem {
 export interface CartItem {
   barang_id: string;
   barang_nama: string;
+  nama_produk_jual?: string | null;
   harga_satuan_id: string;
   nama_satuan: string;
   faktor_konversi: number;

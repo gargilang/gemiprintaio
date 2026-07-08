@@ -686,6 +686,7 @@ CREATE TABLE item_penjualan (
       harga_satuan_id TEXT,
       jumlah REAL NOT NULL,
       nama_satuan TEXT NOT NULL,
+      nama_produk_jual TEXT,
       faktor_konversi REAL NOT NULL,
       harga_satuan REAL NOT NULL,
       subtotal REAL NOT NULL,
