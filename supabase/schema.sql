@@ -2115,6 +2115,7 @@ CREATE TABLE IF NOT EXISTS "public"."pembelian" (
     "is_deleted" boolean DEFAULT false,
     "deleted_at" timestamp with time zone,
     "client_mutation_id" "text",
+    "periode_id" "text",
     CONSTRAINT "pembelian_ppn_metode_check" CHECK (("ppn_metode" = ANY (ARRAY['EKSKLUSIF'::"text", 'INKLUSIF'::"text"]))),
     CONSTRAINT "pembelian_status_pembayaran_check" CHECK (("status_pembayaran" = ANY (ARRAY['LUNAS'::"text", 'HUTANG'::"text", 'SEBAGIAN'::"text"]))),
     CONSTRAINT "pembelian_status_transaksi_check" CHECK (("status_transaksi" = ANY (ARRAY['DRAFT'::"text", 'POSTED'::"text", 'VOIDED'::"text"]))),
@@ -2254,6 +2255,7 @@ CREATE TABLE IF NOT EXISTS "public"."penjualan" (
     "is_deleted" boolean DEFAULT false,
     "deleted_at" timestamp with time zone,
     "client_mutation_id" "text",
+    "periode_id" "text",
     "biaya_tambahan_total" numeric DEFAULT 0 NOT NULL,
     CONSTRAINT "penjualan_ppn_metode_check" CHECK (("ppn_metode" = ANY (ARRAY['EKSKLUSIF'::"text", 'INKLUSIF'::"text"]))),
     CONSTRAINT "penjualan_status_transaksi_check" CHECK (("status_transaksi" = ANY (ARRAY['DRAFT'::"text", 'POSTED'::"text", 'VOIDED'::"text"]))),
@@ -3910,6 +3912,7 @@ CREATE INDEX "idx_pembelian_tanggal_faktur_pajak" ON "public"."pembelian" USING 
 
 
 CREATE INDEX "idx_pembelian_tipe" ON "public"."pembelian" USING "btree" ("tipe_pembelian");
+CREATE INDEX "idx_pembelian_periode_id" ON "public"."pembelian" USING "btree" ("periode_id");
 
 
 
@@ -3954,6 +3957,7 @@ CREATE INDEX "idx_penjualan_tanggal_faktur_pajak" ON "public"."penjualan" USING 
 
 
 CREATE INDEX "idx_penjualan_updated_at_server" ON "public"."penjualan" USING "btree" ("updated_at_server");
+CREATE INDEX "idx_penjualan_periode_id" ON "public"."penjualan" USING "btree" ("periode_id");
 
 
 
@@ -5946,31 +5950,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

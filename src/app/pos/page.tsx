@@ -1274,7 +1274,12 @@ export default function POSPage() {
         jumlah_dibayar: paymentMethod === "NET30" ? 0 : bayar,
         jumlah_kembalian: kembalian,
         metode_pembayaran: paymentMethod as
-          "CASH" | "TRANSFER" | "QRIS" | "DEBIT" | "DOWN_PAYMENT" | "NET30",
+          | "CASH"
+          | "TRANSFER"
+          | "QRIS"
+          | "DEBIT"
+          | "DOWN_PAYMENT"
+          | "NET30",
         catatan: catatan.trim() || undefined,
         kasir_id: currentUser?.id,
         prioritas: prioritas,
@@ -1553,7 +1558,10 @@ export default function POSPage() {
       await loadAllData();
     } catch (error: any) {
       console.error("Error processing checkout:", error);
-      showMsg("error", "Terjadi kesalahan saat memproses transaksi");
+      showMsg(
+        "error",
+        error?.message || "Terjadi kesalahan saat memproses transaksi",
+      );
     } finally {
       setRefreshing(false);
     }

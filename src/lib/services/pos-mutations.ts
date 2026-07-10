@@ -487,6 +487,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
     // setelah auto-PO dibuat. Key-nya adalah indeks item di payload request asal.
     const maklonItemIds = new Map<number, string>();
 
+    // Resolve periode_id untuk penjualan (sama seperti keuangan).
+    const salePeriodeId = await resolveOpenPeriodeIdForKeuangan();
+
     // Eksekusi di dalam transaksi
     const saleResultPayload = await db.transaction(async () => {
       // Buat record penjualan
@@ -526,6 +529,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         pelanggan_alamat_npwp_snapshot:
           data.pelanggan_alamat_npwp_snapshot || null,
         pelanggan_nama_npwp_snapshot: data.pelanggan_nama_npwp_snapshot || null,
+        periode_id: salePeriodeId,
       };
 
       const saleResult = await db.insert("penjualan", sale);
@@ -1059,7 +1063,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           groups.set(key, {
             vendorId: it.vendor_subkontrak_id!,
             metodeBayar: it.metode_bayar_vendor as
-              "CASH" | "NET30" | "TRANSFER",
+              | "CASH"
+              | "NET30"
+              | "TRANSFER",
             items: [],
           });
         }

@@ -23,6 +23,7 @@ import { randomUUID } from "crypto";
 export async function getFormalAccountingReportAction(data: {
   startDate: string;
   endDate: string;
+  periodeId?: string;
 }) {
   try {
     return await getFormalAccountingReport(data);
@@ -34,7 +35,12 @@ export async function getFormalAccountingReportAction(data: {
 
 /** Daftar periode akuntansi CLOSED untuk dropdown modal. */
 export async function getClosedAccountingPeriodsAction(): Promise<
-  Array<{ id: string; period_key: string; start_date: string; end_date: string }>
+  Array<{
+    id: string;
+    period_key: string;
+    start_date: string;
+    end_date: string;
+  }>
 > {
   try {
     await requireAdminOrManager();
@@ -56,7 +62,7 @@ export async function getClosedAccountingPeriodsAction(): Promise<
 
 /** Generate HTML laporan bulanan; simpan riwayat hanya bila simpan_riwayat true. */
 export async function generateLaporanBulananAction(
-  rawParams: unknown
+  rawParams: unknown,
 ): Promise<string> {
   try {
     const session = await requireAdminOrManager();
@@ -69,7 +75,7 @@ export async function generateLaporanBulananAction(
 
     const periodRes = await db.queryOne<{ period_key: string; status: string }>(
       "accounting_periods",
-      { where: { id: params.accounting_period_id } }
+      { where: { id: params.accounting_period_id } },
     );
     if (periodRes.error) throw periodRes.error;
     if (!periodRes.data) throw new Error("Periode tidak ditemukan.");

@@ -238,11 +238,11 @@ export default function PeriodCloseTab() {
                     <span
                       className={`ml-2 inline-block px-2 py-0.5 rounded text-sm font-medium ${
                         p.status === "CLOSED"
-                          ? "bg-gray-200 text-gray-700 dark:text-slate-300"
+                          ? "bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200"
                           : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
                       }`}
                     >
-                      {p.status}
+                      {p.status === "CLOSED" ? "TUTUP" : "BUKA"}
                     </span>
                   </div>
                   <div className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">

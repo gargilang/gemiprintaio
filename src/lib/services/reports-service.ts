@@ -7,6 +7,7 @@ import "server-only";
 
 import { db, getServerSupabaseClient } from "../db-unified";
 import { listFinanceCategories } from "./finance-config-service";
+import { aggregatePeriodMetricsFromRows } from "./periode-metrics-service";
 import { stripReferenceId } from "@/lib/keperluan-display";
 import { humanizeKategoriKode } from "@/app/keuangan/keuangan-utils";
 
@@ -160,7 +161,9 @@ function sortByCascade<T extends Record<string, unknown>>(rows: T[]): T[] {
   return [...rows].sort((a, b) => {
     const orderCmp = num(a.urutan_tampilan) - num(b.urutan_tampilan);
     if (orderCmp !== 0) return orderCmp;
-    return String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || ""));
+    return String(a.dibuat_pada || "").localeCompare(
+      String(b.dibuat_pada || ""),
+    );
   });
 }
 
@@ -192,12 +195,17 @@ function cumulativeColumn(
 export async function getFormalAccountingReport(data: {
   startDate: string;
   endDate: string;
+  periodeId?: string;
 }): Promise<FormalAccountingReport> {
-  if (!data.startDate || !data.endDate) {
-    throw new Error("startDate and endDate are required");
-  }
-  if (data.startDate > data.endDate) {
-    throw new Error("startDate must be before or equal to endDate");
+  const usePeriodMode = Boolean(data.periodeId);
+
+  if (!usePeriodMode) {
+    if (!data.startDate || !data.endDate) {
+      throw new Error("startDate and endDate are required");
+    }
+    if (data.startDate > data.endDate) {
+      throw new Error("startDate must be before or equal to endDate");
+    }
   }
 
   const [
@@ -247,7 +255,7 @@ export async function getFormalAccountingReport(data: {
   const purchases = (purchasesRes.data || []).filter(isPosted);
   const purchaseMap = new Map(purchases.map((p: any) => [p.id, p]));
   const categoryLabelMap = new Map(
-    financeCategories.map((c) => [c.category_code, c.display_name])
+    financeCategories.map((c) => [c.category_code, c.display_name]),
   );
   const labelKategori = (code: string) =>
     categoryLabelMap.get(code) || humanizeKategoriKode(code);
@@ -255,11 +263,13 @@ export async function getFormalAccountingReport(data: {
   const sales = (salesRes.data || [])
     .filter(isPosted)
     .filter((sale: any) =>
-      inDateRange(
-        sale.tanggal ?? sale.dibuat_pada,
-        data.startDate,
-        data.endDate,
-      ),
+      usePeriodMode
+        ? sale.periode_id === data.periodeId
+        : inDateRange(
+            sale.tanggal ?? sale.dibuat_pada,
+            data.startDate,
+            data.endDate,
+          ),
     );
   const saleIdSet = new Set(sales.map((sale: any) => sale.id));
   const saleItems = (saleItemsRes.data || []).filter((item: any) =>
@@ -293,41 +303,85 @@ export async function getFormalAccountingReport(data: {
   // kebenaran), bukan dihitung ulang dari tabel POS. Kolom-kolom ini running
   // total kumulatif, jadi nilai periode = selisih dua titik kumulatif.
   const sortedActiveRows = sortByCascade(activeCashbookRows);
-  const beforeStart = (key: string) => key < data.startDate;
-  const onOrBeforeEnd = (key: string) => key <= data.endDate;
-  const periodColumn = (column: string) =>
-    cumulativeColumn(sortedActiveRows, column, onOrBeforeEnd) -
-    cumulativeColumn(sortedActiveRows, column, beforeStart);
 
-  const omzetPeriode = periodColumn("omzet");
-  const operationalExpenses = periodColumn("biaya_operasional");
-  const cogsPeriode = periodColumn("biaya_bahan");
-  const totalBiaya = operationalExpenses + cogsPeriode;
-  const grossProfit = omzetPeriode - cogsPeriode;
-  const netProfit = omzetPeriode - totalBiaya;
-  const cashbookRows = activeCashbookRows
-    .filter((row: any) =>
-      inDateRange(row.tanggal, data.startDate, data.endDate),
-    )
-    .sort((a: any, b: any) => {
+  let cashbookRows: any[];
+  let latestCashbookRow: any;
+  let omzetPeriode: number;
+  let operationalExpenses: number;
+  let cogsPeriode: number;
+
+  if (usePeriodMode) {
+    // Mode periode_id: pilih baris yang termasuk periode ini.
+    const periodRows = activeCashbookRows.filter(
+      (row: any) => row.periode_id === data.periodeId,
+    );
+
+    // Metrik periode diagregasi LANGSUNG dari kategori+debit/kredit baris
+    // periode (sumber kebenaran sama dengan halaman Keuangan). Ini bebas dari
+    // asumsi kontiguitas running total — jadi angka KPI selalu cocok dengan
+    // penjumlahan baris buku kas yang ditampilkan, walau ada baris periode lain
+    // yang tanggalnya menyelip di antara baris periode ini.
+    const metrics = aggregatePeriodMetricsFromRows(periodRows);
+    omzetPeriode = metrics.omzet;
+    operationalExpenses = metrics.biaya_operasional;
+    cogsPeriode = metrics.biaya_bahan;
+
+    cashbookRows = [...periodRows].sort((a: any, b: any) => {
       const dateCmp = toDateKey(a.tanggal).localeCompare(toDateKey(b.tanggal));
       if (dateCmp !== 0) return dateCmp;
       return String(a.dibuat_pada || "").localeCompare(
         String(b.dibuat_pada || ""),
       );
     });
-  const latestCashbookRow = activeCashbookRows
-    .filter((row: any) => onOrBeforeDate(row.tanggal, data.endDate))
-    .sort((a: any, b: any) => {
-      const orderCmp = num(a.urutan_tampilan) - num(b.urutan_tampilan);
-      if (orderCmp !== 0) return orderCmp;
-      const dateCmp = toDateKey(a.tanggal).localeCompare(toDateKey(b.tanggal));
-      if (dateCmp !== 0) return dateCmp;
-      return String(a.dibuat_pada || "").localeCompare(
-        String(b.dibuat_pada || ""),
-      );
-    })
-    .at(-1);
+
+    // Saldo akhir = baris periode terakhir dalam urutan kaskade (running total).
+    latestCashbookRow = sortByCascade(periodRows).at(-1);
+  } else {
+    // Mode rentang tanggal (tanggal kalender). Kolom AST adalah running total
+    // kumulatif, jadi nilai periode = selisih dua titik kumulatif.
+    const beforeStart = (key: string) => key < data.startDate;
+    const onOrBeforeEnd = (key: string) => key <= data.endDate;
+    const periodColumn = (column: string) =>
+      cumulativeColumn(sortedActiveRows, column, onOrBeforeEnd) -
+      cumulativeColumn(sortedActiveRows, column, beforeStart);
+
+    omzetPeriode = periodColumn("omzet");
+    operationalExpenses = periodColumn("biaya_operasional");
+    cogsPeriode = periodColumn("biaya_bahan");
+
+    cashbookRows = activeCashbookRows
+      .filter((row: any) =>
+        inDateRange(row.tanggal, data.startDate, data.endDate),
+      )
+      .sort((a: any, b: any) => {
+        const dateCmp = toDateKey(a.tanggal).localeCompare(
+          toDateKey(b.tanggal),
+        );
+        if (dateCmp !== 0) return dateCmp;
+        return String(a.dibuat_pada || "").localeCompare(
+          String(b.dibuat_pada || ""),
+        );
+      });
+
+    latestCashbookRow = activeCashbookRows
+      .filter((row: any) => onOrBeforeDate(row.tanggal, data.endDate))
+      .sort((a: any, b: any) => {
+        const orderCmp = num(a.urutan_tampilan) - num(b.urutan_tampilan);
+        if (orderCmp !== 0) return orderCmp;
+        const dateCmp = toDateKey(a.tanggal).localeCompare(
+          toDateKey(b.tanggal),
+        );
+        if (dateCmp !== 0) return dateCmp;
+        return String(a.dibuat_pada || "").localeCompare(
+          String(b.dibuat_pada || ""),
+        );
+      })
+      .at(-1);
+  }
+
+  const totalBiaya = operationalExpenses + cogsPeriode;
+  const grossProfit = omzetPeriode - cogsPeriode;
+  const netProfit = omzetPeriode - totalBiaya;
   const totalDebit = cashbookRows.reduce(
     (sum: number, row: any) => sum + num(row.debit),
     0,
@@ -389,7 +443,15 @@ export async function getFormalAccountingReport(data: {
 
   const receivableRows = (receivablesRes.data || [])
     .filter((row: any) => ["AKTIF", "SEBAGIAN"].includes(String(row.status)))
-    .filter((row: any) => onOrBeforeDate(row.dibuat_pada, data.endDate))
+    .filter((row: any) => {
+      if (usePeriodMode) {
+        const sale = row.id_penjualan
+          ? salesRes.data?.find((s: any) => s.id === row.id_penjualan)
+          : null;
+        return sale?.periode_id === data.periodeId;
+      }
+      return onOrBeforeDate(row.dibuat_pada, data.endDate);
+    })
     .map((row: any) => {
       const sale = row.id_penjualan
         ? salesRes.data?.find((s: any) => s.id === row.id_penjualan)
@@ -417,6 +479,19 @@ export async function getFormalAccountingReport(data: {
         ["AKTIF", "SEBAGIAN"].includes(String(row.status)) ||
         num(row.sisa_hutang) > 0,
     )
+    .filter((row: any) => {
+      if (usePeriodMode) {
+        const purchase = row.id_pembelian
+          ? (purchaseMap.get(row.id_pembelian) as any)
+          : null;
+        return purchase?.periode_id === data.periodeId;
+      }
+      const purchase = row.id_pembelian
+        ? (purchaseMap.get(row.id_pembelian) as any)
+        : null;
+      const date = toDateKey(purchase?.tanggal ?? row.dibuat_pada);
+      return !date || date <= data.endDate;
+    })
     .map((row: any) => {
       const purchase = row.id_pembelian
         ? (purchaseMap.get(row.id_pembelian) as any)
@@ -435,7 +510,6 @@ export async function getFormalAccountingReport(data: {
         date: toDateKey(purchase?.tanggal ?? row.dibuat_pada),
       };
     })
-    .filter((row) => !row.date || row.date <= data.endDate)
     .sort((a, b) => b.remaining - a.remaining);
 
   const inventoryValue = inventoryItems.reduce(

@@ -5,6 +5,8 @@ description: Use when completing tasks, implementing major features, or before m
 
 # Requesting Code Review
 
+> **Zed adaptation:** "subagent" = the `spawn_agent` tool. All git commands run via the `terminal` tool and MUST use `git --no-pager ...` to avoid hanging the pager.
+
 Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history. This keeps the reviewer focused on the work product, not your thought process, and preserves your own context for continued work.
 
 **Core principle:** Review early, review often.
@@ -23,21 +25,20 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 
 ## How to Request
 
-**1. Get git SHAs:**
+**1. Get git SHAs** (via the `terminal` tool):
 ```bash
-BASE_SHA=$(git rev-parse HEAD~1)  # or origin/main
-HEAD_SHA=$(git rev-parse HEAD)
+git --no-pager rev-parse HEAD~1   # BASE_SHA — or use origin/main
+git --no-pager rev-parse HEAD     # HEAD_SHA
 ```
+If the work is uncommitted, tell the reviewer to inspect the working tree with `git --no-pager diff` (and `git --no-pager diff --staged`) instead of a SHA range.
 
-**2. Dispatch code reviewer subagent:**
-
-Use Task tool with `general-purpose` type, fill template at `code-reviewer.md`
+**2. Dispatch code reviewer subagent** with the `spawn_agent` tool, filling the template at [code-reviewer.md](code-reviewer.md). Include the repo path, relevant file paths, and how to run the tests so the reviewer needs no conversation history.
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do
-- `{BASE_SHA}` - Starting commit
-- `{HEAD_SHA}` - Ending commit
+- `{BASE_SHA}` - Starting commit (or "working tree" if uncommitted)
+- `{HEAD_SHA}` - Ending commit (or "working tree" if uncommitted)
 
 **3. Act on feedback:**
 - Fix Critical issues immediately
@@ -100,4 +101,4 @@ You: [Fix progress indicators]
 - Show code/tests that prove it works
 - Request clarification
 
-See template at: requesting-code-review/code-reviewer.md
+See template at: [code-reviewer.md](code-reviewer.md)

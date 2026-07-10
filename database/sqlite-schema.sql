@@ -1437,9 +1437,16 @@ CREATE TABLE biaya_tambahan_penjualan (
       nominal REAL NOT NULL DEFAULT 0,
       urutan INTEGER NOT NULL DEFAULT 0,
       dibuat_pada TEXT DEFAULT (datetime('now')),
+      diperbarui_pada TEXT DEFAULT (datetime('now')),
       sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
       last_synced_at TEXT,
       sync_version INTEGER DEFAULT 1,
+      updated_at_server TEXT,
+      updated_by_device TEXT DEFAULT 'server',
+      change_version INTEGER DEFAULT 1,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
+      client_mutation_id TEXT,
       FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
       FOREIGN KEY (item_penjualan_id) REFERENCES item_penjualan(id) ON DELETE CASCADE
     );

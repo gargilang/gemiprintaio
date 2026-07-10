@@ -78,11 +78,6 @@ function num(v: unknown): number {
   return isFinite(n) ? n : 0;
 }
 
-function inDateRange(date: string | undefined, start: string, end: string): boolean {
-  const key = String(date ?? "").slice(0, 10);
-  return key >= start && key <= end;
-}
-
 function isPosted(row: { status_transaksi?: string }): boolean {
   return String(row.status_transaksi ?? "POSTED") === "POSTED";
 }
@@ -94,13 +89,13 @@ export async function generateNomorLaporan(periodKey: string): Promise<string> {
 
   const result = await db.query<{ nomor_laporan: string; is_deleted?: number }>(
     "laporan_bulanan",
-    {}
+    {},
   );
   if (result.error) throw result.error;
 
   const count = (result.data ?? []).filter(
     (row) =>
-      (row.is_deleted ?? 0) === 0 && row.nomor_laporan.startsWith(prefix)
+      (row.is_deleted ?? 0) === 0 && row.nomor_laporan.startsWith(prefix),
   ).length;
 
   const seq = String(count + 1).padStart(3, "0");
@@ -145,7 +140,9 @@ export async function getLaporanBulananData(params: {
   if (periodRes.error) throw periodRes.error;
   if (!periodRes.data) throw new Error("Periode tidak ditemukan.");
   if (periodRes.data.status !== "CLOSED") {
-    throw new Error("Hanya periode yang sudah ditutup yang bisa dicetak laporannya.");
+    throw new Error(
+      "Hanya periode yang sudah ditutup yang bisa dicetak laporannya.",
+    );
   }
 
   const period = periodRes.data;
@@ -153,17 +150,23 @@ export async function getLaporanBulananData(params: {
 
   const [formal, keuanganRes, pembelianRes, categories, actors, tokoRes] =
     await Promise.all([
-      getFormalAccountingReport({ startDate: start_date, endDate: end_date }),
+      getFormalAccountingReport({
+        startDate: start_date,
+        endDate: end_date,
+        periodeId: params.accounting_period_id,
+      }),
       db.query<{
         tanggal: string;
         kategori_transaksi: string;
         kredit: number;
         status_transaksi?: string;
+        periode_id?: string;
       }>("keuangan", {}),
       db.query<{
         tanggal: string;
         total_jumlah: number;
         status_transaksi?: string;
+        periode_id?: string;
       }>("pembelian", {}),
       listFinanceCategories(),
       listBusinessActors(),
@@ -185,23 +188,22 @@ export async function getLaporanBulananData(params: {
       (row) =>
         isPosted(row) &&
         row.kategori_transaksi === "GAJI" &&
-        inDateRange(row.tanggal, start_date, end_date)
+        row.periode_id === params.accounting_period_id,
     )
     .reduce((sum, row) => sum + num(row.kredit), 0);
 
   const pembelianInPeriod = (pembelianRes.data ?? []).filter(
-    (row) =>
-      isPosted(row) && inDateRange(row.tanggal, start_date, end_date)
+    (row) => isPosted(row) && row.periode_id === params.accounting_period_id,
   );
   const totalPembelian = pembelianInPeriod.reduce(
     (sum, row) => sum + num(row.total_jumlah),
-    0
+    0,
   );
   const jumlahPO = pembelianInPeriod.length;
 
   const findByRoleCode = (keyword: string) =>
     actors.find((actor) =>
-      actor.role_code.toLowerCase().includes(keyword.toLowerCase())
+      actor.role_code.toLowerCase().includes(keyword.toLowerCase()),
     )?.display_name ?? null;
 
   const ttd: TtdInfo = {
@@ -210,7 +212,7 @@ export async function getLaporanBulananData(params: {
   };
 
   const catMap = new Map(
-    categories.map((cat) => [cat.category_code, cat.display_name])
+    categories.map((cat) => [cat.category_code, cat.display_name]),
   );
 
   const bukuKas: BarisBukuKas[] = formal.cashReport.rows.map((row) => ({

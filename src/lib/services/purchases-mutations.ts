@@ -360,6 +360,10 @@ async function createPurchaseAttempt(data: {
       return { id: purchaseId };
     }
 
+    // Resolve periode_id sebelum transaksi (getOrCreateOpenPeriod bisa INSERT;
+    // jangan lakukan tulis lain di tengah db.transaction).
+    const purchasePeriodeId = await resolveOpenPeriodeIdForKeuangan();
+
     await db.transaction(async () => {
       // Buat header pembelian
       const purchase = {
@@ -384,6 +388,7 @@ async function createPurchaseAttempt(data: {
         nomor_faktur_pajak_vendor: data.nomor_faktur_pajak_vendor || null,
         tanggal_faktur_pajak: data.tanggal_faktur_pajak || null,
         vendor_npwp_snapshot: data.vendor_npwp_snapshot || null,
+        periode_id: purchasePeriodeId,
       };
 
       const purchaseResult = await db.insert("pembelian", purchase);
@@ -680,6 +685,10 @@ export async function createMaklonPurchase(input: {
   const jumlahDibayar = isLunas ? totalHarga : 0;
   const statusPembayaran = isLunas ? "LUNAS" : "HUTANG";
 
+  // Resolve periode_id sebelum transaksi (getOrCreateOpenPeriod bisa INSERT;
+  // jangan lakukan tulis lain di tengah db.transaction).
+  const maklonPeriodeId = await resolveOpenPeriodeIdForKeuangan();
+
   await db.transaction(async () => {
     const purchase = {
       id: purchaseId,
@@ -697,6 +706,7 @@ export async function createMaklonPurchase(input: {
       diterima_oleh: null,
       tipe_pembelian: "MAKLON",
       penjualan_id_sumber: input.saleId,
+      periode_id: maklonPeriodeId,
     };
 
     const purchaseResult = await db.insert("pembelian", purchase);

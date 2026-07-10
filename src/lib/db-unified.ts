@@ -1076,10 +1076,10 @@ class UnifiedDatabase {
       return { data: null, error: new Error("Server Supabase not configured") };
     }
 
-    // Filter payload to columns that exist in the actual schema. Tries
-    // SQLite introspection first (free), then falls back to a Supabase
-    // row-sample. This prevents "could not find column X in schema cache"
-    // errors when SQLite mirror is disabled (Vercel / web dev).
+    // Saring payload ke kolom yang ada di skema aktual. Coba introspeksi
+    // SQLite lebih dulu (gratis), lalu fallback ke sampel baris Supabase.
+    // Ini mencegah galat "could not find column X in schema cache" saat
+    // mirror SQLite dinonaktifkan (Vercel / web dev).
     const tableColumns = await getKnownTableColumns(table);
     let payload =
       tableColumns.size > 0
@@ -1093,7 +1093,8 @@ class UnifiedDatabase {
     }
 
     const droppedColumns: string[] = [];
-    for (let attempt = 0; attempt < 5; attempt++) {
+    const maxSchemaCacheRetries = Math.max(Object.keys(payload).length + 1, 5);
+    for (let attempt = 0; attempt < maxSchemaCacheRetries; attempt++) {
       const { data: inserted, error } = await supabase
         .from(table)
         .upsert(payload, { onConflict: "id" })
@@ -1572,20 +1573,54 @@ class UnifiedDatabase {
       }
     }
 
-    // Migrasi: biaya_tambahan_penjualan.item_penjualan_id (tautan biaya ke item,
-    // supaya reprint struk/faktur/SPK bisa menampilkan biaya sebagai sub-baris
-    // per item selaras dengan cetak saat checkout).
+    // Migrasi: biaya_tambahan_penjualan tautan item + metadata sinkronisasi.
     {
-      const cols = (
-        db
-          .prepare("PRAGMA table_info(biaya_tambahan_penjualan)")
-          .all() as Array<{ name: string }>
-      ).map((c) => c.name);
-      if (!cols.includes("item_penjualan_id")) {
-        db.exec(
-          "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN item_penjualan_id TEXT",
-        );
-      }
+      const cols = new Set(
+        (
+          db
+            .prepare("PRAGMA table_info(biaya_tambahan_penjualan)")
+            .all() as Array<{ name: string }>
+        ).map((c) => c.name),
+      );
+      const addColumn = (name: string, sql: string) => {
+        if (!cols.has(name)) {
+          db.exec(sql);
+          cols.add(name);
+        }
+      };
+
+      addColumn(
+        "item_penjualan_id",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN item_penjualan_id TEXT",
+      );
+      addColumn(
+        "diperbarui_pada",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN diperbarui_pada TEXT",
+      );
+      addColumn(
+        "updated_at_server",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN updated_at_server TEXT",
+      );
+      addColumn(
+        "updated_by_device",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN updated_by_device TEXT DEFAULT 'server'",
+      );
+      addColumn(
+        "change_version",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN change_version INTEGER DEFAULT 1",
+      );
+      addColumn(
+        "is_deleted",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
+      );
+      addColumn(
+        "deleted_at",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN deleted_at TEXT",
+      );
+      addColumn(
+        "client_mutation_id",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN client_mutation_id TEXT",
+      );
     }
 
     // Migrasi (20260707000003): item_penjualan kolom pending + katalog_maklon_id.

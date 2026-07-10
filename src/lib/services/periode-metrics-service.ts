@@ -35,13 +35,21 @@ const ZERO_METRICS: PeriodMetrics = {
 
 /** Kategori yang berkontribusi ke omzet (positif = debit, negatif = kredit). */
 const KATEGORI_OMZET_POSITIF = new Set(["OMZET", "PIUTANG"]);
-const KATEGORI_OMZET_NEGATIF = new Set(["RETUR_PENJUALAN", "RETUR_PENJUALAN_NONCASH"]);
+const KATEGORI_OMZET_NEGATIF = new Set([
+  "RETUR_PENJUALAN",
+  "RETUR_PENJUALAN_NONCASH",
+]);
 
 /** Kategori yang berkontribusi ke biaya operasional (kredit). */
 const KATEGORI_BIAYA_OPS = new Set(["BIAYA", "TABUNGAN", "GAJI"]);
 
-function aggregateRows(
-  rows: Array<{ kategori_transaksi: string; debit: number; kredit: number }>
+/**
+ * Agregasi metrik periode dari baris keuangan mentah (kategori + debit/kredit).
+ * Diekspor supaya laporan (reports-service) memakai logika kategori yang sama
+ * persis — satu sumber kebenaran, bebas dari asumsi kontiguitas running total.
+ */
+export function aggregatePeriodMetricsFromRows(
+  rows: Array<{ kategori_transaksi: string; debit: number; kredit: number }>,
 ): PeriodMetrics {
   let omzet = 0;
   let biaya_operasional = 0;
@@ -78,7 +86,7 @@ function aggregateRows(
  * untuk satu periode — tanpa ikutsertakan running total dari periode sebelumnya.
  */
 export async function computePeriodMetrics(
-  periodeId: string
+  periodeId: string,
 ): Promise<PeriodMetrics> {
   try {
     const sb = getServerSupabaseClient();
@@ -95,8 +103,12 @@ export async function computePeriodMetrics(
         return ZERO_METRICS;
       }
 
-      return aggregateRows(
-        (data ?? []) as Array<{ kategori_transaksi: string; debit: number; kredit: number }>
+      return aggregatePeriodMetricsFromRows(
+        (data ?? []) as Array<{
+          kategori_transaksi: string;
+          debit: number;
+          kredit: number;
+        }>,
       );
     }
 
@@ -111,10 +123,10 @@ export async function computePeriodMetrics(
     });
 
     const rows = (result.data ?? []).filter(
-      (r) => r.status_transaksi !== "VOIDED"
+      (r) => r.status_transaksi !== "VOIDED",
     );
 
-    return aggregateRows(rows);
+    return aggregatePeriodMetricsFromRows(rows);
   } catch (err) {
     console.warn("[computePeriodMetrics] Error:", err);
     return ZERO_METRICS;

@@ -26,6 +26,7 @@ interface FinishingItem {
 interface CartItem {
   barang_id: string;
   barang_nama: string;
+  nama_produk_jual?: string | null;
   nama_satuan: string;
   harga_satuan: number;
   jumlah: number;
@@ -144,6 +145,13 @@ function getCartBiayaTambahanTotal(cart: CartItem[]): number {
   return cart.reduce((sum, item) => sum + getItemBiayaTambahanTotal(item), 0);
 }
 
+function getCartItemNamaTampil(item: CartItem): string {
+  if (item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan?.trim()) {
+    return item.deskripsi_pekerjaan.trim();
+  }
+  return item.nama_produk_jual?.trim() || item.barang_nama;
+}
+
 export default function KeranjangPOS({
   cart,
   roundCartPrices,
@@ -205,6 +213,7 @@ export default function KeranjangPOS({
         const rows = [
           mapPenjualanItemKeFaktur({
             barang_nama: item.barang_nama,
+            nama_produk_jual: item.nama_produk_jual,
             tipe_item: item.tipe_item,
             deskripsi_pekerjaan: item.deskripsi_pekerjaan,
             jumlah: item.jumlah,
@@ -441,7 +450,7 @@ export default function KeranjangPOS({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-base text-gray-800 dark:text-slate-100 truncate">
-                      {item.barang_nama}
+                      {getCartItemNamaTampil(item)}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-slate-300 mt-0.5">
                       {item.butuh_dimensi && item.panjang && item.lebar ? (

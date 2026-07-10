@@ -19,7 +19,7 @@ export function migratePeranPegawaiLegacyCheckConstraint(db: {
   // ditolak saat seed.
   const row = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'peran_pegawai'"
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'peran_pegawai'",
     )
     .get();
   if (!row?.sql?.includes("profit_share")) return;
@@ -70,7 +70,7 @@ export function migratePeranPegawaiLegacyCheckConstraint(db: {
   `);
   db.pragma("foreign_keys = ON");
   console.info(
-    "✅ Migrated peran_pegawai: role_group is now owner/management/sales/staff/other"
+    "✅ Migrated peran_pegawai: role_group is now owner/management/sales/staff/other",
   );
 }
 
@@ -98,7 +98,7 @@ export function migrateInventoryMovementsCheckConstraint(db: {
 }): void {
   const row = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='inventory_movements'"
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='inventory_movements'",
     )
     .get();
   if (!row?.sql) return;
@@ -155,19 +155,42 @@ export function migrateInventoryMovementsCheckConstraint(db: {
   // Detect available columns to handle older installs that miss some sync
   // metadata or location_id.
   const cols = (
-    db
-      .prepare("PRAGMA table_info(inventory_movements)")
-      .all() as Array<{ name: string }>
+    db.prepare("PRAGMA table_info(inventory_movements)").all() as Array<{
+      name: string;
+    }>
   ).map((c) => c.name);
   const targetCols = [
-    "id", "barang_id", "tanggal", "movement_type", "qty_delta", "unit_cost",
-    "value_delta", "qty_before", "qty_after", "avg_cost_before", "avg_cost_after",
-    "source_type", "source_id", "source_line_id", "reversal_of_id",
-    "catatan", "dibuat_oleh", "dibuat_pada",
-    "sync_status", "last_synced_at", "sync_version",
-    "updated_at_server", "updated_by_device", "change_version",
-    "is_deleted", "deleted_at", "client_mutation_id", "location_id",
-    "roll_variant_id", "roll_width_m", "linear_delta_m",
+    "id",
+    "barang_id",
+    "tanggal",
+    "movement_type",
+    "qty_delta",
+    "unit_cost",
+    "value_delta",
+    "qty_before",
+    "qty_after",
+    "avg_cost_before",
+    "avg_cost_after",
+    "source_type",
+    "source_id",
+    "source_line_id",
+    "reversal_of_id",
+    "catatan",
+    "dibuat_oleh",
+    "dibuat_pada",
+    "sync_status",
+    "last_synced_at",
+    "sync_version",
+    "updated_at_server",
+    "updated_by_device",
+    "change_version",
+    "is_deleted",
+    "deleted_at",
+    "client_mutation_id",
+    "location_id",
+    "roll_variant_id",
+    "roll_width_m",
+    "linear_delta_m",
   ];
   const shared = targetCols.filter((c) => cols.includes(c));
   const colList = shared.join(", ");
@@ -194,7 +217,9 @@ export function migrateInventoryMovementsCheckConstraint(db: {
  * but older databases (created before the V1 migration shipped) need a
  * top-up so retur/PO/penawaran/opname pages don't crash.
  */
-export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void }): void {
+export function ensureCommercialWorkflowTables(db: {
+  exec: (sql: string) => void;
+}): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS penawaran (
       id TEXT PRIMARY KEY,
@@ -505,7 +530,9 @@ export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void
   const addColumnIfMissing = (table: string, column: string, type: string) => {
     try {
       const cols = (
-        (db as any).prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+        (db as any).prepare(`PRAGMA table_info(${table})`).all() as Array<{
+          name: string;
+        }>
       ).map((c) => c.name);
       if (!cols.includes(column)) {
         db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
@@ -517,13 +544,21 @@ export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void
   addColumnIfMissing("penjualan", "penawaran_id", "TEXT");
   addColumnIfMissing("pembelian", "purchase_order_id", "TEXT");
   addColumnIfMissing("item_pembelian", "purchase_order_item_id", "TEXT");
+  addColumnIfMissing("penjualan", "periode_id", "TEXT");
+  addColumnIfMissing("pembelian", "periode_id", "TEXT");
 
   // Fase 5: rename kolom Inggris ke Bahasa Indonesia di instalasi SQLite lama.
   // SQLite mendukung RENAME COLUMN sejak 3.25 (Tauri pakai versi >= 3.40).
-  const renameColumnIfNeeded = (table: string, oldCol: string, newCol: string) => {
+  const renameColumnIfNeeded = (
+    table: string,
+    oldCol: string,
+    newCol: string,
+  ) => {
     try {
       const cols = (
-        (db as any).prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+        (db as any).prepare(`PRAGMA table_info(${table})`).all() as Array<{
+          name: string;
+        }>
       ).map((c) => c.name);
       if (cols.includes(oldCol) && !cols.includes(newCol)) {
         db.exec(`ALTER TABLE ${table} RENAME COLUMN ${oldCol} TO ${newCol}`);
@@ -538,6 +573,8 @@ export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void
     CREATE INDEX IF NOT EXISTS idx_penjualan_penawaran ON penjualan(penawaran_id);
     CREATE INDEX IF NOT EXISTS idx_pembelian_purchase_order ON pembelian(purchase_order_id);
     CREATE INDEX IF NOT EXISTS idx_item_pembelian_po_item ON item_pembelian(purchase_order_item_id);
+    CREATE INDEX IF NOT EXISTS idx_penjualan_periode_id ON penjualan(periode_id);
+    CREATE INDEX IF NOT EXISTS idx_pembelian_periode_id ON pembelian(periode_id);
   `);
 }
 
@@ -548,4 +585,4 @@ export function ensureCommercialWorkflowTables(db: { exec: (sql: string) => void
  * keuangan column (they only flow through transaksi_terhitung).
  *
  * Recreate the table with a nullable db_column. The data is preserved.
- */
+ */

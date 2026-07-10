@@ -15,6 +15,7 @@ import {
 
 interface SaleItemRow {
   barang_nama?: string;
+  nama_produk_jual?: string | null;
   nama_satuan?: string;
   jumlah?: number;
   harga_satuan?: number;
@@ -55,6 +56,13 @@ interface SalesHistoryTableProps {
   onDelete?: (saleId: string) => Promise<void>;
   onRevert?: (sale: Sale) => void;
   onPayReceivable?: () => void;
+}
+
+function getSaleItemNamaTampil(item: SaleItemRow): string {
+  if (item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan?.trim()) {
+    return item.deskripsi_pekerjaan.trim();
+  }
+  return item.nama_produk_jual?.trim() || item.barang_nama || "-";
 }
 
 export default function TabelRiwayatPenjualan({
@@ -316,10 +324,7 @@ export default function TabelRiwayatPenjualan({
         };
         const { qty, satuan } = qtySatuanCetakPenjualan(cetakInput);
         return {
-          nama:
-            item.tipe_item === "MAKLON" && item.deskripsi_pekerjaan
-              ? item.deskripsi_pekerjaan
-              : item.barang_nama || "-",
+          nama: getSaleItemNamaTampil(item),
           jumlah: qty,
           satuan,
           harga: qty > 0 ? subtotal / qty : harga,
@@ -420,6 +425,7 @@ export default function TabelRiwayatPenjualan({
       const items = (sale.items || []).map((item) =>
         mapPenjualanItemKeFaktur({
           barang_nama: item.barang_nama,
+          nama_produk_jual: item.nama_produk_jual,
           tipe_item: item.tipe_item ?? undefined,
           deskripsi_pekerjaan: item.deskripsi_pekerjaan,
           jumlah: Number(item.jumlah || 0),
@@ -527,6 +533,7 @@ export default function TabelRiwayatPenjualan({
       const items = (sale.items || []).map((item) =>
         mapPenjualanItemKeFaktur({
           barang_nama: item.barang_nama,
+          nama_produk_jual: item.nama_produk_jual,
           tipe_item: item.tipe_item ?? undefined,
           deskripsi_pekerjaan: item.deskripsi_pekerjaan,
           jumlah: Number(item.jumlah || 0),
@@ -982,11 +989,7 @@ export default function TabelRiwayatPenjualan({
                                   <div className="flex items-center justify-between">
                                     <div className="flex-1">
                                       <span className="font-semibold text-gray-800 dark:text-slate-100">
-                                        {idx + 1}.{" "}
-                                        {item.tipe_item === "MAKLON" &&
-                                        item.deskripsi_pekerjaan
-                                          ? item.deskripsi_pekerjaan
-                                          : item.barang_nama}
+                                        {idx + 1}. {getSaleItemNamaTampil(item)}
                                       </span>
                                       {ukuranCetak ? (
                                         <span className="text-gray-500 dark:text-slate-400 ml-2">
