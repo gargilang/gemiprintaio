@@ -21,6 +21,23 @@ export async function requireAdminOrManager(): Promise<SessionPayload> {
   return s;
 }
 
+/**
+ * Blokir pengguna dengan role "demo" dari melakukan mutasi.
+ * Panggil ini di route POST/PUT/PATCH/DELETE setelah requireSession().
+ */
+export async function requireNotDemo(
+  s?: SessionPayload,
+): Promise<SessionPayload> {
+  const session = s ?? (await requireSession());
+  if (session.role === "demo") {
+    throw new AuthGuardError(
+      "Akun demo tidak dapat melakukan perubahan data",
+      403,
+    );
+  }
+  return session;
+}
+
 export async function requireProductionInventoryRole(): Promise<SessionPayload> {
   const s = await requireSession();
   if (
@@ -49,7 +66,7 @@ export async function requireOperationalRole(): Promise<SessionPayload> {
 }
 
 export async function requireAdminManagerOrSelf(
-  targetUserId: string
+  targetUserId: string,
 ): Promise<SessionPayload> {
   const s = await requireSession();
   if (s.uid === targetUserId) return s;

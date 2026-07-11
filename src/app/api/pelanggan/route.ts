@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
 import {
-  pelangganHasPenjualan,
-  rowExistsEq,
-} from "@/lib/duplicate-check";
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
+import { pelangganHasPenjualan, rowExistsEq } from "@/lib/duplicate-check";
 import {
   createPelanggan,
   deletePelanggan,
@@ -21,14 +22,14 @@ export async function GET() {
     console.error("Gagal mengambil pelanggan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal mengambil pelanggan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const body = await req.json();
     const {
       nama,
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama pelanggan harus diisi" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (dup) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     if (!created?.id) {
       return NextResponse.json(
         { error: "Gagal membuat pelanggan" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -83,18 +84,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ customer: pelangganBaru }, { status: 201 });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("Gagal membuat pelanggan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal membuat pelanggan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
+    await requireNotDemo(await requireSession());
     const body = await req.json();
     const {
       id,
@@ -115,7 +120,7 @@ export async function PUT(req: NextRequest) {
     if (!nama || !nama.trim()) {
       return NextResponse.json(
         { error: "Nama pelanggan harus diisi" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -123,7 +128,7 @@ export async function PUT(req: NextRequest) {
     if (!existing) {
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -131,7 +136,7 @@ export async function PUT(req: NextRequest) {
     if (dup) {
       return NextResponse.json(
         { error: "Pelanggan dengan nama ini sudah ada" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -154,16 +159,23 @@ export async function PUT(req: NextRequest) {
     const pelangganDiperbarui = await getPelangganById(id);
     return NextResponse.json({ customer: pelangganDiperbarui });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("Gagal memperbarui pelanggan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal memperbarui pelanggan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
+    await requireNotDemo(await requireSession());
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -175,7 +187,7 @@ export async function DELETE(req: NextRequest) {
     if (!existing) {
       return NextResponse.json(
         { error: "Pelanggan tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -186,17 +198,23 @@ export async function DELETE(req: NextRequest) {
           error:
             "Pelanggan tidak dapat dihapus karena sudah memiliki transaksi penjualan",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     await deletePelanggan(id);
     return NextResponse.json({ message: "Pelanggan berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("Gagal menghapus pelanggan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal menghapus pelanggan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

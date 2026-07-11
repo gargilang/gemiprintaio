@@ -4,14 +4,18 @@ import {
   getDecryptedPassword,
   updateCredential,
 } from "@/lib/services/credentials-service";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const viewerId = request.headers.get("x-session-uid") || undefined;
@@ -24,7 +28,7 @@ export async function GET(
       if (e?.message === "NOT_FOUND") {
         return NextResponse.json(
           { error: "Credential tidak ditemukan" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       if (e?.message === "FORBIDDEN") {
@@ -36,17 +40,17 @@ export async function GET(
     console.error("GET /api/passwords/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal mengambil password" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireSession();
+    const session = await requireNotDemo(await requireSession());
     const viewerId = session.uid;
     const { id } = await params;
     const body = await request.json();
@@ -63,7 +67,7 @@ export async function PUT(
       if (e?.message === "NOT_FOUND") {
         return NextResponse.json(
           { error: "Credential tidak ditemukan" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       if (e?.message === "FORBIDDEN") {
@@ -72,7 +76,7 @@ export async function PUT(
       if (e?.message === "NO_CHANGES") {
         return NextResponse.json(
           { error: "Tidak ada perubahan" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       throw e;
@@ -81,22 +85,25 @@ export async function PUT(
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("PUT /api/passwords/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal update kredensial" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await requireSession();
+    const session = await requireNotDemo(await requireSession());
     const viewerId = session.uid;
     const { id } = await params;
 
@@ -106,7 +113,7 @@ export async function DELETE(
       if (e?.message === "NOT_FOUND") {
         return NextResponse.json(
           { error: "Credential tidak ditemukan" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       if (e?.message === "FORBIDDEN") {
@@ -118,12 +125,15 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("DELETE /api/passwords/[id] error:", error);
     return NextResponse.json(
       { error: "Gagal menghapus kredensial" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

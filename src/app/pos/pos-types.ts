@@ -41,6 +41,11 @@ export interface Material {
   // (TIDAK ada di tabel barang asli). Dipakai form POS untuk hide finishing/roll.
   _isKatalogMaklon?: boolean;
   _katalogMaklonId?: string;
+  // Detail subkontrak bawaan dari template katalog extra. Dipakai untuk mengisi
+  // keranjang otomatis agar item tidak masuk pending bila template sudah lengkap.
+  _vendorSubkontrakIdDefault?: string | null;
+  _biayaSubkontrakDefault?: number | null;
+  _metodeBayarVendorDefault?: "CASH" | "NET30" | "TRANSFER" | null;
 }
 
 export interface FinishingItem {

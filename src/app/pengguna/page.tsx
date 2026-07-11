@@ -15,15 +15,8 @@ import {
   CrownIcon,
   KeyIcon,
 } from "@/components/icons/ContentIcons";
-import {
-  getUsersAction,
-  updateUserAction,
-  deleteUserAction,
-} from "./actions";
-import {
-  fetchSessionUser,
-  getCachedSessionUser,
-} from "@/lib/client-session";
+import { getUsersAction, updateUserAction, deleteUserAction } from "./actions";
+import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
 import { useCachedData } from "@/lib/use-cached-data";
 
 type AppRole =
@@ -32,7 +25,8 @@ type AppRole =
   | "staff"
   | "kasir"
   | "operator"
-  | "user";
+  | "user"
+  | "demo";
 
 interface User {
   id: string;
@@ -75,10 +69,10 @@ export default function UsersPage() {
             ? (next as (p: User[]) => User[])(base)
             : next;
         },
-        { revalidate: false }
+        { revalidate: false },
       );
     },
-    [mutateUsers]
+    [mutateUsers],
   );
   const loading = currentUser === null && usersLoading;
   const [showModal, setShowModal] = useState(false);
@@ -109,7 +103,7 @@ export default function UsersPage() {
     [key: string]: string;
   }>({});
   const [showingPasswordId, setShowingPasswordId] = useState<string | null>(
-    null
+    null,
   );
   const [showCredPassword, setShowCredPassword] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -243,8 +237,7 @@ export default function UsersPage() {
           body: JSON.stringify(credForm),
         });
         const data = await res.json();
-        if (!res.ok)
-          throw new Error(data?.error || "Gagal update kredensial");
+        if (!res.ok) throw new Error(data?.error || "Gagal update kredensial");
 
         if (credForm.password && credForm.password.trim() !== "") {
           setVisiblePasswords((prev) => {
@@ -278,9 +271,7 @@ export default function UsersPage() {
       console.error(err);
       showMsg(
         "error",
-        `Terjadi kesalahan: ${
-          err instanceof Error ? err.message : "Unknown"
-        }`
+        `Terjadi kesalahan: ${err instanceof Error ? err.message : "Unknown"}`,
       );
     }
   };
@@ -311,7 +302,7 @@ export default function UsersPage() {
             "error",
             `Terjadi kesalahan saat menghapus user: ${
               err instanceof Error ? err.message : "Unknown"
-            }`
+            }`,
           );
         }
       },
@@ -338,7 +329,7 @@ export default function UsersPage() {
         "error",
         `Terjadi kesalahan saat mengubah status: ${
           err instanceof Error ? err.message : "Unknown"
-        }`
+        }`,
       );
     }
   };
@@ -353,7 +344,9 @@ export default function UsersPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">Memuat...</p>
+          <p className="mt-4 text-[#0a1b3d] dark:text-slate-100 font-semibold">
+            Memuat...
+          </p>
         </div>
       </div>
     );
@@ -441,21 +434,25 @@ export default function UsersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-base text-[#6b7280] dark:text-slate-400">{user.email}</td>
+                      <td className="px-6 py-4 text-base text-[#6b7280] dark:text-slate-400">
+                        {user.email}
+                      </td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-semibold ${
                             user.role === "admin"
                               ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                               : user.role === "manager"
-                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                              : user.role === "staff"
-                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                              : user.role === "kasir"
-                              ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                              : user.role === "operator"
-                              ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700"
-                              : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
+                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                : user.role === "staff"
+                                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                  : user.role === "kasir"
+                                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                                    : user.role === "operator"
+                                      ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700"
+                                      : user.role === "demo"
+                                        ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                                        : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300"
                           }`}
                         >
                           {user.role}
@@ -532,18 +529,33 @@ export default function UsersPage() {
           <div className="flex flex-wrap gap-3 mt-4">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-[#00afef] shadow-sm">
               <UsersIcon size={16} className="text-[#00afef] shrink-0" />
-              <span className="text-base text-slate-500 dark:text-slate-400">Total Pengguna</span>
-              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.length}</span>
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                Total Pengguna
+              </span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">
+                {users.length}
+              </span>
             </div>
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-green-500 shadow-sm">
               <CheckIcon size={16} className="text-green-600 shrink-0" />
-              <span className="text-base text-slate-500 dark:text-slate-400">Aktif</span>
-              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.aktif_status).length}</span>
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                Aktif
+              </span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">
+                {users.filter((u) => u.aktif_status).length}
+              </span>
             </div>
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-4 py-2.5 border-l-4 border-l-purple-500 shadow-sm">
-              <CrownIcon size={16} className="text-purple-600 dark:text-purple-300 shrink-0" />
-              <span className="text-base text-slate-500 dark:text-slate-400">Admin</span>
-              <span className="text-base font-bold text-slate-800 dark:text-slate-100">{users.filter((u) => u.role === "admin").length}</span>
+              <CrownIcon
+                size={16}
+                className="text-purple-600 dark:text-purple-300 shrink-0"
+              />
+              <span className="text-base text-slate-500 dark:text-slate-400">
+                Admin
+              </span>
+              <span className="text-base font-bold text-slate-800 dark:text-slate-100">
+                {users.filter((u) => u.role === "admin").length}
+              </span>
             </div>
           </div>
         </>
@@ -643,12 +655,12 @@ export default function UsersPage() {
                                 `/api/passwords/${c.id}`,
                                 {
                                   credentials: "include",
-                                }
+                                },
                               );
                               const data = await res.json();
                               if (!res.ok)
                                 throw new Error(
-                                  data?.error || "Gagal ambil password"
+                                  data?.error || "Gagal ambil password",
                                 );
                               setVisiblePasswords((prev) => ({
                                 ...prev,
@@ -659,7 +671,7 @@ export default function UsersPage() {
                               console.error(err);
                               showMsg(
                                 "error",
-                                "Tidak bisa menampilkan password"
+                                "Tidak bisa menampilkan password",
                               );
                             }
                           }}
@@ -740,12 +752,12 @@ export default function UsersPage() {
                                   `/api/passwords/${c.id}`,
                                   {
                                     credentials: "include",
-                                  }
+                                  },
                                 );
                                 const data = await res.json();
                                 if (!res.ok)
                                   throw new Error(
-                                    data?.error || "Gagal ambil password"
+                                    data?.error || "Gagal ambil password",
                                   );
                                 password = data.password;
                                 setVisiblePasswords((prev) => ({
@@ -756,13 +768,13 @@ export default function UsersPage() {
                               navigator.clipboard.writeText(password);
                               showMsg(
                                 "success",
-                                "Password disalin ke clipboard"
+                                "Password disalin ke clipboard",
                               );
                             } catch (err) {
                               console.error(err);
                               showMsg(
                                 "error",
-                                "Tidak bisa menampilkan password"
+                                "Tidak bisa menampilkan password",
                               );
                             }
                           },
@@ -833,12 +845,12 @@ export default function UsersPage() {
                                     {
                                       method: "DELETE",
                                       credentials: "include",
-                                    }
+                                    },
                                   );
                                   const data = await res.json();
                                   if (!res.ok)
                                     throw new Error(
-                                      data?.error || "Gagal menghapus"
+                                      data?.error || "Gagal menghapus",
                                     );
                                   showMsg("success", "Kredensial dihapus");
                                   await loadCredentials();
@@ -846,7 +858,7 @@ export default function UsersPage() {
                                   console.error(err);
                                   showMsg(
                                     "error",
-                                    "Tidak bisa menghapus kredensial"
+                                    "Tidak bisa menghapus kredensial",
                                   );
                                 }
                               },
@@ -948,136 +960,136 @@ export default function UsersPage() {
           </div>
         }
       >
-            <form
-              id="cred-manager-form"
-              onSubmit={handleCredSubmit}
-              className="p-6 space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Nama Layanan
-                </label>
-                <input
-                  type="text"
-                  value={credForm.nama_layanan}
-                  onChange={(e) =>
-                    setCredForm({ ...credForm, nama_layanan: e.target.value })
-                  }
-                  required
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="Microsoft, Google, GitHub, BCA, dll."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Akun (Email/Username)
-                </label>
-                <input
-                  type="text"
-                  value={credForm.nama_pengguna_akun}
-                  onChange={(e) =>
-                    setCredForm({
-                      ...credForm,
-                      nama_pengguna_akun: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="email@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Password {editingCred && "(kosongkan jika tidak diubah)"}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCredPassword ? "text" : "password"}
-                    value={credForm.password}
-                    onChange={(e) =>
-                      setCredForm({ ...credForm, password: e.target.value })
-                    }
-                    required={!editingCred}
-                    className="w-full px-4 py-2 pr-12 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCredPassword(!showCredPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:text-emerald-300 transition-colors"
+        <form
+          id="cred-manager-form"
+          onSubmit={handleCredSubmit}
+          className="p-6 space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
+              Nama Layanan
+            </label>
+            <input
+              type="text"
+              value={credForm.nama_layanan}
+              onChange={(e) =>
+                setCredForm({ ...credForm, nama_layanan: e.target.value })
+              }
+              required
+              className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
+              placeholder="Microsoft, Google, GitHub, BCA, dll."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
+              Akun (Email/Username)
+            </label>
+            <input
+              type="text"
+              value={credForm.nama_pengguna_akun}
+              onChange={(e) =>
+                setCredForm({
+                  ...credForm,
+                  nama_pengguna_akun: e.target.value,
+                })
+              }
+              required
+              className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
+              placeholder="email@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
+              Password {editingCred && "(kosongkan jika tidak diubah)"}
+            </label>
+            <div className="relative">
+              <input
+                type={showCredPassword ? "text" : "password"}
+                value={credForm.password}
+                onChange={(e) =>
+                  setCredForm({ ...credForm, password: e.target.value })
+                }
+                required={!editingCred}
+                className="w-full px-4 py-2 pr-12 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCredPassword(!showCredPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:text-emerald-300 transition-colors"
+              >
+                {showCredPassword ? (
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    {showCredPassword ? (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
-                  Catatan
-                </label>
-                <textarea
-                  value={credForm.catatan}
-                  onChange={(e) =>
-                    setCredForm({ ...credForm, catatan: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
-                  placeholder="Keterangan tambahan"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="cred_private"
-                  checked={credForm.privat_status}
-                  onChange={(e) =>
-                    setCredForm({
-                      ...credForm,
-                      privat_status: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4 text-emerald-600 dark:text-emerald-300 border-gray-300 rounded focus:ring-emerald-500"
-                />
-                <label
-                  htmlFor="cred_private"
-                  className="text-sm font-medium text-[#0a1b3d] dark:text-slate-100"
-                >
-                  Sembunyikan dari user lain
-                </label>
-              </div>
-            </form>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-[#0a1b3d] dark:text-slate-100 mb-2">
+              Catatan
+            </label>
+            <textarea
+              value={credForm.catatan}
+              onChange={(e) =>
+                setCredForm({ ...credForm, catatan: e.target.value })
+              }
+              className="w-full px-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition dark:bg-slate-800 dark:text-slate-100"
+              placeholder="Keterangan tambahan"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="cred_private"
+              checked={credForm.privat_status}
+              onChange={(e) =>
+                setCredForm({
+                  ...credForm,
+                  privat_status: e.target.checked,
+                })
+              }
+              className="w-4 h-4 text-emerald-600 dark:text-emerald-300 border-gray-300 rounded focus:ring-emerald-500"
+            />
+            <label
+              htmlFor="cred_private"
+              className="text-sm font-medium text-[#0a1b3d] dark:text-slate-100"
+            >
+              Sembunyikan dari user lain
+            </label>
+          </div>
+        </form>
       </ModalFormShell>
 
       {/* Confirm Dialog */}

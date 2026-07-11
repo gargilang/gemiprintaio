@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import { payReceivable } from "@/lib/services/pos-service";
 import { payReceivableSchema } from "@/lib/schemas/inventori";
 
@@ -8,14 +12,18 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const body = await request.json();
 
     const parsed = payReceivableSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "Data pembayaran tidak valid", issues: parsed.error.issues },
-        { status: 422 }
+        {
+          success: false,
+          error: "Data pembayaran tidak valid",
+          issues: parsed.error.issues,
+        },
+        { status: 422 },
       );
     }
     const data = parsed.data;
@@ -42,7 +50,10 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status },
+      );
     }
     const msg = error?.message || "Failed to process receivable payment";
     if (
@@ -52,7 +63,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { success: false, error: msg },
-        { status: msg.includes("tidak ditemukan") ? 404 : 400 }
+        { status: msg.includes("tidak ditemukan") ? 404 : 400 },
       );
     }
     console.error("Error paying receivable:", error);

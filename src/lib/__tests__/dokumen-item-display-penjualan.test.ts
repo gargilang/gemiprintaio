@@ -30,9 +30,7 @@ describe("cetak penjualan — qty berdimensi", () => {
   });
 
   it("kolom UKURAN memakai meter input", () => {
-    expect(
-      formatUkuranCetakInput({ panjang: 2, lebar: 3 }),
-    ).toBe("2 × 3 m");
+    expect(formatUkuranCetakInput({ panjang: 2, lebar: 3 })).toBe("3 × 2 m");
   });
 
   it("faktur A4: QTY lembar, UKURAN meter, harga per lembar", () => {
@@ -48,7 +46,7 @@ describe("cetak penjualan — qty berdimensi", () => {
     });
     expect(row.qty).toBe(5);
     expect(row.satuan).toBe("");
-    expect(row.ukuran).toBe("2 × 3 m");
+    expect(row.ukuran).toBe("3 × 2 m");
     expect(row.harga).toBe(300_000);
     expect(row.jumlah).toBe(1_500_000);
   });
@@ -101,6 +99,6 @@ describe("tampilan SPK — qty berdimensi", () => {
         panjang: 2,
         lebar: 3,
       }),
-    ).toBe("2 × 3 m");
+    ).toBe("3 × 2 m");
   });
 });

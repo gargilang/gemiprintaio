@@ -4,11 +4,15 @@ import {
   getSyncStatus,
   triggerManualSync,
 } from "@/lib/services/sync-operations-service";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 
 export async function POST(_request: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     console.debug("🔄 Manual sync triggered");
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,7 +25,7 @@ export async function POST(_request: NextRequest) {
           error:
             "Supabase not configured. Please add credentials to .env.local",
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -44,13 +48,13 @@ export async function POST(_request: NextRequest) {
     if (error instanceof AuthGuardError) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: error.status }
+        { status: error.status },
       );
     }
     console.error("Manual sync error:", error);
     return NextResponse.json(
       { success: false, error: "Manual sync gagal" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -75,7 +79,7 @@ export async function GET(_request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

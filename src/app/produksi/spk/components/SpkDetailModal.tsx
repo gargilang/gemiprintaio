@@ -225,7 +225,7 @@ export default function SpkDetailModal({
                       onClick={() =>
                         onUpdateOrderStatus(order.id, "SIAP_AMBIL")
                       }
-                      className="px-3 py-1 rounded-full text-xs font-semibold border-2 border-teal-300 bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-900/50"
+                      className="px-3 py-1 rounded-full text-xs font-semibold border-2 border-teal-300 bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-900/50 cursor-pointer transition-colors"
                     >
                       Siap Diambil
                     </button>
@@ -278,27 +278,37 @@ export default function SpkDetailModal({
                       </div>
                     )}
                   </div>
-                  <select
-                    value={item.status}
-                    onChange={(e) =>
-                      onUpdateItemStatus(item.id, e.target.value)
-                    }
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
-                      item.status,
-                    )}`}
-                  >
-                    {daftarStatusManualUntukItem({
-                      is_maklon: item.is_maklon,
-                    }).map((s) => (
-                      <option
-                        key={s}
-                        value={s}
-                        className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
-                      >
-                        {labelStatus(s)}
-                      </option>
-                    ))}
-                  </select>
+                  {item.status === "SIAP_AMBIL" || item.status === "SELESAI" ? (
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
+                        item.status,
+                      )}`}
+                    >
+                      {labelStatus(item.status)}
+                    </span>
+                  ) : (
+                    <select
+                      value={item.status}
+                      onChange={(e) =>
+                        onUpdateItemStatus(item.id, e.target.value)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border-2 cursor-pointer ${getStatusColor(
+                        item.status,
+                      )}`}
+                    >
+                      {daftarStatusManualUntukItem({
+                        is_maklon: item.is_maklon,
+                      }).map((s) => (
+                        <option
+                          key={s}
+                          value={s}
+                          className="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          {labelStatus(s)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {item.roll_inventory_status === "PENDING" && (
@@ -416,13 +426,6 @@ export default function SpkDetailModal({
                               </span>
                             )}
                           </div>
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
-                              fin.status,
-                            )}`}
-                          >
-                            {fin.status}
-                          </span>
                         </div>
                       ))}
                     </div>

@@ -572,6 +572,32 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {user?.role === "demo" && (
+          <div className="w-full bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-700/50">
+            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2">
+              <svg
+                className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                />
+              </svg>
+              <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                <span className="font-bold">Mode Demo</span> — Anda dapat
+                menjelajahi semua fitur, namun perubahan data tidak akan
+                tersimpan.
+              </p>
+            </div>
+          </div>
+        )}
+
         <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 min-w-0">
           {children}
         </main>

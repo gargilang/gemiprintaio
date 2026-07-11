@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import { jadikanPenawaran } from "@/lib/services/keranjang-tersimpan-service";
 import { jadikanPenawaranInputSchema } from "@/lib/schemas/keranjang-tersimpan";
 
@@ -10,7 +14,7 @@ export async function POST(
 ) {
   const params = await context.params;
   try {
-    const session = await requireSession();
+    const session = await requireNotDemo(await requireSession());
     const body = await req.json();
     const parsed = jadikanPenawaranInputSchema.safeParse(body);
     if (!parsed.success) {

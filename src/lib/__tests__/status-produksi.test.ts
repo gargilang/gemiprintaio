@@ -68,6 +68,18 @@ describe("deriveOrderStatus", () => {
   it("semua SELESAI -> SELESAI", () => {
     expect(deriveOrderStatus(["SELESAI", "SELESAI"])).toBe("SELESAI");
   });
+  it("semua SIAP_AMBIL -> SIAP_AMBIL", () => {
+    expect(deriveOrderStatus(["SIAP_AMBIL", "SIAP_AMBIL"])).toBe("SIAP_AMBIL");
+  });
+  it("campur SIAP_AMBIL dan SELESAI -> SIAP_AMBIL (belum semua diambil)", () => {
+    expect(deriveOrderStatus(["SIAP_AMBIL", "SELESAI"])).toBe("SIAP_AMBIL");
+  });
+  it("SIAP_AMBIL dengan item DIBATALKAN diabaikan -> SIAP_AMBIL", () => {
+    expect(deriveOrderStatus(["SIAP_AMBIL", "DIBATALKAN"])).toBe("SIAP_AMBIL");
+  });
+  it("sebagian SIAP_AMBIL sebagian masih proses -> PROSES", () => {
+    expect(deriveOrderStatus(["SIAP_AMBIL", "PRINTING"])).toBe("PROSES");
+  });
   it("item DIBATALKAN diabaikan saat menilai selesai", () => {
     expect(deriveOrderStatus(["SELESAI", "DIBATALKAN"])).toBe("SELESAI");
   });
@@ -115,11 +127,9 @@ describe("SIAP_AMBIL per order", () => {
     expect(list[list.length - 2]).toBe("FINISHING"); // sebelum DIBATALKAN
   });
 
-  it("status produksi selesai maklon vs cetak", () => {
-    expect(statusProduksiSelesaiUntukItem({ is_maklon: false })).toBe("FINISHING");
-    expect(statusProduksiSelesaiUntukItem({ is_maklon: true })).toBe(
-      "DIKERJAKAN_VENDOR",
-    );
+  it("status produksi selesai (siap diambil) sama untuk cetak & maklon", () => {
+    expect(statusProduksiSelesaiUntukItem({ is_maklon: false })).toBe("SIAP_AMBIL");
+    expect(statusProduksiSelesaiUntukItem({ is_maklon: true })).toBe("SIAP_AMBIL");
   });
 
   it("adalahStatusProduksiSelesai untuk cetak dan maklon", () => {

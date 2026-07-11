@@ -3,8 +3,12 @@
  *
  * Setelah checkout, baris maklon tanpa vendor/biaya disimpan pending
  * (pending_vendor_hpp=1). Staf+ dapat mengisi vendor + biaya + metode bayar
- * lewat queue "Pending Vendor/HPP": recompute HPP, post keuangan [REF:itemId],
- * buat PO maklon, lalu set pending_vendor_hpp=0.
+ * lewat queue "Pending Vendor/HPP": recompute HPP di item, buat PO maklon
+ * (yang mencatat biaya ke keuangan/hutang), lalu set pending_vendor_hpp=0.
+ *
+ * PENTING: reconcile TIDAK memposting HPP ke keuangan sendiri — biaya
+ * subkontrak dicatat sekali saja lewat createMaklonPurchase agar saldo kas
+ * tidak terpotong dua kali.
  */
 
 import { resetMockDb, mockTable } from "./helpers/mock-db";
@@ -53,7 +57,7 @@ beforeEach(() => {
 });
 
 describe("reconcilePendingMaklonItem", () => {
-  it("update vendor+biaya, set pending_vendor_hpp=0, recompute HPP, post keuangan [REF], create PO", async () => {
+  it("update vendor+biaya, set pending_vendor_hpp=0, recompute HPP, create PO (tanpa post HPP keuangan)", async () => {
     mockTable("item_penjualan").set("it-1", {
       id: "it-1",
       penjualan_id: "s1",
@@ -88,10 +92,12 @@ describe("reconcilePendingMaklonItem", () => {
     expect(updated.metode_bayar_vendor).toBe("CASH");
     expect(Number(updated.gross_profit)).toBe(20000);
 
+    // Reconcile TIDAK memposting HPP ke keuangan sendiri (mencegah double
+    // deduction). Biaya subkontrak dicatat lewat createMaklonPurchase.
     const keuanganRows = Array.from(mockTable("keuangan").values());
     expect(
       keuanganRows.some((k) => (k.keperluan || "").includes("[REF:it-1]")),
-    ).toBe(true);
+    ).toBe(false);
     expect(createMaklonPurchaseMock).toHaveBeenCalledTimes(1);
     const poArg = createMaklonPurchaseMock.mock.calls[0][0];
     expect(poArg.vendorId).toBe("v1");

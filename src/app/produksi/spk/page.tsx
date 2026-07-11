@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ToastNotifikasi, {
   NotificationToastProps,
@@ -80,6 +80,10 @@ export default function ProductionPage() {
   const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(
     null,
   );
+  const selectedOrderRef = useRef<ProductionOrder | null>(null);
+  useEffect(() => {
+    selectedOrderRef.current = selectedOrder;
+  });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
   const [rollVariantsByItem, setRollVariantsByItem] = useState<
@@ -191,29 +195,27 @@ export default function ProductionPage() {
     return filtered;
   }, [visibleOrders, filterStatus, filterPriority, searchQuery]);
 
-  const loadOrders = async () => {
-    try {
-      await mutateOrders();
-    } catch (error) {
-      console.error("Error loading production orders:", error);
-      showMsg("error", "Gagal memuat data produksi");
-    }
-  };
-
   const showMsg = (type: "success" | "error", message: string) => {
     setNotice({ type, message });
     setTimeout(() => setNotice(null), 3000);
   };
 
-  // Segarkan order yang sedang dibuka di modal agar state-nya ikut update
-  // tanpa perlu menutup dan membuka ulang modal.
-  const refreshSelectedOrder = async () => {
-    if (!selectedOrder) return;
-    const refreshed = await getProductionOrdersAction();
-    const next = (refreshed as ProductionOrder[]).find(
-      (order) => order.id === selectedOrder.id,
-    );
-    if (next) setSelectedOrder(next);
+  // Fetch ulang semua order, lalu sync selectedOrder dari hasil terbaru.
+  // Pakai ref agar ID order yang sedang dibuka tidak stale di closure.
+  const reloadOrders = async () => {
+    try {
+      const refreshed = await mutateOrders();
+      const currentId = selectedOrderRef.current?.id;
+      if (currentId) {
+        const next = (refreshed as ProductionOrder[] | undefined)?.find(
+          (o) => o.id === currentId,
+        );
+        if (next) setSelectedOrder(next);
+      }
+    } catch (error) {
+      console.error("Error loading production orders:", error);
+      showMsg("error", "Gagal memuat data produksi");
+    }
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
@@ -247,8 +249,7 @@ export default function ProductionPage() {
         await updateProductionStatusAction(orderId, newStatus);
         showMsg("success", "Status berhasil diperbarui");
       }
-      await loadOrders();
-      await refreshSelectedOrder();
+      await reloadOrders();
     } catch (error) {
       console.error("Error updating status:", error);
       showMsg(
@@ -262,8 +263,7 @@ export default function ProductionPage() {
     try {
       await updateProductionItemStatusAction(itemId, { status: newStatus });
       showMsg("success", "Status item berhasil diperbarui");
-      await loadOrders();
-      await refreshSelectedOrder();
+      await reloadOrders();
     } catch (error) {
       console.error("Error updating item status:", error);
       showMsg("error", "Gagal memperbarui status item");
@@ -296,8 +296,7 @@ export default function ProductionPage() {
       // Sinkron dua arah: bust cache SPK + Riwayat Penjualan (sales ada di pos-init).
       invalidate("production-orders");
       invalidate("pos-init");
-      await loadOrders();
-      await refreshSelectedOrder();
+      await reloadOrders();
     } catch (error) {
       console.error("Error saving customer name:", error);
       showMsg("error", "Gagal menyimpan nama pelanggan");
@@ -340,8 +339,7 @@ export default function ProductionPage() {
         catatan: draft.catatan,
       });
       showMsg("success", "Konsumsi bahan produksi berhasil diposting");
-      await loadOrders();
-      await refreshSelectedOrder();
+      await reloadOrders();
     } catch (error: any) {
       console.error("Error posting consumption:", error);
       showMsg("error", error?.message || "Gagal posting konsumsi bahan");
@@ -357,8 +355,7 @@ export default function ProductionPage() {
         currentUser?.id || null,
       );
       showMsg("success", "Konsumsi bahan dibatalkan");
-      await loadOrders();
-      await refreshSelectedOrder();
+      await reloadOrders();
     } catch (error: any) {
       console.error("Error voiding consumption:", error);
       showMsg("error", error?.message || "Gagal membatalkan konsumsi bahan");
@@ -593,7 +590,7 @@ export default function ProductionPage() {
 
           {/* Refresh Button */}
           <button
-            onClick={loadOrders}
+            onClick={reloadOrders}
             className="px-4 py-2.5 bg-gradient-to-r from-amber-700 to-amber-900 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
           >
             <svg

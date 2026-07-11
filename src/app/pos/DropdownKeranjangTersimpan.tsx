@@ -108,7 +108,7 @@ export default function DropdownKeranjangTersimpan({
                       onLoad(p.id);
                       setOpen(false);
                     }}
-                    className="text-xs px-2 py-1 rounded bg-indigo-600 text-white font-semibold"
+                    className="text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold cursor-pointer transition-colors"
                   >
                     Muat
                   </button>
@@ -118,7 +118,7 @@ export default function DropdownKeranjangTersimpan({
                       onJadikanPenawaran(p.id);
                       setOpen(false);
                     }}
-                    className="text-xs px-2 py-1 rounded bg-purple-600 text-white font-semibold"
+                    className="text-xs px-2 py-1 rounded bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold cursor-pointer transition-colors"
                   >
                     Jadikan Penawaran
                   </button>
@@ -128,7 +128,7 @@ export default function DropdownKeranjangTersimpan({
                       onDelete(p.id);
                       setOpen(false);
                     }}
-                    className="text-xs px-2 py-1 rounded bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-semibold"
+                    className="text-xs px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 dark:hover:bg-rose-900/60 active:bg-rose-300 dark:active:bg-rose-900/80 text-rose-700 dark:text-rose-300 font-semibold cursor-pointer transition-colors"
                     aria-label="Hapus"
                   >
                     Hapus
@@ -148,7 +148,7 @@ export default function DropdownKeranjangTersimpan({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold cursor-pointer"
         title="Keranjang tersimpan"
         aria-expanded={open}
       >

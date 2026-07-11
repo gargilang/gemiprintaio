@@ -4,7 +4,8 @@ export type UserRole =
   | "staff"
   | "kasir"
   | "operator"
-  | "user";
+  | "user"
+  | "demo";
 
 // Indonesian Types
 export type TipePelanggan = "perorangan" | "perusahaan";
@@ -352,7 +353,7 @@ export interface StockOpname {
 export function formatNsfp(
   kodeTransaksi: string | null | undefined,
   tahun: string | null | undefined,
-  nomorSeri: string | null | undefined
+  nomorSeri: string | null | undefined,
 ): string {
   if (!kodeTransaksi || !tahun || !nomorSeri) return "";
   const seri8 = String(nomorSeri).padStart(8, "0");

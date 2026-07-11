@@ -108,11 +108,16 @@ export function daftarStatusManualUntukItem(item: {
   );
 }
 
-/** Target status item saat SPK ditandai Siap Diambil. */
-export function statusProduksiSelesaiUntukItem(item: {
+/**
+ * Target status item saat SPK ditandai Siap Diambil.
+ * Item (cetak maupun maklon) langsung menjadi SIAP_AMBIL agar selaras dengan
+ * status order — item menampilkan badge read-only dan tidak bisa diklik lagi,
+ * sama seperti perilaku Selesai.
+ */
+export function statusProduksiSelesaiUntukItem(_item: {
   is_maklon?: boolean | null;
 }): string {
-  return item.is_maklon ? "DIKERJAKAN_VENDOR" : "FINISHING";
+  return "SIAP_AMBIL";
 }
 
 export function adalahStatusProduksiSelesai(
@@ -134,6 +139,7 @@ export function adalahStatusTerminal(kode: string): boolean {
  * Turunkan status order dari status semua itemnya.
  * - item DIBATALKAN diabaikan saat menilai selesai/jalan (bukan penghalang)
  * - semua non-batal SELESAI -> SELESAI
+ * - semua non-batal SIAP_AMBIL (boleh campur dengan SELESAI) -> SIAP_AMBIL
  * - tidak ada item non-batal -> DIBATALKAN
  * - ada minimal satu non-batal yang bergerak dari MENUNGGU -> PROSES
  * - selain itu -> MENUNGGU
@@ -143,6 +149,13 @@ export function deriveOrderStatus(statuses: string[]): OrderStatus {
   const nonBatal = statuses.filter((s) => s !== "DIBATALKAN");
   if (nonBatal.length === 0) return "DIBATALKAN";
   if (nonBatal.every((s) => s === "SELESAI")) return "SELESAI";
+  // Semua item sudah siap diambil (sebagian mungkin sudah SELESAI/diambil).
+  if (
+    nonBatal.every((s) => s === "SIAP_AMBIL" || s === "SELESAI") &&
+    nonBatal.some((s) => s === "SIAP_AMBIL")
+  ) {
+    return "SIAP_AMBIL";
+  }
   const adaBergerak = nonBatal.some((s) => s !== "MENUNGGU");
   return adaBergerak ? "PROSES" : "MENUNGGU";
 }

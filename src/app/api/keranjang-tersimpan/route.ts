@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import { parkCartInputSchema } from "@/lib/schemas/keranjang-tersimpan";
 import {
   listParkedCarts,
@@ -15,21 +19,24 @@ export async function GET() {
     console.error("Error fetching keranjang tersimpan:", error);
     return NextResponse.json(
       { error: error.message || "Gagal memuat keranjang tersimpan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireNotDemo(await requireSession());
     const body = await req.json();
 
     const parsed = parkCartInputSchema.passthrough().safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data keranjang tersimpan tidak valid", issues: parsed.error.issues },
-        { status: 422 }
+        {
+          error: "Data keranjang tersimpan tidak valid",
+          issues: parsed.error.issues,
+        },
+        { status: 422 },
       );
     }
 
@@ -40,16 +47,19 @@ export async function POST(req: NextRequest) {
         message: "Keranjang berhasil diparkir",
         keranjang_tersimpan: created,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("Error parking cart:", error);
     return NextResponse.json(
       { error: error.message || "Gagal memarkir keranjang" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

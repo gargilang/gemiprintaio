@@ -328,7 +328,7 @@ export default function KeranjangPOS({
                 type="button"
                 onClick={onParkClick}
                 disabled={cart.length === 0}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 title="Simpan keranjang"
               >
                 <svg
@@ -705,7 +705,7 @@ export default function KeranjangPOS({
                 const current = parseFloat(jumlahBayar) || 0;
                 onJumlahBayarChange(String(current + amount));
               }}
-              className="px-1 py-1 bg-white dark:bg-slate-900 hover:bg-gray-100 text-gray-700 dark:text-slate-300 rounded border border-gray-200 dark:border-slate-800 text-xs font-semibold transition-all"
+              className="px-1 py-1 bg-white dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded border border-gray-200 dark:border-slate-800 text-xs font-semibold transition-all cursor-pointer"
             >
               {amount >= 1000 ? `${amount / 1000}rb` : amount}
             </button>

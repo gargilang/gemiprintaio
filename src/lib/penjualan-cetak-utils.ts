@@ -2,7 +2,7 @@
  * Helper qty/satuan untuk cetak faktur, struk penjualan, dan SPK.
  *
  * Barang berdimensi:
- * - UKURAN = panjang × lebar (meter) sesuai input
+ * - UKURAN = lebar × panjang (meter) sesuai konvensi aplikasi
  * - QTY = jumlah lembar/banner yang dicetak (bukan total m²)
  */
 
@@ -35,7 +35,7 @@ function formatUkuranPerPcs(
   if (!p || !l) return "";
   const fmt = (n: number) =>
     Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
-  return `${fmt(p)} × ${fmt(l)} m`;
+  return `${fmt(l)} × ${fmt(p)} m`;
 }
 
 function formatAngkaQty(qty: number): string {

@@ -5,7 +5,11 @@ import {
   stopAutoSync,
   getSyncStatus,
 } from "@/lib/services/sync-operations-service";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 
 /**
  * Auto-Sync Control API
@@ -15,7 +19,7 @@ import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const { action, intervalMinutes } = await request.json();
 
     switch (action) {
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json(
           { success: false, error: "Invalid action. Use: start or stop" },
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error: unknown) {

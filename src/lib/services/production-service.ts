@@ -275,7 +275,13 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
       return {
         ...order,
         nomor_faktur: penjualan?.nomor_faktur || undefined,
-        pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
+        // Nama pelanggan: pelanggan terdaftar > nama bebas (snapshot Pelanggan
+        // Umum yang di-override inline) > snapshot lama di kolom order.
+        pelanggan_nama:
+          pelanggan?.nama ||
+          (penjualan as any)?.pelanggan_nama_snapshot ||
+          order.pelanggan_nama ||
+          undefined,
         penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
         items: itemsWithFinishing,
       };
@@ -427,7 +433,13 @@ export async function getProductionOrderById(
     return {
       ...order,
       nomor_faktur: penjualan?.nomor_faktur || undefined,
-      pelanggan_nama: pelanggan?.nama || order.pelanggan_nama || undefined,
+      // Nama pelanggan: pelanggan terdaftar > nama bebas (snapshot Pelanggan
+      // Umum yang di-override inline) > snapshot lama di kolom order.
+      pelanggan_nama:
+        pelanggan?.nama ||
+        (penjualan as any)?.pelanggan_nama_snapshot ||
+        order.pelanggan_nama ||
+        undefined,
       penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
       items: itemsWithFinishing,
     };
@@ -1063,6 +1075,7 @@ export async function updateProductionItemStatus(
       | "FINISHING"
       | "DIKERJAKAN_VENDOR"
       | "SEDANG_DIAMBIL"
+      | "SIAP_AMBIL"
       | "SELESAI";
     operator_id?: string;
   },
@@ -1108,8 +1121,9 @@ export async function updateProductionItemStatus(
       }
     }
 
-    // Set selesai_proses when SELESAI
-    if (data.status === "SELESAI") {
+    // Guard roll PENDING pada transisi "produksi selesai" (SIAP_AMBIL & SELESAI):
+    // roll aktual harus dikonfirmasi dulu sebelum item boleh siap diambil/selesai.
+    if (data.status === "SIAP_AMBIL" || data.status === "SELESAI") {
       const itemResult = await db.queryOne<any>("item_produksi", {
         where: { id: itemId },
       });
@@ -1128,10 +1142,14 @@ export async function updateProductionItemStatus(
         );
         if (!hasPosted) {
           throw new Error(
-            "Konfirmasi roll aktual dulu sebelum menandai item produksi selesai.",
+            "Konfirmasi roll aktual dulu sebelum menandai item produksi siap diambil.",
           );
         }
       }
+    }
+
+    // Set selesai_proses when SELESAI
+    if (data.status === "SELESAI") {
       updateData.selesai_proses = new Date().toISOString();
     }
 
@@ -1218,10 +1236,7 @@ export async function setOrderStatusSiapDiambilCascade(
     try {
       const targetStatus = statusProduksiSelesaiUntukItem(item);
       await updateProductionItemStatus(item.id, {
-        status: targetStatus as
-          | "FINISHING"
-          | "DIKERJAKAN_VENDOR"
-          | "SEDANG_DIAMBIL",
+        status: targetStatus as "SIAP_AMBIL",
       });
       selesai.push(item.id);
     } catch {

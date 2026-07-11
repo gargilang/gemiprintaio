@@ -666,6 +666,15 @@ export default function POSPage() {
     // Branch Katalog Extra: tetap CartItem MAKLON untuk alur vendor/biaya
     // subkontrak, tetapi finishing dari form tetap ikut disimpan.
     if (selectedMaterial._isKatalogMaklon) {
+      // Isi detail subkontrak dari template katalog extra bila lengkap
+      // (vendor + biaya > 0) supaya item tidak masuk pending. Bisa direview /
+      // diubah lewat Rincian Internal sebelum bayar. Template kosong tetap
+      // pending sebagai safeguard (HPP belum ditentukan).
+      const vendorDefault = selectedMaterial._vendorSubkontrakIdDefault;
+      const biayaDefault = selectedMaterial._biayaSubkontrakDefault;
+      const metodeDefault = selectedMaterial._metodeBayarVendorDefault;
+      const templateLengkap =
+        !!vendorDefault && !!biayaDefault && Number(biayaDefault) > 0;
       return {
         barang_id: ID_BARANG_PLACEHOLDER_MAKLON,
         barang_nama: selectedMaterial.nama,
@@ -686,6 +695,13 @@ export default function POSPage() {
         tipe_item: "MAKLON",
         katalog_maklon_id: selectedMaterial._katalogMaklonId,
         deskripsi_pekerjaan: selectedMaterial.nama,
+        ...(templateLengkap
+          ? {
+              vendor_subkontrak_id: vendorDefault ?? undefined,
+              biaya_subkontrak: Number(biayaDefault),
+              metode_bayar_vendor: metodeDefault ?? "CASH",
+            }
+          : {}),
       };
     }
 
@@ -720,8 +736,9 @@ export default function POSPage() {
     (produk: ProdukJualFlat) => {
       if (produk.sumber === "KATALOG_MAKLON") {
         // Set virtual material + unit supaya form Pilih Barang muncul.
-        // Vendor/biaya/metode di-isi default dari katalog; bisa diedit via
-        // Rincian Internal setelah masuk keranjang (handleEditCartItem).
+        // Vendor/biaya/metode default dari template dibawa ke selectedMaterial,
+        // lalu diisi ke keranjang oleh buildCartItem bila template lengkap;
+        // bisa diubah via Rincian Internal setelah masuk keranjang.
         setSelectedMaterial({
           id: ID_BARANG_PLACEHOLDER_MAKLON,
           nama: produk.barang_nama ?? produk.nama,
@@ -729,6 +746,9 @@ export default function POSPage() {
           frekuensi_terjual: 0,
           _isKatalogMaklon: true,
           _katalogMaklonId: produk.katalog_maklon_id,
+          _vendorSubkontrakIdDefault: produk.vendor_subkontrak_id_default ?? null,
+          _biayaSubkontrakDefault: produk.biaya_subkontrak_default ?? null,
+          _metodeBayarVendorDefault: produk.metode_bayar_vendor_default ?? null,
           unit_prices: [],
         });
         setSelectedUnit({
@@ -794,7 +814,8 @@ export default function POSPage() {
       return;
     }
     // Katalog extra (C3): edit qty/harga/biaya tambahan lewat form Pilih Barang.
-    // Vendor/biaya/metode tetap lewat Rincian Internal (tombol terpisah di cart).
+    // Detail subkontrak (vendor/biaya/metode) diisi otomatis dari template dan
+    // dipertahankan saat edit; masih bisa diubah lewat Rincian Internal.
     if (item.tipe_item === "MAKLON" && item.katalog_maklon_id) {
       const km = katalogMaklon.find((k) => k.id === item.katalog_maklon_id);
       setSelectedMaterial({
@@ -804,6 +825,15 @@ export default function POSPage() {
         frekuensi_terjual: 0,
         _isKatalogMaklon: true,
         _katalogMaklonId: item.katalog_maklon_id,
+        // Pertahankan detail subkontrak yang sudah ada di baris keranjang
+        // (dari template atau Rincian Internal) supaya tidak hilang saat
+        // qty/harga diedit lewat form; fallback ke default template.
+        _vendorSubkontrakIdDefault:
+          item.vendor_subkontrak_id ?? km?.vendor_subkontrak_id_default ?? null,
+        _biayaSubkontrakDefault:
+          item.biaya_subkontrak ?? km?.biaya_subkontrak_default ?? null,
+        _metodeBayarVendorDefault:
+          item.metode_bayar_vendor ?? km?.metode_bayar_vendor_default ?? null,
         unit_prices: [],
       });
       setSelectedUnit({
@@ -1048,7 +1078,25 @@ export default function POSPage() {
     const p = await loadParkedCartAction(id);
     if (!p) return;
     setCart(p.cart_snapshot as CartItem[]);
-    setPencarianPelanggan(p.pelanggan_nama_snapshot || "");
+    // Restore pelanggan: jika ada pelanggan_id, cari dari daftar customers;
+    // jika hanya nama teks (pelanggan umum), restore ke fakturUmum.
+    if (p.pelanggan_id) {
+      const found = customers.find((c) => c.id === p.pelanggan_id) ?? null;
+      setSelectedPelanggan(found);
+      setPencarianPelanggan(found?.nama || p.pelanggan_nama_snapshot || "");
+      setFakturUmum(null);
+    } else if (p.pelanggan_nama_snapshot) {
+      setSelectedPelanggan(null);
+      setPencarianPelanggan(p.pelanggan_nama_snapshot);
+      setFakturUmum({
+        nama: p.pelanggan_nama_snapshot,
+        kota: p.pelanggan_kota || "Bekasi",
+      });
+    } else {
+      setSelectedPelanggan(null);
+      setPencarianPelanggan("");
+      setFakturUmum(null);
+    }
     setPrioritas(p.prioritas);
     setPpnFaktur((p.ppn_snapshot as PpnFakturData | null) ?? null);
     setLoadedParkedId(id);

@@ -2393,7 +2393,7 @@ CREATE TABLE IF NOT EXISTS "public"."profil" (
     "is_deleted" boolean DEFAULT false,
     "deleted_at" timestamp with time zone,
     "client_mutation_id" "text",
-    CONSTRAINT "profil_role_check" CHECK (("role" = ANY (ARRAY['admin'::"text", 'manager'::"text", 'staff'::"text", 'kasir'::"text", 'operator'::"text", 'user'::"text"]))),
+    CONSTRAINT "profil_role_check" CHECK (("role" = ANY (ARRAY['admin'::"text", 'manager'::"text", 'staff'::"text", 'kasir'::"text", 'operator'::"text", 'user'::"text", 'demo'::"text"])))
     CONSTRAINT "profil_sync_status_check" CHECK (("sync_status" = ANY (ARRAY['pending'::"text", 'synced'::"text", 'conflict'::"text"])))
 );
 

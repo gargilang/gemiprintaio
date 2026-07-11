@@ -31,11 +31,14 @@ export async function POST(request: NextRequest) {
   if (!session?.uid) {
     return apiError("Unauthorized", 401);
   }
+  if (session.role === "demo") {
+    return apiError("Akun demo tidak dapat melakukan perubahan data", 403);
+  }
 
   const limited = await limitOrPass(
     offlineQueueLimiter,
     request,
-    "offline-queue"
+    "offline-queue",
   );
   if (!limited.ok) {
     return apiError("Too many requests", 429);
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
           "[offline-queue] blocked sensitive table:",
           table,
           "uid:",
-          session.uid
+          session.uid,
         );
       }
       failed++;

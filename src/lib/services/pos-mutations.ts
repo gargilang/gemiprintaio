@@ -649,7 +649,13 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         const grossProfit = item.subtotal - hppTotal;
         const grossMargin =
           item.subtotal > 0 ? (grossProfit / item.subtotal) * 100 : 0;
-        totalHpp += hppTotal;
+        // HPP baris maklon TIDAK dimasukkan ke agregat kas "HPP" — biaya
+        // subkontrak dicatat sekali saja via createMaklonPurchase (baris
+        // "MAKLON"/hutang vendor). Memasukkannya di sini menyebabkan saldo
+        // terpotong dua kali. hpp_total per item tetap disimpan (untuk margin).
+        if (!isMaklon) {
+          totalHpp += hppTotal;
+        }
 
         // Per-line PPN breakdown (kalau header kena_ppn=1)
         const lineBreakdown =
@@ -907,7 +913,8 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         id: orderId,
         penjualan_id: saleId,
         nomor_spk: spkNumber,
-        pelanggan_nama: customerResult.data?.nama || null,
+        pelanggan_nama:
+          customerResult.data?.nama || data.pelanggan_nama_snapshot || null,
         total_item: data.items.length,
         status: "MENUNGGU" as const,
         prioritas: data.prioritas || ("NORMAL" as const),

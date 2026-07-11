@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import {
   createProductionOrder,
   getProductionOrders,
@@ -14,14 +18,14 @@ export async function GET() {
     console.error("Error fetching production orders:", error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const body = await request.json();
     const {
       penjualan_id,
@@ -35,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!penjualan_id || !items || items.length === 0) {
       return NextResponse.json(
         { success: false, error: "Data tidak lengkap" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -56,12 +60,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status },
+      );
     }
     console.error("Error creating production order:", error);
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

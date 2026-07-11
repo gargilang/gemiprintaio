@@ -9,11 +9,15 @@ import {
 } from "@/lib/services/sync-operations-service";
 import { apiError } from "@/lib/api-error";
 import { limitOrPass, syncApiLimiter } from "@/lib/rate-limit";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const limited = await limitOrPass(syncApiLimiter, request, "sync-post");
     if (!limited.ok) {
       return apiError("Too many requests", 429);
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
             error:
               "Invalid action. Use: push, pull, sync-cycle, stats, metrics, or process-queue",
           },
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error: unknown) {

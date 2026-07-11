@@ -8,6 +8,7 @@ describe("ModalTambahItemLainnya", () => {
       <ModalTambahItemLainnya
         open
         subkontraktor={[]}
+        kategoriOptions={[]}
         onClose={jest.fn()}
         onSave={onSave}
       />,

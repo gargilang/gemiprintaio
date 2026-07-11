@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import { createSale, getSales } from "@/lib/services/pos-service";
 import { createSaleSchema } from "@/lib/schemas/pos";
 import { log } from "@/lib/log";
@@ -22,7 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const body = await request.json();
 
     const parsed = createSaleSchema.safeParse(body);

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireSession, AuthGuardError } from "@/lib/auth-guard-server";
+import {
+  requireSession,
+  requireNotDemo,
+  AuthGuardError,
+} from "@/lib/auth-guard-server";
 import { rowExistsEq, vendorHasPembelian } from "@/lib/duplicate-check";
 import {
   createVendor,
@@ -18,14 +22,14 @@ export async function GET() {
     console.error("Error fetching vendor:", error);
     return NextResponse.json(
       { error: error.message || "Failed to fetch vendor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await requireSession();
+    await requireNotDemo(await requireSession());
     const body = await req.json();
     const {
       nama_perusahaan,
@@ -42,19 +46,19 @@ export async function POST(req: NextRequest) {
     if (!nama_perusahaan || !nama_perusahaan.trim()) {
       return NextResponse.json(
         { error: "Nama perusahaan harus diisi" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const dup = await rowExistsEq(
       "vendor",
       "nama_perusahaan",
-      nama_perusahaan.trim()
+      nama_perusahaan.trim(),
     );
     if (dup) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest) {
     if (!created?.id) {
       return NextResponse.json(
         { error: "Gagal membuat vendor" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -84,18 +88,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ vendor }, { status: 201 });
   } catch (error: any) {
     if (error instanceof AuthGuardError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
     console.error("Error creating vendor:", error);
     return NextResponse.json(
       { error: error.message || "Failed to create vendor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
+    await requireNotDemo(await requireSession());
     const body = await req.json();
     const {
       id,
@@ -116,7 +124,7 @@ export async function PUT(req: NextRequest) {
     if (!nama_perusahaan || !nama_perusahaan.trim()) {
       return NextResponse.json(
         { error: "Nama perusahaan harus diisi" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -124,7 +132,7 @@ export async function PUT(req: NextRequest) {
     if (!existing) {
       return NextResponse.json(
         { error: "Vendor tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -132,12 +140,12 @@ export async function PUT(req: NextRequest) {
       "vendor",
       "nama_perusahaan",
       nama_perusahaan.trim(),
-      id
+      id,
     );
     if (dup) {
       return NextResponse.json(
         { error: "Vendor dengan nama perusahaan ini sudah ada" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -155,16 +163,23 @@ export async function PUT(req: NextRequest) {
     const updatedVendor = await getVendorById(id);
     return NextResponse.json({ vendor: updatedVendor });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("Error updating vendor:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update vendor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
+    await requireNotDemo(await requireSession());
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -176,7 +191,7 @@ export async function DELETE(req: NextRequest) {
     if (!existing) {
       return NextResponse.json(
         { error: "Vendor tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -187,17 +202,23 @@ export async function DELETE(req: NextRequest) {
           error:
             "Vendor tidak dapat dihapus karena sudah memiliki transaksi pembelian",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     await deleteVendor(id);
     return NextResponse.json({ message: "Vendor berhasil dihapus" });
   } catch (error: any) {
+    if (error instanceof AuthGuardError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     console.error("Error deleting vendor:", error);
     return NextResponse.json(
       { error: error.message || "Failed to delete vendor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

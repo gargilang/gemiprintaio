@@ -58,7 +58,7 @@ export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
 
 /** Ratakan link daun untuk pemeriksaan akses dan pencocokan route. */
 export function* iterateMenuLeaves(
-  entries: MenuEntry[]
+  entries: MenuEntry[],
 ): Generator<MenuItem, void, unknown> {
   for (const entry of entries) {
     if (isMenuGroup(entry)) {
@@ -72,10 +72,25 @@ export function* iterateMenuLeaves(
 }
 
 // Grup role praktis untuk aturan akses menu.
-const FULL_STAFF: UserRole[] = ["admin", "manager", "staff"];
-const OPERATIONAL: UserRole[] = ["admin", "manager", "staff", "kasir", "operator"];
-const FRONT_OF_HOUSE: UserRole[] = ["admin", "manager", "staff", "kasir"];
-const ADMIN_ONLY: UserRole[] = ["admin", "manager"];
+// "demo" disertakan di semua grup sehingga pengguna demo dapat melihat
+// seluruh menu (akses baca penuh), meskipun mutasi tetap diblokir di API.
+const FULL_STAFF: UserRole[] = ["admin", "manager", "staff", "demo"];
+const OPERATIONAL: UserRole[] = [
+  "admin",
+  "manager",
+  "staff",
+  "kasir",
+  "operator",
+  "demo",
+];
+const FRONT_OF_HOUSE: UserRole[] = [
+  "admin",
+  "manager",
+  "staff",
+  "kasir",
+  "demo",
+];
+const ADMIN_ONLY: UserRole[] = ["admin", "manager", "demo"];
 
 export const MENU_ENTRIES: MenuEntry[] = [
   {
@@ -372,11 +387,11 @@ function findMenuForPath(pathname: string): MenuItem | undefined {
  */
 export function canAccessPath(
   role: string | undefined | null,
-  pathname: string
+  pathname: string,
 ): boolean {
   if (!role) return false;
   const hiddenRoles = Object.entries(HIDDEN_ROUTE_ACCESS).find(
-    ([path]) => pathname === path || pathname.startsWith(path + "/")
+    ([path]) => pathname === path || pathname.startsWith(path + "/"),
   )?.[1];
   if (hiddenRoles) return hiddenRoles.includes(role as UserRole);
   const matched = findMenuForPath(pathname);

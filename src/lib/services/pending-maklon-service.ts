@@ -17,10 +17,9 @@
 import "server-only";
 
 import { z } from "zod";
-import { db, generateId, getCurrentTimestamp } from "@/lib/db-unified";
+import { db, getCurrentTimestamp } from "@/lib/db-unified";
 import { friendlyPgError } from "@/lib/pg-error";
 import { createMaklonPurchase } from "./purchases-service";
-import { resolveOpenPeriodeIdForKeuangan } from "./finance-service";
 import { isDateInClosedPeriod } from "./accounting-periods-service";
 
 export const reconcilePendingMaklonInputSchema = z.object({
@@ -161,37 +160,17 @@ export async function reconcilePendingMaklonItem(
     });
     if (upd.error) throw friendlyPgError(upd.error, "item_penjualan");
 
-    // Post HPP ke keuangan dengan token [REF:itemPenjualanId] (iron rule 4).
-    const periodeId = await resolveOpenPeriodeIdForKeuangan();
-    const maxOrderResult = await db.query<any>("keuangan", {
-      orderBy: { column: "urutan_tampilan", ascending: false },
-      limit: 1,
-    });
-    const nextOrder = (maxOrderResult.data?.[0]?.urutan_tampilan || 0) + 1;
-    const invoiceLabel = saleRow?.nomor_faktur || "";
-    const keperluan = `HPP Maklon ${invoiceLabel} [REF:${itemPenjualanId}]`;
-    const finResult = await db.insert("keuangan", {
-      id: generateId(),
-      tanggal: tanggalSale,
-      kategori_transaksi: "HPP_MAKLON",
-      debit: 0,
-      kredit: hppTotal,
-      keperluan,
-      omzet: 0,
-      biaya_bahan: hppTotal,
-      catatan: `Reconcile pending maklon ${invoiceLabel}`,
-      dibuat_oleh: data.dibuat_oleh || null,
-      urutan_tampilan: nextOrder,
-      reference_type: "MAKLON_HPP",
-      reference_id: itemPenjualanId,
-      periode_id: periodeId,
-    });
-    if (finResult.error) throw friendlyPgError(finResult.error, "keuangan");
+    // CATATAN: biaya subkontrak TIDAK diposting sebagai HPP ke keuangan di sini.
+    // Biaya dicatat sekali saja lewat createMaklonPurchase di bawah (baris
+    // "MAKLON" / hutang vendor). Memposting HPP di sini menyebabkan saldo kas
+    // terpotong dua kali untuk biaya subkontrak yang sama.
   });
 
   // Buat PO maklon di luar transaksi utama — createMaklonPurchase punya
-  // transaksi tersendiri (pola createSaleAttempt). Jika gagal, baris item
-  // sudah ter-reconcile; PO bisa dibuat ulang manual lewat UI pembelian.
+  // transaksi tersendiri (pola createSaleAttempt). Ini yang mencatat biaya
+  // subkontrak ke keuangan (CASH/TRANSFER) atau hutang vendor (NET30). Jika
+  // gagal, baris item sudah ter-reconcile; PO bisa dibuat ulang manual lewat
+  // UI pembelian.
   await createMaklonPurchase({
     saleId: cur.penjualan_id,
     saleInvoiceNumber: saleRow?.nomor_faktur || "",
