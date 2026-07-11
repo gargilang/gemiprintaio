@@ -759,12 +759,14 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         ((it as any).biaya_tambahan || []).map((b: any) => ({
           label: String(b.label || "").trim(),
           nominal: Number(b.nominal) || 0,
+          modal: Number(b.modal) || 0,
           item_index: i,
         })),
       );
       const flatBiaya = (data.biaya_tambahan || []).map((b: any) => ({
         label: String(b.label || "").trim(),
         nominal: Number(b.nominal) || 0,
+        modal: Number(b.modal) || 0,
       }));
       if (perItemBiaya.length > 0) {
         let urutan = 0;
@@ -778,6 +780,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             item_penjualan_id: itemId,
             label: b.label,
             nominal: b.nominal,
+            modal: Math.min(Number(b.modal) || 0, Number(b.nominal) || 0),
             urutan: urutan++,
           });
           if (r.error) throw r.error;
@@ -792,6 +795,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             item_penjualan_id: null,
             label: b.label,
             nominal: b.nominal,
+            modal: Math.min(Number(b.modal) || 0, Number(b.nominal) || 0),
             urutan: i,
           });
           if (r.error) throw r.error;
@@ -830,6 +834,38 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           catatan: data.catatan,
           dibuat_oleh: data.kasir_id,
           reference_type: "SALE_HPP",
+          reference_id: saleId,
+        });
+      }
+
+      // Porsi modal biaya tambahan = pengeluaran kas pihak ketiga. Dicatat
+      // sebagai kategori BIAYA dengan token [REF:saleId] (void otomatis).
+      // Selalu diposting saat transaksi dibuat (kas keluar riil), terlepas
+      // metode bayar penjualan. Tidak mengubah total tagihan pelanggan.
+      const totalModalBiaya = (() => {
+        const perItem = (data.items || []).flatMap(
+          (it: any) => it.biaya_tambahan || [],
+        );
+        const source = perItem.length > 0 ? perItem : data.biaya_tambahan || [];
+        return source.reduce((sum: number, b: any) => {
+          const label = String(b?.label || "").trim();
+          const nominal = Number(b?.nominal) || 0;
+          const modal = Number(b?.modal) || 0;
+          if (!label || nominal <= 0 || modal <= 0) return sum;
+          return sum + Math.min(modal, nominal);
+        }, 0);
+      })();
+      if (totalModalBiaya > 0) {
+        await createFinanceEntry({
+          tanggal: tanggalSale,
+          kategori_transaksi: "BIAYA",
+          debit: 0,
+          kredit: totalModalBiaya,
+          keperluan: `Biaya tambahan ${invoiceNumber} [REF:${saleId}]`,
+          omzet: 0,
+          catatan: data.catatan,
+          dibuat_oleh: data.kasir_id,
+          reference_type: "SALE_EXTRA_COST",
           reference_id: saleId,
         });
       }
