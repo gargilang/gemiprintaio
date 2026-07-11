@@ -1,6 +1,12 @@
 -- Seed placeholder barang/harga untuk baris maklon agar FK item_penjualan valid.
 -- Baris ini disembunyikan dari UI katalog barang oleh aplikasi.
 
+-- Pastikan kategori 'cat-lain-lain' ada sebelum barang di-insert (migrasi
+-- berjalan sebelum seed, jadi tidak bisa mengandalkan seed-default-values.sql).
+INSERT INTO public.kategori_barang (id, nama, butuh_spesifikasi_status, urutan_tampilan)
+VALUES ('cat-lain-lain', 'Lain-lain', 0, 8)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO public.barang (
   id,
   nama,

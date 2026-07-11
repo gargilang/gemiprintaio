@@ -197,7 +197,8 @@ INSERT INTO "public"."kategori_barang" ("id", "nama", "butuh_spesifikasi_status"
 	('cat-substrat-uv', 'Substrat UV', 0, 5, '2026-05-26 02:32:17.389231+00', '2026-05-26 02:32:17.389231+00', 'pending', NULL, 1, '2026-06-10 20:21:26.661382+00', 'server', 1, false, NULL, NULL),
 	('cat-tinta-consumables', 'Tinta & Consumables', 0, 6, '2026-05-26 02:32:17.389231+00', '2026-05-26 02:32:17.389231+00', 'pending', NULL, 1, '2026-06-10 20:21:26.661382+00', 'server', 1, false, NULL, NULL),
 	('cat-finishing', 'Finishing', 1, 7, '2026-05-26 02:32:17.389231+00', '2026-05-26 02:32:17.389231+00', 'pending', NULL, 1, '2026-06-10 20:21:26.661382+00', 'server', 1, false, NULL, NULL),
-	('cat-lain-lain', 'Lain-lain', 0, 8, '2026-05-26 02:32:17.389231+00', '2026-05-26 02:32:17.389231+00', 'pending', NULL, 1, '2026-06-10 20:21:26.661382+00', 'server', 1, false, NULL, NULL);
+	('cat-lain-lain', 'Lain-lain', 0, 8, '2026-05-26 02:32:17.389231+00', '2026-05-26 02:32:17.389231+00', 'pending', NULL, 1, '2026-06-10 20:21:26.661382+00', 'server', 1, false, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
 
 
 --
