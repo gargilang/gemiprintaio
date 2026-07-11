@@ -2,11 +2,12 @@
  * Service reconcile pending maklon (Safeguard C2 — Task 5).
  *
  * Baris maklon yang di-checkout tanpa vendor/biaya disimpan pending
- * (pending_vendor_hpp=1, HPP=0, tanpa PO maklon). Staf+ dapat mengisi
- * vendor + biaya + metode bayar lewat queue "Pending Vendor/HPP":
+ * (pending_vendor_hpp=1, HPP=0, tanpa PO maklon, tanpa item_produksi). Staf+
+ * dapat mengisi vendor + biaya + metode bayar lewat queue "Pending Vendor/HPP":
  *   - recompute hpp_satuan / hpp_total / gross_profit / gross_margin
- *   - post HPP ke keuangan dengan token [REF:itemPenjualanId]
- *   - buat PO maklon via createMaklonPurchase
+ *   - buat PO maklon via createMaklonPurchase (mencatat biaya ke keuangan/hutang)
+ *   - buat item_produksi (SPK) yang tadi di-skip -> muncul di detail & cetak SPK
+ *   - back-fill template katalog_maklon (vendor/biaya/metode/harga default)
  *   - set pending_vendor_hpp=0
  *
  * Iron rules yang ditegakkan: auth guard ada di lapisan action, Zod validasi,
@@ -21,6 +22,7 @@ import { db, getCurrentTimestamp } from "@/lib/db-unified";
 import { friendlyPgError } from "@/lib/pg-error";
 import { createMaklonPurchase } from "./purchases-service";
 import { isDateInClosedPeriod } from "./accounting-periods-service";
+import { createProductionItemForReconciledMaklon } from "./production-service";
 
 export const reconcilePendingMaklonInputSchema = z.object({
   vendor_subkontrak_id: z.string().min(1, "Vendor subkontrak wajib dipilih"),
@@ -164,6 +166,23 @@ export async function reconcilePendingMaklonItem(
     // Biaya dicatat sekali saja lewat createMaklonPurchase di bawah (baris
     // "MAKLON" / hutang vendor). Memposting HPP di sini menyebabkan saldo kas
     // terpotong dua kali untuk biaya subkontrak yang sama.
+
+    // Back-fill template Katalog Extra (katalog_maklon) dengan nilai yang baru
+    // diisi, supaya list Katalog Extra tidak lagi kosong dan penjualan berikut
+    // langsung memakai default ini (tidak perlu isi ulang / tidak pending lagi).
+    if (cur.katalog_maklon_id) {
+      const tplRes = await db.update(
+        "katalog_maklon",
+        String(cur.katalog_maklon_id),
+        {
+          vendor_subkontrak_id_default: data.vendor_subkontrak_id,
+          biaya_subkontrak_default: biaya,
+          metode_bayar_vendor_default: data.metode_bayar_vendor,
+          harga_jual_default: Number(cur.harga_satuan) || 0,
+        },
+      );
+      if (tplRes.error) throw friendlyPgError(tplRes.error, "katalog_maklon");
+    }
   });
 
   // Buat PO maklon di luar transaksi utama — createMaklonPurchase punya
@@ -186,4 +205,10 @@ export async function reconcilePendingMaklonItem(
       },
     ],
   });
+
+  // Buat item_produksi (SPK) yang tadi di-skip saat checkout, supaya baris ini
+  // muncul di detail & cetak SPK. Idempoten. Dilakukan di luar transaksi utama
+  // (mengikuti pola PO): jika gagal, item sudah ter-reconcile & PO sudah dibuat;
+  // item SPK bisa dibuat ulang lewat rekonsiliasi lagi tanpa efek dobel.
+  await createProductionItemForReconciledMaklon(itemPenjualanId);
 }

@@ -76,6 +76,20 @@ describe("reconcilePendingMaklonItem", () => {
       nomor_faktur: "INV-001",
       tanggal: "2026-07-07",
     });
+    // Template Katalog Extra (awalnya kosong) + SPK (order_produksi) penjualan.
+    mockTable("katalog_maklon").set("km-1", {
+      id: "km-1",
+      nama_produk: "Banner custom",
+      harga_jual_default: 0,
+      biaya_subkontrak_default: 0,
+      vendor_subkontrak_id_default: null,
+      metode_bayar_vendor_default: "CASH",
+    });
+    mockTable("order_produksi").set("op-1", {
+      id: "op-1",
+      penjualan_id: "s1",
+      status: "MENUNGGU",
+    });
 
     await reconcilePendingMaklonItem("it-1", {
       vendor_subkontrak_id: "v1",
@@ -103,6 +117,65 @@ describe("reconcilePendingMaklonItem", () => {
     expect(poArg.vendorId).toBe("v1");
     expect(poArg.metodeBayar).toBe("CASH");
     expect(poArg.items[0].biaya_subkontrak).toBe(30000);
+
+    // Bug B: template Katalog Extra ter-back-fill dengan nilai reconcile.
+    const tpl = mockTable("katalog_maklon").get("km-1");
+    expect(tpl.vendor_subkontrak_id_default).toBe("v1");
+    expect(Number(tpl.biaya_subkontrak_default)).toBe(30000);
+    expect(tpl.metode_bayar_vendor_default).toBe("CASH");
+    expect(Number(tpl.harga_jual_default)).toBe(50000);
+
+    // Bug A: item_produksi (SPK) yang tadi di-skip kini dibuat -> muncul di SPK.
+    const prodItems = Array.from(mockTable("item_produksi").values());
+    const created = prodItems.find((p) => p.item_penjualan_id === "it-1");
+    expect(created).toBeTruthy();
+    expect(created.order_produksi_id).toBe("op-1");
+    expect(created.barang_nama).toBe("[MAKLON] Banner custom");
+    expect(created.status).toBe("MENUNGGU");
+  });
+
+  it("idempoten: reconcile tidak membuat item_produksi dobel", async () => {
+    mockTable("item_penjualan").set("it-idem", {
+      id: "it-idem",
+      penjualan_id: "s-idem",
+      tipe_item: "MAKLON",
+      pending_vendor_hpp: 1,
+      katalog_maklon_id: null,
+      harga_satuan: 40000,
+      jumlah: 1,
+      subtotal: 40000,
+      deskripsi_pekerjaan: "Stiker",
+    });
+    mockTable("penjualan").set("s-idem", {
+      id: "s-idem",
+      nomor_faktur: "INV-IDEM",
+      tanggal: "2026-07-07",
+    });
+    mockTable("order_produksi").set("op-idem", {
+      id: "op-idem",
+      penjualan_id: "s-idem",
+      status: "MENUNGGU",
+    });
+    // Sudah ada item_produksi untuk item ini (mis. dibuat manual sebelumnya).
+    mockTable("item_produksi").set("ip-existing", {
+      id: "ip-existing",
+      order_produksi_id: "op-idem",
+      item_penjualan_id: "it-idem",
+      barang_nama: "[MAKLON] Stiker",
+      status: "MENUNGGU",
+    });
+
+    await reconcilePendingMaklonItem("it-idem", {
+      vendor_subkontrak_id: "v1",
+      biaya_subkontrak: 20000,
+      metode_bayar_vendor: "CASH",
+      dibuat_oleh: "u1",
+    });
+
+    const prodItems = Array.from(mockTable("item_produksi").values()).filter(
+      (p) => p.item_penjualan_id === "it-idem",
+    );
+    expect(prodItems).toHaveLength(1);
   });
 
   it("menolak reconcile saat tanggal sale di periode tertutup", async () => {

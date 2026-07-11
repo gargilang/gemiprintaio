@@ -1360,6 +1360,74 @@ export async function updateSaleCustomer(
 }
 
 /**
+ * Buat item_produksi (SPK) untuk sebuah baris item_penjualan maklon yang
+ * baru saja direkonsiliasi. Saat checkout, baris maklon pending (tanpa
+ * vendor/biaya) sengaja TIDAK dibuatkan item_produksi (lihat pos-mutations
+ * safeguard C2). Setelah direkonsiliasi, baris ini harus muncul di SPK
+ * (detail + cetak), jadi item_produksi-nya dibuat di sini.
+ *
+ * Idempoten: kalau item_produksi untuk item_penjualan ini sudah ada, tidak
+ * membuat duplikat. Mengembalikan id item_produksi (baru atau yang sudah ada),
+ * atau null bila SPK (order_produksi) untuk penjualan ini belum ada.
+ */
+export async function createProductionItemForReconciledMaklon(
+  itemPenjualanId: string,
+): Promise<string | null> {
+  const ipRes = await db.queryOne<any>("item_penjualan", {
+    where: { id: itemPenjualanId },
+  });
+  const ip = ipRes.data;
+  if (!ip) throw new Error("Item penjualan tidak ditemukan");
+
+  // Idempoten: jangan buat dobel bila sudah ada item_produksi.
+  const existing = await db.query<any>("item_produksi", {
+    where: { item_penjualan_id: itemPenjualanId },
+    limit: 1,
+  });
+  if ((existing.data || []).length > 0) {
+    return String(existing.data![0].id);
+  }
+
+  // Cari SPK (order_produksi) milik penjualan ini.
+  const orderRes = await db.queryOne<any>("order_produksi", {
+    where: { penjualan_id: ip.penjualan_id },
+  });
+  const order = orderRes.data;
+  if (!order) return null;
+
+  const deskripsi = String(ip.deskripsi_pekerjaan || "").trim();
+  const barangNama = deskripsi
+    ? `[MAKLON] ${deskripsi}`
+    : "[MAKLON] Pekerjaan subkontrak";
+
+  const itemProdId = generateId();
+  const productionItem = {
+    id: itemProdId,
+    order_produksi_id: order.id,
+    item_penjualan_id: ip.id,
+    barang_id: null, // maklon tidak mengacu ke barang katalog
+    barang_nama: barangNama,
+    jumlah: Number(ip.jumlah) || 1,
+    nama_satuan: ip.nama_satuan || "pcs",
+    panjang: ip.panjang ?? null,
+    lebar: ip.lebar ?? null,
+    billed_panjang: ip.billed_panjang ?? null,
+    billed_lebar: ip.billed_lebar ?? null,
+    recommended_roll_width_m: null,
+    roll_inventory_status: "NOT_REQUIRED" as const,
+    status: "MENUNGGU" as const,
+  };
+  const insRes = await db.insert("item_produksi", productionItem);
+  if (insRes.error) throw insRes.error;
+
+  // Hitung ulang status order dari item (item baru MENUNGGU tidak menurunkan
+  // status yang sudah lebih tinggi bila override manual; recompute aman).
+  await recomputeOrderStatusFromItems(order.id);
+
+  return itemProdId;
+}
+
+/**
  * Hapus order produksi (cascade delete item dan finishing)
  */
 export async function deleteProductionOrder(id: string): Promise<boolean> {
