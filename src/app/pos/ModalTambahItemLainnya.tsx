@@ -13,6 +13,8 @@ export interface TambahItemLainnyaValue {
   barang_nama: string;
   nama_satuan: string;
   harga_satuan: number;
+  /** 1 = harga per m² (lebar × panjang × jumlah). 0 = flat per satuan. */
+  butuh_dimensi_status: number;
   kategori_id?: string | null;
   kategori?: string | null;
   // Rincian Internal opsional. Kosong = item "pending" vendor/HPP (ditangani
@@ -52,6 +54,7 @@ export default function ModalTambahItemLainnya({
   const [namaItem, setNamaItem] = useState("");
   const [namaSatuan, setNamaSatuan] = useState("pcs");
   const [hargaJual, setHargaJual] = useState("");
+  const [berdimensi, setBerdimensi] = useState(false);
   const [kategoriId, setKategoriId] = useState<string | null>(null);
   const [kategoriNama, setKategoriNama] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export default function ModalTambahItemLainnya({
     setNamaItem("");
     setNamaSatuan("pcs");
     setHargaJual("");
+    setBerdimensi(false);
     setKategoriId(null);
     setKategoriNama(null);
     setVendorId(null);
@@ -107,8 +111,9 @@ export default function ModalTambahItemLainnya({
     try {
       await onSave({
         barang_nama: namaItem.trim(),
-        nama_satuan: namaSatuan,
+        nama_satuan: berdimensi ? "m²" : namaSatuan,
         harga_satuan: parsedHarga,
+        butuh_dimensi_status: berdimensi ? 1 : 0,
         kategori_id: kategoriId,
         kategori: kategoriNama,
         vendor_subkontrak_id: vendorId || null,
@@ -197,9 +202,10 @@ export default function ModalTambahItemLainnya({
           <label className="block text-sm">
             <span className="text-slate-700 dark:text-slate-200">Satuan</span>
             <select
-              value={namaSatuan}
+              value={berdimensi ? "m²" : namaSatuan}
               onChange={(e) => setNamaSatuan(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
+              disabled={berdimensi}
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {SATUAN_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -208,9 +214,26 @@ export default function ModalTambahItemLainnya({
               ))}
             </select>
           </label>
+          <label className="flex items-start gap-2 text-sm rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-900/10 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={berdimensi}
+              onChange={(e) => setBerdimensi(e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+            />
+            <span>
+              <span className="font-semibold text-emerald-800 dark:text-emerald-200 block">
+                Butuh dimensi (harga per m²)
+              </span>
+              <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                Harga dihitung dari lebar × panjang × jumlah. Satuan dikunci ke
+                m².
+              </span>
+            </span>
+          </label>
           <label className="block text-sm">
             <span className="text-slate-700 dark:text-slate-200">
-              Harga jual
+              {berdimensi ? "Harga jual per m²" : "Harga jual"}
             </span>
             <input
               type="number"

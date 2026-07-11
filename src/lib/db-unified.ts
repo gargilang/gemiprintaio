@@ -1741,6 +1741,12 @@ class UnifiedDatabase {
       if (!cols.includes("kategori_id")) {
         db.exec("ALTER TABLE katalog_maklon ADD COLUMN kategori_id TEXT");
       }
+      // Migrasi (20260712120000): maklon berdimensi (harga per m²).
+      if (!cols.includes("butuh_dimensi_status")) {
+        db.exec(
+          "ALTER TABLE katalog_maklon ADD COLUMN butuh_dimensi_status INTEGER NOT NULL DEFAULT 0",
+        );
+      }
       // Migrasi data free-text kategori -> kategori_id (selaras dengan migrasi Supabase).
       // Idempoten: hanya isi jika kategori_id masih NULL dan kategori cocok nama kategori_barang.
       try {
@@ -2157,6 +2163,7 @@ class UnifiedDatabase {
         kategori TEXT,
         kategori_id TEXT,
         populer_status INTEGER NOT NULL DEFAULT 0,
+        butuh_dimensi_status INTEGER NOT NULL DEFAULT 0,
         catatan_internal TEXT,
         is_aktif INTEGER NOT NULL DEFAULT 1,
         urutan INTEGER NOT NULL DEFAULT 0,

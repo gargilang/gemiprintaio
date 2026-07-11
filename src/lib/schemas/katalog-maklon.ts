@@ -12,6 +12,8 @@ export const katalogMaklonInputSchema = z.object({
   kategori: z.string().nullable().optional(),
   kategori_id: z.string().nullable().optional(),
   populer_status: z.coerce.number().int().min(0).max(1).default(0),
+  // 1 = harga dihitung per m² (lebar × panjang × jumlah). 0 = flat per satuan.
+  butuh_dimensi_status: z.coerce.number().int().min(0).max(1).default(0),
   catatan_internal: z.string().nullable().optional(),
   is_aktif: z.coerce.number().int().min(0).max(1).default(1),
   urutan: z.coerce.number().int().min(0).default(0),

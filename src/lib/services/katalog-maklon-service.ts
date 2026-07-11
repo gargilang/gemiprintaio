@@ -18,6 +18,7 @@ export interface KatalogMaklon {
   kategori_id: string | null; // FK ke kategori_barang
   kategori_nama?: string | null; // dari join, untuk POS/modal
   populer_status: number; // 0/1 manual override (C5)
+  butuh_dimensi_status: number; // 0/1: harga per m² (lebar × panjang × jumlah)
   catatan_internal: string | null;
   is_aktif: number;
   urutan: number;
@@ -94,6 +95,7 @@ export async function createKatalogMaklon(
     kategori: data.kategori || null,
     kategori_id: data.kategori_id || null,
     populer_status: data.populer_status,
+    butuh_dimensi_status: data.butuh_dimensi_status,
     catatan_internal: data.catatan_internal || null,
     is_aktif: data.is_aktif,
     urutan: data.urutan,
@@ -131,6 +133,7 @@ export async function updateKatalogMaklon(
     kategori: data.kategori || null,
     kategori_id: data.kategori_id || null,
     populer_status: data.populer_status,
+    butuh_dimensi_status: data.butuh_dimensi_status,
     catatan_internal: data.catatan_internal || null,
     is_aktif: data.is_aktif,
     urutan: data.urutan,

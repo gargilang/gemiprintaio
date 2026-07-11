@@ -391,6 +391,7 @@ CREATE TABLE katalog_maklon (
       kategori TEXT,
       kategori_id TEXT,
       populer_status INTEGER NOT NULL DEFAULT 0,
+      butuh_dimensi_status INTEGER NOT NULL DEFAULT 0,
       catatan_internal TEXT,
       is_aktif INTEGER NOT NULL DEFAULT 1,
       urutan INTEGER NOT NULL DEFAULT 0,

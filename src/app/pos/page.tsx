@@ -487,6 +487,7 @@ export default function POSPage() {
         harga_jual: k.harga_jual_default,
         harga_member: k.harga_jual_default,
         faktor_konversi: 1,
+        butuh_dimensi_status: k.butuh_dimensi_status,
         kategori_nama: k.kategori_nama ?? k.kategori ?? null, // join kategori_id (C6), fallback legacy
         sumber: "KATALOG_MAKLON",
         katalog_maklon_id: k.id,
@@ -699,6 +700,13 @@ export default function POSPage() {
         tipe_item: "MAKLON",
         katalog_maklon_id: selectedMaterial._katalogMaklonId,
         deskripsi_pekerjaan: selectedMaterial.nama,
+        // Maklon berdimensi: bawa panjang/lebar/jumlah_roll supaya kartu
+        // keranjang & struk menampilkan "N × L × P m = qty m² @ Rp harga".
+        // Tanpa pembulatan roll (versi sederhana).
+        butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
+        panjang: originalPanjang,
+        lebar: originalLebar,
+        jumlah_roll: jumlahRoll,
         ...(templateLengkap
           ? {
               vendor_subkontrak_id: vendorDefault ?? undefined,
@@ -746,7 +754,7 @@ export default function POSPage() {
         setSelectedMaterial({
           id: ID_BARANG_PLACEHOLDER_MAKLON,
           nama: produk.barang_nama ?? produk.nama,
-          butuh_dimensi_status: 0, // maklon tidak berdimensi
+          butuh_dimensi_status: produk.butuh_dimensi_status ?? 0,
           frekuensi_terjual: 0,
           _isKatalogMaklon: true,
           _katalogMaklonId: produk.katalog_maklon_id,
@@ -978,6 +986,7 @@ export default function POSPage() {
         kategori: v.kategori ?? null,
         kategori_id: v.kategori_id ?? null,
         populer_status: 0,
+        butuh_dimensi_status: v.butuh_dimensi_status ?? 0,
         is_aktif: 1,
         urutan: 0,
       });
@@ -2037,9 +2046,8 @@ export default function POSPage() {
                           )}
                         </div>
 
-                        {/* Dimensions for materials that need it — maklon tidak berdimensi */}
-                        {selectedMaterial.butuh_dimensi_status === 1 &&
-                          !selectedMaterial._isKatalogMaklon && (
+                        {/* Dimensi untuk barang/maklon yang butuh luas. */}
+                        {selectedMaterial.butuh_dimensi_status === 1 && (
                             <div className="space-y-2">
                               <label className="block text-sm font-semibold text-gray-600 dark:text-slate-300 mb-1.5">
                                 Ukuran (Lebar × Panjang, m)
@@ -2079,8 +2087,11 @@ export default function POSPage() {
                                 </div>
                               </div>
 
-                              {/* Roll billing — show when both dimensions have values */}
-                              {panjang && lebar && (
+                              {/* Pembulatan ukuran roll — hanya barang cetak,
+                                  bukan maklon (maklon: luas sederhana). */}
+                              {!selectedMaterial._isKatalogMaklon &&
+                                panjang &&
+                                lebar && (
                                 <div className="space-y-2">
                                   <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 cursor-pointer">
                                     <input

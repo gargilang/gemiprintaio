@@ -36,6 +36,7 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
       kategori: null,
       kategori_id: null,
       populer_status: 0,
+      butuh_dimensi_status: 0,
       catatan_internal: null,
       is_aktif: 1,
       urutan: 0,
@@ -51,6 +52,7 @@ function buildInitialForm(item: KatalogMaklon | null): FormState {
     kategori: item.kategori,
     kategori_id: item.kategori_id,
     populer_status: item.populer_status,
+    butuh_dimensi_status: item.butuh_dimensi_status,
     catatan_internal: item.catatan_internal,
     is_aktif: item.is_aktif,
     urutan: item.urutan,
@@ -71,6 +73,7 @@ export default function ModalKatalogMaklon({
   const isEdit = Boolean(item);
   const [form, setForm] = useState<FormState>(() => buildInitialForm(item));
   const [saving, setSaving] = useState(false);
+  const berdimensi = form.butuh_dimensi_status === 1;
 
   // Daftar kategori barang untuk dropdown (C6). SWR cache key stabil.
   const { data: kategoriBarang } = useCachedData<
@@ -100,7 +103,7 @@ export default function ModalKatalogMaklon({
       const payload: KatalogMaklonInput = {
         ...form,
         nama_produk: form.nama_produk.trim(),
-        nama_satuan: form.nama_satuan.trim() || "pcs",
+        nama_satuan: berdimensi ? "m²" : form.nama_satuan.trim() || "pcs",
         kategori: form.kategori?.trim() || null,
         catatan_internal: form.catatan_internal?.trim() || null,
         vendor_subkontrak_id_default: form.vendor_subkontrak_id_default || null,
@@ -219,13 +222,19 @@ export default function ModalKatalogMaklon({
             </label>
             <input
               type="text"
-              value={form.nama_satuan}
+              value={berdimensi ? "m²" : form.nama_satuan}
               onChange={(e) =>
                 setForm({ ...form, nama_satuan: e.target.value })
               }
+              disabled={berdimensi}
               placeholder="pcs, m², lembar"
-              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
             />
+            {berdimensi && (
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                Dikunci ke m² karena harga dihitung per luas.
+              </p>
+            )}
           </div>
 
           <div>
@@ -256,7 +265,7 @@ export default function ModalKatalogMaklon({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-              Harga Jual
+              {berdimensi ? "Harga Jual per m²" : "Harga Jual"}
             </label>
             <input
               type="number"
@@ -272,7 +281,9 @@ export default function ModalKatalogMaklon({
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-              Harga jual ke pelanggan, per satuan di atas.
+              {berdimensi
+                ? "Harga jual ke pelanggan per m² (dikali lebar × panjang × jumlah)."
+                : "Harga jual ke pelanggan, per satuan di atas."}
             </p>
           </div>
 
@@ -368,6 +379,37 @@ export default function ModalKatalogMaklon({
               rows={2}
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-slate-800 rounded-lg border-2 border-emerald-200 dark:border-slate-700">
+              <input
+                type="checkbox"
+                id="butuh_dimensi_status"
+                checked={berdimensi}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    butuh_dimensi_status: e.target.checked ? 1 : 0,
+                    // Kunci satuan ke m² saat dimensi aktif.
+                    nama_satuan: e.target.checked ? "m²" : form.nama_satuan,
+                  })
+                }
+                className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <label
+                htmlFor="butuh_dimensi_status"
+                className="flex-1 text-sm cursor-pointer"
+              >
+                <span className="font-semibold text-emerald-900 dark:text-emerald-200 block">
+                  Butuh dimensi (harga per m²)
+                </span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                  Harga dihitung dari lebar × panjang × jumlah, seperti barang
+                  cetak di Data Barang. Satuan dikunci ke m².
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="md:col-span-2">
