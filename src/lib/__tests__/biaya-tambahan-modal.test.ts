@@ -56,6 +56,7 @@ jest.mock("@/lib/services/finance-service", () => ({
 }));
 
 import { createSale } from "../services/pos-service";
+import { voidSale } from "../services/pos-mutations";
 
 beforeEach(() => resetMockDb());
 
@@ -171,5 +172,27 @@ describe("biaya tambahan modal -> margin item", () => {
     expect(hppRow).toBeFalsy();
     const biayaRow = keu.find((k) => k.kategori_transaksi === "BIAYA");
     expect(Number(biayaRow.kredit)).toBe(15000);
+  });
+});
+
+describe("void -> baris BIAYA modal ikut ter-void", () => {
+  it("menandai VOIDED baris keuangan SALE_EXTRA_COST", async () => {
+    mockTable("pelanggan").set("p1", { id: "p1", nama: "Walk-in" });
+    mockTable("barang").set("b1", {
+      id: "b1",
+      nama: "Banner",
+      average_cost_per_base_unit: 0,
+    });
+    const res = await createSale(
+      saleWith([{ label: "Ongkir", nominal: 20000, modal: 20000 }]),
+    );
+    const saleId = (res as any).id;
+
+    await voidSale(saleId, "uji void", "u1");
+
+    const keu = Array.from(mockTable("keuangan").values());
+    const biayaRow = keu.find((k) => k.reference_type === "SALE_EXTRA_COST");
+    expect(biayaRow).toBeTruthy();
+    expect(biayaRow.status_transaksi).toBe("VOIDED");
   });
 });
