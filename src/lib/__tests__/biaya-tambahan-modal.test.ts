@@ -136,3 +136,40 @@ describe("biaya tambahan modal -> keuangan", () => {
     expect(Number(biayaRow.kredit)).toBe(20000);
   });
 });
+
+describe("biaya tambahan modal -> margin item", () => {
+  it("modal membebani hpp_total & gross_profit item", async () => {
+    mockTable("pelanggan").set("p1", { id: "p1", nama: "Walk-in" });
+    mockTable("barang").set("b1", {
+      id: "b1",
+      nama: "Banner",
+      average_cost_per_base_unit: 0,
+    });
+    // item subtotal 50000, HPP barang 0, biaya tambahan modal 15000
+    await createSale(
+      saleWith([{ label: "Pasang bambu", nominal: 30000, modal: 15000 }]),
+    );
+
+    const ip = Array.from(mockTable("item_penjualan").values())[0];
+    expect(Number(ip.hpp_total)).toBe(15000);
+    expect(Number(ip.gross_profit)).toBe(50000 - 15000);
+  });
+
+  it("tidak dobel di agregat kas: HPP row = HPP barang saja (0), BIAYA row = modal", async () => {
+    mockTable("pelanggan").set("p1", { id: "p1", nama: "Walk-in" });
+    mockTable("barang").set("b1", {
+      id: "b1",
+      nama: "Banner",
+      average_cost_per_base_unit: 0,
+    });
+    await createSale(
+      saleWith([{ label: "Pasang bambu", nominal: 30000, modal: 15000 }]),
+    );
+    const keu = Array.from(mockTable("keuangan").values());
+    // HPP barang 0 -> tidak ada baris HPP; modal -> baris BIAYA 15000.
+    const hppRow = keu.find((k) => k.kategori_transaksi === "HPP");
+    expect(hppRow).toBeFalsy();
+    const biayaRow = keu.find((k) => k.kategori_transaksi === "BIAYA");
+    expect(Number(biayaRow.kredit)).toBe(15000);
+  });
+});

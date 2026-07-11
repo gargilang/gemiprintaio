@@ -646,6 +646,20 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             ...item,
             recommended_roll_width_m: recommendedRollWidth,
           });
+        // Modal biaya tambahan item = bagian HPP item (untuk margin akurat).
+        // Tidak ditambahkan ke agregat kas totalHpp: modal sudah diposting
+        // terpisah sebagai kategori BIAYA (hindari dobel di kas).
+        const modalBiayaItem = ((item as any).biaya_tambahan || []).reduce(
+          (sum: number, b: any) => {
+            const nominal = Number(b?.nominal) || 0;
+            const modal = Number(b?.modal) || 0;
+            if (nominal <= 0 || modal <= 0) return sum;
+            return sum + Math.min(modal, nominal);
+          },
+          0,
+        );
+        hppTotal += modalBiayaItem;
+
         const grossProfit = item.subtotal - hppTotal;
         const grossMargin =
           item.subtotal > 0 ? (grossProfit / item.subtotal) * 100 : 0;
@@ -654,7 +668,9 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
         // "MAKLON"/hutang vendor). Memasukkannya di sini menyebabkan saldo
         // terpotong dua kali. hpp_total per item tetap disimpan (untuk margin).
         if (!isMaklon) {
-          totalHpp += hppTotal;
+          // Kurangi modal biaya tambahan dari agregat kas HPP: modal diposting
+          // terpisah sebagai kategori BIAYA, jadi tidak boleh dobel di sini.
+          totalHpp += hppTotal - modalBiayaItem;
         }
 
         // Per-line PPN breakdown (kalau header kena_ppn=1)
