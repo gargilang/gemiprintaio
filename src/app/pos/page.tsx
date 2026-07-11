@@ -1285,6 +1285,7 @@ export default function POSPage() {
       const checkoutBiayaTambahan = getCartBiayaTambahanRows(cart).map((b) => ({
         label: b.label.trim(),
         nominal: b.nominal,
+        modal: Math.min(Math.max(Number(b.modal) || 0, 0), b.nominal),
       }));
       const saleItems = cart.map((item, index) => ({
         barang_id: item.barang_id,
@@ -1310,9 +1311,14 @@ export default function POSPage() {
         biaya_subkontrak: item.biaya_subkontrak ?? null,
         metode_bayar_vendor: item.metode_bayar_vendor ?? null,
         deskripsi_pekerjaan: item.deskripsi_pekerjaan ?? null,
+        katalog_maklon_id: item.katalog_maklon_id ?? null,
         biaya_tambahan: (item.biaya_tambahan || [])
           .filter((b) => b.label.trim() && b.nominal > 0)
-          .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+          .map((b) => ({
+            label: b.label.trim(),
+            nominal: b.nominal,
+            modal: Math.min(Math.max(Number(b.modal) || 0, 0), b.nominal),
+          })),
       }));
 
       const result = await createSaleAction({

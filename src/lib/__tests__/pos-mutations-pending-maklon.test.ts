@@ -42,11 +42,13 @@ jest.mock("@/lib/services/shop-settings-service", () => ({
   getShopSettings: jest.fn().mockResolvedValue({
     inv_prefix: "INV",
     inv_format: "PREFIX-DATE-SEQ",
+    inv_date_format: "YYYYMMDD",
     inv_reset: "daily",
     inv_padding: 3,
     inv_start_seq: 1,
     spk_prefix: "SPK",
     spk_format: "PREFIX-SEQ",
+    spk_date_format: "YYYYMMDD",
     spk_reset: "never",
     spk_padding: 4,
     spk_start_seq: 1,

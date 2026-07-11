@@ -76,6 +76,22 @@ async function fetchFinanceConfig(): Promise<FinanceConfigPayload> {
   return { categories: data.categories || [] };
 }
 
+function berisiFakturPenjualan(teks: string | null | undefined): boolean {
+  const lower = teks?.toLowerCase() || "";
+  return lower.includes("inv-") || lower.includes("inv/");
+}
+
+function berisiFrasaFaktur(
+  teks: string | null | undefined,
+  frasaDenganDash: string,
+): boolean {
+  const lower = teks?.toLowerCase() || "";
+  return (
+    lower.includes(frasaDenganDash) ||
+    lower.includes(frasaDenganDash.replace("inv-", "inv/"))
+  );
+}
+
 export default function FinancePage() {
   const router = useRouter();
   const swr = useSWRConfig();
@@ -459,19 +475,17 @@ export default function FinancePage() {
       cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
       cashBook.keperluan?.toLowerCase().includes("pelunasan");
 
-    // Check if this transaction is from POS
+    // Cek apakah transaksi berasal dari POS.
     const isFromPOS =
       cashBook.keperluan?.toLowerCase().includes("penjualan") ||
-      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      berisiFakturPenjualan(cashBook.keperluan) ||
       (cashBook.kategori_transaksi === "OMZET" &&
         cashBook.keperluan?.includes("[REF:sale_")) ||
       (cashBook.kategori_transaksi === "PIUTANG" &&
-        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
-          cashBook.keperluan
-            ?.toLowerCase()
-            .includes("pembayaran sebagian inv-"))) ||
+        (berisiFrasaFaktur(cashBook.keperluan, "dp inv-") ||
+          berisiFrasaFaktur(cashBook.keperluan, "pembayaran sebagian inv-"))) ||
       (cashBook.kategori_transaksi === "LUNAS" &&
-        cashBook.keperluan?.toLowerCase().includes("bayar piutang inv-"));
+        berisiFrasaFaktur(cashBook.keperluan, "bayar piutang inv-"));
 
     if (isFromPurchase) {
       setConfirmDialog({
@@ -647,17 +661,15 @@ export default function FinancePage() {
       cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
       cashBook.keperluan?.toLowerCase().includes("pelunasan");
 
-    // Check if this transaction is from POS (penjualan)
+    // Cek apakah transaksi berasal dari POS (penjualan).
     const isFromPOS =
       cashBook.keperluan?.toLowerCase().includes("penjualan") ||
-      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      berisiFakturPenjualan(cashBook.keperluan) ||
       (cashBook.kategori_transaksi === "OMZET" &&
         cashBook.keperluan?.includes("[REF:sale_")) ||
       (cashBook.kategori_transaksi === "PIUTANG" &&
-        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
-          cashBook.keperluan
-            ?.toLowerCase()
-            .includes("pembayaran sebagian inv-")));
+        (berisiFrasaFaktur(cashBook.keperluan, "dp inv-") ||
+          berisiFrasaFaktur(cashBook.keperluan, "pembayaran sebagian inv-")));
 
     if (isFromPurchase) {
       setConfirmDialog({
@@ -773,19 +785,17 @@ export default function FinancePage() {
       cashBook.keperluan?.toLowerCase().includes("pembayaran hutang") ||
       cashBook.keperluan?.toLowerCase().includes("pelunasan");
 
-    // Check if this transaction is from POS
+    // Cek apakah transaksi berasal dari POS.
     const isFromPOS =
       cashBook.keperluan?.toLowerCase().includes("penjualan") ||
-      cashBook.keperluan?.toLowerCase().includes("inv-") ||
+      berisiFakturPenjualan(cashBook.keperluan) ||
       (cashBook.kategori_transaksi === "OMZET" &&
         cashBook.keperluan?.includes("[REF:sale_")) ||
       (cashBook.kategori_transaksi === "PIUTANG" &&
-        (cashBook.keperluan?.toLowerCase().includes("dp inv-") ||
-          cashBook.keperluan
-            ?.toLowerCase()
-            .includes("pembayaran sebagian inv-"))) ||
+        (berisiFrasaFaktur(cashBook.keperluan, "dp inv-") ||
+          berisiFrasaFaktur(cashBook.keperluan, "pembayaran sebagian inv-"))) ||
       (cashBook.kategori_transaksi === "LUNAS" &&
-        cashBook.keperluan?.toLowerCase().includes("bayar piutang inv-"));
+        berisiFrasaFaktur(cashBook.keperluan, "bayar piutang inv-"));
 
     if (isFromPurchase) {
       setConfirmDialog({

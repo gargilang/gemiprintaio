@@ -1,6 +1,10 @@
 import "server-only";
 
 import { db, getCurrentTimestamp } from "@/lib/db-unified";
+import {
+  DEFAULT_NOMOR_DATE_FORMAT,
+  normalizeNomorDateFormat,
+} from "@/lib/numbering-utils";
 import type { PengaturanToko, PpnMetode } from "@/types/database";
 
 const SHOP_SETTINGS_ID = "default";
@@ -27,14 +31,16 @@ const DEFAULT_SHOP_SETTINGS: PengaturanToko = {
   nsfp_kode_transaksi_default: "01",
   nsfp_tahun_aktif: null,
   nsfp_seri_terakhir: null,
-  // Nomor urut defaults — matches the migration defaults
+  // Bawaan nomor urut — selaras dengan bawaan migrasi.
   inv_prefix: "INV",
   inv_format: "PREFIX-DATE-SEQ",
+  inv_date_format: DEFAULT_NOMOR_DATE_FORMAT,
   inv_reset: "daily",
   inv_padding: 3,
   inv_start_seq: 1,
   spk_prefix: "SPK",
   spk_format: "PREFIX-SEQ",
+  spk_date_format: DEFAULT_NOMOR_DATE_FORMAT,
   spk_reset: "never",
   spk_padding: 4,
   spk_start_seq: 1,
@@ -81,6 +87,12 @@ export async function updateShopSettings(
   }
   if (cleaned.ppn_default_aktif != null) {
     cleaned.ppn_default_aktif = cleaned.ppn_default_aktif ? 1 : 0;
+  }
+  if (cleaned.inv_date_format != null) {
+    cleaned.inv_date_format = normalizeNomorDateFormat(cleaned.inv_date_format);
+  }
+  if (cleaned.spk_date_format != null) {
+    cleaned.spk_date_format = normalizeNomorDateFormat(cleaned.spk_date_format);
   }
 
   if (existing.data) {

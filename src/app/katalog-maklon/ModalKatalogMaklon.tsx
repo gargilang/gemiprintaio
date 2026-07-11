@@ -345,10 +345,10 @@ export default function ModalKatalogMaklon({
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="CASH">CASH (bayar langsung)</option>
-              <option value="NET30">NET30 (jadi hutang)</option>
               <option value="TRANSFER">
                 TRANSFER (bayar langsung via bank)
               </option>
+              <option value="NET30">NET30 (jadi hutang)</option>
             </select>
           </div>
 

@@ -13,6 +13,7 @@ jest.mock("@/lib/auth-guard-server", () => {
   return {
     AuthGuardError,
     requireSession: () => requireGuard(),
+    requireNotDemo: (s?: unknown) => s ?? requireGuard(),
     requireAdminOrManager: () => requireGuard(),
     requireProductionInventoryRole: () => requireGuard(),
   };
@@ -97,7 +98,7 @@ describe("POST /api/pos/sales", () => {
       ...validBody(),
       pelanggan_nama_snapshot: "PT Maju Bersama",
       pelanggan_kota: "Jakarta Selatan",
-      biaya_tambahan: [{ label: "Ongkir", nominal: 15000 }],
+      biaya_tambahan: [{ label: "Ongkir", nominal: 15000, modal: 10000 }],
       items: [
         {
           barang_id: "b1",
@@ -112,6 +113,7 @@ describe("POST /api/pos/sales", () => {
           billed_lebar: 3,
           selectedRollSize: 3,
           finishing: [{ jenis_finishing: "Laminasi Doff" }],
+          biaya_tambahan: [{ label: "Pasang", nominal: 25000, modal: 12000 }],
         },
         {
           barang_id: "barang-jasa-maklon",
@@ -125,6 +127,7 @@ describe("POST /api/pos/sales", () => {
           biaya_subkontrak: 8000,
           metode_bayar_vendor: "CASH",
           deskripsi_pekerjaan: "Finishing kayu",
+          katalog_maklon_id: "km-1",
         },
       ],
     };
@@ -135,9 +138,14 @@ describe("POST /api/pos/sales", () => {
     const arg = (createSale as jest.Mock).mock.calls[0][0];
     expect(arg.pelanggan_nama_snapshot).toBe("PT Maju Bersama");
     expect(arg.pelanggan_kota).toBe("Jakarta Selatan");
-    expect(arg.biaya_tambahan).toEqual([{ label: "Ongkir", nominal: 15000 }]);
+    expect(arg.biaya_tambahan).toEqual([
+      { label: "Ongkir", nominal: 15000, modal: 10000 },
+    ]);
     expect(arg.items[0].finishing).toEqual([
       { jenis_finishing: "Laminasi Doff" },
+    ]);
+    expect(arg.items[0].biaya_tambahan).toEqual([
+      { label: "Pasang", nominal: 25000, modal: 12000 },
     ]);
     expect(arg.items[0].selectedRollSize).toBe(3);
     expect(arg.items[0].billed_panjang).toBe(1.2);
@@ -146,6 +154,7 @@ describe("POST /api/pos/sales", () => {
     expect(arg.items[1].vendor_subkontrak_id).toBe("v1");
     expect(arg.items[1].biaya_subkontrak).toBe(8000);
     expect(arg.items[1].metode_bayar_vendor).toBe("CASH");
+    expect(arg.items[1].katalog_maklon_id).toBe("km-1");
     expect(arg.items[1].deskripsi_pekerjaan).toBe("Finishing kayu");
   });
 });

@@ -58,6 +58,7 @@ export type PrintType = "thermal" | "faktur" | "both" | "none";
 export interface BiayaTambahan {
   label: string;
   nominal: number;
+  modal?: number;
 }
 
 interface POSCartProps {
@@ -206,41 +207,39 @@ export default function KeranjangPOS({
       const { mapPenjualanItemKeFaktur } =
         await import("@/lib/dokumen-item-display");
 
-      const items = cart.flatMap((item, index) => {
+      const items = cart.map((item, index) => {
         const lineTotal = lineCharges[index];
         const hargaEfektif =
           item.jumlah > 0 ? lineTotal / item.jumlah : item.harga_satuan;
-        const rows = [
-          mapPenjualanItemKeFaktur({
-            barang_nama: item.barang_nama,
-            nama_produk_jual: item.nama_produk_jual,
-            tipe_item: item.tipe_item,
-            deskripsi_pekerjaan: item.deskripsi_pekerjaan,
-            jumlah: item.jumlah,
-            nama_satuan: item.nama_satuan,
-            panjang: item.panjang,
-            lebar: item.lebar,
-            billed_panjang: item.billedPanjang,
-            billed_lebar: item.billedLebar,
-            jumlah_roll: item.jumlah_roll,
-            harga_satuan: hargaEfektif,
-            subtotal: lineTotal,
-          }),
-        ];
 
-        for (const biaya of item.biaya_tambahan || []) {
-          if (!biaya.label?.trim() || biaya.nominal <= 0) continue;
-          rows.push({
-            nama: biaya.label.trim(),
-            ukuran: "",
-            qty: 1,
-            satuan: "",
-            harga: biaya.nominal,
-            jumlah: biaya.nominal,
-          });
+        const fakturItem = mapPenjualanItemKeFaktur({
+          barang_nama: item.barang_nama,
+          nama_produk_jual: item.nama_produk_jual,
+          tipe_item: item.tipe_item,
+          deskripsi_pekerjaan: item.deskripsi_pekerjaan,
+          jumlah: item.jumlah,
+          nama_satuan: item.nama_satuan,
+          panjang: item.panjang,
+          lebar: item.lebar,
+          billed_panjang: item.billedPanjang,
+          billed_lebar: item.billedLebar,
+          jumlah_roll: item.jumlah_roll,
+          harga_satuan: hargaEfektif,
+          subtotal: lineTotal,
+        });
+
+        // Biaya tambahan per-item dikirim sebagai sub-baris italic di bawah item
+        const biayaTambahan = (item.biaya_tambahan || []).filter(
+          (b) => b.label?.trim() && b.nominal > 0,
+        );
+        if (biayaTambahan.length > 0) {
+          fakturItem.biaya_tambahan = biayaTambahan.map((b) => ({
+            label: b.label.trim(),
+            nominal: b.nominal,
+          }));
         }
 
-        return rows;
+        return fakturItem;
       });
 
       const nomorPreview = await previewNomorFakturAction();

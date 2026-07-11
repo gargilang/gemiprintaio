@@ -53,6 +53,26 @@ export interface PendingMaklonRow {
   pelanggan_nama?: string | null;
 }
 
+async function resolveKatalogMaklonIdForPendingItem(
+  cur: any,
+): Promise<string | null> {
+  if (cur.katalog_maklon_id) return String(cur.katalog_maklon_id);
+
+  const namaProduk = String(cur.deskripsi_pekerjaan || "").trim();
+  if (!namaProduk) return null;
+
+  const katalogRes = await db.query<any>("katalog_maklon", {
+    where: { nama_produk: namaProduk },
+  });
+  if (katalogRes.error)
+    throw friendlyPgError(katalogRes.error, "katalog_maklon");
+
+  const katalog = (katalogRes.data || []).find(
+    (row: any) => Number(row.is_deleted) !== 1,
+  );
+  return katalog?.id ? String(katalog.id) : null;
+}
+
 /**
  * Daftar baris item_penjualan pending maklon + join penjualan untuk
  * nomor_faktur / tanggal / nama pelanggan. Hindari N+1 (iron rule 19):
@@ -148,6 +168,7 @@ export async function reconcilePendingMaklonItem(
   const subtotal = Number(cur.subtotal) || 0;
   const grossProfit = subtotal - hppTotal;
   const grossMargin = subtotal > 0 ? (grossProfit / subtotal) * 100 : 0;
+  const katalogMaklonId = await resolveKatalogMaklonIdForPendingItem(cur);
 
   await db.transaction(async () => {
     const upd = await db.update("item_penjualan", itemPenjualanId, {
@@ -159,6 +180,7 @@ export async function reconcilePendingMaklonItem(
       gross_profit: grossProfit,
       gross_margin: grossMargin,
       pending_vendor_hpp: 0,
+      katalog_maklon_id: katalogMaklonId,
     });
     if (upd.error) throw friendlyPgError(upd.error, "item_penjualan");
 
@@ -170,10 +192,10 @@ export async function reconcilePendingMaklonItem(
     // Back-fill template Katalog Extra (katalog_maklon) dengan nilai yang baru
     // diisi, supaya list Katalog Extra tidak lagi kosong dan penjualan berikut
     // langsung memakai default ini (tidak perlu isi ulang / tidak pending lagi).
-    if (cur.katalog_maklon_id) {
+    if (katalogMaklonId) {
       const tplRes = await db.update(
         "katalog_maklon",
-        String(cur.katalog_maklon_id),
+        katalogMaklonId,
         {
           vendor_subkontrak_id_default: data.vendor_subkontrak_id,
           biaya_subkontrak_default: biaya,

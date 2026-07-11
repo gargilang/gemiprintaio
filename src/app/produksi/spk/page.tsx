@@ -187,7 +187,6 @@ export default function ProductionPage() {
       filtered = filtered.filter(
         (order) =>
           order.nomor_spk.toLowerCase().includes(query) ||
-          order.nomor_faktur?.toLowerCase().includes(query) ||
           order.pelanggan_nama?.toLowerCase().includes(query),
       );
     }
@@ -218,6 +217,22 @@ export default function ProductionPage() {
     }
   };
 
+  const setSelectedOrderSiapDiambil = (orderId: string) => {
+    setSelectedOrder((current) => {
+      if (!current || current.id !== orderId) return current;
+      return {
+        ...current,
+        status: "SIAP_AMBIL",
+        status_override_manual: false,
+        items: (current.items || []).map((item) =>
+          item.status === "SELESAI" || item.status === "DIBATALKAN"
+            ? item
+            : { ...item, status: "SIAP_AMBIL" },
+        ),
+      };
+    });
+  };
+
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       if (newStatus === "SELESAI") {
@@ -238,6 +253,7 @@ export default function ProductionPage() {
             `Item berikut belum bisa diselesaikan: ${nama}. Konfirmasi bahan roll dulu jika perlu.`,
           );
         } else if (hasil.statusOrderAkhir === "SIAP_AMBIL") {
+          setSelectedOrderSiapDiambil(orderId);
           showMsg("success", "SPK ditandai Siap Diambil");
         } else {
           showMsg(
@@ -250,6 +266,9 @@ export default function ProductionPage() {
         showMsg("success", "Status berhasil diperbarui");
       }
       await reloadOrders();
+      if (newStatus === "SIAP_AMBIL") {
+        setSelectedOrderSiapDiambil(orderId);
+      }
     } catch (error) {
       console.error("Error updating status:", error);
       showMsg(
@@ -544,7 +563,7 @@ export default function ProductionPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari SPK, Faktur, atau Pelanggan..."
+                placeholder="Cari SPK atau Pelanggan..."
                 className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-slate-800 dark:text-slate-100"
               />
               <svg
@@ -630,9 +649,7 @@ export default function ProductionPage() {
                   <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                     SPK
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
-                    Faktur
-                  </th>
+
                   <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                     Pelanggan
                   </th>
@@ -668,11 +685,7 @@ export default function ProductionPage() {
                         {order.nomor_spk}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-base text-gray-600 dark:text-slate-300">
-                        {order.nomor_faktur}
-                      </div>
-                    </td>
+
                     <td className="px-6 py-4">
                       <div className="text-base font-medium text-gray-900 dark:text-slate-100">
                         {order.pelanggan_nama || "Pelanggan Umum"}

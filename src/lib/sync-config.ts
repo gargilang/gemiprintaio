@@ -62,6 +62,8 @@ export const PAYROLL_SYNC_TABLES = [
 
 export const REPORTING_SYNC_TABLES = [
   "laporan_bulanan",
+  "notifikasi",
+  "notifikasi_pengguna",
 ] as const;
 
 export const ALL_SYNC_TABLES = [

@@ -192,11 +192,20 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       display: flex;
       justify-content: space-between;
       color: #333;
+      padding-left: 8px;
     }
     .item-dimensi {
       font-size: 9px;
       color: #666;
       margin-bottom: 2px;
+      padding-left: 8px;
+    }
+    .item-biaya-tambahan {
+      display: flex;
+      justify-content: space-between;
+      color: #555;
+      font-style: italic;
+      padding-left: 16px;
     }
     .totals {
       margin-top: 8px;
@@ -323,7 +332,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
         .filter((b) => b.label?.trim() && b.nominal > 0)
         .map(
           (b) => `
-      <div class="item-detail">
+      <div class="item-biaya-tambahan">
         <span>+ ${escapeHtml(b.label.trim())}</span>
         <span>Rp ${Number(b.nominal).toLocaleString("id-ID")}</span>
       </div>`,

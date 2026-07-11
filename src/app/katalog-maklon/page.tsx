@@ -90,10 +90,13 @@ export default function KatalogMaklonPage() {
     await mutate();
   };
 
-  // Setelah reconcile: muat ulang queue + invalidasi cache keuangan & penjualan
-  // supaya laporan/Buku Kas mencerminkan HPP + PO maklon baru.
+  // Setelah reconcile: muat ulang queue + katalog, lalu invalidasi cache terkait
+  // supaya Katalog Extra menampilkan vendor/HPP hasil back-fill dan laporan/Buku
+  // Kas mencerminkan HPP + PO maklon baru.
   const reloadAfterReconcile = async () => {
-    await mutatePending();
+    await Promise.all([mutatePending(), mutate()]);
+    invalidate("katalog-maklon");
+    invalidate("pos-init");
     invalidate("keuangan");
     invalidate("penjualan");
     invalidate("riwayat");

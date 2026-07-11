@@ -1,8 +1,47 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { addNotificationLog } from "@/lib/notification-log";
+
 export interface NotificationToastProps {
   type: "success" | "error";
   message: string;
+}
+
+function ToastStatusIcon({ type }: { type: NotificationToastProps["type"] }) {
+  if (type === "success") {
+    return (
+      <svg
+        className="h-5 w-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M20 6L9 17l-5-5" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
 }
 
 /**
@@ -29,6 +68,28 @@ export default function ToastNotifikasi({
   type,
   message,
 }: NotificationToastProps) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const entry = addNotificationLog({ type, message, pathname });
+    if (!entry) return;
+
+    void fetch("/api/notifikasi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: entry.id,
+        tipe: entry.type,
+        kategori: "toast",
+        pesan: entry.message,
+        sumber_path: entry.pathname,
+        dibuat_pada: entry.createdAt,
+      }),
+    }).catch(() => {
+      // Log lokal tetap menjadi fallback saat offline atau API belum siap.
+    });
+  }, [message, pathname, type]);
+
   return (
     <div
       role="status"
@@ -40,8 +101,8 @@ export default function ToastNotifikasi({
       }`}
     >
       <div className="flex items-start gap-2">
-        <span className="text-lg leading-none shrink-0 mt-0.5">
-          {type === "success" ? "✓" : "✕"}
+        <span className="shrink-0 mt-0.5">
+          <ToastStatusIcon type={type} />
         </span>
         <span className="leading-snug break-words">{message}</span>
       </div>

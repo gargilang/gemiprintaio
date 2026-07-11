@@ -323,6 +323,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         allowedRoles: ADMIN_ONLY,
       },
       {
+        href: "/pengaturan/notifikasi",
+        icon: <AuditLogIcon size={18} />,
+        label: "Notifikasi",
+        color: "from-slate-600 to-slate-900",
+        allowedRoles: ADMIN_ONLY,
+      },
+      {
         href: "/pengguna",
         icon: <UserIcon size={18} />,
         label: "Manajemen Pengguna",
@@ -360,6 +367,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/laporan-ppn": "Laporan PPN",
   "/aktivitas": "Log Audit",
   "/pengguna": "Manajemen Pengguna",
+  "/pengaturan/notifikasi": "Notifikasi",
   "/pengaturan": "Pengaturan",
 };
 

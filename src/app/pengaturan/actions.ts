@@ -374,11 +374,37 @@ export async function getNomorUrutSettingsAction() {
 export async function updateNomorUrutSettingsAction(patch: {
   inv_prefix?: string;
   inv_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
+  inv_date_format?:
+    | "YYYYMMDD"
+    | "YYMMDD"
+    | "DDMMYYYY"
+    | "DDMMYY"
+    | "YYYY-MM-DD"
+    | "YYYY/MM/DD"
+    | "YYYYMM"
+    | "YYMM"
+    | "MMYYYY"
+    | "MMYY"
+    | "DDMM"
+    | "MMDD";
   inv_reset?: "daily" | "monthly" | "yearly" | "never";
   inv_padding?: number;
   inv_start_seq?: number;
   spk_prefix?: string;
   spk_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
+  spk_date_format?:
+    | "YYYYMMDD"
+    | "YYMMDD"
+    | "DDMMYYYY"
+    | "DDMMYY"
+    | "YYYY-MM-DD"
+    | "YYYY/MM/DD"
+    | "YYYYMM"
+    | "YYMM"
+    | "MMYYYY"
+    | "MMYY"
+    | "DDMM"
+    | "MMDD";
   spk_reset?: "daily" | "monthly" | "yearly" | "never";
   spk_padding?: number;
   spk_start_seq?: number;

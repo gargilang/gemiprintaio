@@ -104,6 +104,8 @@ export const SYNC_TABLES = [
   "item_produksi",
   "item_finishing",
   "keuangan",
+  "notifikasi",
+  "notifikasi_pengguna",
 ];
 
 export interface SyncResult {

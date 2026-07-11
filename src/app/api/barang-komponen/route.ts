@@ -62,7 +62,7 @@ async function validateKomponenDimensi(data: z.infer<typeof KomponenSchema>) {
       return {
         ok: false as const,
         status: 422,
-        error: "Qty m² tidak sesuai dengan jumlah roll × lebar × panjang.",
+        error: "Qty m² tidak sesuai dengan lebar × panjang komponen.",
       };
     }
     return { ok: true as const, berdimensi: true, komponen };

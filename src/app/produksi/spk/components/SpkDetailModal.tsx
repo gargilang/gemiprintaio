@@ -188,7 +188,7 @@ export default function SpkDetailModal({
               <div className="text-sm text-gray-600 dark:text-slate-300 mb-1">
                 Status
               </div>
-              {order.status === "SELESAI" ? (
+              {order.status === "SELESAI" || order.status === "SIAP_AMBIL" ? (
                 <span
                   className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border-2 ${getStatusColor(
                     order.status,

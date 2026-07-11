@@ -20,6 +20,16 @@ import {
 import { buildLookupMap, fetchChildrenByForeignKey } from "./enrich-utils";
 import { hitungQtyKomponenDimensiM2 } from "../bom-utils";
 import { resolveBomForUnitPrice } from "./bom-service";
+import {
+  DEFAULT_NOMOR_DATE_FORMAT,
+  buildNomorUrut,
+  extractNomorSequence,
+  formatNomorDatePart,
+  normalizeNomorDateFormat,
+  sameNomorResetScope,
+  type NomorFormat,
+  type NomorReset,
+} from "../numbering-utils";
 
 export interface ProductionOrder {
   id: string;
@@ -493,58 +503,47 @@ export async function createProductionOrder(data: {
     // Generate SPK number using configurable settings
     const spkSettings = await getShopSettings();
     const spkPrefix = spkSettings.spk_prefix || "SPK";
-    const spkFormat = spkSettings.spk_format || "PREFIX-SEQ";
-    const spkReset = spkSettings.spk_reset || "never";
+    const spkFormat = (spkSettings.spk_format || "PREFIX-SEQ") as NomorFormat;
+    const spkReset = (spkSettings.spk_reset || "never") as NomorReset;
+    const spkDateFormat = normalizeNomorDateFormat(
+      spkSettings.spk_date_format || DEFAULT_NOMOR_DATE_FORMAT,
+    );
     const spkPadding = spkSettings.spk_padding ?? 4;
     const spkStartSeq = spkSettings.spk_start_seq ?? 1;
 
     const today = new Date().toISOString().slice(0, 10);
-    let spkDatePart = "";
-    if (spkFormat === "PREFIX-DATE-SEQ") {
-      const d = today.replace(/-/g, "");
-      if (spkReset === "daily") spkDatePart = d;
-      else if (spkReset === "monthly") spkDatePart = d.slice(0, 6);
-      else if (spkReset === "yearly") spkDatePart = d.slice(0, 4);
-      else spkDatePart = d;
-    }
+    const spkDatePart =
+      spkFormat === "PREFIX-DATE-SEQ"
+        ? formatNomorDatePart(today, spkDateFormat)
+        : "";
 
-    const lastOrderResult = await db.query("order_produksi", {
+    const orderNumberRows = await db.query("order_produksi", {
       orderBy: { column: "dibuat_pada", ascending: false },
-      limit: 1,
     });
 
-    let spkSeq = spkStartSeq;
-    if (lastOrderResult.data && lastOrderResult.data.length > 0) {
-      const lastOrder = lastOrderResult.data[0] as any;
-      const lastNomor: string = lastOrder.nomor_spk || "";
-      try {
-        if (spkFormat === "PREFIX-DATE-SEQ") {
-          const expectedStart = `${spkPrefix}-${spkDatePart}-`;
-          if (lastNomor.startsWith(expectedStart)) {
-            const n = parseInt(lastNomor.slice(expectedStart.length), 10);
-            if (!isNaN(n)) spkSeq = n + 1;
-          }
-        } else {
-          const expectedStart = `${spkPrefix}-`;
-          if (lastNomor.startsWith(expectedStart)) {
-            const n = parseInt(lastNomor.slice(expectedStart.length), 10);
-            if (!isNaN(n)) spkSeq = n + 1;
-          }
-        }
-      } catch {
-        spkSeq = spkStartSeq;
+    let maxSeq = 0;
+    for (const order of orderNumberRows.data || []) {
+      if (!sameNomorResetScope((order as any).dibuat_pada, today, spkReset)) {
+        continue;
       }
+      const seq = extractNomorSequence(
+        (order as any).nomor_spk,
+        spkPrefix,
+        spkFormat,
+      );
+      if (seq && seq > maxSeq) maxSeq = seq;
     }
+    const spkSeq = maxSeq > 0 ? maxSeq + 1 : spkStartSeq;
 
     const spkSeqStr = String(spkSeq).padStart(Math.max(1, spkPadding), "0");
-    let spkNumber: string;
-    if (spkFormat === "PREFIX-DATE-SEQ") {
-      spkNumber = `${spkPrefix}-${spkDatePart}-${spkSeqStr}`;
-    } else {
-      spkNumber = `${spkPrefix}-${spkSeqStr}`;
-    }
+    const spkNumber = buildNomorUrut(
+      spkPrefix,
+      spkFormat,
+      spkDatePart,
+      spkSeqStr,
+    );
 
-    // Get pelanggan_nama from penjualan
+    // Ambil nama pelanggan dari penjualan
     const penjualanResult = await db.queryOne("penjualan", {
       where: { id: data.penjualan_id },
     });
@@ -1249,15 +1248,17 @@ export async function setOrderStatusSiapDiambilCascade(
   }
 
   if (terhalang.length === 0) {
+    // Paksa status order setelah semua item berhasil diubah. Jangan panggil
+    // recompute lagi sesudah ini, supaya status detail tidak tertimpa nilai
+    // antara dari proses cascade item.
     await db.update("order_produksi", orderId, {
       status: "SIAP_AMBIL",
       status_override_manual: 1,
     });
+  } else {
+    await recomputeOrderStatusFromItems(orderId);
   }
 
-  // updateProductionItemStatus sudah memanggil recompute per item, tapi panggil
-  // sekali lagi untuk memastikan status order final konsisten.
-  await recomputeOrderStatusFromItems(orderId);
   const orderRes = await db.queryOne<any>("order_produksi", {
     where: { id: orderId },
   });

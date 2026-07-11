@@ -1113,11 +1113,13 @@ CREATE TABLE pengaturan_toko (
       nsfp_seri_terakhir TEXT,
       inv_prefix TEXT NOT NULL DEFAULT 'INV',
       inv_format TEXT NOT NULL DEFAULT 'PREFIX-DATE-SEQ' CHECK(inv_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ')),
+      inv_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(inv_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD')),
       inv_reset TEXT NOT NULL DEFAULT 'daily' CHECK(inv_reset IN ('daily', 'monthly', 'yearly', 'never')),
       inv_padding INTEGER NOT NULL DEFAULT 3,
       inv_start_seq INTEGER NOT NULL DEFAULT 1,
       spk_prefix TEXT NOT NULL DEFAULT 'SPK',
       spk_format TEXT NOT NULL DEFAULT 'PREFIX-SEQ' CHECK(spk_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ')),
+      spk_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(spk_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD')),
       spk_reset TEXT NOT NULL DEFAULT 'never' CHECK(spk_reset IN ('daily', 'monthly', 'yearly', 'never')),
       spk_padding INTEGER NOT NULL DEFAULT 4,
       spk_start_seq INTEGER NOT NULL DEFAULT 1,
@@ -1146,6 +1148,58 @@ CREATE TABLE nsfp_pool (
     );
 CREATE INDEX idx_nsfp_pool_status ON nsfp_pool(status, tahun, nomor_seri);
 CREATE INDEX idx_nsfp_pool_penjualan ON nsfp_pool(penjualan_id);
+
+-- Table: notifikasi
+CREATE TABLE IF NOT EXISTS notifikasi (
+  id TEXT PRIMARY KEY,
+  tipe TEXT NOT NULL DEFAULT 'info' CHECK(tipe IN ('success', 'error', 'info', 'warning')),
+  kategori TEXT NOT NULL DEFAULT 'toast' CHECK(kategori IN ('toast', 'bank', 'sistem')),
+  judul TEXT,
+  pesan TEXT NOT NULL,
+  sumber_path TEXT,
+  sumber_judul TEXT,
+  ref_tipe TEXT,
+  ref_id TEXT,
+  metadata_json TEXT,
+  dibuat_oleh TEXT REFERENCES profil(id) ON DELETE SET NULL,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TEXT,
+  sync_version INTEGER DEFAULT 1,
+  updated_at_server TEXT,
+  updated_by_device TEXT DEFAULT 'server',
+  change_version INTEGER DEFAULT 1,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
+  client_mutation_id TEXT
+);
+CREATE INDEX idx_notifikasi_dibuat_pada ON notifikasi(dibuat_pada DESC);
+CREATE INDEX idx_notifikasi_kategori_tipe ON notifikasi(kategori, tipe, dibuat_pada DESC);
+CREATE INDEX idx_notifikasi_ref ON notifikasi(ref_tipe, ref_id);
+
+-- Table: notifikasi_pengguna
+CREATE TABLE IF NOT EXISTS notifikasi_pengguna (
+  id TEXT PRIMARY KEY,
+  notifikasi_id TEXT NOT NULL REFERENCES notifikasi(id) ON DELETE CASCADE,
+  pengguna_id TEXT NOT NULL REFERENCES profil(id) ON DELETE CASCADE,
+  dibaca_status INTEGER NOT NULL DEFAULT 0,
+  dibaca_pada TEXT,
+  dibuat_pada TEXT DEFAULT (datetime('now')),
+  diperbarui_pada TEXT DEFAULT (datetime('now')),
+  sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+  last_synced_at TEXT,
+  sync_version INTEGER DEFAULT 1,
+  updated_at_server TEXT,
+  updated_by_device TEXT DEFAULT 'server',
+  change_version INTEGER DEFAULT 1,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
+  client_mutation_id TEXT,
+  CONSTRAINT notifikasi_pengguna_unique UNIQUE (notifikasi_id, pengguna_id)
+);
+CREATE INDEX idx_notifikasi_pengguna_user ON notifikasi_pengguna(pengguna_id, dibaca_status, dibuat_pada DESC);
+CREATE INDEX idx_notifikasi_pengguna_notifikasi ON notifikasi_pengguna(notifikasi_id);
 
 -- Table: piutang_penjualan
 CREATE TABLE piutang_penjualan (

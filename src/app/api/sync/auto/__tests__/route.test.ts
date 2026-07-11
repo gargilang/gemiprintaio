@@ -13,6 +13,7 @@ jest.mock("@/lib/auth-guard-server", () => {
   return {
     AuthGuardError,
     requireSession: () => requireGuard(),
+    requireNotDemo: (s?: unknown) => s ?? requireGuard(),
   };
 });
 jest.mock("@/lib/services/sync-operations-service", () => ({

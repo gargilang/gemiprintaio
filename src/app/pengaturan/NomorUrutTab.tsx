@@ -17,18 +17,27 @@ import {
   updateNomorUrutSettingsAction,
 } from "@/app/pengaturan/actions";
 import ToastNotifikasi from "@/components/ToastNotifikasi";
-
-type NomorFormat = "PREFIX-DATE-SEQ" | "PREFIX-SEQ";
-type NomorReset = "daily" | "monthly" | "yearly" | "never";
+import {
+  DEFAULT_NOMOR_DATE_FORMAT,
+  NOMOR_DATE_FORMAT_OPTIONS,
+  buildNomorUrut,
+  formatNomorDatePart,
+  normalizeNomorDateFormat,
+  type NomorDateFormat,
+  type NomorFormat,
+  type NomorReset,
+} from "@/lib/numbering-utils";
 
 interface NomorUrutSettings {
   inv_prefix: string;
   inv_format: NomorFormat;
+  inv_date_format: NomorDateFormat;
   inv_reset: NomorReset;
   inv_padding: number;
   inv_start_seq: number;
   spk_prefix: string;
   spk_format: NomorFormat;
+  spk_date_format: NomorDateFormat;
   spk_reset: NomorReset;
   spk_padding: number;
   spk_start_seq: number;
@@ -37,11 +46,13 @@ interface NomorUrutSettings {
 const DEFAULTS: NomorUrutSettings = {
   inv_prefix: "INV",
   inv_format: "PREFIX-DATE-SEQ",
+  inv_date_format: DEFAULT_NOMOR_DATE_FORMAT,
   inv_reset: "daily",
   inv_padding: 3,
   inv_start_seq: 1,
   spk_prefix: "SPK",
   spk_format: "PREFIX-SEQ",
+  spk_date_format: DEFAULT_NOMOR_DATE_FORMAT,
   spk_reset: "never",
   spk_padding: 4,
   spk_start_seq: 1,
@@ -51,31 +62,28 @@ const DEFAULTS: NomorUrutSettings = {
 function buildPreview(
   prefix: string,
   format: NomorFormat,
+  dateFormat: NomorDateFormat,
   padding: number,
   seq: number,
 ): string {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, "0");
-  const d = String(today.getDate()).padStart(2, "0");
-  const dateStr = `${y}${m}${d}`;
+  const today = new Date().toLocaleDateString("sv-SE", {
+    timeZone: "Asia/Jakarta",
+  });
+  const dateStr = formatNomorDatePart(today, dateFormat);
   const seqStr = String(seq).padStart(Math.max(1, padding), "0");
-  if (format === "PREFIX-DATE-SEQ") {
-    return `${prefix}-${dateStr}-${seqStr}`;
-  }
-  return `${prefix}-${seqStr}`;
+  return buildNomorUrut(prefix, format, dateStr, seqStr);
 }
 
 const FORMAT_OPTIONS: { value: NomorFormat; label: string; desc: string }[] = [
   {
     value: "PREFIX-DATE-SEQ",
     label: "Prefix + Tanggal + Urutan",
-    desc: "Contoh: INV-20260524-001",
+    desc: "Contoh: INV/20260524/001",
   },
   {
     value: "PREFIX-SEQ",
     label: "Prefix + Urutan saja",
-    desc: "Contoh: INV-0001",
+    desc: "Contoh: INV/0001",
   },
 ];
 
@@ -94,11 +102,13 @@ interface NumberingBlockProps {
   subtitle: string;
   prefix: string;
   format: NomorFormat;
+  dateFormat: NomorDateFormat;
   reset: NomorReset;
   padding: number;
   startSeq: number;
   onPrefix: (v: string) => void;
   onFormat: (v: NomorFormat) => void;
+  onDateFormat: (v: NomorDateFormat) => void;
   onReset: (v: NomorReset) => void;
   onPadding: (v: number) => void;
   onStartSeq: (v: number) => void;
@@ -109,16 +119,24 @@ function NumberingBlock({
   subtitle,
   prefix,
   format,
+  dateFormat,
   reset,
   padding,
   startSeq,
   onPrefix,
   onFormat,
+  onDateFormat,
   onReset,
   onPadding,
   onStartSeq,
 }: NumberingBlockProps) {
-  const preview = buildPreview(prefix || "???", format, padding, startSeq);
+  const preview = buildPreview(
+    prefix || "???",
+    format,
+    dateFormat,
+    padding,
+    startSeq,
+  );
 
   return (
     <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 space-y-4">
@@ -197,6 +215,35 @@ function NumberingBlock({
           </select>
         </label>
 
+        {/* Format tanggal */}
+        <label className="block">
+          <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            Format Tanggal
+          </span>
+          <select
+            value={dateFormat}
+            onChange={(e) => onDateFormat(e.target.value as NomorDateFormat)}
+            disabled={format !== "PREFIX-DATE-SEQ"}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {NOMOR_DATE_FORMAT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
+            {format === "PREFIX-DATE-SEQ"
+              ? `Tanggal pada nomor: ${formatNomorDatePart(
+                  new Date().toLocaleDateString("sv-SE", {
+                    timeZone: "Asia/Jakarta",
+                  }),
+                  dateFormat,
+                )}`
+              : "Tidak dipakai untuk format tanpa tanggal"}
+          </p>
+        </label>
+
         {/* Padding */}
         <label className="block">
           <span className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -241,7 +288,7 @@ function NumberingBlock({
 }
 
 // ---------------------------------------------------------------------------
-// Main component
+// Komponen utama
 // ---------------------------------------------------------------------------
 export default function NomorUrutTab() {
   const {
@@ -262,11 +309,17 @@ export default function NomorUrutTab() {
       setForm({
         inv_prefix: shopSettings.inv_prefix ?? DEFAULTS.inv_prefix,
         inv_format: shopSettings.inv_format ?? DEFAULTS.inv_format,
+        inv_date_format: normalizeNomorDateFormat(
+          shopSettings.inv_date_format ?? DEFAULTS.inv_date_format,
+        ),
         inv_reset: shopSettings.inv_reset ?? DEFAULTS.inv_reset,
         inv_padding: shopSettings.inv_padding ?? DEFAULTS.inv_padding,
         inv_start_seq: shopSettings.inv_start_seq ?? DEFAULTS.inv_start_seq,
         spk_prefix: shopSettings.spk_prefix ?? DEFAULTS.spk_prefix,
         spk_format: shopSettings.spk_format ?? DEFAULTS.spk_format,
+        spk_date_format: normalizeNomorDateFormat(
+          shopSettings.spk_date_format ?? DEFAULTS.spk_date_format,
+        ),
         spk_reset: shopSettings.spk_reset ?? DEFAULTS.spk_reset,
         spk_padding: shopSettings.spk_padding ?? DEFAULTS.spk_padding,
         spk_start_seq: shopSettings.spk_start_seq ?? DEFAULTS.spk_start_seq,
@@ -281,11 +334,13 @@ export default function NomorUrutTab() {
       const updated = await updateNomorUrutSettingsAction({
         inv_prefix: form.inv_prefix.trim() || "INV",
         inv_format: form.inv_format,
+        inv_date_format: form.inv_date_format,
         inv_reset: form.inv_reset,
         inv_padding: form.inv_padding,
         inv_start_seq: form.inv_start_seq,
         spk_prefix: form.spk_prefix.trim() || "SPK",
         spk_format: form.spk_format,
+        spk_date_format: form.spk_date_format,
         spk_reset: form.spk_reset,
         spk_padding: form.spk_padding,
         spk_start_seq: form.spk_start_seq,
@@ -351,33 +406,41 @@ export default function NomorUrutTab() {
             subtitle="Nomor yang tercetak di faktur penjualan dan struk"
             prefix={form.inv_prefix}
             format={form.inv_format}
+            dateFormat={form.inv_date_format}
             reset={form.inv_reset}
             padding={form.inv_padding}
             startSeq={form.inv_start_seq}
             onPrefix={(v) => setForm((f) => ({ ...f, inv_prefix: v }))}
             onFormat={(v) => setForm((f) => ({ ...f, inv_format: v }))}
+            onDateFormat={(v) =>
+              setForm((f) => ({ ...f, inv_date_format: v }))
+            }
             onReset={(v) => setForm((f) => ({ ...f, inv_reset: v }))}
             onPadding={(v) => setForm((f) => ({ ...f, inv_padding: v }))}
             onStartSeq={(v) => setForm((f) => ({ ...f, inv_start_seq: v }))}
           />
 
-          {/* SPK block */}
+          {/* Blok SPK */}
           <NumberingBlock
             title="Surat Perintah Kerja (SPK)"
             subtitle="Nomor yang tercetak di dokumen SPK produksi"
             prefix={form.spk_prefix}
             format={form.spk_format}
+            dateFormat={form.spk_date_format}
             reset={form.spk_reset}
             padding={form.spk_padding}
             startSeq={form.spk_start_seq}
             onPrefix={(v) => setForm((f) => ({ ...f, spk_prefix: v }))}
             onFormat={(v) => setForm((f) => ({ ...f, spk_format: v }))}
+            onDateFormat={(v) =>
+              setForm((f) => ({ ...f, spk_date_format: v }))
+            }
             onReset={(v) => setForm((f) => ({ ...f, spk_reset: v }))}
             onPadding={(v) => setForm((f) => ({ ...f, spk_padding: v }))}
             onStartSeq={(v) => setForm((f) => ({ ...f, spk_start_seq: v }))}
           />
 
-          {/* Info box */}
+          {/* Kotak info */}
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
             <p className="font-semibold mb-1">Catatan penting</p>
             <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-400">
@@ -397,7 +460,7 @@ export default function NomorUrutTab() {
             </ul>
           </div>
 
-          {/* Save button */}
+          {/* Tombol simpan */}
           <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-slate-700">
             <button
               type="button"

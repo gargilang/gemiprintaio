@@ -1547,6 +1547,85 @@ class UnifiedDatabase {
       }
     }
 
+    // Migrasi: fondasi notifikasi terpusat.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS notifikasi (
+        id TEXT PRIMARY KEY,
+        tipe TEXT NOT NULL DEFAULT 'info' CHECK(tipe IN ('success', 'error', 'info', 'warning')),
+        kategori TEXT NOT NULL DEFAULT 'toast' CHECK(kategori IN ('toast', 'bank', 'sistem')),
+        judul TEXT,
+        pesan TEXT NOT NULL,
+        sumber_path TEXT,
+        sumber_judul TEXT,
+        ref_tipe TEXT,
+        ref_id TEXT,
+        metadata_json TEXT,
+        dibuat_oleh TEXT REFERENCES profil(id) ON DELETE SET NULL,
+        dibuat_pada TEXT DEFAULT (datetime('now')),
+        diperbarui_pada TEXT DEFAULT (datetime('now')),
+        sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+        last_synced_at TEXT,
+        sync_version INTEGER DEFAULT 1,
+        updated_at_server TEXT,
+        updated_by_device TEXT DEFAULT 'server',
+        change_version INTEGER DEFAULT 1,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_notifikasi_dibuat_pada ON notifikasi(dibuat_pada DESC);
+      CREATE INDEX IF NOT EXISTS idx_notifikasi_kategori_tipe ON notifikasi(kategori, tipe, dibuat_pada DESC);
+      CREATE INDEX IF NOT EXISTS idx_notifikasi_ref ON notifikasi(ref_tipe, ref_id);
+
+      CREATE TABLE IF NOT EXISTS notifikasi_pengguna (
+        id TEXT PRIMARY KEY,
+        notifikasi_id TEXT NOT NULL REFERENCES notifikasi(id) ON DELETE CASCADE,
+        pengguna_id TEXT NOT NULL REFERENCES profil(id) ON DELETE CASCADE,
+        dibaca_status INTEGER NOT NULL DEFAULT 0,
+        dibaca_pada TEXT,
+        dibuat_pada TEXT DEFAULT (datetime('now')),
+        diperbarui_pada TEXT DEFAULT (datetime('now')),
+        sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+        last_synced_at TEXT,
+        sync_version INTEGER DEFAULT 1,
+        updated_at_server TEXT,
+        updated_by_device TEXT DEFAULT 'server',
+        change_version INTEGER DEFAULT 1,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        client_mutation_id TEXT,
+        CONSTRAINT notifikasi_pengguna_unique UNIQUE (notifikasi_id, pengguna_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_notifikasi_pengguna_user ON notifikasi_pengguna(pengguna_id, dibaca_status, dibuat_pada DESC);
+      CREATE INDEX IF NOT EXISTS idx_notifikasi_pengguna_notifikasi ON notifikasi_pengguna(notifikasi_id);
+    `);
+
+    // Migrasi: pengaturan_toko format tanggal nomor urut.
+    {
+      const exists = db
+        .prepare(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'pengaturan_toko' LIMIT 1",
+        )
+        .get();
+      if (exists) {
+        const cols = (
+          db.prepare("PRAGMA table_info(pengaturan_toko)").all() as Array<{
+            name: string;
+          }>
+        ).map((c) => c.name);
+        if (!cols.includes("inv_date_format")) {
+          db.exec(
+            "ALTER TABLE pengaturan_toko ADD COLUMN inv_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(inv_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD'))",
+          );
+        }
+        if (!cols.includes("spk_date_format")) {
+          db.exec(
+            "ALTER TABLE pengaturan_toko ADD COLUMN spk_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(spk_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD'))",
+          );
+        }
+      }
+    }
+
     // Migrasi: barang.muncul_di_pos_status
     {
       const cols = (

@@ -28,6 +28,16 @@ import {
   listKatalogMaklon,
   type KatalogMaklon,
 } from "./katalog-maklon-service";
+import {
+  DEFAULT_NOMOR_DATE_FORMAT,
+  buildNomorUrut,
+  extractNomorSequence,
+  formatNomorDatePart,
+  normalizeNomorDateFormat,
+  sameNomorResetScope,
+  type NomorFormat,
+  type NomorReset,
+} from "../numbering-utils";
 
 // ============================================================================
 // TIPE
@@ -162,6 +172,8 @@ export interface CreateSaleData {
     metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER" | null;
     /** Deskripsi bebas yang dipakai di faktur + struk thermal untuk baris maklon. */
     deskripsi_pekerjaan?: string | null;
+    /** Biaya tambahan per item, termasuk modal bila ada pengeluaran pihak ketiga. */
+    biaya_tambahan?: Array<{ label: string; nominal: number; modal?: number }>;
     /**
      * ID katalog maklon (katalog_maklon) yang dipakai sebagai sumber baris ini.
      * Dipakai oleh safeguard C2: baris maklon tanpa vendor/biaya disimpan
@@ -196,7 +208,7 @@ export interface CreateSaleData {
    * Biaya tambahan tingkat header (ongkir, biaya pasang, dll). Tiap baris diisi
    * label bebas + nominal. Total digulung ke penjualan.biaya_tambahan_total.
    */
-  biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  biaya_tambahan?: Array<{ label: string; nominal: number; modal?: number }>;
 }
 
 // ============================================================================
@@ -253,125 +265,97 @@ async function fallbackAverageCostPerBaseUnit(
   return positiveNumber(unit?.harga_beli) / factor;
 }
 
-/**
- * Hitung date-part string berdasarkan format reset.
- * daily   → YYYYMMDD
- * monthly → YYYYMM
- * yearly  → YYYY
- * never   → "" (tidak pakai tanggal)
- */
-function getDatePart(tanggal: string, reset: string, format: string): string {
-  if (format === "PREFIX-SEQ") return "";
-  const d = tanggal.replace(/-/g, "");
-  if (reset === "daily") return d; // 20260524
-  if (reset === "monthly") return d.slice(0, 6); // 202605
-  if (reset === "yearly") return d.slice(0, 4); // 2026
-  return d; // never → still embed full date
-}
-
-/**
- * Cek apakah nomor terakhir masih dalam periode yang sama.
- * Kalau iya, ambil urutan terakhirnya; kalau tidak, mulai dari start_seq.
- */
-function extractSeqFromNumber(
-  lastNumber: string,
-  prefix: string,
-  format: string,
-  datePart: string,
-  padding: number,
-  startSeq: number,
+function resolveNextSequenceFromRows(
+  rows: any[],
+  options: {
+    numberColumn: string;
+    dateColumn: string;
+    prefix: string;
+    format: NomorFormat;
+    reset: NomorReset;
+    targetDate: string;
+    startSeq: number;
+  },
 ): number {
-  if (!lastNumber) return startSeq;
-  try {
-    if (format === "PREFIX-DATE-SEQ") {
-      // Expected: PREFIX-DATEPART-SEQ
-      const expectedStart = `${prefix}-${datePart}-`;
-      if (!lastNumber.startsWith(expectedStart)) return startSeq;
-      const seqStr = lastNumber.slice(expectedStart.length);
-      const seq = parseInt(seqStr, 10);
-      return isNaN(seq) ? startSeq : seq + 1;
-    } else {
-      // PREFIX-SEQ: PREFIX-SEQ
-      const expectedStart = `${prefix}-`;
-      if (!lastNumber.startsWith(expectedStart)) return startSeq;
-      const seqStr = lastNumber.slice(expectedStart.length);
-      const seq = parseInt(seqStr, 10);
-      return isNaN(seq) ? startSeq : seq + 1;
+  let maxSeq = 0;
+  for (const row of rows) {
+    const rowDate = String(row?.[options.dateColumn] || row?.dibuat_pada || "");
+    if (!sameNomorResetScope(rowDate, options.targetDate, options.reset)) {
+      continue;
     }
-  } catch {
-    return startSeq;
+    const seq = extractNomorSequence(
+      row?.[options.numberColumn],
+      options.prefix,
+      options.format,
+    );
+    if (seq && seq > maxSeq) maxSeq = seq;
   }
+  return maxSeq > 0 ? maxSeq + 1 : options.startSeq;
 }
 
 async function generateInvoiceNumber(tanggal: string): Promise<string> {
   const settings = await getShopSettings();
   const prefix = settings.inv_prefix || "INV";
-  const format = settings.inv_format || "PREFIX-DATE-SEQ";
-  const reset = settings.inv_reset || "daily";
+  const format = (settings.inv_format || "PREFIX-DATE-SEQ") as NomorFormat;
+  const reset = (settings.inv_reset || "daily") as NomorReset;
+  const dateFormat = normalizeNomorDateFormat(
+    settings.inv_date_format || DEFAULT_NOMOR_DATE_FORMAT,
+  );
   const padding = settings.inv_padding ?? 3;
   const startSeq = settings.inv_start_seq ?? 1;
 
-  const datePart = getDatePart(tanggal, reset, format);
+  const datePart =
+    format === "PREFIX-DATE-SEQ" ? formatNomorDatePart(tanggal, dateFormat) : "";
 
-  const lastInvoiceResult = await db.query("penjualan", {
-    orderBy: { column: "nomor_faktur", ascending: false },
-    limit: 1,
+  const invoiceResult = await db.query("penjualan", {
+    orderBy: { column: "dibuat_pada", ascending: false },
   });
 
-  let seq = startSeq;
-  if (lastInvoiceResult.data && lastInvoiceResult.data.length > 0) {
-    const lastInvoice = lastInvoiceResult.data[0] as any;
-    seq = extractSeqFromNumber(
-      lastInvoice.nomor_faktur || "",
-      prefix,
-      format,
-      datePart,
-      padding,
-      startSeq,
-    );
-  }
+  const seq = resolveNextSequenceFromRows(invoiceResult.data || [], {
+    numberColumn: "nomor_faktur",
+    dateColumn: "tanggal",
+    prefix,
+    format,
+    reset,
+    targetDate: tanggal,
+    startSeq,
+  });
 
   const seqStr = String(seq).padStart(Math.max(1, padding), "0");
-  if (format === "PREFIX-DATE-SEQ") {
-    return `${prefix}-${datePart}-${seqStr}`;
-  }
-  return `${prefix}-${seqStr}`;
+  return buildNomorUrut(prefix, format, datePart, seqStr);
 }
 
 async function generateSPKNumber(): Promise<string> {
   const settings = await getShopSettings();
   const prefix = settings.spk_prefix || "SPK";
-  const format = settings.spk_format || "PREFIX-SEQ";
-  const reset = settings.spk_reset || "never";
+  const format = (settings.spk_format || "PREFIX-SEQ") as NomorFormat;
+  const reset = (settings.spk_reset || "never") as NomorReset;
+  const dateFormat = normalizeNomorDateFormat(
+    settings.spk_date_format || DEFAULT_NOMOR_DATE_FORMAT,
+  );
   const padding = settings.spk_padding ?? 4;
   const startSeq = settings.spk_start_seq ?? 1;
 
   const today = new Date().toISOString().slice(0, 10);
-  const datePart = getDatePart(today, reset, format);
+  const datePart =
+    format === "PREFIX-DATE-SEQ" ? formatNomorDatePart(today, dateFormat) : "";
 
-  const lastOrderResult = await db.query("order_produksi", {
+  const orderResult = await db.query("order_produksi", {
     orderBy: { column: "dibuat_pada", ascending: false },
-    limit: 1,
   });
 
-  let seq = startSeq;
-  if (lastOrderResult.data && lastOrderResult.data.length > 0) {
-    const lastOrder = lastOrderResult.data[0] as any;
-    seq = extractSeqFromNumber(
-      lastOrder.nomor_spk || "",
-      prefix,
-      format,
-      datePart,
-      padding,
-      startSeq,
-    );
-  }
+  const seq = resolveNextSequenceFromRows(orderResult.data || [], {
+    numberColumn: "nomor_spk",
+    dateColumn: "dibuat_pada",
+    prefix,
+    format,
+    reset,
+    targetDate: today,
+    startSeq,
+  });
 
   const seqStr = String(seq).padStart(Math.max(1, padding), "0");
-  if (format === "PREFIX-DATE-SEQ") {
-    return `${prefix}-${datePart}-${seqStr}`;
-  }
-  return `${prefix}-${seqStr}`;
+  return buildNomorUrut(prefix, format, datePart, seqStr);
 }
 
 // ============================================================================

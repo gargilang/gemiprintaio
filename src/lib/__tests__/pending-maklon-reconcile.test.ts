@@ -134,6 +134,55 @@ describe("reconcilePendingMaklonItem", () => {
     expect(created.status).toBe("MENUNGGU");
   });
 
+  it("fallback: pending lama tanpa katalog_maklon_id tetap back-fill katalog dari nama produk", async () => {
+    mockTable("item_penjualan").set("it-fallback", {
+      id: "it-fallback",
+      penjualan_id: "s-fallback",
+      tipe_item: "MAKLON",
+      pending_vendor_hpp: 1,
+      katalog_maklon_id: null,
+      harga_satuan: 75000,
+      jumlah: 1,
+      subtotal: 75000,
+      deskripsi_pekerjaan: "Neon box",
+    });
+    mockTable("penjualan").set("s-fallback", {
+      id: "s-fallback",
+      nomor_faktur: "INV-FALLBACK",
+      tanggal: "2026-07-07",
+    });
+    mockTable("katalog_maklon").set("km-fallback", {
+      id: "km-fallback",
+      nama_produk: "Neon box",
+      harga_jual_default: 0,
+      biaya_subkontrak_default: 0,
+      vendor_subkontrak_id_default: null,
+      metode_bayar_vendor_default: "CASH",
+      is_deleted: 0,
+    });
+    mockTable("order_produksi").set("op-fallback", {
+      id: "op-fallback",
+      penjualan_id: "s-fallback",
+      status: "MENUNGGU",
+    });
+
+    await reconcilePendingMaklonItem("it-fallback", {
+      vendor_subkontrak_id: "v2",
+      biaya_subkontrak: 45000,
+      metode_bayar_vendor: "TRANSFER",
+      dibuat_oleh: "u1",
+    });
+
+    const updated = mockTable("item_penjualan").get("it-fallback");
+    expect(updated.katalog_maklon_id).toBe("km-fallback");
+
+    const tpl = mockTable("katalog_maklon").get("km-fallback");
+    expect(tpl.vendor_subkontrak_id_default).toBe("v2");
+    expect(Number(tpl.biaya_subkontrak_default)).toBe(45000);
+    expect(tpl.metode_bayar_vendor_default).toBe("TRANSFER");
+    expect(Number(tpl.harga_jual_default)).toBe(75000);
+  });
+
   it("idempoten: reconcile tidak membuat item_produksi dobel", async () => {
     mockTable("item_penjualan").set("it-idem", {
       id: "it-idem",

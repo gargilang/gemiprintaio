@@ -7,7 +7,7 @@ export const katalogMaklonInputSchema = z.object({
   biaya_subkontrak_default: z.coerce.number().finite().min(0),
   vendor_subkontrak_id_default: z.string().nullable().optional(),
   metode_bayar_vendor_default: z
-    .enum(["CASH", "NET30", "TRANSFER"])
+    .enum(["CASH", "TRANSFER", "NET30"])
     .default("CASH"),
   kategori: z.string().nullable().optional(),
   kategori_id: z.string().nullable().optional(),

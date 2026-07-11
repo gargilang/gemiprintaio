@@ -222,6 +222,9 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
   const navRowGroupBtn = `${navRowCore} items-start pt-1`;
   const navRowHover =
     "hover:bg-slate-50 active:bg-slate-100/80 dark:hover:bg-slate-800 dark:active:bg-slate-700/80";
+  const isRouteActive = (href: string) =>
+    pathname === href ||
+    (href !== "/pengaturan" && Boolean(pathname?.startsWith(href + "/")));
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex">
@@ -298,9 +301,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
               className="flex flex-col flex-1 overflow-y-auto gap-0.5 min-h-0 -mx-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgb(203_213_225)_transparent]"
             >
               {visibleLeaves.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  pathname?.startsWith(item.href + "/");
+                const active = isRouteActive(item.href);
                 return (
                   <Link
                     key={item.href}
@@ -393,9 +394,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                       {expanded && (
                         <div className="mt-0.5 ml-2.5 pl-2.5 border-l border-[#00afef]/25 space-y-0">
                           {visibleChildren.map((item) => {
-                            const active =
-                              pathname === item.href ||
-                              pathname?.startsWith(item.href + "/");
+                            const active = isRouteActive(item.href);
                             return (
                               <Link
                                 key={item.href}
@@ -433,9 +432,7 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 if (!canAccessPath(user?.role, item.href)) {
                   return null;
                 }
-                const active =
-                  pathname === item.href ||
-                  pathname?.startsWith(item.href + "/");
+                const active = isRouteActive(item.href);
                 return (
                   <div
                     key={item.href}

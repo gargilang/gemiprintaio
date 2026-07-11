@@ -2190,6 +2190,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
         sql: "inv_format TEXT NOT NULL DEFAULT 'PREFIX-DATE-SEQ' CHECK(inv_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ'))",
       },
       {
+        name: "inv_date_format",
+        sql: "inv_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(inv_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD'))",
+      },
+      {
         name: "inv_reset",
         sql: "inv_reset TEXT NOT NULL DEFAULT 'daily' CHECK(inv_reset IN ('daily', 'monthly', 'yearly', 'never'))",
       },
@@ -2202,6 +2206,10 @@ export function ensureServerSQLiteSyncV2Schema(db: any) {
       {
         name: "spk_format",
         sql: "spk_format TEXT NOT NULL DEFAULT 'PREFIX-SEQ' CHECK(spk_format IN ('PREFIX-DATE-SEQ', 'PREFIX-SEQ'))",
+      },
+      {
+        name: "spk_date_format",
+        sql: "spk_date_format TEXT NOT NULL DEFAULT 'YYYYMMDD' CHECK(spk_date_format IN ('YYYYMMDD', 'YYMMDD', 'DDMMYYYY', 'DDMMYY', 'YYYY-MM-DD', 'YYYY/MM/DD', 'YYYYMM', 'YYMM', 'MMYYYY', 'MMYY', 'DDMM', 'MMDD'))",
       },
       {
         name: "spk_reset",

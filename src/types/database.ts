@@ -284,12 +284,40 @@ export interface PengaturanToko {
   // Nomor urut faktur (invoice)
   inv_prefix?: string | null;
   inv_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ" | null;
+  inv_date_format?:
+    | "YYYYMMDD"
+    | "YYMMDD"
+    | "DDMMYYYY"
+    | "DDMMYY"
+    | "YYYY-MM-DD"
+    | "YYYY/MM/DD"
+    | "YYYYMM"
+    | "YYMM"
+    | "MMYYYY"
+    | "MMYY"
+    | "DDMM"
+    | "MMDD"
+    | null;
   inv_reset?: "daily" | "monthly" | "yearly" | "never" | null;
   inv_padding?: number | null;
   inv_start_seq?: number | null;
   // Nomor urut SPK
   spk_prefix?: string | null;
   spk_format?: "PREFIX-DATE-SEQ" | "PREFIX-SEQ" | null;
+  spk_date_format?:
+    | "YYYYMMDD"
+    | "YYMMDD"
+    | "DDMMYYYY"
+    | "DDMMYY"
+    | "YYYY-MM-DD"
+    | "YYYY/MM/DD"
+    | "YYYYMM"
+    | "YYMM"
+    | "MMYYYY"
+    | "MMYY"
+    | "DDMM"
+    | "MMDD"
+    | null;
   spk_reset?: "daily" | "monthly" | "yearly" | "never" | null;
   spk_padding?: number | null;
   spk_start_seq?: number | null;
