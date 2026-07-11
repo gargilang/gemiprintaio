@@ -56,6 +56,9 @@ export interface FinishingItem {
 export interface BiayaTambahanItem {
   label: string;
   nominal: number;
+  /** Porsi biaya pihak ketiga (modal) dari nominal ini. Kosong/0 = murni omzet.
+   *  Diposting sebagai pengeluaran kas kategori BIAYA. Wajib 0..nominal. */
+  modal?: number;
 }
 
 export interface CartItem {

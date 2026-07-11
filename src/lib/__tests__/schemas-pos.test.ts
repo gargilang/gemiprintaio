@@ -111,4 +111,36 @@ describe("createSaleSchema", () => {
     });
     expect(r.success).toBe(true);
   });
+
+  describe("biaya tambahan modal", () => {
+    const withBiaya = (biaya: any[]) => ({
+      pelanggan_id: "p1",
+      metode_pembayaran: "CASH",
+      total_jumlah: 2000,
+      jumlah_dibayar: 2000,
+      jumlah_kembalian: 0,
+      items: [{ ...baseItem, biaya_tambahan: biaya }],
+    });
+
+    test("menerima modal <= nominal", () => {
+      const r = createSaleSchema.safeParse(
+        withBiaya([{ label: "Pasang bambu", nominal: 30000, modal: 15000 }]),
+      );
+      expect(r.success).toBe(true);
+    });
+
+    test("menolak modal > nominal", () => {
+      const r = createSaleSchema.safeParse(
+        withBiaya([{ label: "Ongkir", nominal: 10000, modal: 20000 }]),
+      );
+      expect(r.success).toBe(false);
+    });
+
+    test("modal opsional (tanpa modal tetap valid)", () => {
+      const r = createSaleSchema.safeParse(
+        withBiaya([{ label: "Editing", nominal: 20000 }]),
+      );
+      expect(r.success).toBe(true);
+    });
+  });
 });

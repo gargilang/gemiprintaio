@@ -14,8 +14,23 @@ const biayaTambahanSchema = z
   .object({
     label: z.string(),
     nominal: finiteNumber,
+    modal: finiteNumber.nonnegative().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .superRefine((val, ctx) => {
+    // Hanya validasi baris yang akan disimpan (label terisi & nominal > 0).
+    const label = String(val.label || "").trim();
+    const nominal = Number(val.nominal) || 0;
+    const modal = Number(val.modal) || 0;
+    if (!label || nominal <= 0) return;
+    if (modal > nominal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Modal tidak boleh melebihi nominal biaya tambahan",
+        path: ["modal"],
+      });
+    }
+  });
 
 const saleItemSchema = z
   .object({
