@@ -661,7 +661,11 @@ export default function POSPage() {
     const subtotalRaw = finalQuantity * hargaPerSatuan;
     const validFormBiayaTambahan = formBiayaTambahan
       .filter((b) => b.label.trim() && b.nominal > 0)
-      .map((b) => ({ label: b.label.trim(), nominal: b.nominal }));
+      .map((b) => ({
+        label: b.label.trim(),
+        nominal: b.nominal,
+        modal: Math.min(Math.max(Number(b.modal) || 0, 0), b.nominal),
+      }));
 
     // Branch Katalog Extra: tetap CartItem MAKLON untuk alur vendor/biaya
     // subkontrak, tetapi finishing dari form tetap ikut disimpan.
@@ -2162,7 +2166,7 @@ export default function POSPage() {
                                 onClick={() =>
                                   setFormBiayaTambahan([
                                     ...formBiayaTambahan,
-                                    { label: "", nominal: 0 },
+                                    { label: "", nominal: 0, modal: 0 },
                                   ])
                                 }
                                 className="text-xs font-semibold px-1.5 py-0.5 rounded bg-[#00afef]/10 hover:bg-[#00afef]/20 text-[#00afef] transition-colors"
@@ -2209,21 +2213,39 @@ export default function POSPage() {
                                         };
                                         setFormBiayaTambahan(next);
                                       }}
-                                      placeholder="0"
-                                      className="w-20 px-1.5 py-1 text-xs text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setFormBiayaTambahan(
-                                          formBiayaTambahan.filter(
-                                            (_, i) => i !== idx,
-                                          ),
-                                        )
-                                      }
-                                      className="p-0.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-                                      aria-label="Hapus biaya"
-                                    >
+                                       placeholder="0"
+                                       className="w-20 px-1.5 py-1 text-xs text-right bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef] font-semibold"
+                                     />
+                                     <input
+                                       type="number"
+                                       step="1000"
+                                       min="0"
+                                       value={biaya.modal || ""}
+                                       onChange={(e) => {
+                                         const next = [...formBiayaTambahan];
+                                         next[idx] = {
+                                           ...next[idx],
+                                           modal:
+                                             parseFloat(e.target.value) || 0,
+                                         };
+                                         setFormBiayaTambahan(next);
+                                       }}
+                                       placeholder="Modal"
+                                       title="Modal / biaya pihak ketiga (opsional). Porsi ini jadi pengeluaran, sisanya omzet."
+                                       className="w-20 px-1.5 py-1 text-xs text-right bg-amber-50 dark:bg-amber-950/20 text-gray-900 dark:text-slate-100 border border-amber-300 dark:border-amber-800 rounded focus:outline-none focus:border-amber-500 font-semibold"
+                                     />
+                                     <button
+                                       type="button"
+                                       onClick={() =>
+                                         setFormBiayaTambahan(
+                                           formBiayaTambahan.filter(
+                                             (_, i) => i !== idx,
+                                           ),
+                                         )
+                                       }
+                                       className="p-0.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                                       aria-label="Hapus biaya"
+                                     >
                                       <svg
                                         className="w-3.5 h-3.5"
                                         fill="none"
