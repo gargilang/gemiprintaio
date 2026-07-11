@@ -1435,6 +1435,7 @@ CREATE TABLE biaya_tambahan_penjualan (
       item_penjualan_id TEXT,
       label TEXT NOT NULL,
       nominal REAL NOT NULL DEFAULT 0,
+      modal REAL NOT NULL DEFAULT 0,
       urutan INTEGER NOT NULL DEFAULT 0,
       dibuat_pada TEXT DEFAULT (datetime('now')),
       diperbarui_pada TEXT DEFAULT (datetime('now')),

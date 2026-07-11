@@ -1169,6 +1169,7 @@ CREATE TABLE IF NOT EXISTS "public"."biaya_tambahan_penjualan" (
     "penjualan_id" "text" NOT NULL,
     "label" "text" NOT NULL,
     "nominal" numeric DEFAULT 0 NOT NULL,
+    "modal" numeric DEFAULT 0 NOT NULL,
     "urutan" integer DEFAULT 0 NOT NULL,
     "dibuat_pada" timestamp with time zone DEFAULT "now"(),
     "sync_status" "text" DEFAULT 'pending'::"text",

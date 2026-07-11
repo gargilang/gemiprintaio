@@ -1594,6 +1594,10 @@ class UnifiedDatabase {
         "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN item_penjualan_id TEXT",
       );
       addColumn(
+        "modal",
+        "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN modal REAL NOT NULL DEFAULT 0",
+      );
+      addColumn(
         "diperbarui_pada",
         "ALTER TABLE biaya_tambahan_penjualan ADD COLUMN diperbarui_pada TEXT",
       );
