@@ -591,12 +591,14 @@ function ReorderWidget({
         vendorIds ?? undefined,
       );
       if (result.created.length > 0) {
-        // Navigasi DULU sebelum invalidate SWR — kalau onChanged() dipanggil
-        // lebih dulu, revalidate lokal selesai sebelum soft navigation commit,
-        // men-trigger re-render ReorderWidget di Beranda dan memantulkan
-        // pengguna kembali ke Beranda (race App Router startTransition).
+        // Navigasi ke Pesanan Pembelian. JANGAN panggil onChanged() di sini:
+        // mutateReorder() pada tick yang sama dengan router.push() akan
+        // me-render ulang ReorderWidget (yang masih ter-mount) dan membatalkan
+        // transisi soft navigation App Router, sehingga navigasi tidak pernah
+        // commit (server "rendering..." tak berhenti, pengguna tetap di Beranda).
+        // Cache reorder Beranda otomatis di-revalidate saat kembali ke Beranda
+        // (revalidateIfStale + revalidateOnFocus di SwrProvider).
         router.push("/pesanan-pembelian");
-        onChanged(); // fire-and-forget: Beranda segera unmount, cache refresh di background
       } else {
         setError(
           "Tidak ada draf pesanan pembelian yang dibuat. Pastikan vendor sudah aktif.",
