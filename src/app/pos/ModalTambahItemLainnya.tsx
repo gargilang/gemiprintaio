@@ -186,9 +186,6 @@ export default function ModalTambahItemLainnya({
         )}
 
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Pelanggan
-          </p>
           <label className="block text-sm">
             <span className="text-slate-700 dark:text-slate-200">
               Nama item
@@ -198,21 +195,6 @@ export default function ModalTambahItemLainnya({
               onChange={(e) => setNamaItem(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
             />
-          </label>
-          <label className="block text-sm">
-            <span className="text-slate-700 dark:text-slate-200">Satuan</span>
-            <select
-              value={berdimensi ? "m²" : namaSatuan}
-              onChange={(e) => setNamaSatuan(e.target.value)}
-              disabled={berdimensi}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {SATUAN_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="flex items-start gap-2 text-sm rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-900/10 p-3 cursor-pointer">
             <input
@@ -230,6 +212,21 @@ export default function ModalTambahItemLainnya({
                 m².
               </span>
             </span>
+          </label>
+          <label className="block text-sm">
+            <span className="text-slate-700 dark:text-slate-200">Satuan</span>
+            <select
+              value={berdimensi ? "m²" : namaSatuan}
+              onChange={(e) => setNamaSatuan(e.target.value)}
+              disabled={berdimensi}
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {SATUAN_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block text-sm">
             <span className="text-slate-700 dark:text-slate-200">

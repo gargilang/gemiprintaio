@@ -216,6 +216,37 @@ export default function ModalKatalogMaklon({
             />
           </div>
 
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-slate-800 rounded-lg border-2 border-emerald-200 dark:border-slate-700">
+              <input
+                type="checkbox"
+                id="butuh_dimensi_status"
+                checked={berdimensi}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    butuh_dimensi_status: e.target.checked ? 1 : 0,
+                    // Kunci satuan ke m² saat dimensi aktif.
+                    nama_satuan: e.target.checked ? "m²" : form.nama_satuan,
+                  })
+                }
+                className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <label
+                htmlFor="butuh_dimensi_status"
+                className="flex-1 text-sm cursor-pointer"
+              >
+                <span className="font-semibold text-emerald-900 dark:text-emerald-200 block">
+                  Butuh dimensi (harga per m²)
+                </span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                  Harga dihitung dari lebar × panjang × jumlah, seperti barang
+                  cetak di Data Barang. Satuan dikunci ke m².
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Satuan
@@ -379,37 +410,6 @@ export default function ModalKatalogMaklon({
               rows={2}
               className="w-full px-4 py-2 border-2 border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-slate-800 dark:text-slate-100"
             />
-          </div>
-
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-slate-800 rounded-lg border-2 border-emerald-200 dark:border-slate-700">
-              <input
-                type="checkbox"
-                id="butuh_dimensi_status"
-                checked={berdimensi}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    butuh_dimensi_status: e.target.checked ? 1 : 0,
-                    // Kunci satuan ke m² saat dimensi aktif.
-                    nama_satuan: e.target.checked ? "m²" : form.nama_satuan,
-                  })
-                }
-                className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-              />
-              <label
-                htmlFor="butuh_dimensi_status"
-                className="flex-1 text-sm cursor-pointer"
-              >
-                <span className="font-semibold text-emerald-900 dark:text-emerald-200 block">
-                  Butuh dimensi (harga per m²)
-                </span>
-                <span className="text-xs text-emerald-700 dark:text-emerald-300">
-                  Harga dihitung dari lebar × panjang × jumlah, seperti barang
-                  cetak di Data Barang. Satuan dikunci ke m².
-                </span>
-              </label>
-            </div>
           </div>
 
           <div className="md:col-span-2">
