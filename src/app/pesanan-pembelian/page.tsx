@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedData } from "@/lib/use-cached-data";
 import { sembunyikanPlaceholderBarang } from "@/lib/barang-placeholder";
@@ -63,6 +63,19 @@ export default function PurchaseOrdersPage() {
   const reload = async () => {
     await mutate();
   };
+
+  // Paksa revalidasi sekali saat halaman ter-mount. Tanpa ini, jika pengguna
+  // kembali ke halaman ini dalam <10 detik (dedupingInterval SWR) — mis. baru
+  // saja klik "Buat Draf" dari Beranda — SWR menekan revalidasi on-mount dan
+  // menampilkan cache lama tanpa draf yang baru dibuat. mutate() eksplisit
+  // melewati jendela dedup, jadi draf baru langsung muncul tanpa refresh
+  // manual. Diperbaiki di sisi tujuan supaya tidak ada mutasi SWR yang balapan
+  // dengan transisi router.push di Beranda (yang memantulkan pengguna kembali).
+  useEffect(() => {
+    void mutate();
+    // Sengaja hanya saat mount: mutate stabil dari SWR.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [vendorId, setVendorId] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [catatan, setCatatan] = useState("");

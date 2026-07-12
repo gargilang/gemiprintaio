@@ -218,6 +218,17 @@ export default function DashboardPage() {
       getReorderSuggestionsAction,
     );
 
+  // Paksa revalidasi saran restock saat Beranda ter-mount. Setelah membuat draf
+  // PO dari widget ini, kita sengaja TIDAK memutasi cache di jalur navigasi
+  // (balapan dengan router.push memantulkan pengguna balik ke Beranda). Sebagai
+  // gantinya, saat pengguna kembali ke Beranda widget di-refresh di sini —
+  // mutate() eksplisit melewati dedupingInterval SWR, jadi barang yang sudah
+  // ter-cover draf langsung hilang dari daftar tanpa refresh manual.
+  useEffect(() => {
+    void mutateReorder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header strip */}
