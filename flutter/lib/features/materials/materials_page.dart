@@ -23,6 +23,7 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
   List<MaterialItem> _materials = [];
   bool _isLoading = true;
   String _search = '';
+  String _filter = 'semua'; // 'semua' | 'dilacak' | 'dimensi' | 'stok_menipis'
 
   final _currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -64,16 +65,24 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
   }
 
   List<MaterialItem> get _filtered {
-    if (_search.isEmpty) return _materials;
     final q = _search.toLowerCase();
-    return _materials
-        .where(
-          (m) =>
-              m.nama.toLowerCase().contains(q) ||
-              (m.kategoriNama?.toLowerCase().contains(q) ?? false) ||
-              (m.deskripsi?.toLowerCase().contains(q) ?? false),
-        )
-        .toList();
+    return _materials.where((m) {
+      final matchesSearch =
+          q.isEmpty ||
+          m.nama.toLowerCase().contains(q) ||
+          (m.kategoriNama?.toLowerCase().contains(q) ?? false) ||
+          (m.subkategoriNama?.toLowerCase().contains(q) ?? false) ||
+          (m.deskripsi?.toLowerCase().contains(q) ?? false);
+
+      final matchesFilter = switch (_filter) {
+        'dilacak' => m.trackStock,
+        'dimensi' => m.dimensiRequired,
+        'stok_menipis' => m.trackStock && m.stok <= m.levelStokMinimum,
+        _ => true,
+      };
+
+      return matchesSearch && matchesFilter;
+    }).toList();
   }
 
   Future<void> _showForm({MaterialItem? existing}) async {
@@ -129,6 +138,20 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _filterChip('semua', 'Semua'),
+                    _filterChip('dilacak', 'Dilacak'),
+                    _filterChip('dimensi', 'Dimensi'),
+                    _filterChip('stok_menipis', 'Stok Menipis'),
+                  ],
+                ),
+              ),
+            ),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -165,9 +188,11 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
   }
 
   Widget _buildCard(MaterialItem m) {
-    final defaultPrice = m.harga.isNotEmpty
-        ? m.harga.firstWhere((p) => p.isDefault, orElse: () => m.harga.first)
-        : null;
+    final visiblePrices = m.harga.take(2).toList();
+    final hiddenCount = m.harga.length > visiblePrices.length
+        ? m.harga.length - visiblePrices.length
+        : 0;
+    final isLowStock = m.trackStock && m.stok <= m.levelStokMinimum;
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -225,39 +250,46 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
                     ),
                 ],
               ),
-              if (defaultPrice != null) ...[
+              if (visiblePrices.isNotEmpty) ...[
                 const Divider(height: 20),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    _priceChip(
-                      'Jual',
-                      _currencyFormat.format(defaultPrice.hargaJual),
-                      AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    _priceChip(
-                      'Beli',
-                      _currencyFormat.format(defaultPrice.hargaBeli),
-                      AppColors.warning,
-                    ),
-                    if (defaultPrice.hargaMember > 0) ...[
-                      const SizedBox(width: 8),
-                      _priceChip(
-                        'Member',
-                        _currencyFormat.format(defaultPrice.hargaMember),
-                        AppColors.success,
+                    ...visiblePrices.map(
+                      (p) => _priceChip(
+                        p.displayLabel,
+                        _currencyFormat.format(p.hargaJual),
+                        AppColors.primary,
                       ),
-                    ],
+                    ),
+                    if (hiddenCount > 0)
+                      _plainChip('+$hiddenCount produk jual lainnya'),
                   ],
                 ),
               ],
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (!m.trackStock) _plainChip('No Tracking'),
+                  if (m.dimensiRequired) _plainChip('Dimensi'),
+                  if (isLowStock) _dangerChip('Stok Menipis'),
+                ],
+              ),
               if (m.trackStock) ...[
                 const SizedBox(height: 8),
                 Text(
                   'Stok: ${m.stok.toStringAsFixed(0)} ${m.satuanNama ?? ''}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
               ],
+              const SizedBox(height: 4),
+              Text(
+                'HPP: ${_currencyFormat.format(m.averageCostPerBaseUnit)} / ${m.satuanNama ?? 'satuan'}',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              ),
             ],
           ),
         ),
@@ -279,6 +311,42 @@ class _MaterialsPageState extends ConsumerState<MaterialsPage> {
           fontWeight: FontWeight.w500,
           color: color,
         ),
+      ),
+    );
+  }
+
+  Widget _plainChip(String label) {
+    return Chip(
+      label: Text(label),
+      visualDensity: VisualDensity.compact,
+      labelStyle: const TextStyle(fontSize: 12),
+    );
+  }
+
+  Widget _dangerChip(String label) {
+    return Chip(
+      label: Text(label),
+      visualDensity: VisualDensity.compact,
+      backgroundColor: AppColors.error.withValues(alpha: 0.12),
+      labelStyle: const TextStyle(
+        fontSize: 12,
+        color: AppColors.error,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _filterChip(String value, String label) {
+    final selected = _filter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() => _filter = value),
+        selectedColor: AppColors.success.withValues(alpha: 0.16),
+        checkmarkColor: AppColors.success,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

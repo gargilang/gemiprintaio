@@ -12,6 +12,7 @@ class MaterialItem {
   final bool dimensiRequired;
   final bool munculDiPos;
   final double stok;
+  final double levelStokMinimum;
   final double averageCostPerBaseUnit;
   final String? createdAt;
   final String? updatedAt;
@@ -31,6 +32,7 @@ class MaterialItem {
     this.dimensiRequired = false,
     this.munculDiPos = true,
     this.stok = 0,
+    this.levelStokMinimum = 0,
     this.averageCostPerBaseUnit = 0,
     this.createdAt,
     this.updatedAt,
@@ -64,6 +66,8 @@ class MaterialItem {
           (json['stok'] as num?)?.toDouble() ??
           (json['jumlah_stok'] as num?)?.toDouble() ??
           0,
+      levelStokMinimum:
+          (json['level_stok_minimum'] as num?)?.toDouble() ?? 0,
       averageCostPerBaseUnit:
           (json['average_cost_per_base_unit'] as num?)?.toDouble() ?? 0,
       createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
