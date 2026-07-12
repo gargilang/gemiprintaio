@@ -164,4 +164,57 @@ void main() {
       ]);
     });
   });
+
+  group('mobile POS parity payload', () {
+    test('ItemBiaya.toJson menyertakan modal hanya saat > 0', () {
+      expect(
+        const ItemBiaya(label: 'Ongkir', nominal: 20000, modal: 20000).toJson(),
+        {'label': 'Ongkir', 'nominal': 20000.0, 'modal': 20000.0},
+      );
+      expect(
+        const ItemBiaya(label: 'Editing', nominal: 15000).toJson(),
+        {'label': 'Editing', 'nominal': 15000.0},
+      );
+    });
+
+    test(
+        'toSalePayload mengirim nama_produk_jual, jumlah_roll, recommended roll, dan katalog_maklon_id',
+        () {
+      final item = CartItem(
+        barangId: kIdBarangPlaceholderMaklon,
+        barangNama: 'UV Board Maklon',
+        hargaSatuanId: kIdHargaPlaceholderMaklon,
+        namaSatuan: 'm²',
+        namaProdukJual: 'UV Board Maklon',
+        faktorKonversi: 1,
+        hargaSatuan: 85000,
+        originalHargaSatuan: 85000,
+        butuhDimensi: true,
+        panjang: 2,
+        lebar: 1,
+        jumlahRoll: 1,
+        recommendedRollWidthM: 1,
+        jumlah: 2,
+        tipeItem: 'MAKLON',
+        vendorSubkontrakId: 'vendor-1',
+        biayaSubkontrak: 100000,
+        metodeBayarVendor: 'TRANSFER',
+        deskripsiPekerjaan: 'UV Board Maklon',
+        katalogMaklonId: 'kat-2',
+        biayaTambahan: const [
+          ItemBiaya(label: 'Packing', nominal: 10000, modal: 6000),
+        ],
+      );
+
+      final payload = item.toSalePayload(170000);
+      expect(payload['nama_produk_jual'], 'UV Board Maklon');
+      expect(payload['jumlah_roll'], 1);
+      expect(payload['recommended_roll_width_m'], 1);
+      expect(payload['katalog_maklon_id'], 'kat-2');
+      expect(payload['metode_bayar_vendor'], 'TRANSFER');
+      expect(payload['biaya_tambahan'], [
+        {'label': 'Packing', 'nominal': 10000.0, 'modal': 6000.0},
+      ]);
+    });
+  });
 }

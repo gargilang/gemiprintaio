@@ -176,6 +176,12 @@ class _MaklonBodyState extends State<_MaklonBody> {
                         selected: _metode == 'NET30',
                         onSelected: (_) => setState(() => _metode = 'NET30'),
                       ),
+                      const SizedBox(width: 6),
+                      ChoiceChip(
+                        label: const Text('TRANSFER', style: TextStyle(fontSize: 11)),
+                        selected: _metode == 'TRANSFER',
+                        onSelected: (_) => setState(() => _metode = 'TRANSFER'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),

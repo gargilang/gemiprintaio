@@ -13,6 +13,7 @@ export async function GET() {
       materials: data.materials,
       sales: data.sales,
       subkontraktor: data.subkontraktor,
+      katalogMaklon: data.katalogMaklon ?? [],
     });
   } catch (error: any) {
     console.error("Error fetching POS init data:", error);

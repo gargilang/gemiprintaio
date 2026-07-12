@@ -6,10 +6,14 @@ class PaymentResult {
   final String metode;
   final double dibayar;
   final double kembalian;
+  final String prioritas;
+  final String? catatan;
   const PaymentResult({
     required this.metode,
     required this.dibayar,
     required this.kembalian,
+    this.prioritas = 'NORMAL',
+    this.catatan,
   });
 }
 
@@ -48,11 +52,14 @@ class _PaymentBody extends StatefulWidget {
 class _PaymentBodyState extends State<_PaymentBody> {
   String _metode = 'CASH';
   final _bayarCtrl = TextEditingController();
+  String _prioritas = 'NORMAL';
+  final _catatanCtrl = TextEditingController();
   String? _error;
 
   @override
   void dispose() {
     _bayarCtrl.dispose();
+    _catatanCtrl.dispose();
     super.dispose();
   }
 
@@ -75,6 +82,10 @@ class _PaymentBodyState extends State<_PaymentBody> {
         metode: _metode,
         dibayar: _metode == 'NET30' ? 0 : _bayar,
         kembalian: _kembalian,
+        prioritas: _prioritas,
+        catatan: _catatanCtrl.text.trim().isEmpty
+            ? null
+            : _catatanCtrl.text.trim(),
       ),
     );
   }
@@ -141,6 +152,38 @@ class _PaymentBodyState extends State<_PaymentBody> {
                   }),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 16),
+            const SizedBox(height: 16),
+            const Text('PRIORITAS',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: [
+                ChoiceChip(
+                  label: const Text('Normal', style: TextStyle(fontSize: 12)),
+                  selected: _prioritas == 'NORMAL',
+                  selectedColor: AppColors.primary,
+                  onSelected: (_) => setState(() => _prioritas = 'NORMAL'),
+                ),
+                ChoiceChip(
+                  label: const Text('Kilat', style: TextStyle(fontSize: 12)),
+                  selected: _prioritas == 'KILAT',
+                  selectedColor: AppColors.primary,
+                  onSelected: (_) => setState(() => _prioritas = 'KILAT'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _catatanCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Catatan (opsional)',
+                isDense: true,
+              ),
+              minLines: 1,
+              maxLines: 3,
             ),
             const SizedBox(height: 16),
             if (_metode != 'NET30') ...[

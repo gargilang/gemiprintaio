@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gemiprint/features/pos/models/cart_item.dart';
 import 'package:gemiprint/features/pos/models/finishing_option.dart';
+import 'package:gemiprint/features/pos/models/katalog_maklon.dart';
 import 'package:gemiprint/features/pos/models/subkontraktor_option.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
 import 'package:gemiprint/features/pos/widgets/add_item_sheet.dart';
 import 'package:gemiprint/features/pos/widgets/cart_sheet.dart';
 import 'package:gemiprint/features/pos/widgets/customer_picker.dart';
 import 'package:gemiprint/features/pos/widgets/finishing_picker.dart';
+import 'package:gemiprint/features/pos/widgets/katalog_maklon_sheet.dart';
 import 'package:gemiprint/features/pos/widgets/maklon_form_sheet.dart';
 import 'package:gemiprint/features/pos/widgets/payment_sheet.dart';
 import 'package:gemiprint/features/pos/widgets/penawaran_preview.dart';
@@ -38,6 +40,7 @@ class PosPage extends ConsumerStatefulWidget {
 
 class _PosPageState extends ConsumerState<PosPage> {
   List<MaterialItem> _materials = [];
+  List<KatalogMaklon> _katalogMaklon = [];
   List<Customer> _customers = [];
   List<SubkontraktorOption> _subkontraktor = [];
   List<FinishingOption>? _finishingOptions;
@@ -74,6 +77,10 @@ class _PosPageState extends ConsumerState<PosPage> {
             .map((j) => MaterialItem.fromJson(j as Map<String, dynamic>))
             .where((m) => m.id != kIdBarangPlaceholderMaklon)
             .toList();
+        _katalogMaklon = ((data['katalogMaklon'] as List?) ?? [])
+            .map((j) => KatalogMaklon.fromJson(j as Map<String, dynamic>))
+            .where((k) => k.isAktif)
+            .toList();
         _customers = ((data['customers'] as List?) ?? [])
             .map((j) => Customer.fromJson(j as Map<String, dynamic>))
             .toList();
@@ -108,6 +115,10 @@ class _PosPageState extends ConsumerState<PosPage> {
       final k = m.kategoriNama;
       if (k != null && k.isNotEmpty) names.add(k);
     }
+    for (final k in _katalogMaklon) {
+      final kategori = k.kategoriNama ?? k.kategori;
+      if (kategori != null && kategori.isNotEmpty) names.add(kategori);
+    }
     final list = names.toList();
     list.sort((a, b) {
       final ia = _kategoriOrder.indexOf(a);
@@ -133,7 +144,22 @@ class _PosPageState extends ConsumerState<PosPage> {
     }
     final q = _search.trim().toLowerCase();
     if (q.isEmpty) return list;
-    return list.where((m) => m.nama.toLowerCase().contains(q)).toList();
+    return list.where((m) {
+      if (m.nama.toLowerCase().contains(q)) return true;
+      return m.harga.any((p) => p.displayLabel.toLowerCase().contains(q));
+    }).toList();
+  }
+
+  List<KatalogMaklon> get _filteredKatalogMaklon {
+    var list = _katalogMaklon;
+    if (_categoryFilter != 'ALL') {
+      list = list
+          .where((k) => (k.kategoriNama ?? k.kategori) == _categoryFilter)
+          .toList();
+    }
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list.where((k) => k.namaProduk.toLowerCase().contains(q)).toList();
   }
 
   double get _cartTotal =>
@@ -165,6 +191,15 @@ class _PosPageState extends ConsumerState<PosPage> {
       subkontraktor: _subkontraktor,
     );
     if (items != null) setState(() => _cart.addAll(items));
+  }
+
+  Future<void> _addKatalogMaklon(KatalogMaklon katalog) async {
+    final item = await showKatalogMaklonSheet(
+      context,
+      katalog: katalog,
+      subkontraktor: _subkontraktor,
+    );
+    if (item != null) setState(() => _cart.add(item));
   }
 
   Future<void> _openCart() async {
@@ -273,7 +308,9 @@ class _PosPageState extends ConsumerState<PosPage> {
         'jumlah_kembalian': payment.kembalian,
         'metode_pembayaran': payment.metode,
         'kasir_id': user?.id,
-        'prioritas': 'NORMAL',
+        'prioritas': payment.prioritas,
+        if (payment.catatan != null && payment.catatan!.isNotEmpty)
+          'catatan': payment.catatan,
       });
       if (!mounted) return;
       final invoice =
@@ -337,6 +374,7 @@ class _PosPageState extends ConsumerState<PosPage> {
         Expanded(
           child: ProductGrid(
             materials: _filtered,
+            katalogMaklon: _filteredKatalogMaklon,
             categories: _categories,
             categoryFilter: _categoryFilter,
             isMember: _isMember,
@@ -346,6 +384,7 @@ class _PosPageState extends ConsumerState<PosPage> {
             onCategory: (v) => setState(() => _categoryFilter = v),
             onTapMaterial: _addMaterial,
             onTapMaklon: _addMaklon,
+            onTapKatalogMaklon: _addKatalogMaklon,
             onOpenCart: _openCart,
           ),
         ),

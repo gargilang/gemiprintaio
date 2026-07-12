@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:gemiprint/core/theme/app_theme.dart';
+import 'package:gemiprint/features/pos/models/katalog_maklon.dart';
 import 'package:gemiprint/features/pos/pos_calc.dart';
 import 'package:gemiprint/models/material_item.dart';
 
 class ProductGrid extends StatelessWidget {
   final List<MaterialItem> materials;
+  final List<KatalogMaklon> katalogMaklon;
   final List<String> categories;
   final String categoryFilter;
   final bool isMember;
@@ -14,11 +16,13 @@ class ProductGrid extends StatelessWidget {
   final ValueChanged<String> onCategory;
   final void Function(MaterialItem) onTapMaterial;
   final VoidCallback onTapMaklon;
+  final void Function(KatalogMaklon) onTapKatalogMaklon;
   final VoidCallback onOpenCart;
 
   const ProductGrid({
     super.key,
     required this.materials,
+    required this.katalogMaklon,
     required this.categories,
     required this.categoryFilter,
     required this.isMember,
@@ -28,6 +32,7 @@ class ProductGrid extends StatelessWidget {
     required this.onCategory,
     required this.onTapMaterial,
     required this.onTapMaklon,
+    required this.onTapKatalogMaklon,
     required this.onOpenCart,
   });
 
@@ -67,10 +72,14 @@ class ProductGrid extends StatelessWidget {
               mainAxisSpacing: 8,
               childAspectRatio: 1.5,
             ),
-            itemCount: materials.length + 1,
+            itemCount: materials.length + katalogMaklon.length + 1,
             itemBuilder: (_, i) {
-              if (i == materials.length) return _maklonTile();
-              return _card(materials[i]);
+              if (i < materials.length) return _card(materials[i]);
+              final katalogIndex = i - materials.length;
+              if (katalogIndex < katalogMaklon.length) {
+                return _katalogMaklonCard(katalogMaklon[katalogIndex]);
+              }
+              return _maklonTile();
             },
           ),
         ),
@@ -147,6 +156,63 @@ class ProductGrid extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 13),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _katalogMaklonCard(KatalogMaklon k) {
+    return GestureDetector(
+      onTap: () => onTapKatalogMaklon(k),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.purple.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.purple.shade200),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    k.namaProduk,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: Colors.purple.shade800,
+                    ),
+                  ),
+                ),
+                if (k.butuhDimensi)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('m²',
+                        style: TextStyle(
+                            fontSize: 8, color: Colors.blue.shade700)),
+                  ),
+              ],
+            ),
+            const Spacer(),
+            Text('Maklon · ${k.namaSatuan}',
+                style: TextStyle(fontSize: 10, color: Colors.purple.shade400)),
+            Text(
+              'Rp ${formatPosUnitPrice(k.hargaJualDefault)}${k.butuhDimensi ? '/m²' : ''}',
+              style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13),
+            ),
           ],
         ),
       ),

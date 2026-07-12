@@ -51,7 +51,10 @@ const saleItemSchema = z
     tipe_item: z.enum(["BARANG", "JASA", "MAKLON"]).optional(),
     vendor_subkontrak_id: z.string().nullable().optional(),
     biaya_subkontrak: finiteNumber.nullable().optional(),
-    metode_bayar_vendor: z.enum(["CASH", "NET30"]).nullable().optional(),
+    metode_bayar_vendor: z
+      .enum(["CASH", "NET30", "TRANSFER"])
+      .nullable()
+      .optional(),
     deskripsi_pekerjaan: z.string().nullable().optional(),
     biaya_tambahan: z.array(biayaTambahanSchema).optional(),
   })

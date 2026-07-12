@@ -161,11 +161,12 @@ class _AddItemBodyState extends State<_AddItemBody> {
         : null;
     Navigator.pop(
       context,
-      CartItem(
+        CartItem(
         barangId: widget.material.id,
         barangNama: widget.material.nama,
         hargaSatuanId: _price.id,
         namaSatuan: _price.label,
+        namaProdukJual: _price.displayLabel,
         faktorKonversi: _price.faktorKonversi,
         hargaSatuan: _hargaAktif,
         originalHargaSatuan: _hargaSatuan,
@@ -177,6 +178,8 @@ class _AddItemBodyState extends State<_AddItemBody> {
         selectedRollSize: c.rollSize,
         billedPanjang: c.billedP,
         billedLebar: c.billedL,
+        jumlahRoll: _dim ? 1 : null,
+        recommendedRollWidthM: c.rollSize,
         finishing: List.from(_finishing),
         biayaTambahan: List.from(_biayaTambahan),
       ),
@@ -238,6 +241,7 @@ class _AddItemBodyState extends State<_AddItemBody> {
   Future<void> _addBiaya() async {
     final labelCtrl = TextEditingController();
     final nominalCtrl = TextEditingController();
+    final modalCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -258,6 +262,15 @@ class _AddItemBodyState extends State<_AddItemBody> {
                 prefixText: 'Rp ',
               ),
             ),
+            TextField(
+              controller: modalCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Modal (opsional)',
+                prefixText: 'Rp ',
+                helperText: 'Isi jika ada biaya pihak ketiga',
+              ),
+            ),
           ],
         ),
         actions: [
@@ -273,11 +286,16 @@ class _AddItemBodyState extends State<_AddItemBody> {
       ),
     );
     if (ok == true) {
+      final label = labelCtrl.text.trim();
       final nominal = double.tryParse(nominalCtrl.text) ?? 0;
-      if (labelCtrl.text.trim().isNotEmpty && nominal > 0) {
-        setState(() => _biayaTambahan
-            .add(ItemBiaya(label: labelCtrl.text.trim(), nominal: nominal)));
+      final modal = double.tryParse(modalCtrl.text) ?? 0;
+      if (label.isEmpty || nominal <= 0) return;
+      if (modal < 0 || modal > nominal) {
+        setState(() => _error = 'Modal tidak boleh melebihi nominal biaya tambahan');
+        return;
       }
+      setState(() => _biayaTambahan
+          .add(ItemBiaya(label: label, nominal: nominal, modal: modal)));
     }
   }
 
@@ -450,8 +468,21 @@ class _AddItemBodyState extends State<_AddItemBody> {
                   ..._biayaTambahan.asMap().entries.map((e) => Row(
                         children: [
                           Expanded(
-                              child: Text(e.value.label,
-                                  style: const TextStyle(fontSize: 12))),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(e.value.label,
+                                    style: const TextStyle(fontSize: 12)),
+                                if (e.value.modal > 0)
+                                  Text(
+                                    'Modal Rp ${formatPosUnitPrice(e.value.modal)}',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade600),
+                                  ),
+                              ],
+                            ),
+                          ),
                           Text('Rp ${formatPosUnitPrice(e.value.nominal)}',
                               style: const TextStyle(fontSize: 12)),
                           GestureDetector(

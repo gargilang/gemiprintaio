@@ -1,11 +1,23 @@
 import 'package:gemiprint/features/pos/models/finishing_option.dart';
 
 /// Biaya tambahan per item (mis. ongkir, laminasi manual, dll).
+///
+/// [modal] adalah biaya pihak ketiga (data internal); tidak ditampilkan di
+/// dokumen customer dan hanya dikirim ke payload bila > 0.
 class ItemBiaya {
   final String label;
   final double nominal;
-  const ItemBiaya({required this.label, required this.nominal});
-  Map<String, dynamic> toJson() => {'label': label, 'nominal': nominal};
+  final double modal;
+  const ItemBiaya({
+    required this.label,
+    required this.nominal,
+    this.modal = 0,
+  });
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'nominal': nominal,
+        if (modal > 0) 'modal': modal,
+      };
 }
 
 /// Baris keranjang POS. Mirror dari web `src/app/pos/pos-types.ts` CartItem.
@@ -17,6 +29,11 @@ class CartItem {
   final String barangNama;
   final String hargaSatuanId;
   final String namaSatuan;
+
+  /// Snapshot nama produk jual (dari `MaterialPrice.displayLabel` atau katalog
+  /// maklon). Dikirim ke backend sebagai `nama_produk_jual` untuk riwayat/faktur.
+  final String? namaProdukJual;
+
   final double faktorKonversi;
 
   /// Harga satuan berlaku (bisa di-override). [originalHargaSatuan] disimpan
@@ -34,6 +51,12 @@ class CartItem {
   final double? billedPanjang;
   final double? billedLebar;
 
+  /// Jumlah lembar/roll (integer secara semantik; disimpan double untuk payload).
+  final double? jumlahRoll;
+
+  /// Lebar roll acuan (m) untuk perhitungan HPP/inventori sisi backend.
+  final double? recommendedRollWidthM;
+
   /// Kuantitas final: m² (dimensi) atau qty (non-dimensi/maklon).
   double jumlah;
 
@@ -48,8 +71,11 @@ class CartItem {
   final String? vendorSubkontrakId;
   final String? vendorSubkontrakNama;
   final double? biayaSubkontrak;
-  final String? metodeBayarVendor; // 'CASH' | 'NET30'
+  final String? metodeBayarVendor; // 'CASH' | 'NET30' | 'TRANSFER'
   final String? deskripsiPekerjaan;
+
+  /// Id katalog maklon existing bila item berasal dari katalog (bukan ad-hoc).
+  final String? katalogMaklonId;
 
   CartItem({
     required this.barangId,
@@ -61,12 +87,15 @@ class CartItem {
     required this.originalHargaSatuan,
     required this.butuhDimensi,
     required this.jumlah,
+    this.namaProdukJual,
     this.panjang,
     this.lebar,
     this.useRounding = false,
     this.selectedRollSize,
     this.billedPanjang,
     this.billedLebar,
+    this.jumlahRoll,
+    this.recommendedRollWidthM,
     this.finishing = const [],
     this.biayaTambahan = const [],
     this.tipeItem = 'BARANG',
@@ -75,6 +104,7 @@ class CartItem {
     this.biayaSubkontrak,
     this.metodeBayarVendor,
     this.deskripsiPekerjaan,
+    this.katalogMaklonId,
   });
 
   bool get isMaklon => tipeItem == 'MAKLON';
@@ -95,6 +125,8 @@ class CartItem {
       'barang_id': barangId,
       'harga_satuan_id': hargaSatuanId,
       'nama_satuan': namaSatuan,
+      if (namaProdukJual != null && namaProdukJual!.trim().isNotEmpty)
+        'nama_produk_jual': namaProdukJual!.trim(),
       'faktor_konversi': faktorKonversi,
       'jumlah': jumlah,
       'harga_satuan': unit,
@@ -103,11 +135,16 @@ class CartItem {
       if (lebar != null) 'lebar': lebar,
       if (billedPanjang != null) 'billed_panjang': billedPanjang,
       if (billedLebar != null) 'billed_lebar': billedLebar,
+      if (jumlahRoll != null) 'jumlah_roll': jumlahRoll,
+      if (recommendedRollWidthM != null)
+        'recommended_roll_width_m': recommendedRollWidthM,
       if (selectedRollSize != null) 'selectedRollSize': selectedRollSize,
       if (finishing.isNotEmpty)
         'finishing': finishing.map((f) => f.toJson()).toList(),
       if (biayaTambahan.isNotEmpty)
         'biaya_tambahan': biayaTambahan.map((b) => b.toJson()).toList(),
+      if (katalogMaklonId != null && katalogMaklonId!.trim().isNotEmpty)
+        'katalog_maklon_id': katalogMaklonId!.trim(),
       if (isMaklon) ...{
         'tipe_item': 'MAKLON',
         'vendor_subkontrak_id': vendorSubkontrakId,

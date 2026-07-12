@@ -341,6 +341,11 @@ class _DetailSheet extends ConsumerWidget {
           const SizedBox(height: 8),
           ...items.map((item) {
             final raw = item as Map<String, dynamic>;
+            final itemName = (raw['nama_produk_jual'] ??
+                    raw['barang_nama'] ??
+                    raw['nama_barang'] ??
+                    '-')
+                .toString();
             final cetak = ItemCetakPenjualan(
               jumlah: (raw['jumlah'] as num?)?.toDouble() ?? 0,
               namaSatuan: raw['nama_satuan'] as String?,
@@ -367,7 +372,7 @@ class _DetailSheet extends ConsumerWidget {
                 .toList();
             return Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(raw['barang_nama'] ?? raw['nama_barang'] ?? '-', style: const TextStyle(fontSize: 13)),
+                Text(itemName, style: const TextStyle(fontSize: 13)),
                 if (ukuran != null) Text('Ukuran: $ukuran', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                 ...biayaList.map((e) => Text('+ ${e.key}: Rp ${currencyFmt.format(e.value)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
               ])),
@@ -399,6 +404,11 @@ class _DetailSheet extends ConsumerWidget {
                   shop: shop,
                   lines: items.map((item) {
                     final raw = item as Map<String, dynamic>;
+                    final lineName = (raw['nama_produk_jual'] ??
+                            raw['barang_nama'] ??
+                            raw['nama_barang'] ??
+                            '-')
+                        .toString();
                     final cetak = ItemCetakPenjualan(
                       jumlah: (raw['jumlah'] as num?)?.toDouble() ?? 0,
                       namaSatuan: raw['nama_satuan'] as String?,
@@ -422,7 +432,7 @@ class _DetailSheet extends ConsumerWidget {
                         (raw['subtotal'] as num?)?.toDouble() ??
                         (qs.qty * hargaLine);
                     return FakturLine(
-                      name: item['barang_nama'] ?? item['nama_barang'] ?? '-',
+                      name: lineName,
                       ukuran: ukuran,
                       qty: qs.qty,
                       satuan: qs.satuan.isEmpty ? null : qs.satuan,

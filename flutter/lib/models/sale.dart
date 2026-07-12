@@ -89,6 +89,11 @@ class SaleItem {
   final String penjualanId;
   final String barangId;
   final String? barangNama;
+
+  /// Snapshot nama produk jual dari web/POS. Dipakai lebih dulu daripada
+  /// [barangNama] untuk label item di riwayat/faktur.
+  final String? namaProdukJual;
+
   final double quantity;
   final double hargaSatuan;
   final double subtotal;
@@ -111,6 +116,7 @@ class SaleItem {
     required this.penjualanId,
     required this.barangId,
     this.barangNama,
+    this.namaProdukJual,
     this.quantity = 0,
     this.hargaSatuan = 0,
     this.subtotal = 0,
@@ -129,12 +135,23 @@ class SaleItem {
     this.createdAt,
   });
 
+  /// Label item yang ditampilkan ke customer/kasir: snapshot produk jual dulu,
+  /// lalu fallback ke nama barang, terakhir id barang.
+  String get displayName {
+    final produk = namaProdukJual?.trim();
+    if (produk != null && produk.isNotEmpty) return produk;
+    final barang = barangNama?.trim();
+    if (barang != null && barang.isNotEmpty) return barang;
+    return barangId;
+  }
+
   factory SaleItem.fromJson(Map<String, dynamic> json) {
     return SaleItem(
       id: json['id'] as String,
       penjualanId: (json['penjualan_id'] ?? '') as String,
       barangId: (json['barang_id'] ?? '') as String,
       barangNama: (json['barang_nama'] ?? json['nama_barang']) as String?,
+      namaProdukJual: json['nama_produk_jual'] as String?,
       quantity:
           (json['quantity'] as num?)?.toDouble() ??
           (json['jumlah'] as num?)?.toDouble() ??
