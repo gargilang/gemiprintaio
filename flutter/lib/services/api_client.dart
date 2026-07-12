@@ -105,6 +105,7 @@ class ApiClient {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/produksi')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/produksi'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/keuangan/')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/keuangan/'));
     } else if (path.contains('/barang') || path.contains('/master/')) {

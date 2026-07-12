@@ -18,9 +18,17 @@ class ProductionPage extends ConsumerStatefulWidget {
 class _ProductionPageState extends ConsumerState<ProductionPage> {
   List<ProductionOrder> _orders = [];
   bool _isLoading = true;
+  bool _isProcessingAction = false;
   String _search = '';
   String _activeFilter = 'Semua';
-  static const _statuses = ['Semua', 'Menunggu', 'Proses', 'Selesai', 'Dibatalkan'];
+  static const _statuses = [
+    'Semua',
+    'Menunggu',
+    'Proses',
+    'Siap Diambil',
+    'Selesai',
+    'Dibatalkan',
+  ];
   final _dateFmt = DateFormat('dd/MM/yy', 'id_ID');
 
   @override
@@ -48,6 +56,8 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
       result = result.where((o) => o.status == 'MENUNGGU').toList();
     } else if (_activeFilter == 'Proses') {
       result = result.where((o) => o.status == 'PROSES' || o.status == 'DALAM_PROSES').toList();
+    } else if (_activeFilter == 'Siap Diambil') {
+      result = result.where((o) => o.status == 'SIAP_AMBIL').toList();
     } else if (_activeFilter == 'Selesai') {
       result = result.where((o) => o.status == 'SELESAI').toList();
     } else if (_activeFilter == 'Dibatalkan') {
@@ -64,7 +74,18 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     switch (status) {
       case 'MENUNGGU': return const Color(0xFFF59E0B);
       case 'PROSES': case 'DALAM_PROSES': return AppColors.accent;
+      case 'SIAP_AMBIL': return const Color(0xFF14B8A6);
+      case 'TUNGGU_KONFIRMASI': return const Color(0xFFF59E0B);
+      case 'BAHAN_HABIS': return AppColors.error;
+      case 'PRINTING': return const Color(0xFF8B5CF6);
+      case 'FINISHING': return const Color(0xFFF97316);
+      case 'PESAN_KURIR':
+      case 'TUNGGU_KURIR': return const Color(0xFF06B6D4);
+      case 'SEDANG_DIKIRIM':
+      case 'SEDANG_DIAMBIL': return const Color(0xFF0EA5E9);
+      case 'DIKERJAKAN_VENDOR': return const Color(0xFF6366F1);
       case 'SELESAI': return AppColors.success;
+      case 'DIBATALKAN': return AppColors.error;
       default: return Colors.grey;
     }
   }
@@ -73,6 +94,16 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
     switch (s) {
       case 'MENUNGGU': return 'Menunggu';
       case 'PROSES': case 'DALAM_PROSES': return 'Proses';
+      case 'SIAP_AMBIL': return 'Siap Diambil';
+      case 'TUNGGU_KONFIRMASI': return 'Tunggu Konfirmasi';
+      case 'BAHAN_HABIS': return 'Bahan Habis';
+      case 'PRINTING': return 'Printing';
+      case 'FINISHING': return 'Finishing';
+      case 'PESAN_KURIR': return 'Pesan Kurir';
+      case 'TUNGGU_KURIR': return 'Tunggu Kurir';
+      case 'SEDANG_DIKIRIM': return 'Sedang Dikirim';
+      case 'DIKERJAKAN_VENDOR': return 'Dikerjakan Vendor';
+      case 'SEDANG_DIAMBIL': return 'Sedang Diambil';
       case 'SELESAI': return 'Selesai';
       case 'DIBATALKAN': return 'Dibatalkan';
       default: return s;
@@ -85,6 +116,33 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
       if (mounted) { showSuccessSnackbar(context, 'Status SPK diperbarui'); _loadData(); }
     } on ApiException catch (e) { if (mounted) showErrorSnackbar(context, e.message); }
     catch (_) { if (mounted) showErrorSnackbar(context, 'Gagal memperbarui status'); }
+  }
+
+  Future<void> _markReadyForPickup(ProductionOrder order) async {
+    if (_isProcessingAction) return;
+    setState(() => _isProcessingAction = true);
+    try {
+      final response = await ref.read(productionServiceProvider).markReadyForPickup(order.id);
+      final result = response['result'] as Map<String, dynamic>?;
+      final blocked = (result?['terhalang'] as List?) ?? [];
+      if (mounted) {
+        if (blocked.isNotEmpty) {
+          final names = blocked
+              .map((i) => (i as Map<String, dynamic>)['nama']?.toString() ?? '-')
+              .join(', ');
+          showErrorSnackbar(context, 'Item belum bisa disiapkan: $names');
+        } else {
+          showSuccessSnackbar(context, 'SPK ditandai Siap Diambil');
+        }
+        _loadData();
+      }
+    } on ApiException catch (e) {
+      if (mounted) showErrorSnackbar(context, e.message);
+    } catch (_) {
+      if (mounted) showErrorSnackbar(context, 'Gagal menandai Siap Diambil');
+    } finally {
+      if (mounted) setState(() => _isProcessingAction = false);
+    }
   }
 
   void _showDetail(ProductionOrder order) {
@@ -126,13 +184,32 @@ class _ProductionPageState extends ConsumerState<ProductionPage> {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(item.barangNama ?? '-', style: const TextStyle(fontSize: 13)),
                   Text('Qty: $qtyLabel$ukuranText - ${_statusLabel(item.status)}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  if (item.rollInventoryStatus == 'PENDING')
+                    Text(
+                      'Konfirmasi roll aktual dilakukan di web.',
+                      style: TextStyle(fontSize: 11, color: AppColors.warning),
+                    ),
                 ])),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: _statusColor(item.status).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: Text(_statusLabel(item.status), style: TextStyle(color: _statusColor(item.status), fontSize: 10, fontWeight: FontWeight.w600))),
               ]));
             }),
             const SizedBox(height: 16),
             if (order.status == 'MENUNGGU') SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () { Navigator.of(context).pop(); _updateStatus(order, 'PROSES'); }, icon: const Icon(Icons.play_arrow, size: 18), label: const Text('Lanjutkan ke Proses'))),
-            if (order.status == 'PROSES' || order.status == 'DALAM_PROSES') SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () { Navigator.of(context).pop(); _updateStatus(order, 'SELESAI'); }, icon: const Icon(Icons.check, size: 18), label: const Text('Tandai Selesai'), style: FilledButton.styleFrom(backgroundColor: AppColors.success))),
+            if (order.status == 'PROSES' || order.status == 'DALAM_PROSES')
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isProcessingAction
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          _markReadyForPickup(order);
+                        },
+                  icon: const Icon(Icons.inventory_2_rounded, size: 18),
+                  label: const Text('Siap Diambil'),
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF14B8A6)),
+                ),
+              ),
           ])),
         ]),
       )));

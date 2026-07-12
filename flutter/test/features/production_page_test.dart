@@ -24,5 +24,6 @@ void main() {
     expect(find.text('Semua'), findsOneWidget);
     expect(find.text('Menunggu'), findsOneWidget);
     expect(find.text('Proses'), findsOneWidget);
+    expect(find.text('Siap Diambil'), findsOneWidget);
   });
 }

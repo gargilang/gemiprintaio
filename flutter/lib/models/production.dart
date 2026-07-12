@@ -9,6 +9,8 @@ class ProductionOrder {
   final String? catatan;
   final String? createdAt;
   final String? updatedAt;
+  final bool penjualanDibatalkan;
+  final bool statusOverrideManual;
   final List<ProductionItem> items;
 
   const ProductionOrder({
@@ -22,6 +24,8 @@ class ProductionOrder {
     this.catatan,
     this.createdAt,
     this.updatedAt,
+    this.penjualanDibatalkan = false,
+    this.statusOverrideManual = false,
     this.items = const [],
   });
 
@@ -38,6 +42,8 @@ class ProductionOrder {
       catatan: json['catatan'] as String?,
       createdAt: (json['created_at'] ?? json['dibuat_pada']) as String?,
       updatedAt: (json['updated_at'] ?? json['diperbarui_pada']) as String?,
+      penjualanDibatalkan: json['penjualan_dibatalkan'] == true || json['penjualan_dibatalkan'] == 1,
+      statusOverrideManual: json['status_override_manual'] == true || json['status_override_manual'] == 1,
       items: itemList is List
           ? itemList
                 .map((i) => ProductionItem.fromJson(i as Map<String, dynamic>))
@@ -50,6 +56,7 @@ class ProductionOrder {
 class ProductionItem {
   final String id;
   final String orderProduksiId;
+  final String? barangId;
   final String? barangNama;
   final double quantity;
   final String? namaSatuan;
@@ -60,6 +67,9 @@ class ProductionItem {
   final num? jumlahRoll;
   final List<MapEntry<String, double>> biayaTambahan;
   final String status;
+  final bool isMaklon;
+  final String rollInventoryStatus;
+  final double? recommendedRollWidthM;
   final String statusCetak;
   final String statusFinishing;
   final List<ProductionFinishing> finishing;
@@ -68,6 +78,7 @@ class ProductionItem {
   const ProductionItem({
     required this.id,
     required this.orderProduksiId,
+    this.barangId,
     this.barangNama,
     this.quantity = 0,
     this.namaSatuan,
@@ -78,6 +89,9 @@ class ProductionItem {
     this.jumlahRoll,
     this.biayaTambahan = const [],
     this.status = 'MENUNGGU',
+    this.isMaklon = false,
+    this.rollInventoryStatus = 'NOT_REQUIRED',
+    this.recommendedRollWidthM,
     this.statusCetak = 'BELUM',
     this.statusFinishing = 'BELUM',
     this.finishing = const [],
@@ -106,6 +120,7 @@ class ProductionItem {
     return ProductionItem(
       id: json['id'] as String,
       orderProduksiId: (json['order_produksi_id'] ?? '') as String,
+      barangId: json['barang_id'] as String?,
       barangNama: (json['barang_nama'] ?? json['nama_barang']) as String?,
       quantity:
           (json['quantity'] as num?)?.toDouble() ??
@@ -124,6 +139,9 @@ class ProductionItem {
           .where((e) => e.key.isNotEmpty)
           .toList(),
       status: status,
+      isMaklon: json['is_maklon'] == true || json['is_maklon'] == 1,
+      rollInventoryStatus: (json['roll_inventory_status'] ?? 'NOT_REQUIRED') as String,
+      recommendedRollWidthM: (json['recommended_roll_width_m'] as num?)?.toDouble(),
       statusCetak: (json['status_cetak'] ?? status) as String,
       statusFinishing: statusFinishing,
       finishing: finishing,

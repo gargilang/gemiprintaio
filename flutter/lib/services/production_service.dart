@@ -31,4 +31,9 @@ class ProductionService {
     return await _api.post('/api/produksi', body: body)
         as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> markReadyForPickup(String id) async {
+    return await _api.post('/api/produksi/$id/siap-diambil')
+        as Map<String, dynamic>;
+  }
 }

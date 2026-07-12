@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gemiprint/providers/providers.dart';
 import 'package:gemiprint/features/auth/login_page.dart';
 import 'package:gemiprint/features/dashboard/dashboard_page.dart';
+import 'package:gemiprint/features/pengambilan/pengambilan_page.dart';
 import 'package:gemiprint/features/pos/pos_page.dart';
 import 'package:gemiprint/features/production/production_page.dart';
 import 'package:gemiprint/features/materials/materials_page.dart';
@@ -46,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/production',
             builder: (context, state) => const ProductionPage(),
+          ),
+          GoRoute(
+            path: '/pengambilan',
+            builder: (context, state) => const PengambilanPage(),
           ),
           GoRoute(
             path: '/materials',

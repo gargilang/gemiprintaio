@@ -65,6 +65,12 @@ final List<dynamic> _menuEntries = [
         label: 'SPK',
         allowedRoles: RoleGroups.operational,
       ),
+      _MenuItemData(
+        path: '/pengambilan',
+        icon: Icons.inventory_2_rounded,
+        label: 'Pengambilan',
+        allowedRoles: RoleGroups.operational,
+      ),
     ],
   ),
   const _MenuGroupData(
@@ -305,6 +311,7 @@ class AppShell extends ConsumerWidget {
       '/dashboard': 'Beranda',
       '/pos': 'POS / Kasir',
       '/production': 'Produksi',
+      '/pengambilan': 'Pengambilan',
       '/materials': 'Data Barang',
       '/purchases': 'Pembelian',
       '/customers': 'Pelanggan',

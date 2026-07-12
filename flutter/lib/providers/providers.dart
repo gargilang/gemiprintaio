@@ -6,6 +6,7 @@ import 'package:gemiprint/services/auth_service.dart';
 import 'package:gemiprint/services/customers_service.dart';
 import 'package:gemiprint/services/finance_service.dart';
 import 'package:gemiprint/services/materials_service.dart';
+import 'package:gemiprint/services/pengambilan_service.dart';
 import 'package:gemiprint/services/pos_service.dart';
 import 'package:gemiprint/services/production_service.dart';
 import 'package:gemiprint/services/purchases_service.dart';
@@ -47,6 +48,10 @@ final posServiceProvider = Provider<PosService>((ref) {
 
 final productionServiceProvider = Provider<ProductionService>((ref) {
   return ProductionService(ref.watch(apiClientProvider));
+});
+
+final pengambilanServiceProvider = Provider<PengambilanService>((ref) {
+  return PengambilanService(ref.watch(apiClientProvider));
 });
 
 final purchasesServiceProvider = Provider<PurchasesService>((ref) {
