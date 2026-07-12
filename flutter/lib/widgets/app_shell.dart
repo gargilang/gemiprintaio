@@ -53,6 +53,12 @@ final List<dynamic> _menuEntries = [
         label: 'Riwayat Penjualan',
         allowedRoles: RoleGroups.frontOfHouse,
       ),
+      _MenuItemData(
+        path: '/katalog-extra',
+        icon: Icons.auto_awesome_motion_rounded,
+        label: 'Katalog Extra',
+        allowedRoles: RoleGroups.fullStaff,
+      ),
     ],
   ),
   const _MenuGroupData(
@@ -317,6 +323,7 @@ class AppShell extends ConsumerWidget {
       '/customers': 'Pelanggan',
       '/vendors': 'Vendor',
       '/sales-history': 'Riwayat Penjualan',
+      '/katalog-extra': 'Katalog Extra',
       '/purchase-history': 'Riwayat Pembelian',
       '/finance': 'Keuangan',
     };

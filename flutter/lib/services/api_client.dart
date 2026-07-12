@@ -108,6 +108,15 @@ class ApiClient {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
     } else if (path.contains('/keuangan/')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/keuangan/'));
+    } else if (path.contains('/katalog-maklon')) {
+      // Mutasi katalog maklon (create/update/delete/reconcile) dapat
+      // mempengaruhi katalog, POS (pilihan maklon), keuangan (PO maklon),
+      // dan produksi (SPK reconcile). Penjualan (hpp/reconcile) sudah
+      // tercakup via /api/pos/ di bawah jika route penjualan ditambahkan.
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/katalog-maklon'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/pos/'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/keuangan/'));
+      _cache.invalidatePrefix(AppConfig.apiUrl('/api/produksi'));
     } else if (path.contains('/barang') || path.contains('/master/')) {
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/barang'));
       _cache.invalidatePrefix(AppConfig.apiUrl('/api/master/'));
