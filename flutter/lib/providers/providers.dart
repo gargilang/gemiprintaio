@@ -5,6 +5,7 @@ import 'package:gemiprint/services/api_client.dart';
 import 'package:gemiprint/services/auth_service.dart';
 import 'package:gemiprint/services/customers_service.dart';
 import 'package:gemiprint/services/finance_service.dart';
+import 'package:gemiprint/services/katalog_maklon_service.dart';
 import 'package:gemiprint/services/materials_service.dart';
 import 'package:gemiprint/services/pengambilan_service.dart';
 import 'package:gemiprint/services/pos_service.dart';
@@ -40,6 +41,10 @@ final vendorsServiceProvider = Provider<VendorsService>((ref) {
 
 final materialsServiceProvider = Provider<MaterialsService>((ref) {
   return MaterialsService(ref.watch(apiClientProvider));
+});
+
+final katalogMaklonServiceProvider = Provider<KatalogMaklonService>((ref) {
+  return KatalogMaklonService(ref.watch(apiClientProvider));
 });
 
 final posServiceProvider = Provider<PosService>((ref) {
