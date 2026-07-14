@@ -1881,7 +1881,7 @@ export default function POSPage() {
               </div>
 
               <div className="space-y-3">
-                {/* Quick category filter — horizontal scroll when many categories */}
+                {/* Filter kategori cepat — horizontal scroll saat banyak kategori */}
                 {materialCategories.length > 0 && (
                   <div
                     className="overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#00afef]/40"
@@ -1918,11 +1918,12 @@ export default function POSPage() {
                   </div>
                 )}
 
-                {/* Material grid — limited height; shrinks when item selected so edit form stays visible */}
+                {/* Dua kolom: grid produk (kiri) + form edit (kanan) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Kiri: Grid produk — tinggi tetap, tidak menyusut saat produk dipilih */}
+                  <div>
                 <div
-                  className={`overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 transition-[max-height] duration-200 ${
-                    selectedMaterial ? "max-h-[160px]" : "max-h-[240px]"
-                  }`}
+                  className="overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 max-h-[calc(100vh-380px)] min-h-[240px]"
                 >
                   <div className="grid grid-cols-2 gap-2">
                     {filteredProdukJual.map((produk) => (
@@ -1979,7 +1980,11 @@ export default function POSPage() {
                   )}
                 </div>
 
-                {selectedMaterial && (
+                  </div>{/* /kiri grid produk */}
+
+                  {/* Kanan: form edit barang terpilih atau empty state */}
+                  <div>
+                {selectedMaterial ? (
                   <div
                     ref={productFormRef}
                     className={`p-3 bg-white dark:bg-slate-900 rounded-lg border-2 shadow-sm ${
@@ -2412,14 +2417,37 @@ export default function POSPage() {
                               : "bg-gradient-to-r from-[#00afef] to-[#0088cc] hover:from-[#0099dd] hover:to-[#0077bb]"
                           }`}
                         >
-                          {editingCartIndex !== null
+                           {editingCartIndex !== null
                             ? "Simpan perubahan"
                             : "Tambah ke Keranjang"}
                         </button>
                       </div>
                     </div>
                   </div>
+                ) : (
+                  /* Empty state saat belum ada produk dipilih */
+                  <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-lg p-6 text-gray-400 dark:text-slate-500">
+                    <svg
+                      className="w-10 h-10 mb-2 opacity-50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                      />
+                    </svg>
+                    <p className="font-semibold">Pilih barang di kiri</p>
+                    <p className="text-sm mt-1">
+                      Detail &amp; harga akan muncul di sini
+                    </p>
+                  </div>
                 )}
+                  </div>{/* /kanan form edit */}
+                </div>{/* /grid dua kolom */}
               </div>
             </div>
           </div>
