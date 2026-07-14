@@ -18,10 +18,11 @@ import {
   roundUpToThousand,
 } from "@/lib/money-rounding";
 import BarRingkasKeranjang from "@/components/pos/BarRingkasKeranjang";
+import DropdownFinishing from "@/components/pos/DropdownFinishing";
 import OverlayKeranjang, { type PrintType } from "@/components/pos/OverlayKeranjang";
 import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import ModalTambahCepatPelanggan from "@/components/ModalTambahCepatPelanggan";
-import ModalTambahFinishing from "@/components/ModalTambahFinishing";
+
 import ModalEditHarga from "@/components/ModalEditHarga";
 import ModalTambahItemLainnya, {
   type TambahItemLainnyaValue,
@@ -263,8 +264,8 @@ export default function POSPage() {
   const [catatan, setCatatan] = useState("");
   // State finishing dan harga override untuk barang yang sedang dipilih di form
   const [formFinishing, setFormFinishing] = useState<FinishingItem[]>([]);
+  const [finishingOptions, setFinishingOptions] = useState<string[]>([]);
   const [formCatatanItem, setFormCatatanItem] = useState("");
-  const [showFormFinishingModal, setShowFormFinishingModal] = useState(false);
   const [formHargaSatuan, setFormHargaSatuan] = useState<number | null>(null);
   const [showFormHargaModal, setShowFormHargaModal] = useState(false);
   const [formBiayaTambahan, setFormBiayaTambahan] = useState<
@@ -371,6 +372,14 @@ export default function POSPage() {
       suggestSmallestCoveringRollSize(parsedPanjang, parsedLebar, rollSizes),
     );
   }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
+
+  // Muat opsi finishing sekali saat pertama kali ada material terpilih
+  useEffect(() => {
+    if (finishingOptions.length > 0) return;
+    getFinishingOptionsAction()
+      .then((opts) => setFinishingOptions(opts.map((o) => o.nama)))
+      .catch(() => {});
+  }, [selectedMaterial]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rollBillingPreview = useMemo(() => {
     if (
@@ -2145,35 +2154,18 @@ export default function POSPage() {
                             </div>
                           )}
 
-                        {/* Finishing, ubah harga, biaya tambahan — diisi sebelum masuk keranjang */}
+                        {/* Finishing (dropdown popover), ubah harga, biaya tambahan */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
                           <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setShowFormFinishingModal(true)}
-                              className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-all border-2 flex items-center justify-center gap-1 ${
-                                formFinishing.length > 0
-                                  ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
-                                  : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400"
-                              }`}
-                            >
-                              <svg
-                                className="w-3 h-3 shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                                />
-                              </svg>
-                              {formFinishing.length > 0
-                                ? `Finishing (${formFinishing.length})`
-                                : "+ Finishing"}
-                            </button>
+                            {!selectedMaterial._isKatalogMaklon ? (
+                              <DropdownFinishing
+                                options={finishingOptions}
+                                selected={formFinishing}
+                                onChange={setFormFinishing}
+                              />
+                            ) : (
+                              <div />
+                            )}
                             <button
                               type="button"
                               onClick={() => setShowFormHargaModal(true)}
@@ -2196,9 +2188,7 @@ export default function POSPage() {
                                   d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                                 />
                               </svg>
-                              {formHargaSatuan !== null
-                                ? "Harga Ubah"
-                                : "Ubah Harga"}
+                              {formHargaSatuan !== null ? "Harga Ubah" : "Ubah Harga"}
                             </button>
                           </div>
 
@@ -2721,18 +2711,6 @@ export default function POSPage() {
         }}
       />
 
-      {showFormFinishingModal && selectedMaterial && (
-        <ModalTambahFinishing
-          onClose={() => setShowFormFinishingModal(false)}
-          onAdd={(finishing) => {
-            setFormFinishing(finishing);
-            setShowFormFinishingModal(false);
-          }}
-          existingFinishing={formFinishing}
-          itemName={selectedMaterial.nama}
-          onGetFinishingOptions={getFinishingOptionsAction}
-        />
-      )}
 
       {showFormHargaModal && selectedMaterial && selectedUnit && (
         <ModalEditHarga
