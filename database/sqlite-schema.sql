@@ -713,6 +713,7 @@ CREATE TABLE item_penjualan (
       roll_inventory_deferred INTEGER NOT NULL DEFAULT 0,
       pending_vendor_hpp INTEGER NOT NULL DEFAULT 0,
       katalog_maklon_id TEXT,
+      catatan_item TEXT,
       dibuat_pada TEXT DEFAULT (datetime('now')), sync_status TEXT DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')), last_synced_at TEXT, sync_version INTEGER DEFAULT 1,
       FOREIGN KEY (penjualan_id) REFERENCES penjualan(id) ON DELETE CASCADE,
       FOREIGN KEY (barang_id) REFERENCES "barang"(id),

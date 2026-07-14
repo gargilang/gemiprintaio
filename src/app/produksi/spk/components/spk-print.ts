@@ -249,6 +249,11 @@ export function generateSPKHTML(order: ProductionOrder): string {
           : ""
       }
       ${
+        item.catatan_item
+          ? `<div class="item-detail" style="font-style:italic;color:#4f46e5;">${escapeHtml(item.catatan_item)}</div>`
+          : ""
+      }
+      ${
         item.catatan_produksi
           ? `<div class="item-detail"><strong>Catatan:</strong> ${escapeHtml(item.catatan_produksi)}</div>`
           : ""

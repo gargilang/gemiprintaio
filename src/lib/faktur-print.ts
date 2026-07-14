@@ -33,6 +33,8 @@ export interface FakturItem {
   jumlah: number;
   /** Biaya tambahan per item — dicetak sebagai sub-baris di bawah item. */
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak miring di bawah nama item. */
+  catatan_item?: string;
 }
 
 export interface FakturData {
@@ -124,6 +126,10 @@ function escapeHtml(input: string): string {
 function renderItemRow(item: FakturItem, index: number): string {
   const namaLines = [escapeHtml(item.nama)];
   if (item.keterangan) namaLines.push(escapeHtml(item.keterangan));
+  if (item.catatan_item)
+    namaLines.push(
+      `<em style="font-size:0.85em;color:#6366f1;">${escapeHtml(item.catatan_item)}</em>`,
+    );
   const namaCell = namaLines.join("<br>");
   const ukuran = item.ukuran ? escapeHtml(item.ukuran) : "&nbsp;";
   const qtyDisplay = Number.isInteger(item.qty)
@@ -173,6 +179,7 @@ export function generateFakturHTML(data: FakturData): string {
     ppn,
     shop,
     biaya_tambahan,
+    catatan,
   } = data;
 
   const shopInfo = {
@@ -752,6 +759,14 @@ export function generateFakturHTML(data: FakturData): string {
       </tbody>
     </table>
   </div>
+
+  ${
+    catatan
+      ? `<div style="margin:6px 0 4px;padding:6px 8px;background:#f8fafc;border-left:3px solid #00afef;font-size:0.82em;color:#334155;">
+    <strong>Catatan:</strong> ${escapeHtml(catatan)}
+  </div>`
+      : ""
+  }
 
   <!-- FOOTER -->
   <div class="footer">

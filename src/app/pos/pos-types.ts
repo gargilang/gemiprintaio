@@ -99,6 +99,11 @@ export interface CartItem {
   deskripsi_pekerjaan?: string;
   /** Referensi entri katalog maklon jika baris berasal dari template. */
   katalog_maklon_id?: string;
+  /**
+   * Label/keterangan kustom per baris yang ditulis kasir — mis. "Banner Pecel Lele".
+   * Dicetak di struk, faktur A5, dan SPK produksi agar mudah diidentifikasi saat pengambilan.
+   */
+  catatan_item?: string;
 }
 
 export interface SubkontraktorOption {

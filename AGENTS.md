@@ -61,8 +61,7 @@ These skills are meant to be used **by default** to keep agents efficient: prefe
 
 ## Git and deploy
 
-- Commit verified changes. Push to `main` → Vercel auto-deploys.
-- **Only commit when the owner asks** (or clearly implies it). Clear commit messages.
+- Commit verified changes. Push to `main` → Vercel auto-deploys. Clear commit messages.
 - Never commit secrets (`.env.local`, keys, certs). Never `git push --force` to `main`. Don't amend already-pushed commits unless asked.
 - DB migrations: after pushing schema changes, run `npm run supabase:db:push` to apply them to the cloud.
 

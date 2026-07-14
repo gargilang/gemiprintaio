@@ -700,6 +700,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           // Safeguard C2: tandai baris maklon pending + simpan asal katalog_maklon.
           pending_vendor_hpp: isPendingMaklon ? 1 : 0,
           katalog_maklon_id: isMaklon ? item.katalog_maklon_id || null : null,
+          catatan_item: (item as any).catatan_item?.trim() || null,
           dpp_satuan: lineDppSatuan,
           ppn_satuan: linePpnSatuan,
           dpp_total: lineBreakdown.dpp,

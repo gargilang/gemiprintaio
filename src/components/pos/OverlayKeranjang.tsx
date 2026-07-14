@@ -49,6 +49,8 @@ interface CartItem {
   biaya_subkontrak?: number;
   metode_bayar_vendor?: "CASH" | "NET30" | "TRANSFER";
   deskripsi_pekerjaan?: string;
+  /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak di struk/faktur/SPK. */
+  catatan_item?: string;
 }
 
 export type PrintType = "thermal" | "faktur" | "both" | "none";
@@ -247,6 +249,7 @@ export default function OverlayKeranjang({
           jumlah_roll: item.jumlah_roll,
           harga_satuan: hargaEfektif,
           subtotal: lineTotal,
+          catatan_item: item.catatan_item?.trim() || undefined,
         });
 
         const biayaTambahan = (item.biaya_tambahan || []).filter(
@@ -467,6 +470,11 @@ export default function OverlayKeranjang({
                         <div className="font-semibold text-base text-gray-800 dark:text-slate-100 truncate">
                           {getCartItemNamaTampil(item)}
                         </div>
+                        {item.catatan_item && (
+                          <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 truncate">
+                            {item.catatan_item}
+                          </div>
+                        )}
                         <div className="text-sm text-gray-600 dark:text-slate-300 mt-0.5">
                           {item.butuh_dimensi &&
                           item.panjang &&

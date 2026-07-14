@@ -57,6 +57,7 @@ const saleItemSchema = z
       .optional(),
     deskripsi_pekerjaan: z.string().nullable().optional(),
     biaya_tambahan: z.array(biayaTambahanSchema).optional(),
+    catatan_item: z.string().optional(),
   })
   .passthrough();
 

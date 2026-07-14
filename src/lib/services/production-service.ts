@@ -86,6 +86,8 @@ export interface ProductionItem {
   consumption?: ProductionMaterialConsumption | null;
   /** Biaya tambahan yang ditautkan ke item_penjualan ini (untuk cetak SPK). */
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak di SPK. */
+  catatan_item?: string | null;
 }
 
 export interface ProductionMaterialConsumption {
@@ -279,6 +281,7 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
           consumption,
           biaya_tambahan:
             biayaByItemPenjualanId.get(item.item_penjualan_id) || [],
+          catatan_item: (saleItem as any)?.catatan_item || null,
         };
       });
 

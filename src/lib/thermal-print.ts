@@ -24,6 +24,8 @@ export interface ThermalInvoiceData {
     dimensi?: string;
     /** Biaya tambahan per item (cetak sebagai sub-baris di bawah item). */
     biaya_tambahan?: Array<{ label: string; nominal: number }>;
+    /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak di bawah nama item. */
+    catatan_item?: string;
   }[];
   total: number;
   jumlah_bayar: number;
@@ -321,6 +323,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
         (item) => `
     <div class="item-row">
       <div class="item-name">${item.nama}</div>
+      ${item.catatan_item ? `<div class="item-dimensi" style="font-style:italic;">${escapeHtml(item.catatan_item)}</div>` : ""}
       ${item.dimensi ? `<div class="item-dimensi">${item.dimensi}</div>` : ""}
       <div class="item-detail">
         <span>${item.jumlah} ${item.satuan} x ${item.harga.toLocaleString(

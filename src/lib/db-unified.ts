@@ -1724,6 +1724,10 @@ class UnifiedDatabase {
       if (!cols.includes("nama_produk_jual")) {
         db.exec("ALTER TABLE item_penjualan ADD COLUMN nama_produk_jual TEXT");
       }
+      // Migrasi (20260715000000): catatan_item — label kustom per baris untuk identifikasi pengambilan barang.
+      if (!cols.includes("catatan_item")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN catatan_item TEXT");
+      }
     }
 
     // Migrasi (20260707000003): katalog_maklon kolom populer_status + kategori_id.

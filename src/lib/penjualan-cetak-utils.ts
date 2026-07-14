@@ -136,6 +136,8 @@ export function mapPenjualanItemKeFaktur(item: {
   harga_satuan: number;
   subtotal?: number;
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  /** Label kustom per baris — dicetak miring di bawah nama item. */
+  catatan_item?: string | null;
 }): FakturItem {
   const { qty, satuan } = qtySatuanCetakPenjualan(item);
   const subtotal = Number(item.subtotal) || 0;
@@ -157,6 +159,7 @@ export function mapPenjualanItemKeFaktur(item: {
     harga,
     jumlah: subtotal || qty * harga,
     biaya_tambahan: item.biaya_tambahan,
+    catatan_item: item.catatan_item?.trim() || undefined,
   };
 }
 

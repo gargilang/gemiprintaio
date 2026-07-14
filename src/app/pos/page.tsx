@@ -263,6 +263,7 @@ export default function POSPage() {
   const [catatan, setCatatan] = useState("");
   // State finishing dan harga override untuk barang yang sedang dipilih di form
   const [formFinishing, setFormFinishing] = useState<FinishingItem[]>([]);
+  const [formCatatanItem, setFormCatatanItem] = useState("");
   const [showFormFinishingModal, setShowFormFinishingModal] = useState(false);
   const [formHargaSatuan, setFormHargaSatuan] = useState<number | null>(null);
   const [showFormHargaModal, setShowFormHargaModal] = useState(false);
@@ -601,6 +602,7 @@ export default function POSPage() {
     setFormFinishing([]);
     setFormHargaSatuan(null);
     setFormBiayaTambahan([]);
+    setFormCatatanItem("");
   };
 
   const handleCancelEdit = () => {
@@ -714,6 +716,7 @@ export default function POSPage() {
           validFormBiayaTambahan.length > 0
             ? validFormBiayaTambahan
             : undefined,
+        catatan_item: formCatatanItem.trim() || undefined,
         tipe_item: "MAKLON",
         katalog_maklon_id: selectedMaterial._katalogMaklonId,
         deskripsi_pekerjaan: selectedMaterial.nama,
@@ -751,6 +754,7 @@ export default function POSPage() {
       finishing: formFinishing.length > 0 ? [...formFinishing] : undefined,
       biaya_tambahan:
         validFormBiayaTambahan.length > 0 ? validFormBiayaTambahan : undefined,
+      catatan_item: formCatatanItem.trim() || undefined,
       butuh_dimensi: selectedMaterial.butuh_dimensi_status === 1,
       panjang: originalPanjang,
       lebar: originalLebar,
@@ -797,6 +801,7 @@ export default function POSPage() {
         setFormFinishing([]);
         setFormHargaSatuan(null);
         setFormBiayaTambahan([]);
+        setFormCatatanItem("");
         setEditingCartIndex(null);
         return;
       }
@@ -828,6 +833,7 @@ export default function POSPage() {
       setFormFinishing([]);
       setFormHargaSatuan(null);
       setFormBiayaTambahan([]);
+      setFormCatatanItem("");
     },
     [materials, selectedMaterial, selectedUnit, editingCartIndex],
   );
@@ -885,6 +891,7 @@ export default function POSPage() {
       setFormBiayaTambahan(
         item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : [],
       );
+      setFormCatatanItem(item.catatan_item || "");
       if (
         item.originalHargaSatuan != null &&
         Math.abs(item.harga_satuan - item.originalHargaSatuan) > 0.01
@@ -939,11 +946,12 @@ export default function POSPage() {
       setQuantity(String(item.jumlah));
     }
 
-    // Pulihkan finishing dan harga override dari item yang sedang diedit
+    // Pulihkan finishing, catatan, dan harga override dari item yang sedang diedit
     setFormFinishing(item.finishing ? [...item.finishing] : []);
     setFormBiayaTambahan(
       item.biaya_tambahan ? item.biaya_tambahan.map((b) => ({ ...b })) : [],
     );
+    setFormCatatanItem(item.catatan_item || "");
     if (
       item.originalHargaSatuan != null &&
       Math.abs(item.harga_satuan - item.originalHargaSatuan) > 0.01
@@ -1345,6 +1353,7 @@ export default function POSPage() {
             nominal: b.nominal,
             modal: Math.min(Math.max(Number(b.modal) || 0, 0), b.nominal),
           })),
+        catatan_item: item.catatan_item?.trim() || undefined,
       }));
 
       const result = await createSaleAction({
@@ -1480,6 +1489,7 @@ export default function POSPage() {
               biaya_tambahan: (item.biaya_tambahan || [])
                 .filter((b) => b.label.trim() && b.nominal > 0)
                 .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+              catatan_item: item.catatan_item?.trim() || undefined,
             };
           }),
           total: total,
@@ -1576,6 +1586,7 @@ export default function POSPage() {
                 biaya_tambahan: (item.biaya_tambahan || [])
                   .filter((b) => b.label.trim() && b.nominal > 0)
                   .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
+                catatan_item: item.catatan_item?.trim() || undefined,
               });
             }),
             total,
@@ -2134,8 +2145,23 @@ export default function POSPage() {
                             </div>
                           )}
 
-                        {/* Finishing, ubah harga, biaya tambahan — diisi sebelum masuk keranjang */}
+                        {/* Finishing, ubah harga, catatan item, biaya tambahan — diisi sebelum masuk keranjang */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                          {/* Catatan item — label kustom untuk identifikasi pengambilan */}
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-1">
+                              Catatan item
+                            </label>
+                            <input
+                              type="text"
+                              value={formCatatanItem}
+                              onChange={(e) =>
+                                setFormCatatanItem(e.target.value)
+                              }
+                              placeholder='mis. "Banner Pecel Lele"'
+                              className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] placeholder:text-gray-300 dark:placeholder:text-slate-600"
+                            />
+                          </div>
                           <div className="grid grid-cols-2 gap-1.5">
                             <button
                               type="button"
