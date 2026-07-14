@@ -1948,7 +1948,7 @@ export default function POSPage() {
                 )}
 
                 {/* Dua kolom: grid produk (kiri) + form edit (kanan) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
                   {/* Kiri: Grid produk — tinggi tetap, tidak menyusut saat produk dipilih */}
                   <div>
                 <div
@@ -2438,10 +2438,10 @@ export default function POSPage() {
                           )}
 
                         {/* Catatan item — label kustom untuk identifikasi pengambilan barang */}
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-1">
-                            Catatan item
-                          </label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 shrink-0">
+                            Catatan
+                          </span>
                           <input
                             type="text"
                             value={formCatatanItem}
@@ -2453,7 +2453,7 @@ export default function POSPage() {
                               }
                             }}
                             placeholder='mis. "Banner Pecel Lele"'
-                            className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#00afef] placeholder:text-gray-300 dark:placeholder:text-slate-600"
+                            className="flex-1 min-w-0 px-2 py-1 text-xs bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:border-[#00afef]"
                           />
                         </div>
 
