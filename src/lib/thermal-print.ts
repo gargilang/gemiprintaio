@@ -126,17 +126,18 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       border-bottom: 2px dashed #000;
     }
     .logo-image {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 8px;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 2px;
     }
     .logo {
       font-family: 'Bauhaus 93', serif;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: normal;
       font-style: italic;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 1px;
+      line-height: 1.1;
     }
     .logo-gemi {
       color: #00afef;
@@ -147,14 +148,16 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
     .subtitle {
       font-family: 'TW Cen MT', sans-serif;
       font-size: 10px;
-      margin-top: 2px;
+      margin-top: 1px;
       font-weight: normal;
+      line-height: 1.2;
     }
     .contact {
       font-family: 'TW Cen MT', sans-serif;
       font-size: 9px;
       color: #555;
-      margin-top: 2px;
+      margin-top: 1px;
+      line-height: 1.2;
     }
     .invoice-title {
       font-size: 13px;
@@ -183,24 +186,27 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       margin: 8px 0;
     }
     .item-row {
-      margin: 4px 0;
+      margin-top: 6px;
+      margin-bottom: 0;
       font-size: 10px;
     }
     .item-name {
       font-weight: bold;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .item-detail {
       display: flex;
       justify-content: space-between;
       color: #333;
       padding-left: 8px;
+      line-height: 1.3;
     }
     .item-dimensi {
       font-size: 9px;
       color: #666;
-      margin-bottom: 2px;
+      margin-bottom: 0;
       padding-left: 8px;
+      line-height: 1.3;
     }
     .item-biaya-tambahan {
       display: flex;
@@ -208,6 +214,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       color: #555;
       font-style: italic;
       padding-left: 16px;
+      line-height: 1.3;
     }
     .totals {
       margin-top: 8px;
@@ -266,7 +273,7 @@ export function generateThermalInvoice(data: ThermalInvoiceData): string {
       <path fill-rule="evenodd" clip-rule="evenodd" d="M7.17259 43.4268C2.76685 43.02 1.19136 40.7312 0.377177 36.396L16.9181 36.2028C14.8139 40.2052 11.3633 43.0118 7.17259 43.4268Z" fill="#00AFEF"/>
       <path fill-rule="evenodd" clip-rule="evenodd" d="M10.4293 14.868C14.5284 18.3608 14.3733 28.8885 9.61513 30.7582C9.31554 30.8773 8.32513 31.0088 8.66349 31.0088L10.4399 31.0129H19.0011C20.2488 27.7831 20.3757 18.8744 19.5756 14.868H10.4293Z" fill="#00AFEF"/>
     </svg>
-    <div class="logo">${escapeHtml(shopName)}</div>
+    <div class="logo"><span class="logo-gemi">gemi</span><span class="logo-print">print</span></div>
     <div class="subtitle">${escapeHtml(shopSlogan)}</div>
     <div class="contact">Telp: ${escapeHtml(shopPhone)}${shopEmail ? ` · ${escapeHtml(shopEmail)}` : ""}</div>
     ${shopWebsite ? `<div class="contact">${escapeHtml(shopWebsite)}</div>` : ""}

@@ -69,17 +69,18 @@ export function generateSPKHTML(order: ProductionOrder): string {
       border-bottom: 2px dashed #000;
     }
     .logo-image {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 8px;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 2px;
     }
     .logo {
       font-family: 'Bauhaus 93', serif;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: normal;
       font-style: italic;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 1px;
+      line-height: 1.1;
     }
     .logo-gemi {
       color: #00afef;
@@ -90,8 +91,9 @@ export function generateSPKHTML(order: ProductionOrder): string {
     .subtitle {
       font-family: 'TW Cen MT', sans-serif;
       font-size: 10px;
-      margin-top: 2px;
+      margin-top: 1px;
       font-weight: bold;
+      line-height: 1.2;
     }
     .spk-title {
       font-size: 14px;
