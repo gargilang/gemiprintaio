@@ -98,7 +98,7 @@ const baseSale = {
 };
 
 describe("pending maklon di createSale", () => {
-  it("sukses dengan vendor/biaya kosong → pending_vendor_hpp=1, hpp=0, no PO, no SPK item", async () => {
+  it("sukses dengan vendor/biaya kosong → pending_vendor_hpp=1, hpp=0, no PO, SPK item TETAP dibuat", async () => {
     mockTable("pelanggan").set("p1", { id: "p1", nama: "Walk-in" });
     await createSale(baseSale as any);
     const items = Array.from(mockTable("item_penjualan").values());
@@ -107,8 +107,12 @@ describe("pending maklon di createSale", () => {
     expect(items[0].katalog_maklon_id).toBe("km-1");
     expect(Number(items[0].hpp_total)).toBe(0);
     expect(createMaklonPurchaseMock).not.toHaveBeenCalled();
-    // tidak ada item_produksi untuk pending maklon
-    expect(Array.from(mockTable("item_produksi").values())).toHaveLength(0);
+    // Maklon pending TETAP dibuatkan item_produksi supaya muncul di SPK sejak
+    // checkout (kerjaan vendor sering sudah diambil pelanggan walau HPP belum final).
+    const spkItems = Array.from(mockTable("item_produksi").values());
+    expect(spkItems).toHaveLength(1);
+    expect(spkItems[0].barang_nama).toBe("[MAKLON] Banner custom pending");
+    expect(spkItems[0].item_penjualan_id).toBe(items[0].id);
   });
 
   it("vendor+biaya terisi → pending_vendor_hpp=0, PO maklon dibuat, hpp_total tercatat", async () => {

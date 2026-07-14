@@ -966,14 +966,12 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const isMaklon = item.tipe_item === "MAKLON";
-        // Safeguard C2: maklon pending (tanpa vendor/biaya) tidak dibuatkan
-        // item_produksi — menunggu reconcile vendor/HPP dulu (Task 5).
-        const isPendingMaklon =
-          isMaklon &&
-          (!item.vendor_subkontrak_id ||
-            !item.biaya_subkontrak ||
-            Number(item.biaya_subkontrak) <= 0);
-        if (isMaklon && isPendingMaklon) continue;
+        // Catatan: maklon pending (tanpa vendor/biaya) TETAP dibuatkan
+        // item_produksi supaya kerjaan langsung muncul di SPK sejak checkout.
+        // Penjualannya belum masuk keuangan (pending_vendor_hpp=1, HPP=0) sampai
+        // vendor/HPP di-reconcile di halaman Katalog Extra — tapi operator sudah
+        // bisa melihat kerjaan yang masuk. Reconcile bersifat idempoten
+        // (createProductionItemForReconciledMaklon), jadi tidak ada duplikat.
 
         // Ambil item_penjualan via ID yang sudah ditangkap saat insert (D-I1).
         // Pakai ID eksplisit, BUKAN offset+orderBy dibuat_pada — timestamp bisa
