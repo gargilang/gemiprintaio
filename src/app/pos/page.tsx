@@ -17,7 +17,8 @@ import {
   getRollPrintLength,
   roundUpToThousand,
 } from "@/lib/money-rounding";
-import KeranjangPOS, { type PrintType } from "@/components/KeranjangPOS";
+import BarRingkasKeranjang from "@/components/pos/BarRingkasKeranjang";
+import OverlayKeranjang, { type PrintType } from "@/components/pos/OverlayKeranjang";
 import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import ModalTambahCepatPelanggan from "@/components/ModalTambahCepatPelanggan";
 import ModalTambahFinishing from "@/components/ModalTambahFinishing";
@@ -255,6 +256,7 @@ export default function POSPage() {
   const [useRounding, setUseRounding] = useState(false);
   const [selectedRollSize, setSelectedRollSize] = useState<number | null>(null);
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+  const [showOverlayKeranjang, setShowOverlayKeranjang] = useState(false);
   const [rollSizes, setRollSizes] = useState<number[]>(() =>
     getStoredRollSizes(),
   );
@@ -430,6 +432,21 @@ export default function POSPage() {
   const filteredPelanggan = customers.filter((c) =>
     c.nama.toLowerCase().includes(pencarianPelanggan.toLowerCase()),
   );
+
+  /** Total akhir keranjang (subtotal item + biaya tambahan), untuk bar ringkas. */
+  const cartTotal = useMemo(() => {
+    const charges = allocateCartLineCharges(cart, roundCartPrices);
+    const subtotalItems = charges.reduce((s, n) => s + n, 0);
+    const biaya = cart.reduce(
+      (s, it) =>
+        s +
+        (it.biaya_tambahan || [])
+          .filter((b) => b.label.trim() && b.nominal > 0)
+          .reduce((a, b) => a + b.nominal, 0),
+      0,
+    );
+    return subtotalItems + biaya;
+  }, [cart, roundCartPrices]);
 
   const materialCategories = useMemo(() => {
     const names = new Set<string>();
@@ -1601,7 +1618,8 @@ export default function POSPage() {
         }
       }
 
-      // Reset form
+      // Reset form + tutup overlay keranjang
+      setShowOverlayKeranjang(false);
       setCart([]);
       setSelectedPelanggan(null);
       setPencarianPelanggan("");
@@ -1646,9 +1664,9 @@ export default function POSPage() {
     <>
       <div className="space-y-6">
         {/* POS Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Product Selection */}
-          <div className="lg:col-span-2 space-y-4">
+        {/* Area kerja lebar penuh: Pelanggan + Pilih Barang + Bar Ringkas Keranjang */}
+        <div className="space-y-4 pb-20">
+          <div className="space-y-4">
             {/* Customer Selection */}
             <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
               <div className="flex items-center gap-3">
@@ -2452,63 +2470,17 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Right: Cart */}
-          <div className="lg:col-span-1 space-y-3">
-            {tokoPkp && (
-              <button
-                type="button"
-                onClick={() => setShowPpnModal(true)}
-                className={`w-full px-4 py-2.5 rounded-lg border-2 text-base font-semibold transition-all ${
-                  ppnFaktur
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
-                    : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
-                }`}
-              >
-                {ppnFaktur ? (
-                  <>
-                    ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
-                    {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
-                    {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
-                  </>
-                ) : (
-                  <>+ Tambah Faktur Pajak (PPN)</>
-                )}
-              </button>
-            )}
-            <KeranjangPOS
-              cart={cart}
-              roundCartPrices={roundCartPrices}
-              onRoundCartPricesChange={setRoundCartPrices}
-              paymentMethod={paymentMethod}
-              jumlahBayar={jumlahBayar}
-              catatan={catatan}
-              prioritas={prioritas}
-              printType={printType}
-              onRemoveItem={handleRemoveFromCart}
-              editingCartIndex={editingCartIndex}
-              onEditItem={handleEditCartItem}
-              onPaymentMethodChange={setPaymentMethod}
-              onJumlahBayarChange={setJumlahBayar}
-              onCatatanChange={setCatatan}
-              onPrioritasChange={setPrioritas}
-              onPrintTypeChange={setPrintType}
-              onCheckout={handleCheckout}
-              customerName={
-                selectedPelanggan?.nama ||
-                pencarianPelanggan.trim() ||
-                undefined
-              }
-              shopSettings={shopSettings}
-              onEditRincianInternal={(index) =>
-                setEditingRincianInternalIndex(index)
-              }
-              onParkClick={() => setShowParkirModal(true)}
-              parkedCarts={parkedCarts}
-              onLoadParked={handleLoadParked}
-              onJadikanPenawaran={handleJadikanPenawaran}
-              onDeleteParked={handleDeleteParked}
-            />
-          </div>
+          {/* Bar ringkas keranjang — sticky di bawah area kerja */}
+          <BarRingkasKeranjang
+            itemCount={cart.length}
+            total={cartTotal}
+            onOpenOverlay={() => setShowOverlayKeranjang(true)}
+            onParkClick={() => setShowParkirModal(true)}
+            parkedCarts={parkedCarts}
+            onLoadParked={handleLoadParked}
+            onJadikanPenawaran={handleJadikanPenawaran}
+            onDeleteParked={handleDeleteParked}
+          />
         </div>
 
         {/* Sales History */}
@@ -2561,6 +2533,54 @@ export default function POSPage() {
         }}
         showNotification={showMsg}
         onCreateCustomer={createPelangganAction}
+      />
+
+      {/* Overlay keranjang penuh (detail item + pembayaran) */}
+      <OverlayKeranjang
+        open={showOverlayKeranjang}
+        onClose={() => setShowOverlayKeranjang(false)}
+        cart={cart}
+        roundCartPrices={roundCartPrices}
+        onRoundCartPricesChange={setRoundCartPrices}
+        paymentMethod={paymentMethod}
+        jumlahBayar={jumlahBayar}
+        catatan={catatan}
+        prioritas={prioritas}
+        printType={printType}
+        onRemoveItem={handleRemoveFromCart}
+        editingCartIndex={editingCartIndex}
+        onEditItem={(index) => {
+          handleEditCartItem(index);
+          setShowOverlayKeranjang(false);
+        }}
+        onPaymentMethodChange={setPaymentMethod}
+        onJumlahBayarChange={setJumlahBayar}
+        onCatatanChange={setCatatan}
+        onPrioritasChange={setPrioritas}
+        onPrintTypeChange={setPrintType}
+        onCheckout={handleCheckout}
+        customerName={
+          selectedPelanggan?.nama || pencarianPelanggan.trim() || undefined
+        }
+        shopSettings={shopSettings}
+        onEditRincianInternal={(index) => {
+          setEditingRincianInternalIndex(index);
+          setShowOverlayKeranjang(false);
+        }}
+        onParkClick={() => {
+          setShowParkirModal(true);
+          setShowOverlayKeranjang(false);
+        }}
+        parkedCarts={parkedCarts}
+        onLoadParked={(id) => {
+          handleLoadParked(id);
+          setShowOverlayKeranjang(false);
+        }}
+        onJadikanPenawaran={(id) => {
+          handleJadikanPenawaran(id);
+          setShowOverlayKeranjang(false);
+        }}
+        onDeleteParked={handleDeleteParked}
       />
 
       <ModalBayarPiutang
