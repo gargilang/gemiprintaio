@@ -17,7 +17,8 @@ import {
   getRollPrintLength,
   roundUpToThousand,
 } from "@/lib/money-rounding";
-import KeranjangPOS, { type PrintType } from "@/components/KeranjangPOS";
+import BarRingkasKeranjang from "@/components/pos/BarRingkasKeranjang";
+import OverlayKeranjang, { type PrintType } from "@/components/pos/OverlayKeranjang";
 import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import ModalTambahCepatPelanggan from "@/components/ModalTambahCepatPelanggan";
 import ModalTambahFinishing from "@/components/ModalTambahFinishing";
@@ -255,6 +256,7 @@ export default function POSPage() {
   const [useRounding, setUseRounding] = useState(false);
   const [selectedRollSize, setSelectedRollSize] = useState<number | null>(null);
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+  const [showOverlayKeranjang, setShowOverlayKeranjang] = useState(false);
   const [rollSizes, setRollSizes] = useState<number[]>(() =>
     getStoredRollSizes(),
   );
@@ -430,6 +432,21 @@ export default function POSPage() {
   const filteredPelanggan = customers.filter((c) =>
     c.nama.toLowerCase().includes(pencarianPelanggan.toLowerCase()),
   );
+
+  /** Total akhir keranjang (subtotal item + biaya tambahan), untuk bar ringkas. */
+  const cartTotal = useMemo(() => {
+    const charges = allocateCartLineCharges(cart, roundCartPrices);
+    const subtotalItems = charges.reduce((s, n) => s + n, 0);
+    const biaya = cart.reduce(
+      (s, it) =>
+        s +
+        (it.biaya_tambahan || [])
+          .filter((b) => b.label.trim() && b.nominal > 0)
+          .reduce((a, b) => a + b.nominal, 0),
+      0,
+    );
+    return subtotalItems + biaya;
+  }, [cart, roundCartPrices]);
 
   const materialCategories = useMemo(() => {
     const names = new Set<string>();
@@ -1601,7 +1618,8 @@ export default function POSPage() {
         }
       }
 
-      // Reset form
+      // Reset form + tutup overlay keranjang
+      setShowOverlayKeranjang(false);
       setCart([]);
       setSelectedPelanggan(null);
       setPencarianPelanggan("");
@@ -1646,9 +1664,9 @@ export default function POSPage() {
     <>
       <div className="space-y-6">
         {/* POS Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Product Selection */}
-          <div className="lg:col-span-2 space-y-4">
+        {/* Area kerja lebar penuh: Pelanggan + Pilih Barang + Bar Ringkas Keranjang */}
+        <div className="space-y-4 pb-20">
+          <div className="space-y-4">
             {/* Customer Selection */}
             <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
               <div className="flex items-center gap-3">
@@ -1881,7 +1899,7 @@ export default function POSPage() {
               </div>
 
               <div className="space-y-3">
-                {/* Quick category filter — horizontal scroll when many categories */}
+                {/* Filter kategori cepat — horizontal scroll saat banyak kategori */}
                 {materialCategories.length > 0 && (
                   <div
                     className="overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#00afef]/40"
@@ -1918,11 +1936,12 @@ export default function POSPage() {
                   </div>
                 )}
 
-                {/* Material grid — limited height; shrinks when item selected so edit form stays visible */}
+                {/* Dua kolom: grid produk (kiri) + form edit (kanan) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Kiri: Grid produk — tinggi tetap, tidak menyusut saat produk dipilih */}
+                  <div>
                 <div
-                  className={`overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 transition-[max-height] duration-200 ${
-                    selectedMaterial ? "max-h-[160px]" : "max-h-[240px]"
-                  }`}
+                  className="overflow-y-auto border-2 border-[#00afef]/30 rounded-lg p-2 max-h-[calc(100vh-380px)] min-h-[240px]"
                 >
                   <div className="grid grid-cols-2 gap-2">
                     {filteredProdukJual.map((produk) => (
@@ -1979,7 +1998,11 @@ export default function POSPage() {
                   )}
                 </div>
 
-                {selectedMaterial && (
+                  </div>{/* /kiri grid produk */}
+
+                  {/* Kanan: form edit barang terpilih atau empty state */}
+                  <div>
+                {selectedMaterial ? (
                   <div
                     ref={productFormRef}
                     className={`p-3 bg-white dark:bg-slate-900 rounded-lg border-2 shadow-sm ${
@@ -2412,75 +2435,52 @@ export default function POSPage() {
                               : "bg-gradient-to-r from-[#00afef] to-[#0088cc] hover:from-[#0099dd] hover:to-[#0077bb]"
                           }`}
                         >
-                          {editingCartIndex !== null
+                           {editingCartIndex !== null
                             ? "Simpan perubahan"
                             : "Tambah ke Keranjang"}
                         </button>
                       </div>
                     </div>
                   </div>
+                ) : (
+                  /* Empty state saat belum ada produk dipilih */
+                  <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-lg p-6 text-gray-400 dark:text-slate-500">
+                    <svg
+                      className="w-10 h-10 mb-2 opacity-50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                      />
+                    </svg>
+                    <p className="font-semibold">Pilih barang di kiri</p>
+                    <p className="text-sm mt-1">
+                      Detail &amp; harga akan muncul di sini
+                    </p>
+                  </div>
                 )}
+                  </div>{/* /kanan form edit */}
+                </div>{/* /grid dua kolom */}
               </div>
             </div>
           </div>
 
-          {/* Right: Cart */}
-          <div className="lg:col-span-1 space-y-3">
-            {tokoPkp && (
-              <button
-                type="button"
-                onClick={() => setShowPpnModal(true)}
-                className={`w-full px-4 py-2.5 rounded-lg border-2 text-base font-semibold transition-all ${
-                  ppnFaktur
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200"
-                    : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-emerald-400"
-                }`}
-              >
-                {ppnFaktur ? (
-                  <>
-                    ✓ Faktur Pajak ON · {ppnFaktur.ppn_persen}% ·{" "}
-                    {ppnFaktur.nsfp_kode_transaksi}.{ppnFaktur.nsfp_tahun}.
-                    {ppnFaktur.nsfp_nomor_seri.padStart(8, "0")}
-                  </>
-                ) : (
-                  <>+ Tambah Faktur Pajak (PPN)</>
-                )}
-              </button>
-            )}
-            <KeranjangPOS
-              cart={cart}
-              roundCartPrices={roundCartPrices}
-              onRoundCartPricesChange={setRoundCartPrices}
-              paymentMethod={paymentMethod}
-              jumlahBayar={jumlahBayar}
-              catatan={catatan}
-              prioritas={prioritas}
-              printType={printType}
-              onRemoveItem={handleRemoveFromCart}
-              editingCartIndex={editingCartIndex}
-              onEditItem={handleEditCartItem}
-              onPaymentMethodChange={setPaymentMethod}
-              onJumlahBayarChange={setJumlahBayar}
-              onCatatanChange={setCatatan}
-              onPrioritasChange={setPrioritas}
-              onPrintTypeChange={setPrintType}
-              onCheckout={handleCheckout}
-              customerName={
-                selectedPelanggan?.nama ||
-                pencarianPelanggan.trim() ||
-                undefined
-              }
-              shopSettings={shopSettings}
-              onEditRincianInternal={(index) =>
-                setEditingRincianInternalIndex(index)
-              }
-              onParkClick={() => setShowParkirModal(true)}
-              parkedCarts={parkedCarts}
-              onLoadParked={handleLoadParked}
-              onJadikanPenawaran={handleJadikanPenawaran}
-              onDeleteParked={handleDeleteParked}
-            />
-          </div>
+          {/* Bar ringkas keranjang — sticky di bawah area kerja */}
+          <BarRingkasKeranjang
+            itemCount={cart.length}
+            total={cartTotal}
+            onOpenOverlay={() => setShowOverlayKeranjang(true)}
+            onParkClick={() => setShowParkirModal(true)}
+            parkedCarts={parkedCarts}
+            onLoadParked={handleLoadParked}
+            onJadikanPenawaran={handleJadikanPenawaran}
+            onDeleteParked={handleDeleteParked}
+          />
         </div>
 
         {/* Sales History */}
@@ -2533,6 +2533,54 @@ export default function POSPage() {
         }}
         showNotification={showMsg}
         onCreateCustomer={createPelangganAction}
+      />
+
+      {/* Overlay keranjang penuh (detail item + pembayaran) */}
+      <OverlayKeranjang
+        open={showOverlayKeranjang}
+        onClose={() => setShowOverlayKeranjang(false)}
+        cart={cart}
+        roundCartPrices={roundCartPrices}
+        onRoundCartPricesChange={setRoundCartPrices}
+        paymentMethod={paymentMethod}
+        jumlahBayar={jumlahBayar}
+        catatan={catatan}
+        prioritas={prioritas}
+        printType={printType}
+        onRemoveItem={handleRemoveFromCart}
+        editingCartIndex={editingCartIndex}
+        onEditItem={(index) => {
+          handleEditCartItem(index);
+          setShowOverlayKeranjang(false);
+        }}
+        onPaymentMethodChange={setPaymentMethod}
+        onJumlahBayarChange={setJumlahBayar}
+        onCatatanChange={setCatatan}
+        onPrioritasChange={setPrioritas}
+        onPrintTypeChange={setPrintType}
+        onCheckout={handleCheckout}
+        customerName={
+          selectedPelanggan?.nama || pencarianPelanggan.trim() || undefined
+        }
+        shopSettings={shopSettings}
+        onEditRincianInternal={(index) => {
+          setEditingRincianInternalIndex(index);
+          setShowOverlayKeranjang(false);
+        }}
+        onParkClick={() => {
+          setShowParkirModal(true);
+          setShowOverlayKeranjang(false);
+        }}
+        parkedCarts={parkedCarts}
+        onLoadParked={(id) => {
+          handleLoadParked(id);
+          setShowOverlayKeranjang(false);
+        }}
+        onJadikanPenawaran={(id) => {
+          handleJadikanPenawaran(id);
+          setShowOverlayKeranjang(false);
+        }}
+        onDeleteParked={handleDeleteParked}
       />
 
       <ModalBayarPiutang
