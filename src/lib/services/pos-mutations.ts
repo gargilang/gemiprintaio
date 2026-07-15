@@ -40,6 +40,7 @@ import { getShopSettings } from "./shop-settings-service";
 import { friendlyPgError } from "../pg-error";
 import { withDuplicateNumberRetry } from "../retry-utils";
 import { computeBomCostPerUnit } from "./bom-service";
+import { isDateInClosedPeriod } from "./accounting-periods-service";
 import {
   DEFAULT_NOMOR_DATE_FORMAT,
   buildNomorUrut,
@@ -1635,6 +1636,95 @@ export async function payReceivable(data: {
     jumlah_bayar: data.jumlah_bayar,
     status_baru: newStatus,
     sisa_piutang: newSisaPiutang,
+  };
+}
+
+/**
+ * Bayar beberapa tagihan piutang sekaligus dengan alokasi FIFO otomatis.
+ *
+ * Alur:
+ *  1. Validasi jumlah > 0. Guard periode tertutup (#7).
+ *  2. Ambil baris piutang untuk tagihan_ids, saring yang masih aktif/sebagian.
+ *  3. Urutkan FIFO server-side (dibuat_pada asc) — tidak percaya urutan klien.
+ *  4. Alokasi: per tagihan bayar min(sisa_uang, tagihan.sisa_piutang) via payReceivable.
+ *  5. Kelebihan uang dikembalikan sebagai sisa_uang (tidak disimpan).
+ */
+export async function payReceivableLumpSum(input: {
+  tagihan_ids: string[];
+  jumlah_bayar: number;
+  tanggal_bayar?: string;
+  metode_pembayaran?: string;
+  referensi?: string;
+  catatan?: string;
+  dibuat_oleh?: string;
+}): Promise<{
+  total_dialokasikan: number;
+  sisa_uang: number;
+  alokasi: Array<{ piutang_id: string; dibayar: number; status_baru: string }>;
+}> {
+  if (!input.jumlah_bayar || input.jumlah_bayar <= 0) {
+    throw new Error("Jumlah pembayaran harus lebih dari 0");
+  }
+
+  // Guard periode tertutup (#7)
+  const tgl = input.tanggal_bayar || getTodayJakarta();
+  if (await isDateInClosedPeriod(tgl)) {
+    throw new Error(
+      "Tanggal pembayaran berada di periode akuntansi yang sudah ditutup. Pilih tanggal pada periode terbuka.",
+    );
+  }
+
+  // Ambil baris piutang, saring yang masih punya sisa & aktif/sebagian
+  const rows: any[] = [];
+  for (const id of input.tagihan_ids) {
+    const r = await db.queryOne("piutang_penjualan", { where: { id } });
+    const p = r.data as any;
+    if (
+      p &&
+      (p.status === "AKTIF" || p.status === "SEBAGIAN") &&
+      Number(p.sisa_piutang) > 0
+    ) {
+      rows.push(p);
+    }
+  }
+
+  // FIFO server-side (tidak percaya urutan klien)
+  rows.sort((a, b) =>
+    String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || "")),
+  );
+
+  let sisa = input.jumlah_bayar;
+  const alokasi: Array<{
+    piutang_id: string;
+    dibayar: number;
+    status_baru: string;
+  }> = [];
+
+  for (const p of rows) {
+    if (sisa <= 0) break;
+    const bayar = Math.min(sisa, Number(p.sisa_piutang));
+    if (bayar <= 0) continue;
+    const hasil = await payReceivable({
+      piutang_id: p.id,
+      jumlah_bayar: bayar,
+      tanggal_bayar: tgl,
+      metode_pembayaran: input.metode_pembayaran,
+      referensi: input.referensi || undefined,
+      catatan: input.catatan || undefined,
+      dibuat_oleh: input.dibuat_oleh,
+    });
+    alokasi.push({
+      piutang_id: p.id,
+      dibayar: bayar,
+      status_baru: hasil.status_baru,
+    });
+    sisa -= bayar;
+  }
+
+  return {
+    total_dialokasikan: input.jumlah_bayar - sisa,
+    sisa_uang: Math.max(0, sisa),
+    alokasi,
   };
 }
 
