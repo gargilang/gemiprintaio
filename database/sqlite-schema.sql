@@ -748,6 +748,7 @@ CREATE TABLE item_produksi (
       jenis_bahan TEXT,
       status TEXT DEFAULT 'MENUNGGU',
       catatan_produksi TEXT,
+      parent_item_produksi_id TEXT,
       operator_id TEXT,
       mulai_proses TEXT,
       selesai_proses TEXT,
