@@ -1225,6 +1225,22 @@ export async function updateProductionItemStatus(
       }
     }
 
+    // Guard: komponen rakitan berdimensi wajib konfirmasi roll dulu sebelum
+    // item induk bisa diselesaikan.
+    if (data.status === "SELESAI" && cur.data?.status !== "SELESAI") {
+      const anakResult = await db.query<any>("item_produksi", {
+        where: { parent_item_produksi_id: itemId },
+      });
+      const belumKonfirmasi = (anakResult.data || []).filter(
+        (r: any) => r.roll_inventory_status === "PENDING",
+      );
+      if (belumKonfirmasi.length > 0) {
+        throw new Error(
+          "Konfirmasi roll komponen dulu sebelum menandai item selesai.",
+        );
+      }
+    }
+
     // Set selesai_proses when SELESAI
     if (data.status === "SELESAI") {
       updateData.selesai_proses = new Date().toISOString();
