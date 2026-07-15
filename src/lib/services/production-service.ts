@@ -1125,7 +1125,7 @@ export async function deductBomComponents({
       const kompRes = await db.queryOne<any>("barang", {
         where: { id: k.komponen_id },
       });
-      if (Number(kompRes.data?.butuh_dimensi_status) === 1) continue;
+      if (Number(kompRes?.data?.butuh_dimensi_status) === 1) continue;
     }
     let perUnitQty = Number(k.qty);
     if (
