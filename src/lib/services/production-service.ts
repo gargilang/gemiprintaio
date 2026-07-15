@@ -1027,6 +1027,20 @@ export async function deductBomComponents({
   if (komponen.length === 0) return;
 
   for (const k of komponen) {
+    // Komponen berdimensi ditangani jalur roll (baris produksi anak +
+    // postProductionMaterialConsumption). Skip di sini agar tidak dobel potong.
+    if (
+      k.jumlah_roll != null &&
+      k.panjang != null &&
+      k.lebar != null &&
+      Number(k.panjang) > 0 &&
+      Number(k.lebar) > 0
+    ) {
+      const kompRes = await db.queryOne<any>("barang", {
+        where: { id: k.komponen_id },
+      });
+      if (Number(kompRes.data?.butuh_dimensi_status) === 1) continue;
+    }
     let perUnitQty = Number(k.qty);
     if (
       k.jumlah_roll != null &&
