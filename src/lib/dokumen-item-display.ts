@@ -58,7 +58,7 @@ export function formatTampilanQtyItem(item: ItemDimensi): string {
     if (item.jumlah_lembar && lembar > 0) {
       const fmt = (n: number) =>
         Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
-      return `${lembar} lbr · ${fmt(lebar)} × ${fmt(panjang)} m (= ${jumlah.toFixed(2)} m²)`;
+      return `${lembar} lbr · ${fmt(lebar)} m × ${fmt(panjang)} m (= ${jumlah.toFixed(2)} m²)`;
     }
     const ukuran = formatUkuranPembelian(panjang, lebar, 1);
     if (ukuran) {
@@ -146,7 +146,7 @@ export function mapPenawaranItemKeFaktur(item: {
       Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
     return {
       nama: item.barang_nama || item.barang_id || "—",
-      ukuran: `${fmt(lebar)} × ${fmt(panjang)} m`,
+      ukuran: `${fmt(lebar)} m × ${fmt(panjang)} m`,
       qty: lembar,
       satuan: "lbr",
       harga: Number(item.harga_satuan || 0),

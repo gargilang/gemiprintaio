@@ -84,5 +84,5 @@ export function formatRollCartDetailLine(item: {
   );
   const rollPrefix =
     (item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : "";
-  return `${rollPrefix}${printLen.toFixed(2)} × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
+  return `${rollPrefix}${printLen.toFixed(2)} m × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
 }

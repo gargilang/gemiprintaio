@@ -969,5 +969,5 @@ export function formatUkuran(
   if (!p || !l) return "";
   const fmt = (n: number) =>
     Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
-  return `${fmt(p)} × ${fmt(l)} m`;
+  return `${fmt(p)} m × ${fmt(l)} m`;
 }

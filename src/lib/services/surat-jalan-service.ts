@@ -485,7 +485,7 @@ export async function buildItemsFromSale(
       : barangMap.get(it.barang_id) || "—";
     const ukuran =
       it.panjang && it.lebar
-        ? `${Number(it.panjang).toFixed(2)} × ${Number(it.lebar).toFixed(2)} m`
+        ? `${Number(it.panjang).toFixed(2)} m × ${Number(it.lebar).toFixed(2)} m`
         : null;
     return {
       nama_barang: namaBarang,

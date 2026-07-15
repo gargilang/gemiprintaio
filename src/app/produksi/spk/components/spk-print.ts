@@ -271,7 +271,7 @@ export function generateSPKHTML(order: ProductionOrder): string {
               `<div style="padding-left:10px;">
                 <strong>${escapeHtml(k.barang_nama || "Komponen")}</strong>` +
               (k.panjang && k.lebar
-                ? ` — ${Number(k.lebar).toFixed(2)} × ${Number(k.panjang).toFixed(2)} m`
+                ? ` — ${Number(k.lebar).toFixed(2)} m × ${Number(k.panjang).toFixed(2)} m`
                 : "") +
               (k.roll_inventory_status === "POSTED" && k.consumption
                 ? ` · Roll ${Number(k.consumption.roll_width_m).toFixed(2)}m, pakai ${Number(k.consumption.linear_used_m).toFixed(2)}m`

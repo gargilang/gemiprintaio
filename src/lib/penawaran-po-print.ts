@@ -62,7 +62,7 @@ function fmtDim(item: ItemPrint): string {
   const panjang = Number(item.panjang);
   const lebar = Number(item.lebar);
   if (!panjang || !lebar) return "-";
-  return `${lebar.toFixed(2)} × ${panjang.toFixed(2)} m`;
+  return `${lebar.toFixed(2)} m × ${panjang.toFixed(2)} m`;
 }
 
 function fmtQtyKolom(item: ItemPrint): string {

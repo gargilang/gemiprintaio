@@ -38,5 +38,5 @@ export function formatLabelKomponenDimensi(row: {
     return null;
   }
   const m2 = hitungQtyKomponenDimensiM2(1, panjang, lebar);
-  return `${lebar}×${panjang} m (${m2.toLocaleString("id-ID", { maximumFractionDigits: 4 })} m²)`;
+  return `${lebar} m × ${panjang} m (${m2.toLocaleString("id-ID", { maximumFractionDigits: 4 })} m²)`;
 }

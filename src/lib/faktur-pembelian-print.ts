@@ -505,6 +505,6 @@ export function formatUkuranPembelian(
   const fmt = (n: number) =>
     Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
   const qty = Math.max(1, Math.round(Number(jumlahRoll) || 1));
-  const dims = `${fmt(l)} × ${fmt(p)} m`;
+  const dims = `${fmt(l)} m × ${fmt(p)} m`;
   return qty > 1 ? `${qty} roll · ${dims}` : dims;
 }

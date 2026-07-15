@@ -35,7 +35,7 @@ function formatUkuranPerPcs(
   if (!p || !l) return "";
   const fmt = (n: number) =>
     Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
-  return `${fmt(l)} × ${fmt(p)} m`;
+  return `${fmt(l)} m × ${fmt(p)} m`;
 }
 
 function formatAngkaQty(qty: number): string {
