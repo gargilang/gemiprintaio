@@ -125,6 +125,23 @@ export interface Receivable {
   diperbarui_pada?: string;
 }
 
+/** Piutang dikelompokkan per pelanggan, diurutkan total_sisa descending. */
+export interface ReceivableGroup {
+  /** Kunci unik grup: pelanggan_id | `nama:${snapshotLower}` | "__tanpa_nama__" */
+  customerKey: string;
+  pelanggan_id: string | null;
+  /** Nama tampilan pelanggan. */
+  pelanggan_nama: string;
+  /** true bila pelanggan tidak terdaftar (walk-in tanpa pelanggan_id). */
+  is_walk_in: boolean;
+  /** Total sisa piutang seluruh tagihan dalam grup. */
+  total_sisa: number;
+  /** Jumlah tagihan aktif dalam grup. */
+  jumlah_tagihan: number;
+  /** Tagihan diurutkan FIFO (dibuat_pada asc). */
+  tagihan: Receivable[];
+}
+
 export interface POSInitData {
   customers: any[];
   materials: any[];
@@ -827,6 +844,65 @@ export async function getReceivables(): Promise<Receivable[]> {
     console.error("Error fetching receivables:", error);
     throw error;
   }
+}
+
+/**
+ * Kelompokkan array piutang per pelanggan (fungsi murni, dapat di-test tanpa DB).
+ * Kunci pengelompokan: pelanggan_id bila ada; walk-in pakai nama snapshot
+ * (trim+lowercase); nama kosong → "__tanpa_nama__".
+ * Tagihan diurutkan FIFO (dibuat_pada asc); grup diurutkan total_sisa desc.
+ */
+export function groupReceivablesByCustomer(
+  rows: Receivable[],
+): ReceivableGroup[] {
+  const map = new Map<string, ReceivableGroup>();
+  for (const r of rows) {
+    let key: string;
+    let isWalkIn: boolean;
+    if (r.pelanggan_id) {
+      key = r.pelanggan_id;
+      isWalkIn = false;
+    } else {
+      const nama = (r.pelanggan_nama || "").trim();
+      key = nama ? `nama:${nama.toLowerCase()}` : "__tanpa_nama__";
+      isWalkIn = true;
+    }
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        customerKey: key,
+        pelanggan_id: r.pelanggan_id ?? null,
+        pelanggan_nama:
+          (r.pelanggan_nama || "").trim() ||
+          (isWalkIn ? "Pelanggan Umum" : "—"),
+        is_walk_in: isWalkIn,
+        total_sisa: 0,
+        jumlah_tagihan: 0,
+        tagihan: [],
+      };
+      map.set(key, g);
+    }
+    g.total_sisa += Number(r.sisa_piutang) || 0;
+    g.jumlah_tagihan += 1;
+    g.tagihan.push(r);
+  }
+  const groups = Array.from(map.values());
+  for (const g of groups) {
+    g.tagihan.sort((a, b) =>
+      String(a.dibuat_pada || "").localeCompare(String(b.dibuat_pada || "")),
+    );
+  }
+  groups.sort((a, b) => b.total_sisa - a.total_sisa);
+  return groups;
+}
+
+/**
+ * Ambil piutang aktif dan kelompokkan per pelanggan.
+ * Reuse `getReceivables()` lalu terapkan `groupReceivablesByCustomer`.
+ */
+export async function getReceivablesByCustomer(): Promise<ReceivableGroup[]> {
+  const rows = await getReceivables();
+  return groupReceivablesByCustomer(rows);
 }
 
 /**
