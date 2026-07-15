@@ -229,7 +229,7 @@ export default function PratinjauFakturMengambang({
   return (
     <div
       ref={panelRef}
-      className="fixed z-50 flex flex-col rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
+      className="fixed z-[110] flex flex-col rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
       style={{ left: position.x, top: position.y, width: size.w, height: size.h }}
       role="dialog"
       aria-label={title}
