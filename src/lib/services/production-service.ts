@@ -752,6 +752,7 @@ async function resolveProductionConsumptionContext(itemId: string): Promise<{
   item: any;
   saleItem: any;
   material: any;
+  isKomponen: boolean;
 }> {
   const itemResult = await db.queryOne<any>("item_produksi", {
     where: { id: itemId },
@@ -767,21 +768,26 @@ async function resolveProductionConsumptionContext(itemId: string): Promise<{
   const saleItem = saleItemResult.data;
   if (!saleItem) throw new Error("Item penjualan terkait tidak ditemukan");
 
+  // Baris anak komponen rakitan: material = barang komponen (item.barang_id),
+  // dimensi dari item (bukan dari saleItem induk yang bisa non-dimensi).
+  const isKomponen = !!item.parent_item_produksi_id;
+  const materialBarangId = isKomponen ? item.barang_id : saleItem.barang_id;
   const materialResult = await db.queryOne<any>("barang", {
-    where: { id: saleItem.barang_id },
+    where: { id: materialBarangId },
   });
   if (materialResult.error) throw materialResult.error;
   const material = materialResult.data;
   if (!material) throw new Error("Barang produksi tidak ditemukan");
 
-  return { item, saleItem, material };
+  return { item, saleItem, material, isKomponen };
 }
 
 export async function getRollVariantsForProductionItem(
   itemId: string,
 ): Promise<RollVariant[]> {
-  const { saleItem } = await resolveProductionConsumptionContext(itemId);
-  return getRollVariants(saleItem.barang_id);
+  const { item, saleItem, isKomponen } =
+    await resolveProductionConsumptionContext(itemId);
+  return getRollVariants(isKomponen ? item.barang_id : saleItem.barang_id);
 }
 
 export async function postProductionMaterialConsumption(input: {
@@ -791,12 +797,17 @@ export async function postProductionMaterialConsumption(input: {
   operator_id?: string | null;
   catatan?: string | null;
 }): Promise<ProductionMaterialConsumption> {
-  const { item, saleItem, material } =
+  const { item, saleItem, material, isKomponen } =
     await resolveProductionConsumptionContext(input.item_produksi_id);
   if (Number(material.lacak_inventori_status) === 0) {
     throw new Error("Barang ini tidak melacak inventori");
   }
-  if (Number(saleItem.roll_inventory_deferred || 0) !== 1) {
+  // Baris anak komponen rakitan: cek roll_inventory_status PENDING pada item anak.
+  // Baris induk berdimensi murni: cek roll_inventory_deferred pada saleItem.
+  const perluKonfirmasi = isKomponen
+    ? item.roll_inventory_status === "PENDING"
+    : Number(saleItem.roll_inventory_deferred || 0) === 1;
+  if (!perluKonfirmasi) {
     throw new Error("Item ini tidak membutuhkan konfirmasi roll produksi");
   }
 
@@ -810,14 +821,22 @@ export async function postProductionMaterialConsumption(input: {
     throw new Error("Konsumsi bahan untuk item ini sudah diposting");
   }
 
-  const variants = await getRollVariants(saleItem.barang_id);
+  const consumptionBarangId = isKomponen ? item.barang_id : saleItem.barang_id;
+  const variants = await getRollVariants(consumptionBarangId);
   const variant = variants.find((row) => row.id === input.roll_variant_id);
   if (!variant) throw new Error("Varian roll tidak valid untuk barang ini");
 
   const rollWidth = positiveNumber(variant.lebar_m);
-  const orderP = positiveNumber(saleItem.panjang ?? item.panjang);
-  const orderL = positiveNumber(saleItem.lebar ?? item.lebar);
-  const billedArea = positiveNumber(saleItem.jumlah);
+  // Baris anak: dimensi dari item (komponen). Baris induk murni: dari saleItem.
+  const orderP = positiveNumber(
+    isKomponen ? item.panjang : saleItem.panjang ?? item.panjang,
+  );
+  const orderL = positiveNumber(
+    isKomponen ? item.lebar : saleItem.lebar ?? item.lebar,
+  );
+  const billedArea = positiveNumber(
+    isKomponen ? item.jumlah : saleItem.jumlah,
+  );
   const suggested =
     orderP > 0 && orderL > 0
       ? getBillableDimensionsForRoll(orderP, orderL, rollWidth)
@@ -839,7 +858,7 @@ export async function postProductionMaterialConsumption(input: {
 
   const issueMovement = await postInventoryMovement({
     id: movementId,
-    barang_id: saleItem.barang_id,
+    barang_id: consumptionBarangId,
     tanggal: new Date().toISOString().split("T")[0],
     movement_type: "PRODUCTION_ISSUE",
     qty_delta: -issueArea,
@@ -856,7 +875,7 @@ export async function postProductionMaterialConsumption(input: {
   if (wasteArea > 0) {
     await postInventoryMovement({
       id: wasteMovementId!,
-      barang_id: saleItem.barang_id,
+      barang_id: consumptionBarangId,
       tanggal: new Date().toISOString().split("T")[0],
       movement_type: "PRODUCTION_WASTE",
       qty_delta: -wasteArea,
@@ -876,7 +895,7 @@ export async function postProductionMaterialConsumption(input: {
     id: consumptionId,
     item_produksi_id: item.id,
     item_penjualan_id: saleItem.id,
-    barang_id: saleItem.barang_id,
+    barang_id: consumptionBarangId,
     roll_variant_id: variant.id,
     roll_width_m: rollWidth,
     linear_used_m: linearUsed,
@@ -891,6 +910,48 @@ export async function postProductionMaterialConsumption(input: {
   };
   const ins = await db.insert("production_material_consumptions", consumption);
   if (ins.error) throw ins.error;
+
+  // Sinkron HPP: untuk baris anak komponen rakitan, jumlahkan biaya semua
+  // konsumsi POSTED komponen di bawah item_penjualan induk yang sama, lalu
+  // update hpp_total/gross_profit/gross_margin item_penjualan induk.
+  if (isKomponen) {
+    const allCons = await db.query<any>("production_material_consumptions", {
+      where: { item_penjualan_id: saleItem.id, status: "POSTED" },
+    });
+    let hppTotal = 0;
+    // Tambahkan biaya konsumsi saat ini terlebih dahulu (baru di-insert,
+    // unit_cost dan issueArea sudah dihitung di atas).
+    hppTotal += unitCost * issueArea;
+    // Tambahkan biaya konsumsi lain yang sudah POSTED sebelumnya (selain ini).
+    for (const c of allCons.data || []) {
+      if (c.id === consumption.id) continue; // sudah dihitung di atas
+      const mv = c.movement_id
+        ? (
+            await db.queryOne<any>("inventory_movements", {
+              where: { id: c.movement_id },
+            })
+          ).data
+        : null;
+      if (mv) {
+        hppTotal +=
+          positiveNumber(mv.unit_cost) * Math.abs(Number(mv.qty_delta || 0));
+      }
+    }
+
+    const subtotal = positiveNumber(saleItem.subtotal);
+    const grossProfit = subtotal - hppTotal;
+    const grossMargin = subtotal > 0 ? (grossProfit / subtotal) * 100 : 0;
+    const hppUpd = await db.update("item_penjualan", saleItem.id, {
+      hpp_total: hppTotal,
+      hpp_satuan:
+        positiveNumber(saleItem.jumlah) > 0
+          ? hppTotal / Number(saleItem.jumlah)
+          : hppTotal,
+      gross_profit: grossProfit,
+      gross_margin: grossMargin,
+    });
+    if (hppUpd.error) throw hppUpd.error;
+  }
 
   // Konfirmasi bahan menandai roll dipakai & stok keluar — ini AWAL
   // pengerjaan, bukan akhir. Set status item ke PRINTING (proses), jangan
