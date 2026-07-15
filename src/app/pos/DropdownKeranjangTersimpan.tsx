@@ -21,11 +21,14 @@ export default function DropdownKeranjangTersimpan({
   // Koordinat popup relatif viewport (fixed). Dihitung dari rect tombol supaya
   // popup lepas dari ancestor `overflow-hidden` (root cart) yang memotong
   // popup absolut saat cart pendek.
+  // `openUp` = true → popup membuka ke atas (pakai `bottom`), false → ke bawah (pakai `top`).
   const [coords, setCoords] = useState<{
-    top: number;
+    top?: number;
+    bottom?: number;
     right: number;
     maxH: number;
-  }>({ top: 0, right: 0, maxH: 384 });
+    openUp: boolean;
+  }>({ right: 0, maxH: 384, openUp: false });
   const btnRef = useRef<HTMLButtonElement>(null);
   const count = parkedCarts.length;
   const showWarning = count > 30;
@@ -41,9 +44,24 @@ export default function DropdownKeranjangTersimpan({
   useEffect(() => {
     if (!open || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const top = rect.bottom + 4;
-    const maxH = Math.max(200, Math.min(384, window.innerHeight - top - 16));
-    setCoords({ top, right: window.innerWidth - rect.right, maxH });
+    const right = window.innerWidth - rect.right;
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const POPUP_MAX = 384;
+
+    // Buka ke atas jika ruang di bawah tidak cukup DAN ruang di atas lebih besar
+    const openUp = spaceBelow < Math.min(POPUP_MAX, 200) && spaceAbove > spaceBelow;
+
+    if (openUp) {
+      const maxH = Math.max(200, Math.min(POPUP_MAX, spaceAbove));
+      // `bottom` = jarak dari bawah viewport ke atas tombol
+      const bottom = window.innerHeight - rect.top + 4;
+      setCoords({ bottom, right, maxH, openUp: true });
+    } else {
+      const top = rect.bottom + 4;
+      const maxH = Math.max(200, Math.min(POPUP_MAX, spaceBelow));
+      setCoords({ top, right, maxH, openUp: false });
+    }
   }, [open]);
 
   // Tutup saat scroll/resize agar popup tidak menempel di posisi usang.
@@ -62,7 +80,7 @@ export default function DropdownKeranjangTersimpan({
     <div
       className="fixed z-[100] w-96 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-2"
       style={{
-        top: coords.top,
+        ...(coords.openUp ? { bottom: coords.bottom } : { top: coords.top }),
         right: coords.right,
         maxHeight: coords.maxH,
         overflowY: "auto",
