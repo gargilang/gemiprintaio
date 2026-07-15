@@ -35,3 +35,20 @@ export const payReceivableSchema = z
   .passthrough();
 
 export type PayReceivableInput = z.infer<typeof payReceivableSchema>;
+
+/** Schema untuk pembayaran lump-sum yang dialokasikan FIFO ke beberapa tagihan. */
+export const payReceivableLumpSumSchema = z
+  .object({
+    tagihan_ids: z.array(z.string().min(1)).min(1, "Minimal satu tagihan"),
+    jumlah_bayar: finiteNumber.positive(),
+    tanggal_bayar: z.string().optional(),
+    metode_pembayaran: z.string().optional(),
+    referensi: z.string().nullable().optional(),
+    catatan: z.string().nullable().optional(),
+    dibuat_oleh: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export type PayReceivableLumpSumInput = z.infer<
+  typeof payReceivableLumpSumSchema
+>;
