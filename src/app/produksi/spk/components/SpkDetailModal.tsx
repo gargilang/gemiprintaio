@@ -45,6 +45,105 @@ export interface SpkDetailModalProps {
   onPrint: (order: ProductionOrder) => void | Promise<void>;
 }
 
+// ─── Komponen pembantu ─────────────────────────────────────────────────────
+
+/** Blok konfirmasi roll aktual (untuk item berdimensi murni maupun komponen). */
+function RollKonfirmasiBlok({
+  targetItem,
+  rollVariants,
+  draft,
+  onPatchDraft,
+  onPostConsumption,
+}: {
+  targetItem: ProductionItem;
+  rollVariants: RollVariantOption[];
+  draft?: ConsumptionDraft;
+  onPatchDraft: (patch: Partial<ConsumptionDraft>) => void;
+  onPostConsumption: () => void;
+}) {
+  return (
+    <div className="mb-3 border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
+            Roll aktual
+          </label>
+          <select
+            value={draft?.roll_variant_id || ""}
+            onChange={(e) => onPatchDraft({ roll_variant_id: e.target.value })}
+            className="px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="">Pilih roll</option>
+            {rollVariants.map((variant) => (
+              <option key={variant.id} value={variant.id}>
+                {Number(variant.lebar_m).toFixed(2)}m · sisa{" "}
+                {Number(variant.panjang_tersedia_m).toFixed(2)}m
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
+            Panjang aktual
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            inputMode="decimal"
+            value={draft?.linear_used_m || ""}
+            onChange={(e) => onPatchDraft({ linear_used_m: e.target.value })}
+            placeholder="Auto"
+            className="w-24 px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
+          />
+        </div>
+        <div className="min-w-[180px] text-xs text-amber-900 dark:text-amber-200">
+          Billing: {Number(targetItem.jumlah || 0).toFixed(2)} m²
+          {targetItem.recommended_roll_width_m
+            ? ` · rekomendasi ${Number(targetItem.recommended_roll_width_m).toFixed(2)}m`
+            : ""}
+        </div>
+        <button
+          type="button"
+          onClick={onPostConsumption}
+          className="px-3 py-1.5 text-sm font-semibold rounded bg-amber-600 text-white hover:bg-amber-700"
+        >
+          Konfirmasi Bahan
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Blok info roll yang sudah dikonfirmasi (POSTED). */
+function RollPostedBlok({
+  consumption,
+  onVoidConsumption,
+}: {
+  consumption: NonNullable<ProductionItem["consumption"]>;
+  onVoidConsumption: () => void;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
+      <span>
+        Roll {Number(consumption.roll_width_m).toFixed(2)}m · pakai{" "}
+        {Number(consumption.linear_used_m).toFixed(2)}m · stok keluar{" "}
+        {Number(consumption.area_used_m2).toFixed(2)}m²
+      </span>
+      {Number(consumption.waste_area_m2) > 0 && (
+        <span>Waste {Number(consumption.waste_area_m2).toFixed(2)}m²</span>
+      )}
+      <button
+        type="button"
+        onClick={onVoidConsumption}
+        className="px-2 py-1 rounded border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+      >
+        Koreksi
+      </button>
+    </div>
+  );
+}
+
 // Modal detail SPK (info order + item + konsumsi roll + finishing). Diekstrak (Fase 6 B6).
 export default function SpkDetailModal({
   order,
@@ -311,96 +410,103 @@ export default function SpkDetailModal({
                   )}
                 </div>
 
+                {/* Blok konfirmasi roll untuk item berdimensi murni (induk) */}
                 {item.roll_inventory_status === "PENDING" && (
-                  <div className="mb-3 border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3">
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
-                          Roll aktual
-                        </label>
-                        <select
-                          value={
-                            consumptionDrafts[item.id]?.roll_variant_id || ""
-                          }
-                          onChange={(e) =>
-                            onPatchDraft(item.id, {
-                              roll_variant_id: e.target.value,
-                            })
-                          }
-                          className="px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          <option value="">Pilih roll</option>
-                          {(rollVariantsByItem[item.id] || []).map(
-                            (variant) => (
-                              <option key={variant.id} value={variant.id}>
-                                {Number(variant.lebar_m).toFixed(2)}m · sisa{" "}
-                                {Number(variant.panjang_tersedia_m).toFixed(2)}m
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
-                          Panjang aktual
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          inputMode="decimal"
-                          value={
-                            consumptionDrafts[item.id]?.linear_used_m || ""
-                          }
-                          onChange={(e) =>
-                            onPatchDraft(item.id, {
-                              linear_used_m: e.target.value,
-                            })
-                          }
-                          placeholder="Auto"
-                          className="w-24 px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
-                        />
-                      </div>
-                      <div className="min-w-[180px] text-xs text-amber-900 dark:text-amber-200">
-                        Billing: {Number(item.jumlah || 0).toFixed(2)} m²
-                        {item.recommended_roll_width_m
-                          ? ` · rekomendasi ${Number(item.recommended_roll_width_m).toFixed(2)}m`
-                          : ""}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onPostConsumption(item)}
-                        className="px-3 py-1.5 text-sm font-semibold rounded bg-amber-600 text-white hover:bg-amber-700"
-                      >
-                        Konfirmasi Bahan
-                      </button>
-                    </div>
-                  </div>
+                  <RollKonfirmasiBlok
+                    targetItem={item}
+                    rollVariants={rollVariantsByItem[item.id] || []}
+                    draft={consumptionDrafts[item.id]}
+                    onPatchDraft={(patch) => onPatchDraft(item.id, patch)}
+                    onPostConsumption={() => onPostConsumption(item)}
+                  />
                 )}
 
                 {item.roll_inventory_status === "POSTED" &&
                   item.consumption && (
-                    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
-                      <span>
-                        Roll {Number(item.consumption.roll_width_m).toFixed(2)}m
-                        · pakai{" "}
-                        {Number(item.consumption.linear_used_m).toFixed(2)}m ·
-                        stok keluar{" "}
-                        {Number(item.consumption.area_used_m2).toFixed(2)}m²
-                      </span>
-                      {Number(item.consumption.waste_area_m2) > 0 && (
-                        <span>
-                          Waste{" "}
-                          {Number(item.consumption.waste_area_m2).toFixed(2)}m²
-                        </span>
+                    <RollPostedBlok
+                      consumption={item.consumption}
+                      onVoidConsumption={() => onVoidConsumption(item)}
+                    />
+                  )}
+
+                {/* Sub-baris komponen rakitan berdimensi */}
+                {(item as any).komponen_roll &&
+                  (item as any).komponen_roll.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-amber-100 dark:border-amber-900/40 space-y-3">
+                      <div className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                        Komponen Bahan
+                      </div>
+                      {(item as any).komponen_roll.map(
+                        (komp: ProductionItem) => (
+                          <div
+                            key={komp.id}
+                            className="ml-4 border border-amber-200 dark:border-amber-900/60 rounded-lg p-3 bg-amber-50/50 dark:bg-amber-950/10"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="font-semibold text-sm text-gray-900 dark:text-slate-100">
+                                  {komp.barang_nama}
+                                </div>
+                                {komp.lebar != null && komp.panjang != null && (
+                                  <div className="text-xs text-gray-500 dark:text-slate-400">
+                                    {Number(komp.lebar).toFixed(2)} ×{" "}
+                                    {Number(komp.panjang).toFixed(2)} m ={" "}
+                                    {Number(komp.jumlah || 0).toFixed(3)} m²
+                                  </div>
+                                )}
+                                {komp.recommended_roll_width_m && (
+                                  <div className="text-xs text-amber-700 dark:text-amber-400">
+                                    Rekomendasi roll:{" "}
+                                    {Number(
+                                      komp.recommended_roll_width_m,
+                                    ).toFixed(2)}{" "}
+                                    m
+                                  </div>
+                                )}
+                              </div>
+                              <span
+                                className={`px-2 py-0.5 rounded text-xs font-semibold border ${
+                                  komp.roll_inventory_status === "POSTED"
+                                    ? "bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-200"
+                                    : "bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-950/20 dark:border-amber-700 dark:text-amber-200"
+                                }`}
+                              >
+                                {komp.roll_inventory_status === "POSTED"
+                                  ? "Terkonfirmasi"
+                                  : "Perlu Konfirmasi"}
+                              </span>
+                            </div>
+
+                            {/* Konfirmasi roll komponen (PENDING) */}
+                            {komp.roll_inventory_status === "PENDING" && (
+                              <RollKonfirmasiBlok
+                                targetItem={komp}
+                                rollVariants={
+                                  rollVariantsByItem[komp.id] || []
+                                }
+                                draft={consumptionDrafts[komp.id]}
+                                onPatchDraft={(patch) =>
+                                  onPatchDraft(komp.id, patch)
+                                }
+                                onPostConsumption={() =>
+                                  onPostConsumption(komp)
+                                }
+                              />
+                            )}
+
+                            {/* Info roll sudah dikonfirmasi (POSTED) */}
+                            {komp.roll_inventory_status === "POSTED" &&
+                              komp.consumption && (
+                                <RollPostedBlok
+                                  consumption={komp.consumption}
+                                  onVoidConsumption={() =>
+                                    onVoidConsumption(komp)
+                                  }
+                                />
+                              )}
+                          </div>
+                        ),
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onVoidConsumption(item)}
-                        className="px-2 py-1 rounded border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-                      >
-                        Koreksi
-                      </button>
                     </div>
                   )}
 

@@ -1730,6 +1730,21 @@ class UnifiedDatabase {
       }
     }
 
+    // Migrasi (20260715120000): item_produksi kolom parent_item_produksi_id
+    // untuk baris anak komponen rakitan berdimensi.
+    {
+      const cols = (
+        db.prepare("PRAGMA table_info(item_produksi)").all() as Array<{
+          name: string;
+        }>
+      ).map((c) => c.name);
+      if (!cols.includes("parent_item_produksi_id")) {
+        db.exec(
+          "ALTER TABLE item_produksi ADD COLUMN parent_item_produksi_id TEXT",
+        );
+      }
+    }
+
     // Migrasi (20260707000003): katalog_maklon kolom populer_status + kategori_id.
     {
       const cols = (
