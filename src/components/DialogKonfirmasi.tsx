@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { AlertIcon } from "./icons/ContentIcons";
 
@@ -145,8 +146,9 @@ export default function DialogKonfirmasi({
   const styles =
     typeStyles[type as keyof typeof typeStyles] || typeStyles.warning;
 
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+  // Render via portal agar selalu di atas semua modal/overlay (termasuk z-[80], z-[110], dll.)
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div
         ref={modalRef}
         className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in duration-200"
@@ -211,6 +213,7 @@ export default function DialogKonfirmasi({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
