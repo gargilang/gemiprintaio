@@ -490,7 +490,7 @@ export default function OverlayKeranjang({
                                   {(item.jumlah_roll ?? 1) > 1
                                     ? `${item.jumlah_roll} × `
                                     : ""}
-                                  {item.panjang.toFixed(2)} ×{" "}
+                                  {item.panjang.toFixed(2)} m ×{" "}
                                   {item.lebar.toFixed(2)} m ={" "}
                                   {item.jumlah.toFixed(2)} m² @ Rp{" "}
                                   {formatPosUnitPrice(item.harga_satuan)}
@@ -748,7 +748,7 @@ export default function OverlayKeranjang({
                 </div>
               </div>
 
-              {/* Jumlah bayar + kilat */}
+              {/* Jumlah bayar + uang pas + kilat */}
               <div className="flex items-end gap-2">
                 <div className="flex-1 min-w-0">
                   <label className="block text-sm font-bold text-gray-600 dark:text-slate-300 mb-1">
@@ -769,6 +769,15 @@ export default function OverlayKeranjang({
                     className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-[#00afef] font-bold text-base"
                   />
                 </div>
+                {/* Tombol uang pas — isi jumlah bayar dengan total persis */}
+                <button
+                  type="button"
+                  onClick={() => onJumlahBayarChange(String(total))}
+                  className="shrink-0 flex items-center justify-center px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg border-2 border-emerald-600 hover:border-emerald-700 transition-colors h-[42px] cursor-pointer whitespace-nowrap"
+                  title="Isi jumlah bayar dengan total (uang pas)"
+                >
+                  <span className="text-xs font-bold uppercase tracking-wide">Uang Pas</span>
+                </button>
                 <label className="shrink-0 flex items-center gap-1.5 cursor-pointer px-2 py-2 bg-white dark:bg-slate-900 rounded-lg border-2 border-gray-200 dark:border-slate-800 hover:border-amber-600 transition-all h-[42px]">
                   <input
                     type="checkbox"

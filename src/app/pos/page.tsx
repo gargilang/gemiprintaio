@@ -2326,7 +2326,7 @@ export default function POSPage() {
                                   setQuantity((current - 1).toString());
                                 }
                               }}
-                              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 rounded-lg border-2 border-gray-300 text-gray-700 dark:text-slate-300 font-bold transition-colors"
+                              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg border-2 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 font-bold transition-colors"
                             >
                               −
                             </button>
