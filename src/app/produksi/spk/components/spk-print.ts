@@ -260,6 +260,30 @@ export function generateSPKHTML(order: ProductionOrder): string {
           ? `<div class="item-detail"><strong>Catatan:</strong> ${escapeHtml(item.catatan_produksi)}</div>`
           : ""
       }
+      ${
+        (item as any).komponen_roll && (item as any).komponen_roll.length > 0
+          ? `
+      <div class="item-detail" style="margin-top:4px;">
+        <strong>Komponen Bahan:</strong>
+        ${(item as any).komponen_roll
+          .map(
+            (k: any) =>
+              `<div style="padding-left:10px;">
+                <strong>${escapeHtml(k.barang_nama || "Komponen")}</strong>` +
+              (k.panjang && k.lebar
+                ? ` — ${Number(k.lebar).toFixed(2)} × ${Number(k.panjang).toFixed(2)} m`
+                : "") +
+              (k.roll_inventory_status === "POSTED" && k.consumption
+                ? ` · Roll ${Number(k.consumption.roll_width_m).toFixed(2)}m, pakai ${Number(k.consumption.linear_used_m).toFixed(2)}m`
+                : k.recommended_roll_width_m
+                  ? `<br>&nbsp;&nbsp;Roll disarankan: ${Number(k.recommended_roll_width_m).toFixed(2)} m`
+                  : "") +
+              `</div>`,
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
     </div>
     `;
       })
