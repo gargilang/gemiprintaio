@@ -88,6 +88,10 @@ export interface ProductionItem {
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
   /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak di SPK. */
   catatan_item?: string | null;
+  /** Referensi ke item induk bila baris ini komponen rakitan berdimensi. */
+  parent_item_produksi_id?: string | null;
+  /** Baris komponen rakitan berdimensi (roll) di bawah item ini. */
+  komponen_roll?: ProductionItem[];
 }
 
 export interface ProductionMaterialConsumption {
@@ -296,7 +300,8 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
           order.pelanggan_nama ||
           undefined,
         penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
-        items: itemsWithFinishing,
+        // Kelompokkan baris anak komponen rakitan di bawah induk masing-masing.
+        items: nestKomponenRoll(itemsWithFinishing),
       };
     });
 
@@ -454,7 +459,8 @@ export async function getProductionOrderById(
         order.pelanggan_nama ||
         undefined,
       penjualan_dibatalkan: (penjualan as any)?.status_transaksi === "VOIDED",
-      items: itemsWithFinishing,
+      // Kelompokkan baris anak komponen rakitan di bawah induk masing-masing.
+      items: nestKomponenRoll(itemsWithFinishing),
     };
   } catch (error) {
     console.error("Error fetching production order:", error);
@@ -741,6 +747,25 @@ export async function recomputeOrderStatusFromItems(
 function positiveNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Kelompokkan baris anak komponen rakitan di bawah item induk masing-masing.
+ * Baris dengan parent_item_produksi_id terisi disisipkan ke dalam
+ * `komponen_roll` induknya dan tidak muncul di top-level.
+ */
+function nestKomponenRoll<
+  T extends { id: string; parent_item_produksi_id?: string | null },
+>(items: T[]): (T & { komponen_roll: T[] })[] {
+  const anak = items.filter((i) => i.parent_item_produksi_id);
+  const induk = items.filter((i) => !i.parent_item_produksi_id);
+  const byParent = new Map<string, T[]>();
+  for (const a of anak) {
+    const pid = String(a.parent_item_produksi_id);
+    if (!byParent.has(pid)) byParent.set(pid, []);
+    byParent.get(pid)!.push(a);
+  }
+  return induk.map((i) => ({ ...i, komponen_roll: byParent.get(i.id) || [] }));
 }
 
 function numeric(value: unknown): number {
