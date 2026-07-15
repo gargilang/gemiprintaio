@@ -7,7 +7,7 @@ import {
   getRoundedDimensions,
   getStoredRollSizes,
   isRollSizeValidForDimensions,
-  suggestSmallestCoveringRollSize,
+  suggestCheapestRollSize,
 } from "@/lib/roll-size-utils";
 import {
   formatPosUnitPrice,
@@ -369,7 +369,7 @@ export default function POSPage() {
       return;
     }
     setSelectedRollSize(
-      suggestSmallestCoveringRollSize(parsedPanjang, parsedLebar, rollSizes),
+      suggestCheapestRollSize(parsedPanjang, parsedLebar, rollSizes),
     );
   }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
 
@@ -1689,99 +1689,99 @@ export default function POSPage() {
           <div className="space-y-4">
             {/* Customer Selection */}
             <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg p-4 sm:p-5 border border-[#00afef]/30">
-              <div className="flex items-center gap-3">
-                <h3 className="shrink-0 text-base font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2 whitespace-nowrap">
-                  <svg
-                    className="w-5 h-5 text-[#00afef]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  Pelanggan
-                </h3>
-
-                <div
-                  className="relative flex-1 min-w-0"
-                  ref={customerDropdownRef}
+              <div className="flex items-center gap-2">
+                {/* Ikon pelanggan */}
+                <svg
+                  className="w-5 h-5 text-[#00afef] shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <input
-                    type="text"
-                    value={pencarianPelanggan}
-                    onChange={(e) => {
-                      setPencarianPelanggan(e.target.value);
-                      setShowDropdownPelanggan(true);
-                      setIndexPelangganTerpilih(-1);
-                    }}
-                    onFocus={() => setShowDropdownPelanggan(true)}
-                    onKeyDown={handlePelangganKeyDown}
-                    placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
-                    className="w-full pl-4 pr-36 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
+                </svg>
 
-                  {showDropdownPelanggan && filteredPelanggan.length > 0 && (
-                    <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                      {filteredPelanggan.map((customer, index) => (
-                        <div
-                          key={customer.id}
-                          onClick={() => handlePilihPelanggan(customer)}
-                          className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
-                            index === indexPelangganTerpilih
-                              ? "bg-[#00afef] text-white"
-                              : "hover:bg-slate-50 dark:hover:bg-white/5"
-                          }`}
-                        >
+                {/* Input pencarian — tersembunyi saat pelanggan sudah terpilih */}
+                {!selectedPelanggan && (
+                  <div
+                    className="relative flex-1 min-w-0"
+                    ref={customerDropdownRef}
+                  >
+                    <input
+                      type="text"
+                      value={pencarianPelanggan}
+                      onChange={(e) => {
+                        setPencarianPelanggan(e.target.value);
+                        setShowDropdownPelanggan(true);
+                        setIndexPelangganTerpilih(-1);
+                      }}
+                      onFocus={() => setShowDropdownPelanggan(true)}
+                      onKeyDown={handlePelangganKeyDown}
+                      placeholder="Cari pelanggan atau ketik nama pelanggan umum..."
+                      className="w-full pl-4 pr-36 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] dark:bg-slate-800 dark:text-slate-100"
+                    />
+
+                    {showDropdownPelanggan && filteredPelanggan.length > 0 && (
+                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-900 border-2 border-[#00afef]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        {filteredPelanggan.map((customer, index) => (
                           <div
-                            className={`font-semibold ${
+                            key={customer.id}
+                            onClick={() => handlePilihPelanggan(customer)}
+                            className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-slate-800 last:border-0 transition-colors ${
                               index === indexPelangganTerpilih
-                                ? "text-white"
-                                : "text-gray-800 dark:text-slate-100"
+                                ? "bg-[#00afef] text-white"
+                                : "hover:bg-slate-50 dark:hover:bg-white/5"
                             }`}
                           >
-                            {customer.nama}
-                          </div>
-                          {customer.member_status === 1 && (
-                            <span
-                              className={`text-sm px-2 py-1 rounded ${
+                            <div
+                              className={`font-semibold ${
                                 index === indexPelangganTerpilih
-                                  ? "bg-white dark:bg-slate-900 text-[#00afef]"
-                                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                  ? "text-white"
+                                  : "text-gray-800 dark:text-slate-100"
                               }`}
                             >
-                              MEMBER
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setShowCustomerModal(true)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
-                  >
-                    + Pelanggan Baru
-                  </button>
-                </div>
-              </div>
-
-              {selectedPelanggan && (
-                <div className="mt-3 p-3 bg-white dark:bg-slate-900 rounded-lg border-2 border-[#00afef]/50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-gray-800 dark:text-slate-100">
-                        {selectedPelanggan.nama}
+                              {customer.nama}
+                            </div>
+                            {customer.member_status === 1 && (
+                              <span
+                                className={`text-sm px-2 py-1 rounded ${
+                                  index === indexPelangganTerpilih
+                                    ? "bg-white dark:bg-slate-900 text-[#00afef]"
+                                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                }`}
+                              >
+                                MEMBER
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
+                    )}
+
+                    <button
+                      onClick={() => setShowCustomerModal(true)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white rounded-md text-sm font-semibold hover:from-[#0d9488] hover:to-[#0891b2] transition-all shadow-md"
+                    >
+                      + Pelanggan Baru
+                    </button>
+                  </div>
+                )}
+
+                {/* Chip pelanggan terpilih — tampil inline menggantikan input */}
+                {selectedPelanggan && (
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 rounded-lg border-2 border-[#00afef]/50">
+                    <div className="min-w-0">
+                      <span className="font-bold text-gray-800 dark:text-slate-100 truncate">
+                        {selectedPelanggan.nama}
+                      </span>
                       {selectedPelanggan.telepon && (
-                        <div className="text-base text-gray-600 dark:text-slate-300">
+                        <span className="ml-2 text-sm text-gray-500 dark:text-slate-400">
                           {selectedPelanggan.telepon}
-                        </div>
+                        </span>
                       )}
                     </div>
                     <button
@@ -1789,10 +1789,11 @@ export default function POSPage() {
                         setSelectedPelanggan(null);
                         setPencarianPelanggan("");
                       }}
-                      className="text-red-500 hover:text-red-700"
+                      className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                      aria-label="Hapus pilihan pelanggan"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="w-4 h-4"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1806,8 +1807,8 @@ export default function POSPage() {
                       </svg>
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Material Selection */}
