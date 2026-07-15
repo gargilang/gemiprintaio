@@ -135,6 +135,13 @@ export const MENU_ENTRIES: MenuEntry[] = [
         color: "from-rose-500 to-pink-600",
         allowedRoles: FULL_STAFF,
       },
+      {
+        href: "/piutang",
+        icon: <MoneyIcon size={18} />,
+        label: "Piutang",
+        color: "from-emerald-500 to-teal-600",
+        allowedRoles: FULL_STAFF,
+      },
     ],
   },
   {
@@ -347,6 +354,7 @@ export const PAGE_TITLE_MAP: { [key: string]: string } = {
   "/penawaran": "Penawaran",
   "/katalog-maklon": "Katalog Extra",
   "/retur-penjualan": "Retur Penjualan",
+  "/piutang": "Piutang",
   "/produksi": "Produksi",
   "/produksi/spk": "SPK",
   "/produksi/pengambilan": "Pengambilan",
