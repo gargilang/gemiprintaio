@@ -826,7 +826,7 @@ export default function ProductionPage() {
               <button
                 type="button"
                 onClick={() => setShowCustomerEditor(false)}
-                className="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200"
+                className="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Batal
               </button>

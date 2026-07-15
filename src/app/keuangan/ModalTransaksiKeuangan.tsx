@@ -86,7 +86,7 @@ export default function ModalTransaksiKeuangan({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-100 transition"
+            className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition"
             tabIndex={8}
           >
             Batal

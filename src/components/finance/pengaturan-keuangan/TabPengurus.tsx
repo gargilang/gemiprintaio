@@ -251,7 +251,7 @@ export default function TabPengurus({
         }
         footer={
           <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 dark:bg-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setFormOpen(false)} className="px-4 py-1.5 text-base rounded border border-slate-300 text-slate-700 hover:bg-slate-100">Batal</button>
+            <button type="button" onClick={() => setFormOpen(false)} className="px-4 py-1.5 text-base rounded border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Batal</button>
             <button type="button" onClick={submitOrang} disabled={orangSaving} className="px-4 py-1.5 text-base rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
               {orangSaving ? "Menyimpan…" : editingActorId ? "Simpan perubahan" : "Tambah orang"}
             </button>

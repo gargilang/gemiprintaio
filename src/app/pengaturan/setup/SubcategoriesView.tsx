@@ -603,7 +603,7 @@ export function SubcategoriesView({
               type="button"
               onClick={() => setShowModal(false)}
               disabled={saving}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0 disabled:opacity-50"
               aria-label="Tutup"
             >
               <svg
@@ -628,7 +628,7 @@ export function SubcategoriesView({
               type="button"
               onClick={() => setShowModal(false)}
               disabled={saving}
-              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-semibold disabled:opacity-50"
             >
               Batal
             </button>
@@ -684,7 +684,7 @@ export function SubcategoriesView({
               type="button"
               onClick={() => setShowSpecModal(false)}
               disabled={saving}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0 disabled:opacity-50"
               aria-label="Tutup"
             >
               <svg
@@ -709,7 +709,7 @@ export function SubcategoriesView({
               type="button"
               onClick={() => setShowSpecModal(false)}
               disabled={saving}
-              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 transition-colors font-semibold disabled:opacity-50"
+              className="px-6 py-2 bg-white dark:bg-slate-900 border-2 border-gray-300 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-semibold disabled:opacity-50"
             >
               Batal
             </button>
