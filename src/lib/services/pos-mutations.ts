@@ -30,7 +30,11 @@ import {
   getInventoryMovements,
   postInventoryMovement,
   rebuildInventoryBalance,
+  getRollVariants,
 } from "./inventory-service";
+import { resolveBomForUnitPrice } from "./bom-service";
+import { hitungQtyKomponenDimensiM2 } from "../bom-utils";
+import { suggestSmallestCoveringRollSize } from "../roll-size-utils";
 import { hitungPpn } from "../ppn-helpers";
 import { getShopSettings } from "./shop-settings-service";
 import { friendlyPgError } from "../pg-error";
@@ -1032,6 +1036,75 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             productionItem,
           );
           if (prodItemResult.error) throw prodItemResult.error;
+
+          // Rakitan: buat baris item_produksi anak untuk tiap komponen BOM
+          // yang berdimensi. Barang induk (mis. Kaki Roll Banner) bisa non-dimensi,
+          // tapi komponen (mis. Flexi 280) berdimensi → butuh jalur roll di SPK.
+          if (!isMaklon) {
+            const komponenBom = await resolveBomForUnitPrice(
+              item.barang_id,
+              item.harga_satuan_id ?? null,
+            );
+            for (const k of komponenBom) {
+              const kompRes = await db.queryOne<any>("barang", {
+                where: { id: k.komponen_id },
+              });
+              const kompBarang = kompRes.data;
+              const berdimensi =
+                kompBarang &&
+                Number(kompBarang.butuh_dimensi_status) === 1 &&
+                k.panjang != null &&
+                k.lebar != null &&
+                Number(k.panjang) > 0 &&
+                Number(k.lebar) > 0;
+              if (!berdimensi) continue;
+
+              const perUnitM2 = hitungQtyKomponenDimensiM2(
+                Number(k.jumlah_roll ?? 1),
+                Number(k.panjang),
+                Number(k.lebar),
+              );
+              const totalM2 = perUnitM2 * Number(item.jumlah);
+              // Rekomendasi lebar roll dari variants komponen.
+              let recommended: number | null = null;
+              try {
+                const variants = await getRollVariants(k.komponen_id);
+                const sizes = variants
+                  .map((v) => Number(v.lebar_m))
+                  .filter((n) => Number.isFinite(n) && n > 0);
+                if (sizes.length > 0) {
+                  recommended = suggestSmallestCoveringRollSize(
+                    Number(k.panjang),
+                    Number(k.lebar),
+                    sizes,
+                  );
+                }
+              } catch {
+                recommended = null;
+              }
+
+              const childId = `${itemProdId}-komp-${k.id}`;
+              const childItem = {
+                id: childId,
+                order_produksi_id: orderId,
+                item_penjualan_id: itemPenjualan.id,
+                parent_item_produksi_id: itemProdId,
+                barang_id: k.komponen_id,
+                barang_nama: kompBarang.nama || "Komponen",
+                jumlah: totalM2,
+                nama_satuan: "m²",
+                panjang: Number(k.panjang),
+                lebar: Number(k.lebar),
+                billed_panjang: null,
+                billed_lebar: null,
+                recommended_roll_width_m: recommended,
+                roll_inventory_status: "PENDING" as const,
+                status: "MENUNGGU" as const,
+              };
+              const childRes = await db.insert("item_produksi", childItem);
+              if (childRes.error) throw childRes.error;
+            }
+          }
 
           // Buat item finishing kalau ada
           if (item.finishing && item.finishing.length > 0) {
