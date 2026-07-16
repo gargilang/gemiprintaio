@@ -31,7 +31,7 @@ describe("formatRollCartDetailLine", () => {
       jumlah: 3.25,
       harga_satuan: 25000,
     });
-    expect(line).toContain("1.30 × Roll 2.50 m = 3.25 m² @ Rp 25.000");
+    expect(line).toContain("1.30 m × Roll 2.50 m = 3.25 m² @ Rp 25.000");
     expect(getRollPrintLength(1.3, 2.5, 2.5)).toBeCloseTo(1.3);
   });
 });

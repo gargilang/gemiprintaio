@@ -26,7 +26,7 @@ describe("bom-utils", () => {
       panjang: 3,
       qty: 6,
     });
-    expect(label).toContain("2×3 m");
+    expect(label).toContain("2 m × 3 m");
     expect(label).toContain("6 m²");
   });
 
