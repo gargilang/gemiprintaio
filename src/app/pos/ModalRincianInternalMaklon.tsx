@@ -262,7 +262,7 @@ export default function ModalRincianInternalMaklon({
               </label>
               <label className="block text-sm">
                 <span className="text-slate-700 dark:text-slate-200">
-                  Biaya subkontrak
+                  Biaya subkontrak (per satuan)
                 </span>
                 <input
                   type="number"

@@ -585,9 +585,11 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             hppSatuan = 0;
             hppTotal = 0;
           } else {
-            const biaya = Number(item.biaya_subkontrak) || 0;
-            hppTotal = biaya;
-            hppSatuan = item.jumlah > 0 ? biaya / item.jumlah : biaya;
+            // biaya_subkontrak dari POS = harga PER LEMBAR (dari katalog),
+            // jadi HPP total = biaya per lembar × jumlah lembar.
+            const biayaPerLbr = Number(item.biaya_subkontrak) || 0;
+            hppSatuan = biayaPerLbr;
+            hppTotal = biayaPerLbr * (item.jumlah > 0 ? item.jumlah : 1);
           }
         } else if (isJasa) {
           hppSatuan = 0;
@@ -1194,7 +1196,10 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           saleItemId,
           deskripsi_pekerjaan: (it.deskripsi_pekerjaan || "").trim(),
           jumlah: it.jumlah,
-          biaya_subkontrak: Number(it.biaya_subkontrak) || 0,
+          // biaya_subkontrak dari POS = PER LEMBAR; createMaklonPurchase
+          // memperlakukan angka ini sebagai TOTAL, jadi kalikan dengan jumlah.
+          biaya_subkontrak:
+            (Number(it.biaya_subkontrak) || 0) * (it.jumlah > 0 ? it.jumlah : 1),
         });
       }
 
