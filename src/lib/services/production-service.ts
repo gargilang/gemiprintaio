@@ -6,7 +6,10 @@
 import "server-only";
 
 import { db, generateId, getCurrentTimestamp } from "../db-unified";
-import { getBillableDimensionsForRoll } from "../roll-size-utils";
+import {
+  getBillableDimensionsForRoll,
+  getNestedRollBilling,
+} from "../roll-size-utils";
 import {
   getRollVariants,
   postInventoryMovement,
@@ -862,11 +865,47 @@ export async function postProductionMaterialConsumption(input: {
   const billedArea = positiveNumber(
     isKomponen ? item.jumlah : saleItem.jumlah,
   );
-  const suggested =
-    orderP > 0 && orderL > 0
-      ? getBillableDimensionsForRoll(orderP, orderL, rollWidth)
-      : null;
-  const suggestedLinear = suggested ? suggested.area / rollWidth : 0;
+  // suggestedLinear: untuk barang berdimensi murni, bila penjualan menyimpan
+  // info nesting (roll_panjang_total_m) selaraskan konsumsi dengan billing POS
+  // agar tidak over-consume. Baris komponen rakitan & data lama pakai fallback
+  // rumus roll-aligned lama.
+  let suggestedLinear = 0;
+  const savedPanjangTotal = positiveNumber(
+    (saleItem as any).roll_panjang_total_m,
+  );
+  const savedRollWidth = positiveNumber(
+    (saleItem as any).recommended_roll_width_m,
+  );
+  if (!isKomponen && savedPanjangTotal > 0) {
+    if (Math.abs(savedRollWidth - rollWidth) < 1e-6) {
+      // Operator memakai roll yang lebar-nya sama dengan yang tersarankan →
+      // pakai total panjang roll tersimpan langsung.
+      suggestedLinear = savedPanjangTotal;
+    } else {
+      // Operator memilih roll lebar lain → hitung ulang nesting untuk roll ini
+      // dengan jumlah lembar dari penjualan.
+      const lembar = Math.max(
+        1,
+        Math.round(
+          positiveNumber((saleItem as any).roll_rows) *
+            positiveNumber((saleItem as any).roll_items_per_row),
+        ) || 1,
+      );
+      const nest =
+        orderP > 0 && orderL > 0
+          ? getNestedRollBilling(orderP, orderL, lembar, rollWidth)
+          : null;
+      suggestedLinear = nest ? nest.totalPanjangRoll : 0;
+    }
+  }
+  if (suggestedLinear <= 0) {
+    // Fallback rumus lama (komponen rakitan / data lama tanpa nesting).
+    const suggested =
+      orderP > 0 && orderL > 0
+        ? getBillableDimensionsForRoll(orderP, orderL, rollWidth)
+        : null;
+    suggestedLinear = suggested ? suggested.area / rollWidth : 0;
+  }
   const linearUsed = positiveNumber(input.linear_used_m) || suggestedLinear;
   if (linearUsed <= 0)
     throw new Error("Panjang aktual roll harus lebih dari 0");
