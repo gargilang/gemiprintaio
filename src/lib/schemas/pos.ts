@@ -47,6 +47,10 @@ const saleItemSchema = z
     billed_lebar: finiteNumber.optional(),
     recommended_roll_width_m: finiteNumber.optional(),
     selectedRollSize: finiteNumber.optional(),
+    // Info nesting roll (opsional, nullable untuk data lama).
+    roll_items_per_row: finiteNumber.nullable().optional(),
+    roll_rows: finiteNumber.nullable().optional(),
+    roll_panjang_total_m: finiteNumber.nullable().optional(),
     finishing: z.array(saleFinishingSchema).optional(),
     tipe_item: z.enum(["BARANG", "JASA", "MAKLON"]).optional(),
     vendor_subkontrak_id: z.string().nullable().optional(),
