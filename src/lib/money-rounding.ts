@@ -65,11 +65,19 @@ export function formatRollCartDetailLine(item: {
   billedLebar?: number;
   selectedRollSize?: number;
   jumlah_roll?: number;
+  /** Total panjang roll terpakai (m) — dari billing nesting bila tersedia. */
+  roll_panjang_total_m?: number;
   jumlah: number;
   harga_satuan: number;
 }): string {
-  const { billedPanjang, billedLebar, selectedRollSize, jumlah, harga_satuan } =
-    item;
+  const {
+    billedPanjang,
+    billedLebar,
+    selectedRollSize,
+    roll_panjang_total_m,
+    jumlah,
+    harga_satuan,
+  } = item;
   if (
     billedPanjang == null ||
     billedLebar == null ||
@@ -77,12 +85,17 @@ export function formatRollCartDetailLine(item: {
   ) {
     return "";
   }
-  const printLen = getRollPrintLength(
-    billedPanjang,
-    billedLebar,
-    selectedRollSize
-  );
   const rollPrefix =
     (item.jumlah_roll ?? 1) > 1 ? `${item.jumlah_roll} × ` : "";
-  return `${rollPrefix}${printLen.toFixed(2)} m × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
+  // Bila info nesting tersedia, panjang roll total sudah mencakup semua lembar
+  // (matematika berdampingan disembunyikan) — tampilkan panjang total apa adanya
+  // agar konsisten dengan m² yang ditagih. Data lama pakai panjang per lembar.
+  const printLen =
+    roll_panjang_total_m != null && roll_panjang_total_m > 0
+      ? roll_panjang_total_m
+      : getRollPrintLength(billedPanjang, billedLebar, selectedRollSize);
+  const prefix = roll_panjang_total_m != null && roll_panjang_total_m > 0
+    ? rollPrefix.replace("× ", "lembar · ")
+    : rollPrefix;
+  return `${prefix}${printLen.toFixed(2)} m × Roll ${selectedRollSize.toFixed(2)} m = ${jumlah.toFixed(2)} m² @ Rp ${formatPosUnitPrice(harga_satuan)}`;
 }

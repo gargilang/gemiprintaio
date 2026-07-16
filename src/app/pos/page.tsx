@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getBillableDimensionsForRoll,
+  getNestedRollBilling,
   getRoundedDimensions,
   getStoredRollSizes,
-  isRollSizeValidForDimensions,
   suggestCheapestRollSize,
 } from "@/lib/roll-size-utils";
 import {
@@ -14,7 +13,6 @@ import {
   formatRollCartDetailLine,
   allocateCartLineCharges,
   getCartChargeTotal,
-  getRollPrintLength,
   roundUpToThousand,
 } from "@/lib/money-rounding";
 import BarRingkasKeranjang from "@/components/pos/BarRingkasKeranjang";
@@ -368,10 +366,36 @@ export default function POSPage() {
       setSelectedRollSize(null);
       return;
     }
+    // Default: roll dengan total area terkecil (termurah) dengan
+    // memperhitungkan nesting jumlah lembar. Fallback ke rumus lama bila tak
+    // ada roll yang cukup untuk jumlah ini.
+    const pieceCount = Math.max(1, Math.round(parseFloat(quantity) || 1));
+    let bestRoll: number | null = null;
+    let bestArea = Infinity;
+    for (const size of rollSizes) {
+      const nest = getNestedRollBilling(
+        parsedPanjang,
+        parsedLebar,
+        pieceCount,
+        size,
+      );
+      if (nest && nest.totalAreaRoll < bestArea) {
+        bestArea = nest.totalAreaRoll;
+        bestRoll = size;
+      }
+    }
     setSelectedRollSize(
-      suggestCheapestRollSize(parsedPanjang, parsedLebar, rollSizes),
+      bestRoll ??
+        suggestCheapestRollSize(parsedPanjang, parsedLebar, rollSizes),
     );
-  }, [useRounding, hasValidDimensions, parsedPanjang, parsedLebar, rollSizes]);
+  }, [
+    useRounding,
+    hasValidDimensions,
+    parsedPanjang,
+    parsedLebar,
+    rollSizes,
+    quantity,
+  ]);
 
   // Muat opsi finishing sekali saat pertama kali ada material terpilih
   useEffect(() => {
@@ -390,23 +414,26 @@ export default function POSPage() {
     ) {
       return null;
     }
-    const billed = getBillableDimensionsForRoll(
+    const pieceCount = Math.max(1, Math.round(parseFloat(quantity) || 1));
+    // Billing nesting-aware: memperhitungkan berapa lembar muat berdampingan di
+    // lebar roll (matematika disembunyikan dari kasir; harga saja yang tampil).
+    const nest = getNestedRollBilling(
       parsedPanjang,
       parsedLebar,
+      pieceCount,
       selectedRollSize,
     );
-    if (!billed) return null;
-    const pieceCount = Math.max(1, Math.round(parseFloat(quantity) || 1));
-    const areaPerPiece = billed.panjang * billed.lebar;
+    if (!nest) return null;
     const hargaPerSatuan = selectedPelanggan?.member_status
       ? selectedUnit.harga_member || selectedUnit.harga_jual
       : selectedUnit.harga_jual;
-    const subtotalRaw = areaPerPiece * pieceCount * hargaPerSatuan;
+    const subtotalRaw = nest.totalAreaRoll * hargaPerSatuan;
     return {
-      panjang: billed.panjang,
-      lebar: billed.lebar,
-      area: areaPerPiece * pieceCount,
-      usesRotation: billed.usesRotation,
+      nest,
+      panjang: nest.totalPanjangRoll,
+      lebar: selectedRollSize,
+      area: nest.totalAreaRoll,
+      usesRotation: nest.usesRotation,
       subtotalRaw,
       hargaPerSatuan,
       pieceCount,
@@ -631,6 +658,9 @@ export default function POSPage() {
     let rollUsed: number | undefined;
     let billedPanjang: number | undefined;
     let billedLebar: number | undefined;
+    let rollItemsPerRow: number | undefined;
+    let rollRows: number | undefined;
+    let rollPanjangTotal: number | undefined;
 
     if (selectedMaterial.butuh_dimensi_status === 1) {
       const p = parseFloat(panjang);
@@ -646,32 +676,45 @@ export default function POSPage() {
       let billedP = p;
       let billedL = l;
 
-      if (useRounding) {
-        if (selectedRollSize == null) {
-          showMsg("error", "Pilih ukuran roll yang dipakai");
-          return null;
-        }
-        if (!isRollSizeValidForDimensions(p, l, selectedRollSize)) {
-          showMsg(
-            "error",
-            "Roll terlalu kecil untuk ukuran cut ini (coba roll lebih besar atau putar orientasi)",
-          );
-          return null;
-        }
-        const rounded = getRoundedDimensions(p, l, true, selectedRollSize);
-        billedP = rounded.panjang;
-        billedL = rounded.lebar;
-        rollUsed = rounded.rollSize ?? selectedRollSize;
-      }
-
-      billedPanjang = billedP;
-      billedLebar = billedL;
       jumlahRoll = Math.max(1, Math.round(finalQuantity) || 1);
       if (isNaN(finalQuantity) || finalQuantity <= 0) {
         showMsg("error", "Masukkan jumlah yang valid");
         return null;
       }
-      finalQuantity = billedP * billedL * jumlahRoll;
+
+      if (useRounding) {
+        if (selectedRollSize == null) {
+          showMsg("error", "Pilih ukuran roll yang dipakai");
+          return null;
+        }
+        // Billing nesting-aware: hitung berapa lembar muat berdampingan di lebar
+        // roll, lalu total m² roll terpakai (harga adil, tidak overcharge saat
+        // hemat, tetap ditagih saat sisa terbuang). Matematika disembunyikan
+        // dari kasir — hanya total m² yang ditagihkan.
+        const nest = getNestedRollBilling(p, l, jumlahRoll, selectedRollSize);
+        if (!nest) {
+          showMsg(
+            "error",
+            "Roll terlalu kecil untuk ukuran ini (coba roll lebih besar)",
+          );
+          return null;
+        }
+        // Dimensi tampilan tetap dari rumus roll-aligned lama (per lembar).
+        const rounded = getRoundedDimensions(p, l, true, selectedRollSize);
+        billedP = rounded.panjang;
+        billedL = rounded.lebar;
+        rollUsed = rounded.rollSize ?? selectedRollSize;
+        rollItemsPerRow = nest.itemsPerRow;
+        rollRows = nest.rows;
+        rollPanjangTotal = nest.totalPanjangRoll;
+        billedPanjang = billedP;
+        billedLebar = billedL;
+        finalQuantity = nest.totalAreaRoll; // m² total ditagih (nesting)
+      } else {
+        billedPanjang = billedP;
+        billedLebar = billedL;
+        finalQuantity = billedP * billedL * jumlahRoll;
+      }
     } else {
       if (isNaN(finalQuantity) || finalQuantity <= 0) {
         showMsg("error", "Masukkan jumlah yang valid");
@@ -771,6 +814,9 @@ export default function POSPage() {
       selectedRollSize: rollUsed,
       billedPanjang: useRounding ? billedPanjang : undefined,
       billedLebar: useRounding ? billedLebar : undefined,
+      roll_items_per_row: useRounding ? rollItemsPerRow : undefined,
+      roll_rows: useRounding ? rollRows : undefined,
+      roll_panjang_total_m: useRounding ? rollPanjangTotal : undefined,
     };
   };
 
@@ -2373,21 +2419,22 @@ export default function POSPage() {
                                 className="w-full px-3 py-2 text-base border-2 border-[#00afef]/30 rounded-lg focus:outline-none focus:border-[#00afef] bg-white dark:bg-slate-900"
                               >
                                 {rollSizes
-                                  .filter((size) =>
-                                    isRollSizeValidForDimensions(
-                                      parsedPanjang,
-                                      parsedLebar,
-                                      size,
-                                    ),
-                                  )
                                   .map((size) => {
-                                    const billed = getBillableDimensionsForRoll(
+                                    // Harga nesting-aware per roll (jumlah lembar
+                                    // diperhitungkan). Matematika disembunyikan;
+                                    // kasir hanya melihat total m² + harga.
+                                    const pieceCount = Math.max(
+                                      1,
+                                      Math.round(parseFloat(quantity) || 1),
+                                    );
+                                    const nest = getNestedRollBilling(
                                       parsedPanjang,
                                       parsedLebar,
+                                      pieceCount,
                                       size,
                                     );
-                                    if (!billed) return null;
-                                    const area = billed.area;
+                                    if (!nest) return null;
+                                    const area = nest.totalAreaRoll;
                                     const harga =
                                       selectedPelanggan?.member_status
                                         ? selectedUnit?.harga_member ||
@@ -2395,17 +2442,10 @@ export default function POSPage() {
                                           0
                                         : selectedUnit?.harga_jual || 0;
                                     const subRaw = area * harga;
-                                    const printLen = getRollPrintLength(
-                                      billed.panjang,
-                                      billed.lebar,
-                                      size,
-                                    );
                                     return (
                                       <option key={size} value={size}>
-                                        {size} m
-                                        {billed.usesRotation ? " ↻" : ""}
-                                        {" — "}
-                                        {printLen.toFixed(2)} × Roll{" "}
+                                        {size} m{" — "}
+                                        {nest.totalPanjangRoll.toFixed(2)} × Roll{" "}
                                         {size.toFixed(2)} m = {area.toFixed(2)}{" "}
                                         m² @ Rp {formatPosUnitPrice(harga)} · Rp{" "}
                                         {subRaw.toLocaleString("id-ID")}

@@ -77,6 +77,12 @@ export interface CartItem {
   butuh_dimensi?: boolean;
   useRounding?: boolean;
   selectedRollSize?: number;
+  /** Lembar berdampingan per lebar roll (nesting). */
+  roll_items_per_row?: number;
+  /** Jumlah baris nesting. */
+  roll_rows?: number;
+  /** Total panjang roll tersarankan (m) — saran untuk SPK. */
+  roll_panjang_total_m?: number;
   billedPanjang?: number;
   billedLebar?: number;
   subtotalRaw: number;
