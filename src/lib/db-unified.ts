@@ -1728,6 +1728,18 @@ class UnifiedDatabase {
       if (!cols.includes("catatan_item")) {
         db.exec("ALTER TABLE item_penjualan ADD COLUMN catatan_item TEXT");
       }
+      // Migrasi (20260716120000): info nesting roll untuk billing adil + saran SPK.
+      if (!cols.includes("roll_items_per_row")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN roll_items_per_row REAL");
+      }
+      if (!cols.includes("roll_rows")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN roll_rows REAL");
+      }
+      if (!cols.includes("roll_panjang_total_m")) {
+        db.exec(
+          "ALTER TABLE item_penjualan ADD COLUMN roll_panjang_total_m REAL",
+        );
+      }
     }
 
     // Migrasi (20260715120000): item_produksi kolom parent_item_produksi_id
