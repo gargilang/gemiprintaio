@@ -2207,15 +2207,11 @@ export default function POSPage() {
                         {/* Finishing (dropdown popover), ubah harga, biaya tambahan */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
                           <div className="grid grid-cols-2 gap-1.5">
-                            {!selectedMaterial._isKatalogMaklon ? (
-                              <DropdownFinishing
-                                options={finishingOptions}
-                                selected={formFinishing}
-                                onChange={setFormFinishing}
-                              />
-                            ) : (
-                              <div />
-                            )}
+                            <DropdownFinishing
+                              options={finishingOptions}
+                              selected={formFinishing}
+                              onChange={setFormFinishing}
+                            />
                             <button
                               type="button"
                               onClick={() => setShowFormHargaModal(true)}

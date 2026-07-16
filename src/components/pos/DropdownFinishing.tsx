@@ -114,11 +114,11 @@ export default function DropdownFinishing({
                 transform: "translateY(-100%) translateY(-6px)",
               }}
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-2">
+              <p className="text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-2">
                 Finishing
               </p>
               {options.length === 0 ? (
-                <p className="text-xs text-slate-400">Belum ada opsi finishing</p>
+                <p className="text-sm text-slate-400">Belum ada opsi finishing</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {options.map((opt) => {
@@ -130,7 +130,7 @@ export default function DropdownFinishing({
                         key={opt}
                         type="button"
                         onClick={() => toggle(opt)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                        className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-all ${
                           aktif
                             ? "border-amber-500 bg-amber-500 text-white"
                             : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:border-amber-400 dark:hover:border-amber-500"
