@@ -224,6 +224,16 @@ export function generateSPKHTML(order: ProductionOrder): string {
           : ""
       }
       ${
+        (item as any).roll_panjang_total_m &&
+        Number((item as any).roll_panjang_total_m) > 0
+          ? `<div class="item-detail">Saran roll: ${
+              item.recommended_roll_width_m
+                ? `${Number(item.recommended_roll_width_m).toFixed(2)} m × `
+                : ""
+            }${Number((item as any).roll_panjang_total_m).toFixed(2)} m</div>`
+          : ""
+      }
+      ${
         item.jenis_bahan
           ? `<div class="item-detail">Bahan: ${item.jenis_bahan}</div>`
           : ""

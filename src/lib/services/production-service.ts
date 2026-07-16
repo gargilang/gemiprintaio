@@ -72,6 +72,10 @@ export interface ProductionItem {
   billed_panjang?: number | null;
   billed_lebar?: number | null;
   recommended_roll_width_m?: number | null;
+  /** Total panjang roll tersarankan (m) dari billing nesting POS — saran SPK. */
+  roll_panjang_total_m?: number | null;
+  /** Lembar berdampingan per lebar roll (nesting). */
+  roll_items_per_row?: number | null;
   roll_inventory_status?: "NOT_REQUIRED" | "PENDING" | "POSTED" | "VOIDED";
   keterangan_dimensi?: string | null;
   mesin_printing?: string | null;
@@ -280,6 +284,9 @@ export async function getProductionOrders(): Promise<ProductionOrder[]> {
             (item as any).recommended_roll_width_m ??
             saleItem?.recommended_roll_width_m ??
             null,
+          roll_panjang_total_m:
+            (saleItem as any)?.roll_panjang_total_m ?? null,
+          roll_items_per_row: (saleItem as any)?.roll_items_per_row ?? null,
           roll_inventory_status:
             (item as any).roll_inventory_status ||
             (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),
@@ -436,6 +443,8 @@ export async function getProductionOrderById(
           (item as any).recommended_roll_width_m ??
           saleItem?.recommended_roll_width_m ??
           null,
+        roll_panjang_total_m: (saleItem as any)?.roll_panjang_total_m ?? null,
+        roll_items_per_row: (saleItem as any)?.roll_items_per_row ?? null,
         roll_inventory_status:
           (item as any).roll_inventory_status ||
           (saleItem?.roll_inventory_deferred ? "PENDING" : "NOT_REQUIRED"),

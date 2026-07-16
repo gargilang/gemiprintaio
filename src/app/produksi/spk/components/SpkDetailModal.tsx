@@ -61,6 +61,18 @@ function RollKonfirmasiBlok({
   onPatchDraft: (patch: Partial<ConsumptionDraft>) => void;
   onPostConsumption: () => void;
 }) {
+  // Saran panjang roll dari billing nesting POS (bila tersimpan). Dipakai sebagai
+  // placeholder input panjang; operator tetap bebas mengubah (nilai final).
+  const saranPanjang =
+    typeof targetItem.roll_panjang_total_m === "number" &&
+    targetItem.roll_panjang_total_m > 0
+      ? targetItem.roll_panjang_total_m
+      : null;
+  const saranRoll =
+    typeof targetItem.recommended_roll_width_m === "number" &&
+    targetItem.recommended_roll_width_m > 0
+      ? targetItem.recommended_roll_width_m
+      : null;
   return (
     <div className="mb-3 border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -93,7 +105,7 @@ function RollKonfirmasiBlok({
             inputMode="decimal"
             value={draft?.linear_used_m || ""}
             onChange={(e) => onPatchDraft({ linear_used_m: e.target.value })}
-            placeholder="Auto"
+            placeholder={saranPanjang ? saranPanjang.toFixed(2) : "Auto"}
             className="w-24 px-2 py-1.5 text-sm border border-amber-300 dark:border-amber-800 rounded bg-white dark:bg-slate-900 dark:text-slate-100"
           />
         </div>
@@ -102,6 +114,11 @@ function RollKonfirmasiBlok({
           {targetItem.recommended_roll_width_m
             ? ` · rekomendasi ${Number(targetItem.recommended_roll_width_m).toFixed(2)}m`
             : ""}
+          {saranRoll && saranPanjang && (
+            <div className="mt-0.5 text-amber-700 dark:text-amber-300">
+              Saran: Roll {saranRoll.toFixed(2)} m, ~{saranPanjang.toFixed(2)} m
+            </div>
+          )}
         </div>
         <button
           type="button"
