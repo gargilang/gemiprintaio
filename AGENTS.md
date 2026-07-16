@@ -63,7 +63,10 @@ These skills are meant to be used **by default** to keep agents efficient: prefe
 
 - Commit verified changes. Push to `main` → Vercel auto-deploys. Clear commit messages.
 - Never commit secrets (`.env.local`, keys, certs). Never `git push --force` to `main`. Don't amend already-pushed commits unless asked.
-- DB migrations: after pushing schema changes, run `npm run supabase:db:push` to apply them to the cloud.
+- **DB migrations — apply to BOTH cloud and local, every time a new schema/migration is created (do it without asking):**
+  1. **Local first.** Check Supabase local is running (`supabase status`). If it isn't, start Docker and bring it up (`supabase start`). Make sure the local env points at local (`.env.local` → local Supabase URL/keys, not cloud). Then apply the new migration with `supabase migration up --local`.
+  2. **Then cloud.** From a linked checkout, dry-run (`npx supabase db push --dry-run`) to confirm only the new additive migration will be pushed, then `npx supabase db push` (or `npm run supabase:db:push`). Verify with `supabase migration list` that Local and Remote both show the new timestamp.
+  - This is the default for any project/feature that introduces a new schema — always push both, don't wait for the owner. (A one-off task instruction saying "don't push DB" overrides this for that session only.)
 
 ## Architecture (one app, three storage backends)
 
