@@ -140,6 +140,68 @@ export function getBillableDimensionsForRoll(
   return candidates.reduce((best, c) => (c.area < best.area ? c : best));
 }
 
+export interface NestedRollBilling {
+  itemsPerRow: number;
+  rows: number;
+  sisiMelintang: number;
+  sisiCetak: number;
+  totalPanjangRoll: number;
+  totalAreaRoll: number;
+  areaEfektifPerLembar: number;
+  usesRotation: boolean;
+}
+
+/**
+ * Billing roll dengan nesting: berapa lembar identik muat berdampingan di lebar
+ * roll (floor(rollWidth / sisiMelintang)), lalu total area roll terpakai.
+ * Coba dua orientasi (non-rotasi & rotasi), pilih total area terkecil.
+ * Return null bila roll tak cukup lebar untuk salah satu orientasi.
+ *
+ * Contoh: 2 lembar 1×1.5 di roll 2m → rotasi: 2 muat berdampingan, 1 baris,
+ * panjang 1.5m, area 2×1.5=3m² (efektif 1.5m²/lembar = luas banner).
+ */
+export function getNestedRollBilling(
+  panjang: number,
+  lebar: number,
+  jumlahLembar: number,
+  rollWidth: number,
+): NestedRollBilling | null {
+  const lembar = Math.max(1, Math.round(jumlahLembar) || 1);
+  const sisiPanjang = Math.max(panjang, lebar);
+  const candidates: NestedRollBilling[] = [];
+
+  const addCandidate = (sisiMelintang: number, sisiCetak: number) => {
+    if (rollWidth < sisiMelintang) return; // tak muat 1 pun
+    const itemsPerRow = Math.max(1, Math.floor(rollWidth / sisiMelintang));
+    const rows = Math.ceil(lembar / itemsPerRow);
+    const totalPanjangRoll = rows * sisiCetak;
+    const totalAreaRoll = rollWidth * totalPanjangRoll;
+    // Konvensi rotasi mengikuti getBillableDimensionsForRoll: dianggap "rotasi"
+    // bila sisi lembar yang lebih panjang yang membentang di lebar roll.
+    const usesRotation = sisiMelintang >= sisiPanjang;
+    candidates.push({
+      itemsPerRow,
+      rows,
+      sisiMelintang,
+      sisiCetak,
+      totalPanjangRoll,
+      totalAreaRoll,
+      areaEfektifPerLembar: totalAreaRoll / lembar,
+      usesRotation,
+    });
+  };
+
+  // Orientasi 1: lebar membentang di lebar roll, panjang sepanjang cetak.
+  addCandidate(lebar, panjang);
+  // Orientasi 2: panjang membentang di lebar roll, lebar sepanjang cetak.
+  addCandidate(panjang, lebar);
+
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, c) =>
+    c.totalAreaRoll < best.totalAreaRoll ? c : best,
+  );
+}
+
 /** @deprecated Use getBillableDimensionsForRoll */
 export function applyRollSizeToDimensions(
   panjang: number,
