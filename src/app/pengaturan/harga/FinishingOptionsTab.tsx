@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   getFinishingOptionsAction as getFinishingOptionsList,
   createFinishingOptionAction as createFinishingOpt,
@@ -27,6 +28,14 @@ export function FinishingOptionsTab() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "danger", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   useEffect(() => {
     loadOptions();
@@ -76,16 +85,22 @@ export function FinishingOptionsTab() {
     }
   };
 
-  const handleDelete = async (id: string, nama: string) => {
-    if (!confirm(`Hapus opsi finishing "${nama}"?`)) return;
-
-    try {
-      await deleteFinishingOpt(id);
-      showMsg("success", "Opsi finishing berhasil dihapus");
-      loadOptions();
-    } catch (error: any) {
-      showMsg("error", error.message || "Gagal menghapus opsi");
-    }
+  const handleDelete = (id: string, nama: string) => {
+    setConfirmState({
+      show: true,
+      title: "Hapus Opsi Finishing",
+      message: `Hapus opsi finishing "${nama}"?`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteFinishingOpt(id);
+          showMsg("success", "Opsi finishing berhasil dihapus");
+          loadOptions();
+        } catch (error: any) {
+          showMsg("error", error.message || "Gagal menghapus opsi");
+        }
+      },
+    });
   };
 
   const handleMoveUp = async (index: number) => {
@@ -374,6 +389,16 @@ export function FinishingOptionsTab() {
           {notice.message}
         </div>
       )}
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }

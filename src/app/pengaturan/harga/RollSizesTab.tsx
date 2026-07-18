@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 
 export function RollSizesTab() {
   const [rollSizes, setRollSizes] = useState<number[]>([]);
@@ -12,6 +13,14 @@ export function RollSizesTab() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "danger", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   useEffect(() => {
     // Load from localStorage or use defaults
@@ -78,10 +87,17 @@ export function RollSizesTab() {
   };
 
   const handleDelete = (index: number, size: number) => {
-    if (!confirm(`Hapus roll size ${size}m?`)) return;
-    const newSizes = rollSizes.filter((_, i) => i !== index);
-    saveToLocalStorage(newSizes);
-    showMsg("success", "Roll size berhasil dihapus");
+    setConfirmState({
+      show: true,
+      title: "Hapus Roll Size",
+      message: `Hapus roll size ${size}m?`,
+      type: "danger",
+      onConfirm: () => {
+        const newSizes = rollSizes.filter((_, i) => i !== index);
+        saveToLocalStorage(newSizes);
+        showMsg("success", "Roll size berhasil dihapus");
+      },
+    });
   };
 
   const handleMoveUp = (index: number) => {
@@ -357,6 +373,16 @@ export function RollSizesTab() {
           ))
         )}
       </div>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
