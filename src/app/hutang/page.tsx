@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { DebtIcon } from "@/components/icons/PageIcons";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { getDebtsAction, payDebtAction, revertDebtPaymentAction } from "./actions";
 
 const money = (value: number) =>
@@ -27,6 +28,14 @@ export default function HutangPage() {
   const [amountByDebt, setAmountByDebt] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   const filtered = useMemo(
     () =>
@@ -59,20 +68,25 @@ export default function HutangPage() {
     }
   }
 
-  async function revert(debt: any) {
-    if (!window.confirm(
-      `Revert pembayaran ${debt.nomor_pembelian || debt.nomor_faktur}?\nIni akan menghapus pelunasan dan kembalikan saldo hutang.`
-    )) return;
-    setSaving(true);
-    try {
-      await revertDebtPaymentAction(debt.id);
-      setNotice("Pembayaran hutang direvert.");
-      await reload();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal revert");
-    } finally {
-      setSaving(false);
-    }
+  function revert(debt: any) {
+    setConfirmState({
+      show: true,
+      title: "Revert Pembayaran",
+      message: `Revert pembayaran ${debt.nomor_pembelian || debt.nomor_faktur}?\nIni akan menghapus pelunasan dan kembalikan saldo hutang.`,
+      type: "warning",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await revertDebtPaymentAction(debt.id);
+          setNotice("Pembayaran hutang direvert.");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal revert");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   return (
@@ -124,6 +138,16 @@ export default function HutangPage() {
           </tbody>
         </table>
       </div>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
