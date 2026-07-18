@@ -451,6 +451,7 @@ export default function PurchasesPage() {
             onDelete={handleDelete}
             onRevert={handleRevert}
             onRetur={(purchase) => setReturPurchase(purchase)}
+            onError={(msg) => showMsg("error", msg)}
           />
         </div>
       </div>

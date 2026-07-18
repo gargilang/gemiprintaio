@@ -49,6 +49,7 @@ interface PurchaseTableProps {
   onDelete: (purchase: Purchase) => void;
   onRevert?: (purchase: Purchase) => void;
   onRetur?: (purchase: Purchase) => void;
+  onError?: (msg: string) => void;
 }
 
 const PurchaseRow = memo(
@@ -59,6 +60,7 @@ const PurchaseRow = memo(
     onDelete,
     onRevert,
     onRetur,
+    onError,
   }: {
     purchase: Purchase;
     index: number;
@@ -66,6 +68,7 @@ const PurchaseRow = memo(
     onDelete: (purchase: Purchase) => void;
     onRevert?: (purchase: Purchase) => void;
     onRetur?: (purchase: Purchase) => void;
+    onError?: (msg: string) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false);
     const [printing, setPrinting] = useState(false);
@@ -123,7 +126,7 @@ const PurchaseRow = memo(
         );
       } catch (e) {
         console.error("previewFakturPembelian error:", e);
-        alert("Gagal menyiapkan preview.");
+        onError?.("Gagal menyiapkan preview.");
       } finally {
         setPrinting(false);
       }
@@ -178,7 +181,7 @@ const PurchaseRow = memo(
         });
       } catch (e) {
         console.error("printFakturPembelian error:", e);
-        alert("Gagal menyiapkan dokumen untuk dicetak.");
+        onError?.("Gagal menyiapkan dokumen untuk dicetak.");
       } finally {
         setPrinting(false);
       }
@@ -477,6 +480,7 @@ export default function TabelPembelian({
   onDelete,
   onRevert,
   onRetur,
+  onError,
 }: PurchaseTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   // Secara bawaan pembelian yang dibatalkan (VOID) disembunyikan dari daftar
@@ -719,6 +723,7 @@ export default function TabelPembelian({
                   onDelete={onDelete}
                   onRevert={onRevert}
                   onRetur={onRetur}
+                  onError={onError}
                 />
               ))}
             </tbody>
