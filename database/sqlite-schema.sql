@@ -686,6 +686,7 @@ CREATE TABLE item_penjualan (
       barang_id TEXT NOT NULL,
       harga_satuan_id TEXT,
       jumlah REAL NOT NULL,
+      jumlah_roll INTEGER CHECK(jumlah_roll IS NULL OR jumlah_roll >= 1),
       nama_satuan TEXT NOT NULL,
       nama_produk_jual TEXT,
       faktor_konversi REAL NOT NULL,

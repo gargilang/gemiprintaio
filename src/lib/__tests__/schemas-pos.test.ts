@@ -99,6 +99,7 @@ describe("createSaleSchema", () => {
           ...baseItem,
           panjang: 2,
           lebar: 1.5,
+          jumlah_roll: 1,
           selectedRollSize: 1.5,
           finishing: [{ jenis_finishing: "UV", keterangan: "full" }],
           tipe_item: "MAKLON",
@@ -110,6 +111,20 @@ describe("createSaleSchema", () => {
       ],
     });
     expect(r.success).toBe(true);
+    if (r.success) expect(r.data.items[0].jumlah_roll).toBe(1);
+  });
+
+  test("menolak jumlah_roll pecahan atau kurang dari satu", () => {
+    for (const jumlahRoll of [0, 1.5]) {
+      const r = createSaleSchema.safeParse({
+        metode_pembayaran: "CASH",
+        total_jumlah: 2000,
+        jumlah_dibayar: 2000,
+        jumlah_kembalian: 0,
+        items: [{ ...baseItem, jumlah_roll: jumlahRoll }],
+      });
+      expect(r.success).toBe(false);
+    }
   });
 
   describe("biaya tambahan modal", () => {

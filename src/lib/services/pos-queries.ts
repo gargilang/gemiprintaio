@@ -86,6 +86,7 @@ export interface SaleItem {
   nama_produk_jual?: string | null;
   harga_satuan_id?: string | null;
   jumlah: number;
+  jumlah_roll?: number | null;
   nama_satuan: string;
   faktor_konversi: number;
   harga_satuan: number;
@@ -159,6 +160,7 @@ export interface CreateSaleData {
     barang_id: string;
     harga_satuan_id?: string;
     jumlah: number;
+    jumlah_roll?: number;
     nama_satuan: string;
     nama_produk_jual?: string | null;
     faktor_konversi: number;

@@ -37,6 +37,7 @@ const saleItemSchema = z
     barang_id: z.string().min(1),
     harga_satuan_id: z.string().optional(),
     jumlah: finiteNumber.positive(),
+    jumlah_roll: finiteNumber.int().min(1).optional(),
     nama_satuan: z.string(),
     faktor_konversi: finiteNumber.positive(),
     harga_satuan: finiteNumber.nonnegative(),

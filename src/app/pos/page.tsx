@@ -397,13 +397,13 @@ export default function POSPage() {
     quantity,
   ]);
 
-  // Muat opsi finishing sekali saat pertama kali ada material terpilih
+  // Muat opsi finishing sekali saat mount — tidak bergantung pada selectedMaterial
+  // agar Katalog Extra yang dibuka pertama dalam sesi pun mendapat opsi yang benar.
   useEffect(() => {
-    if (finishingOptions.length > 0) return;
     getFinishingOptionsAction()
       .then((opts) => setFinishingOptions(opts.map((o) => o.nama)))
       .catch(() => {});
-  }, [selectedMaterial]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   const rollBillingPreview = useMemo(() => {
     if (
@@ -1380,6 +1380,7 @@ export default function POSPage() {
         barang_id: item.barang_id,
         harga_satuan_id: item.harga_satuan_id,
         jumlah: item.jumlah,
+        jumlah_roll: item.jumlah_roll,
         nama_satuan: item.nama_satuan,
         nama_produk_jual: item.nama_produk_jual ?? null,
         faktor_konversi: item.faktor_konversi,

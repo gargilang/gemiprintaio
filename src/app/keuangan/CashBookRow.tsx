@@ -5,6 +5,7 @@ import type { CashBook, KategoriTransaksi } from "@/types/database";
 import {
   stripReferenceId,
   humanizeKategoriKode,
+  adalahKategoriNonKas,
   type KategoriColor,
 } from "./keuangan-utils";
 import MenuAksi from "@/components/MenuAksi";
@@ -39,6 +40,7 @@ const CashBookRow = memo(function CashBookRow({
   onDelete,
 }: CashBookRowProps) {
   const kategoriColor = getKategoriColor(cashBook.kategori_transaksi);
+  const transaksiNonKas = adalahKategoriNonKas(cashBook.kategori_transaksi);
   // Tampilkan label ramah manusia (tanpa underscore), bukan kode mentah.
   // Prioritas: display_name dari konfigurasi → humanize kode sebagai fallback.
   const kategoriLabel =
@@ -64,7 +66,17 @@ const CashBookRow = memo(function CashBookRow({
         </span>
       </td>
       <td className="px-3 py-3 text-sm text-right font-semibold">
-        {cashBook.debit > 0 ? (
+        {transaksiNonKas ? (
+          <span
+            className="inline-flex flex-col items-end text-slate-700 dark:text-slate-200"
+            title="Jurnal perhitungan laba; tidak mengurangi saldo kas"
+          >
+            <span>{formatRupiah(cashBook.kredit || cashBook.debit)}</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+              Non-kas
+            </span>
+          </span>
+        ) : cashBook.debit > 0 ? (
           <span className="text-green-600">
             +{formatRupiah(cashBook.debit)}
           </span>

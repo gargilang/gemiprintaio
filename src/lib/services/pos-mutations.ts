@@ -683,6 +683,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
             ? ID_HARGA_PLACEHOLDER_MAKLON
             : item.harga_satuan_id || null,
           jumlah: item.jumlah,
+          jumlah_roll: item.jumlah_roll ?? null,
           nama_satuan: item.nama_satuan,
           nama_produk_jual: item.nama_produk_jual?.trim() || null,
           faktor_konversi: item.faktor_konversi,

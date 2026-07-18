@@ -25,20 +25,16 @@ export interface FinanceCategoryConfig {
  * Kategori "non-kas" — entri jurnal akuntansi yang TIDAK menggerakkan saldo kas
  * (lihat rumus saldo di `src/lib/ast/defaults.ts`). HPP & pembaliknya mencatat
  * harga pokok untuk perhitungan laba, bukan uang yang benar-benar keluar dari
- * laci (kas sudah keluar saat beli/bayar bahan). Karena membingungkan bila
- * nyempil di daftar buku kas, baris dengan kategori ini disembunyikan dari
- * tampilan ledger — angkanya tetap utuh di database & tetap dihitung di kartu
- * ringkasan (Total Biaya) dan Laporan Laba Rugi.
- *
- * Catatan: penyaringan hanya di tampilan halaman Buku Keuangan. Engine recalc,
- * summary, dan laporan tetap memproses baris ini seperti biasa.
+ * laci (kas sudah keluar saat beli/bayar bahan). Baris ini tetap ditampilkan
+ * di buku keuangan demi transparansi jalur laba, tetapi diberi penanda non-kas
+ * agar tidak disalahartikan sebagai uang yang keluar lagi.
  */
 export const KATEGORI_NONKAS: ReadonlySet<string> = new Set([
   "HPP",
   "RETUR_HPP",
 ]);
 
-/** Benar bila kategori adalah entri jurnal non-kas (disembunyikan dari ledger). */
+/** Benar bila kategori adalah entri jurnal non-kas (ditampilkan dengan penanda di ledger). */
 export function adalahKategoriNonKas(kode: string | null | undefined): boolean {
   return kode != null && KATEGORI_NONKAS.has(kode);
 }

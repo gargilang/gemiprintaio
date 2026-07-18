@@ -40,7 +40,6 @@ import ModalTransaksiKeuangan, {
 import {
   stripReferenceId,
   resolveKategoriColor,
-  adalahKategoriNonKas,
   type FinanceCategoryConfig,
 } from "./keuangan-utils";
 
@@ -245,28 +244,22 @@ export default function FinancePage() {
             "LUNAS",
             "SUPPLY",
             "HPP",
+            "RETUR_HPP",
             "LABA",
             "KOMISI",
             "TABUNGAN",
             "HUTANG",
             "PIUTANG",
           ]
-      // Kategori non-kas (HPP/RETUR_HPP) disembunyikan dari ledger, jadi tak
-      // perlu jadi opsi filter.
-      ).filter((kode) => !adalahKategoriNonKas(kode)),
+      ),
     [financeCategories]
   );
 
-  // Filtered cashbooks based on kategori selection
+  // Jurnal HPP/RETUR_HPP tetap ditampilkan demi transparansi jalur laba.
+  // Keduanya tidak menggerakkan saldo dan ditandai sebagai non-kas di baris tabel.
   const filteredCashBooks = useMemo(() => {
-    // Sembunyikan entri jurnal non-kas (HPP/RETUR_HPP) dari ledger — tidak
-    // menggerakkan saldo dan membingungkan bila tampil di antara transaksi kas.
-    // Tetap utuh di DB & tetap dihitung di kartu ringkasan + Laporan Laba Rugi.
-    const visible = cashBooks.filter(
-      (cb) => !adalahKategoriNonKas(cb.kategori_transaksi)
-    );
-    if (selectedKategoriFilters.size === 0) return visible;
-    return visible.filter((cb) =>
+    if (selectedKategoriFilters.size === 0) return cashBooks;
+    return cashBooks.filter((cb) =>
       selectedKategoriFilters.has(cb.kategori_transaksi)
     );
   }, [cashBooks, selectedKategoriFilters]);

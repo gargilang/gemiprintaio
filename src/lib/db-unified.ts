@@ -1740,6 +1740,10 @@ class UnifiedDatabase {
           "ALTER TABLE item_penjualan ADD COLUMN roll_panjang_total_m REAL",
         );
       }
+      // Migrasi (20260718000000): jumlah lembar asli barang berdimensi untuk cetak ulang.
+      if (!cols.includes("jumlah_roll")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN jumlah_roll INTEGER");
+      }
     }
 
     // Migrasi (20260715120000): item_produksi kolom parent_item_produksi_id
