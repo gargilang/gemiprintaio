@@ -27,6 +27,7 @@ import SpkDetailModal from "./components/SpkDetailModal";
 import { generateSPKHTML } from "./components/spk-print";
 import { preparePrintHtml } from "@/lib/print-embed-client";
 import { openPrintDocument } from "@/lib/print-fonts";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import { getStatusColor, getPriorityColor } from "./components/spk-status";
 import { labelStatus } from "@/lib/produksi/status-produksi";
 
@@ -86,6 +87,14 @@ export default function ProductionPage() {
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [notice, setNotice] = useState<NotificationToastProps | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "info", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
   const [rollVariantsByItem, setRollVariantsByItem] = useState<
     Record<string, RollVariantOption[]>
   >({});
@@ -243,24 +252,31 @@ export default function ProductionPage() {
         return;
       }
       if (newStatus === "SIAP_AMBIL") {
-        const ok = window.confirm("Tandai SPK siap diambil pelanggan?");
-        if (!ok) return;
-        const hasil = await setOrderStatusSiapDiambilCascadeAction(orderId);
-        if (hasil.terhalang.length > 0) {
-          const nama = hasil.terhalang.map((t) => t.nama).join(", ");
-          showMsg(
-            "error",
-            `Item berikut belum bisa diselesaikan: ${nama}. Konfirmasi bahan roll dulu jika perlu.`,
-          );
-        } else if (hasil.statusOrderAkhir === "SIAP_AMBIL") {
-          setSelectedOrderSiapDiambil(orderId);
-          showMsg("success", "SPK ditandai Siap Diambil");
-        } else {
-          showMsg(
-            "error",
-            "SPK belum bisa ditandai Siap Diambil — periksa status item.",
-          );
-        }
+        setConfirmState({
+          show: true,
+          title: "Tandai Siap Diambil",
+          message: "Tandai SPK siap diambil pelanggan?",
+          type: "info",
+          onConfirm: async () => {
+            try {
+              const hasil = await setOrderStatusSiapDiambilCascadeAction(orderId);
+              if (hasil.terhalang.length > 0) {
+                const nama = hasil.terhalang.map((t: any) => t.nama).join(", ");
+                showMsg("error", `Item berikut belum bisa diselesaikan: ${nama}. Konfirmasi bahan roll dulu jika perlu.`);
+              } else if (hasil.statusOrderAkhir === "SIAP_AMBIL") {
+                setSelectedOrderSiapDiambil(orderId);
+                showMsg("success", "SPK ditandai Siap Diambil");
+              } else {
+                showMsg("error", "SPK belum bisa ditandai Siap Diambil — periksa status item.");
+              }
+              await reloadOrders();
+              setSelectedOrderSiapDiambil(orderId);
+            } catch (error) {
+              showMsg("error", error instanceof Error ? error.message : "Gagal memperbarui status");
+            }
+          },
+        });
+        return;
       } else {
         await updateProductionStatusAction(orderId, newStatus);
         showMsg("success", "Status berhasil diperbarui");
@@ -850,6 +866,16 @@ export default function ProductionPage() {
           </div>
         </div>
       )}
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </>
   );
 }
