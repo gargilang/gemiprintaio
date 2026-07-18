@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCachedData } from "@/lib/use-cached-data";
 import { StockOpnameIcon } from "@/components/icons/PageIcons";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   cancelStockOpnameAction,
   createStockOpnameAction,
@@ -28,6 +29,14 @@ export default function StockOpnamePage() {
   >({});
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   useEffect(() => {
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].id);
@@ -102,49 +111,56 @@ export default function StockOpnamePage() {
     }
   }
 
-  async function post() {
+  function post() {
     if (!selected) return;
-    if (
-      !window.confirm(
-        `Posting stock opname ${selected.nomor_opname}?\nDelta akan menjadi mutasi ADJUSTMENT dan stok di sistem akan diupdate. Item dengan delta nol tidak akan membuat mutasi.`,
-      )
-    )
-      return;
-    setSaving(true);
-    try {
-      await updateStockOpnameCountsAction(
-        selected.id,
-        Object.entries(counts).map(([stock_opname_item_id, val]) => ({
-          stock_opname_item_id,
-          counted_qty: val.qty,
-          counted_linear_m: val.linear_m,
-        })),
-      );
-      await postStockOpnameAction(selected.id);
-      setNotice("Stock opname diposting.");
-      await reload();
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Gagal posting opname",
-      );
-    } finally {
-      setSaving(false);
-    }
+    setConfirmState({
+      show: true,
+      title: "Posting Stock Opname",
+      message: `Posting stock opname ${selected.nomor_opname}?\nDelta akan menjadi mutasi ADJUSTMENT dan stok di sistem akan diupdate. Item dengan delta nol tidak akan membuat mutasi.`,
+      type: "warning",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await updateStockOpnameCountsAction(
+            selected.id,
+            Object.entries(counts).map(([stock_opname_item_id, val]) => ({
+              stock_opname_item_id,
+              counted_qty: val.qty,
+              counted_linear_m: val.linear_m,
+            })),
+          );
+          await postStockOpnameAction(selected.id);
+          setNotice("Stock opname diposting.");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal posting opname");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
-  async function cancel() {
+  function cancel() {
     if (!selected) return;
-    if (!window.confirm(`Batalkan opname ${selected.nomor_opname}?`)) return;
-    setSaving(true);
-    try {
-      await cancelStockOpnameAction(selected.id);
-      setNotice("Sesi opname dibatalkan.");
-      await reload();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal batal opname");
-    } finally {
-      setSaving(false);
-    }
+    setConfirmState({
+      show: true,
+      title: "Batalkan Opname",
+      message: `Batalkan opname ${selected.nomor_opname}?`,
+      type: "danger",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await cancelStockOpnameAction(selected.id);
+          setNotice("Sesi opname dibatalkan.");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal batal opname");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   return (
@@ -438,6 +454,16 @@ export default function StockOpnamePage() {
           )}
         </div>
       </div>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
