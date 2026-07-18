@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PackageIcon } from "@/components/icons/PageIcons";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import ModalBayarPiutang from "@/components/ModalBayarPiutang";
 import { useCachedData, useInvalidate } from "@/lib/use-cached-data";
 import { fetchSessionUser, getCachedSessionUser } from "@/lib/client-session";
@@ -37,6 +38,14 @@ export default function PengambilanPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "info", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
   const [piutangRow, setPiutangRow] = useState<PengambilanRow | null>(null);
   const invalidate = useInvalidate();
 
@@ -77,31 +86,31 @@ export default function PengambilanPage() {
     invalidate("pos-init");
   };
 
-  const handleSudahDiambil = async (row: PengambilanRow) => {
-    const ok = window.confirm(
-      `Tandai SPK ${row.nomor_spk} sudah diambil pelanggan?`,
-    );
-    if (!ok) return;
-    setSaving(true);
-    setNotice("");
-    try {
-      const hasil = await markSudahDiambilAction(row.order_id);
-      if (hasil.terhalang.length > 0) {
-        const nama = hasil.terhalang.map((t) => t.nama).join(", ");
-        setNotice(
-          `Beberapa item belum bisa diselesaikan: ${nama}. Konfirmasi roll dulu jika perlu.`,
-        );
-      } else {
-        setNotice(`SPK ${row.nomor_spk} ditandai sudah diambil.`);
-      }
-      await reload();
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Gagal menandai diambil",
-      );
-    } finally {
-      setSaving(false);
-    }
+  const handleSudahDiambil = (row: PengambilanRow) => {
+    setConfirmState({
+      show: true,
+      title: "Tandai Sudah Diambil",
+      message: `Tandai SPK ${row.nomor_spk} sudah diambil pelanggan?`,
+      type: "info",
+      onConfirm: async () => {
+        setSaving(true);
+        setNotice("");
+        try {
+          const hasil = await markSudahDiambilAction(row.order_id);
+          if (hasil.terhalang.length > 0) {
+            const nama = hasil.terhalang.map((t: any) => t.nama).join(", ");
+            setNotice(`Beberapa item belum bisa diselesaikan: ${nama}. Konfirmasi roll dulu jika perlu.`);
+          } else {
+            setNotice(`SPK ${row.nomor_spk} ditandai sudah diambil.`);
+          }
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal menandai diambil");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   };
 
   return (
@@ -258,6 +267,16 @@ export default function PengambilanPage() {
             : Promise.resolve([])
         }
         onPayReceivable={payReceivablePengambilanAction}
+      />
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
       />
     </div>
   );
