@@ -25,6 +25,7 @@ import {
   updateQuotationAction,
   updateQuotationStatusAction,
 } from "./actions";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 
 type DraftItem = {
   barang_id: string;
@@ -60,6 +61,14 @@ export default function PenawaranPage() {
   };
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "danger", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
   const [customerId, setCustomerId] = useState("");
   const [catatan, setCatatan] = useState("");
   const [status, setStatus] = useState<"DRAFT" | "SENT">("DRAFT");
@@ -210,25 +219,26 @@ export default function PenawaranPage() {
     }
   }
 
-  async function confirmDeleteQuote(quote: any) {
-    if (
-      !window.confirm(
-        `Hapus draf ${quote.nomor_penawaran}?\nTindakan ini tidak bisa dibatalkan.`
-      )
-    ) {
-      return;
-    }
-    setSaving(true);
-    try {
-      await deleteQuotationDraftAction(quote.id);
-      if (editingQuoteId === quote.id) resetForm();
-      setNotice(`Draf ${quote.nomor_penawaran} dihapus.`);
-      await reload();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
-    } finally {
-      setSaving(false);
-    }
+  function confirmDeleteQuote(quote: any) {
+    setConfirmState({
+      show: true,
+      title: "Hapus Draf Penawaran",
+      message: `Hapus draf ${quote.nomor_penawaran}?\nTindakan ini tidak bisa dibatalkan.`,
+      type: "danger",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await deleteQuotationDraftAction(quote.id);
+          if (editingQuoteId === quote.id) resetForm();
+          setNotice(`Draf ${quote.nomor_penawaran} dihapus.`);
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   async function printQuote(quote: any) {
@@ -627,6 +637,16 @@ export default function PenawaranPage() {
           </div>
         </div>
       ) : null}
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
