@@ -171,16 +171,22 @@ export type ItemSpkLike = {
   lebar?: number | null;
   billed_panjang?: number | null;
   billed_lebar?: number | null;
+  /** Jumlah lembar/banner yang disimpan saat checkout POS. Prioritas di atas hitung fallback. */
+  jumlah_roll?: number | null;
 };
 
 export function toCetakInputSpk(item: ItemSpkLike): ItemCetakPenjualan {
-  const lembar = hitungQtyLembarCetakPenjualan({
-    jumlah: item.jumlah,
-    panjang: item.panjang,
-    lebar: item.lebar,
-    billed_panjang: item.billed_panjang,
-    billed_lebar: item.billed_lebar,
-  });
+  // Pakai jumlah_roll yang tersimpan jika ada; fallback hitung dari m² ÷ luas.
+  const lembar =
+    item.jumlah_roll != null
+      ? Math.max(1, Math.round(Number(item.jumlah_roll)))
+      : hitungQtyLembarCetakPenjualan({
+          jumlah: item.jumlah,
+          panjang: item.panjang,
+          lebar: item.lebar,
+          billed_panjang: item.billed_panjang,
+          billed_lebar: item.billed_lebar,
+        });
   return {
     jumlah: item.jumlah,
     nama_satuan: item.nama_satuan,
