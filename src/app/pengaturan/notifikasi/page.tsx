@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   clearNotificationLogs,
   getNotificationLogs,
@@ -123,6 +124,14 @@ export default function NotifikasiPage() {
   const [localLogs, setLocalLogs] = useState<NotificationLogEntry[]>([]);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "danger", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   const {
     data: centralLogsData,
@@ -196,14 +205,17 @@ export default function NotifikasiPage() {
   );
 
   const handleClear = () => {
-    const confirmed = window.confirm(
-      "Hapus semua log notifikasi di perangkat ini?",
-    );
-    if (!confirmed) return;
-
-    clearNotificationLogs();
-    setLocalLogs([]);
-    void refresh();
+    setConfirmState({
+      show: true,
+      title: "Hapus Semua Log",
+      message: "Hapus semua log notifikasi di perangkat ini?",
+      type: "danger",
+      onConfirm: () => {
+        clearNotificationLogs();
+        setLocalLogs([]);
+        void refresh();
+      },
+    });
   };
 
   return (
@@ -338,6 +350,16 @@ export default function NotifikasiPage() {
           </div>
         )}
       </div>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Hapus Semua"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
