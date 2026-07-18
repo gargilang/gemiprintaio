@@ -10,6 +10,7 @@
  */
 
 import { useState } from "react";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   listAccountingPeriodsAction,
   closePeriodAction,
@@ -60,31 +61,41 @@ export default function PeriodCloseTab() {
     kind: "success" | "error";
     msg: string;
   } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   const showMsg = (kind: "success" | "error", msg: string) => {
     setNotice({ kind, msg });
     setTimeout(() => setNotice(null), 4000);
   };
 
-  const handleClose = async () => {
-    if (
-      !confirm(
-        `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, transaksi bertanggal bulan ini tidak bisa diubah/void/adjust tanpa membuka kembali periode. Data tetap bisa dilihat di Laporan.`,
-      )
-    )
-      return;
-    try {
-      await closePeriodAction({
-        year,
-        month,
-        catatan: catatan.trim() || null,
-      });
-      showMsg("success", "Periode berhasil ditutup");
-      setCatatan("");
-      await mutatePeriods();
-    } catch (e: any) {
-      showMsg("error", e?.message || "Gagal menutup periode");
-    }
+  const handleClose = () => {
+    setConfirmState({
+      show: true,
+      title: "Tutup Periode",
+      message: `Tutup periode ${MONTHS[month - 1]} ${year}? Setelah ditutup, transaksi bertanggal bulan ini tidak bisa diubah/void/adjust tanpa membuka kembali periode. Data tetap bisa dilihat di Laporan.`,
+      type: "warning",
+      onConfirm: async () => {
+        try {
+          await closePeriodAction({
+            year,
+            month,
+            catatan: catatan.trim() || null,
+          });
+          showMsg("success", "Periode berhasil ditutup");
+          setCatatan("");
+          await mutatePeriods();
+        } catch (e: any) {
+          showMsg("error", e?.message || "Gagal menutup periode");
+        }
+      },
+    });
   };
 
   const handleReopen = async (period: Period) => {
@@ -274,6 +285,16 @@ export default function PeriodCloseTab() {
           </ul>
         )}
       </section>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Tutup Periode"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
