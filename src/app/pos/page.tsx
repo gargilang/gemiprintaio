@@ -2581,6 +2581,7 @@ export default function POSPage() {
             loading={historyLoading}
             onDelete={handleDeleteSale}
             onRevert={handleRevertSale}
+            onError={(msg) => showMsg("error", msg)}
           />
         </div>
       </div>

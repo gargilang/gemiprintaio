@@ -56,6 +56,7 @@ interface SalesHistoryTableProps {
   onDelete?: (saleId: string) => Promise<void>;
   onRevert?: (sale: Sale) => void;
   onPayReceivable?: () => void;
+  onError?: (msg: string) => void;
 }
 
 function getSaleItemNamaTampil(item: SaleItemRow): string {
@@ -71,6 +72,7 @@ export default function TabelRiwayatPenjualan({
   onDelete,
   onRevert,
   onPayReceivable,
+  onError,
 }: SalesHistoryTableProps) {
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -358,7 +360,7 @@ export default function TabelRiwayatPenjualan({
       });
     } catch (e) {
       console.error("reprintThermal error:", e);
-      alert("Gagal menyiapkan struk untuk dicetak.");
+      onError?.("Gagal menyiapkan struk untuk dicetak.");
     } finally {
       setPrintingId(null);
     }
@@ -466,7 +468,7 @@ export default function TabelRiwayatPenjualan({
       );
     } catch (e) {
       console.error("previewFaktur error:", e);
-      alert("Gagal menyiapkan preview faktur.");
+      onError?.("Gagal menyiapkan preview faktur.");
     } finally {
       setPrintingId(null);
     }
@@ -570,7 +572,7 @@ export default function TabelRiwayatPenjualan({
       });
     } catch (e) {
       console.error("reprintFaktur error:", e);
-      alert("Gagal menyiapkan faktur untuk dicetak.");
+      onError?.("Gagal menyiapkan faktur untuk dicetak.");
     } finally {
       setPrintingId(null);
     }
