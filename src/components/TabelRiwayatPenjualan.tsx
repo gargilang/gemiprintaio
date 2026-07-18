@@ -321,6 +321,7 @@ export default function TabelRiwayatPenjualan({
           nama_satuan: item.nama_satuan || "",
           panjang: item.panjang,
           lebar: item.lebar,
+          jumlah_roll: item.jumlah_roll,
         };
         const { qty, satuan } = qtySatuanCetakPenjualan(cetakInput);
         return {
@@ -432,6 +433,7 @@ export default function TabelRiwayatPenjualan({
           nama_satuan: item.nama_satuan || "",
           panjang: item.panjang,
           lebar: item.lebar,
+          jumlah_roll: item.jumlah_roll,
           harga_satuan: Number(item.harga_satuan || 0),
           subtotal: Number(item.subtotal || 0),
           biaya_tambahan: (item.biaya_tambahan || [])
@@ -540,6 +542,7 @@ export default function TabelRiwayatPenjualan({
           nama_satuan: item.nama_satuan || "",
           panjang: item.panjang,
           lebar: item.lebar,
+          jumlah_roll: item.jumlah_roll,
           harga_satuan: Number(item.harga_satuan || 0),
           subtotal: Number(item.subtotal || 0),
           biaya_tambahan: (item.biaya_tambahan || [])
