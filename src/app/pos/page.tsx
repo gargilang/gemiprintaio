@@ -270,9 +270,17 @@ export default function POSPage() {
     BiayaTambahanItem[]
   >([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [jumlahBayar, setJumlahBayar] = useState("");
-  const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
-  const [printType, setPrintType] = useState<PrintType>("thermal");
+   const [jumlahBayar, setJumlahBayar] = useState("");
+   const [prioritas, setPrioritas] = useState<"NORMAL" | "KILAT">("NORMAL");
+   const [printType, setPrintType] = useState<PrintType>("thermal");
+   const [confirmState, setConfirmState] = useState<{
+     show: boolean;
+     title: string;
+     message: string;
+     type: "warning" | "danger" | "info";
+     onConfirm: () => void;
+   }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+   const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
   // Info faktur pelanggan umum yang ditangkap saat pengguna pilih faktur tapi belum memilih pelanggan
   const [fakturUmum, setFakturUmum] = useState<{
     nama: string;
@@ -1159,15 +1167,7 @@ export default function POSPage() {
     showMsg("success", "Keranjang disimpan");
   };
 
-  const handleLoadParked = async (id: string) => {
-    if (
-      cart.length > 0 &&
-      !window.confirm(
-        "Ganti keranjang saat ini? Keranjang yang belum diparkir akan hilang.",
-      )
-    ) {
-      return;
-    }
+  const doLoadParked = async (id: string) => {
     const p = await loadParkedCartAction(id);
     if (!p) return;
     setCart(p.cart_snapshot as CartItem[]);
@@ -1194,6 +1194,20 @@ export default function POSPage() {
     setPpnFaktur((p.ppn_snapshot as PpnFakturData | null) ?? null);
     setLoadedParkedId(id);
     showMsg("success", `Keranjang "${p.label}" dimuat`);
+  };
+
+  const handleLoadParked = (id: string) => {
+    if (cart.length > 0) {
+      setConfirmState({
+        show: true,
+        title: "Ganti Keranjang",
+        message: "Ganti keranjang saat ini? Keranjang yang belum diparkir akan hilang.",
+        type: "warning",
+        onConfirm: () => doLoadParked(id),
+      });
+      return;
+    }
+    doLoadParked(id);
   };
 
   const toQuotationItemInput = (item: CartItem): QuotationItemInput => ({
@@ -1231,11 +1245,18 @@ export default function POSPage() {
     await refreshParked();
   };
 
-  const handleDeleteParked = async (id: string) => {
-    if (!window.confirm("Hapus keranjang tersimpan ini?")) return;
-    await deleteParkedCartAction(id);
-    await refreshParked();
-  };
+   const handleDeleteParked = (id: string) => {
+     setConfirmState({
+       show: true,
+       title: "Hapus Keranjang Tersimpan",
+       message: "Hapus keranjang tersimpan ini?",
+       type: "danger",
+       onConfirm: async () => {
+         await deleteParkedCartAction(id);
+         await refreshParked();
+       },
+     });
+   };
 
   const handleDeleteSale = async (saleId: string) => {
     try {
@@ -2736,6 +2757,17 @@ export default function POSPage() {
           type="pos"
         />
       )}
+
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
 
       <ModalFakturUmum
         open={showFakturUmumModal}
