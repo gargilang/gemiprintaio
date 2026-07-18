@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedData } from "@/lib/use-cached-data";
 import { PurchaseReturnIcon } from "@/components/icons/PageIcons";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   createPurchaseReturnAction,
   getPurchaseReturnInitAction,
@@ -34,6 +35,14 @@ export default function PurchaseReturnsPage() {
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
 
   const purchase = useMemo(
     () => data.purchases.find((row: any) => row.id === purchaseId),
@@ -50,30 +59,30 @@ export default function PurchaseReturnsPage() {
     if (!purchaseId || lines.length === 0 || !reason.trim()) {
       return setNotice("Pilih pembelian, qty, dan alasan retur.");
     }
-    if (
-      !window.confirm(
-        `Posting retur pembelian?\nIni akan: stok keluar, hutang dikurangi, refund vendor (jika sudah terbayar).`,
-      )
-    )
-      return;
-    setSaving(true);
-    try {
-      await createPurchaseReturnAction({
-        purchase_id: purchaseId,
-        reason,
-        items: lines,
-      });
-      setQtyByItem({});
-      setReason("");
-      setNotice("Retur pembelian diposting.");
-      await reload();
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Gagal retur pembelian",
-      );
-    } finally {
-      setSaving(false);
-    }
+    setConfirmState({
+      show: true,
+      title: "Posting Retur Pembelian",
+      message: "Posting retur pembelian?\nIni akan: stok keluar, hutang dikurangi, refund vendor (jika sudah terbayar).",
+      type: "warning",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await createPurchaseReturnAction({
+            purchase_id: purchaseId,
+            reason,
+            items: lines,
+          });
+          setQtyByItem({});
+          setReason("");
+          setNotice("Retur pembelian diposting.");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal retur pembelian");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   return (
@@ -241,6 +250,16 @@ export default function PurchaseReturnsPage() {
           </table>
         </div>
       </section>
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Posting Retur"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
