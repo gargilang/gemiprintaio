@@ -13,6 +13,7 @@ import {
   mapPoItemKeFaktur,
 } from "@/lib/dokumen-item-display";
 import { printPurchaseOrder } from "@/lib/faktur-print";
+import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   createPurchaseOrderAction,
   deletePurchaseOrderDraftAction,
@@ -81,6 +82,14 @@ export default function PurchaseOrdersPage() {
   const [catatan, setCatatan] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "warning" | "danger" | "info";
+    onConfirm: () => void;
+  }>({ show: false, title: "", message: "", type: "warning", onConfirm: () => {} });
+  const closeConfirm = () => setConfirmState((s) => ({ ...s, show: false }));
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
   const [receiveModal, setReceiveModal] = useState<ReceiveModalState | null>(
     null,
@@ -196,7 +205,7 @@ export default function PurchaseOrdersPage() {
     });
   }
 
-  async function confirmReceive() {
+  function confirmReceive() {
     if (!receiveModal) return;
     const lines = (receiveModal.po.items || [])
       .map((item: any) => ({
@@ -208,56 +217,57 @@ export default function PurchaseOrdersPage() {
       setNotice("Isi qty terima minimal satu item.");
       return;
     }
-    if (
-      !window.confirm(
-        `Posting penerimaan pesanan pembelian ${receiveModal.po.nomor_po}?\nIni akan membuat pembelian dan menambah stok.`,
-      )
-    ) {
-      return;
-    }
-    setSaving(true);
-    try {
-      await receivePurchaseOrderAction({
-        purchase_order_id: receiveModal.po.id,
-        metode_pembayaran: receiveModal.metode_pembayaran,
-        jumlah_dibayar:
-          receiveModal.metode_pembayaran === "NET30"
-            ? receiveModal.jumlah_dibayar
-            : undefined,
-        tanggal: receiveModal.tanggal,
-        items: lines,
-      });
-      setReceiveModal(null);
-      setNotice("Penerimaan pesanan pembelian masuk ke pembelian.");
-      await reload();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Gagal menerima PO");
-    } finally {
-      setSaving(false);
-    }
+    const snapshot = receiveModal;
+    setConfirmState({
+      show: true,
+      title: "Posting Penerimaan PO",
+      message: `Posting penerimaan pesanan pembelian ${snapshot.po.nomor_po}?\nIni akan membuat pembelian dan menambah stok.`,
+      type: "warning",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await receivePurchaseOrderAction({
+            purchase_order_id: snapshot.po.id,
+            metode_pembayaran: snapshot.metode_pembayaran,
+            jumlah_dibayar:
+              snapshot.metode_pembayaran === "NET30"
+                ? snapshot.jumlah_dibayar
+                : undefined,
+            tanggal: snapshot.tanggal,
+            items: lines,
+          });
+          setReceiveModal(null);
+          setNotice("Penerimaan pesanan pembelian masuk ke pembelian.");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal menerima PO");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
-  async function confirmDeletePo(po: any) {
-    if (
-      !window.confirm(
-        `Hapus draf ${po.nomor_po}?\nTindakan ini tidak bisa dibatalkan.`,
-      )
-    ) {
-      return;
-    }
-    setSaving(true);
-    try {
-      await deletePurchaseOrderDraftAction(po.id);
-      if (editingPoId === po.id) resetForm();
-      setNotice(`Draf ${po.nomor_po} dihapus.`);
-      await reload();
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Gagal menghapus draf",
-      );
-    } finally {
-      setSaving(false);
-    }
+  function confirmDeletePo(po: any) {
+    setConfirmState({
+      show: true,
+      title: "Hapus Draf PO",
+      message: `Hapus draf ${po.nomor_po}?\nTindakan ini tidak bisa dibatalkan.`,
+      type: "danger",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await deletePurchaseOrderDraftAction(po.id);
+          if (editingPoId === po.id) resetForm();
+          setNotice(`Draf ${po.nomor_po} dihapus.`);
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal menghapus draf");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   async function markSent(po: any) {
@@ -900,6 +910,16 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
       ) : null}
+      <DialogKonfirmasi
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Ya, Lanjutkan"
+        cancelText="Batal"
+        onConfirm={() => { confirmState.onConfirm(); closeConfirm(); }}
+        onCancel={closeConfirm}
+        type={confirmState.type}
+      />
     </div>
   );
 }
