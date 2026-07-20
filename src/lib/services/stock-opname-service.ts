@@ -330,3 +330,26 @@ export async function cancelStockOpname(id: string) {
   const upd = await db.update("stock_opnames", id, { status: "CANCELLED" });
   if (upd.error) throw upd.error;
 }
+
+/**
+ * Hapus sesi opname beserta seluruh item-nya.
+ * Hanya diizinkan untuk status DRAFT atau CANCELLED.
+ * Opname POSTED tidak boleh dihapus karena sudah terikat inventory_movements.
+ */
+export async function deleteStockOpname(id: string) {
+  const session = await getStockOpnameById(id);
+  if (!session) throw new Error("Opname stok tidak ditemukan");
+  if (session.status === "POSTED")
+    throw new Error("Opname yang sudah diposting tidak dapat dihapus");
+
+  await db.transaction(async () => {
+    // Hapus item-item child satu per satu (pola yang digunakan di seluruh service)
+    for (const item of session.items || []) {
+      const delItem = await db.delete("stock_opname_items", item.id);
+      if (delItem.error) throw delItem.error;
+    }
+    // Hapus header setelah semua item terhapus
+    const delHeader = await db.delete("stock_opnames", id);
+    if (delHeader.error) throw delHeader.error;
+  });
+}

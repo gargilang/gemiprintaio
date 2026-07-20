@@ -4,6 +4,7 @@ import { requireAdminOrManager } from "@/lib/auth-guard-server";
 import {
   cancelStockOpname,
   createStockOpname,
+  deleteStockOpname,
   getStockOpnames,
   postStockOpname,
   updateStockOpnameCounts,
@@ -36,5 +37,10 @@ export async function postStockOpnameAction(id: string) {
 export async function cancelStockOpnameAction(id: string) {
   await requireAdminOrManager();
   return cancelStockOpname(id);
+}
+
+export async function deleteStockOpnameAction(id: string) {
+  await requireAdminOrManager();
+  return deleteStockOpname(id);
 }
 

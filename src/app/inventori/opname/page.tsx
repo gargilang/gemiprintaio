@@ -7,6 +7,7 @@ import DialogKonfirmasi from "@/components/DialogKonfirmasi";
 import {
   cancelStockOpnameAction,
   createStockOpnameAction,
+  deleteStockOpnameAction,
   getStockOpnamesAction,
   postStockOpnameAction,
   updateStockOpnameCountsAction,
@@ -163,6 +164,29 @@ export default function StockOpnamePage() {
     });
   }
 
+  function hapus() {
+    if (!selected) return;
+    setConfirmState({
+      show: true,
+      title: "Hapus Opname",
+      message: `Hapus permanen opname ${selected.nomor_opname}? Tindakan ini tidak dapat dibatalkan.`,
+      type: "danger",
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await deleteStockOpnameAction(selected.id);
+          setNotice("Opname dihapus.");
+          setSelectedId("");
+          await reload();
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Gagal hapus opname");
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
       {/* Kartu judul */}
@@ -263,6 +287,13 @@ export default function StockOpnamePage() {
                     onClick={cancel}
                   >
                     Batal
+                  </button>
+                  <button
+                    disabled={saving || selected.status === "POSTED"}
+                    className="rounded border border-rose-300 dark:border-rose-700 px-3 py-2.5 text-base text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 disabled:opacity-50 transition-colors"
+                    onClick={hapus}
+                  >
+                    Hapus
                   </button>
                 </div>
               </div>
