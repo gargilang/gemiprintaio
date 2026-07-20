@@ -244,69 +244,75 @@ export default function DashboardPage() {
       ) : stats ? (
         <>
           {/* Stat cards utama */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Omzet Hari Ini"
-              value={fmtCurrency(stats.todayRevenue)}
-              icon="trending"
-              gradient="from-[#00afef] to-[#2266ff]"
-            />
-            <StatCard
-              title="Transaksi Hari Ini"
-              value={String(stats.todaySalesCount)}
-              subtitle="penjualan"
-              icon="receipt"
-              gradient="from-emerald-500 to-teal-600"
-            />
-            <StatCard
-              title="Saldo Kas"
-              value={fmtCurrency(stats.saldo)}
-              icon="wallet"
-              gradient="from-amber-500 to-orange-500"
-            />
-            <StatCard
-              title="Piutang Aktif"
-              value={fmtCurrency(stats.totalPiutang)}
-              subtitle={`${stats.activePiutang} transaksi`}
-              icon="warning"
-              gradient="from-[#ff2f91] to-[#0a1b3d]"
-            />
-          </div>
-
-          {/* Analitik + Donut */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Tren Penjualan (kiri, lebih lebar) */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
-                  Tren Penjualan
-                </h3>
-                <div className="flex gap-1">
-                  {([7, 14, 30] as const).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setTrendDays(d)}
-                      className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
-                        trendDays === d
-                          ? "bg-[#00afef] text-white shadow"
-                          : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
-                      }`}
-                    >
-                      {d} hari
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <SalesTrendChart
-                data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
-                days={trendDays}
-                isDark={isDark}
+          {user?.role !== "operator" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Omzet Hari Ini"
+                value={fmtCurrency(stats.todayRevenue)}
+                icon="trending"
+                gradient="from-[#00afef] to-[#2266ff]"
+              />
+              <StatCard
+                title="Transaksi Hari Ini"
+                value={String(stats.todaySalesCount)}
+                subtitle="penjualan"
+                icon="receipt"
+                gradient="from-emerald-500 to-teal-600"
+              />
+              {user?.role !== "kasir" && (
+                <StatCard
+                  title="Saldo Kas"
+                  value={fmtCurrency(stats.saldo)}
+                  icon="wallet"
+                  gradient="from-amber-500 to-orange-500"
+                />
+              )}
+              <StatCard
+                title="Piutang Aktif"
+                value={fmtCurrency(stats.totalPiutang)}
+                subtitle={`${stats.activePiutang} transaksi`}
+                icon="warning"
+                gradient="from-[#ff2f91] to-[#0a1b3d]"
               />
             </div>
+          )}
 
-            {/* Donut omzet (kanan) */}
-            <RevenueDonut trend={stats.dailySalesTrend ?? []} isDark={isDark} />
-          </div>
+          {/* Analitik + Donut — disembunyikan untuk operator */}
+          {user?.role !== "operator" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Tren Penjualan (kiri, lebih lebar) */}
+              <div className="lg:col-span-2 bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt">
+                    Tren Penjualan
+                  </h3>
+                  <div className="flex gap-1">
+                    {([7, 14, 30] as const).map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setTrendDays(d)}
+                        className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
+                          trendDays === d
+                            ? "bg-[#00afef] text-white shadow"
+                            : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
+                        }`}
+                      >
+                        {d} hari
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <SalesTrendChart
+                  data={(stats.dailySalesTrend ?? []).slice(-trendDays)}
+                  days={trendDays}
+                  isDark={isDark}
+                />
+              </div>
+
+              {/* Donut omzet (kanan) */}
+              <RevenueDonut trend={stats.dailySalesTrend ?? []} isDark={isDark} />
+            </div>
+          )}
 
           {/* Tables Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

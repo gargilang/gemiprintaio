@@ -90,6 +90,24 @@ const FRONT_OF_HOUSE: UserRole[] = [
   "kasir",
   "demo",
 ];
+// Kasir dapat mengakses halaman transaksi penjualan + pembelian penuh,
+// namun tidak ke laporan keuangan, penggajian, dan pengaturan.
+const KASIR_PLUS: UserRole[] = [
+  "admin",
+  "manager",
+  "staff",
+  "kasir",
+  "demo",
+];
+// Pesanan Pembelian: operator butuh ini untuk tindak lanjut restock.
+const PURCHASE_ORDER_ACCESS: UserRole[] = [
+  "admin",
+  "manager",
+  "staff",
+  "kasir",
+  "operator",
+  "demo",
+];
 const ADMIN_ONLY: UserRole[] = ["admin", "manager", "demo"];
 
 export const MENU_ENTRIES: MenuEntry[] = [
@@ -133,14 +151,14 @@ export const MENU_ENTRIES: MenuEntry[] = [
         icon: <SalesReturnIcon size={18} />,
         label: "Retur Penjualan",
         color: "from-rose-500 to-pink-600",
-        allowedRoles: FULL_STAFF,
+        allowedRoles: KASIR_PLUS,
       },
       {
         href: "/piutang",
         icon: <MoneyIcon size={18} />,
         label: "Piutang",
         color: "from-emerald-500 to-teal-600",
-        allowedRoles: FULL_STAFF,
+        allowedRoles: KASIR_PLUS,
       },
     ],
   },
@@ -186,7 +204,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
         icon: <PurchaseOrderIcon size={18} />,
         label: "Pembelian",
         color: "from-[#6366f1] to-[#8b5cf6]",
-        allowedRoles: FULL_STAFF,
+        allowedRoles: KASIR_PLUS,
       },
       {
         href: "/retur-pembelian",
@@ -200,7 +218,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
         icon: <PurchaseOrderFlowIcon size={18} />,
         label: "Pesanan Pembelian",
         color: "from-indigo-500 to-violet-600",
-        allowedRoles: FULL_STAFF,
+        allowedRoles: PURCHASE_ORDER_ACCESS,
       },
       {
         href: "/hutang",
@@ -274,7 +292,7 @@ export const MENU_ENTRIES: MenuEntry[] = [
         icon: <BuildingIcon size={18} />,
         label: "Vendor",
         color: "from-[#0a1b3d] to-[#2266ff]",
-        allowedRoles: FULL_STAFF,
+        allowedRoles: KASIR_PLUS,
       },
     ],
   },

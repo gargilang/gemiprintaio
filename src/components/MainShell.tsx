@@ -21,6 +21,7 @@ import {
   type MenuItem,
 } from "./menuConfig";
 import { useTauriWindowClose } from "@/hooks/useTauriWindowClose";
+import { useTheme } from "./ThemeProvider";
 import StatusSinkronisasi from "./StatusSinkronisasi";
 import KalkulatorMengambang from "./KalkulatorMengambang";
 import PratinjauFakturMengambang from "./PratinjauFakturMengambang";
@@ -188,6 +189,11 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
     );
     return found ? PAGE_TITLE_MAP[found] : "Beranda";
   }, [pathname]);
+
+  const { effective, setTheme } = useTheme();
+  const toggleTheme = useCallback(() => {
+    setTheme(effective === "dark" ? "light" : "dark");
+  }, [effective, setTheme]);
 
   const handleLogout = useCallback(() => {
     void (async () => {
@@ -482,6 +488,23 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                 </div>
                 <button
                   type="button"
+                  onClick={toggleTheme}
+                  title={effective === "dark" ? "Mode Terang" : "Mode Gelap"}
+                  aria-label={effective === "dark" ? "Mode Terang" : "Mode Gelap"}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  {effective === "dark" ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onClick={handleLogout}
                   title="Keluar"
                   aria-label="Keluar"
@@ -512,6 +535,27 @@ export default function MainShell({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="w-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 flex items-center justify-center gap-2 py-2 text-sm font-medium border-t border-blue-100 dark:border-slate-700 transition-colors"
+                >
+                  {effective === "dark" ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                      </svg>
+                      Mode Terang
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      </svg>
+                      Mode Gelap
+                    </>
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={handleLogout}
