@@ -428,6 +428,7 @@ export async function listPinjamanAction(actorId?: string) {
 
 export async function catatTarikPinjamanAction(input: {
   actorId: string;
+  actorNama?: string;
   jumlah: number;
   tanggal: string;
   keterangan?: string;

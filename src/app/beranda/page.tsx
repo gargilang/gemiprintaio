@@ -30,9 +30,13 @@ import {
   generateDraftPurchaseOrdersAction,
   getDashboardStatsAction,
   getReorderSuggestionsAction,
+  getTopSellingProductsAction,
   type DashboardStats,
   type DailySalesTrend,
   type ReorderSuggestionsResponse,
+  type TopSellingProductsResult,
+  type ProdukTerlaku,
+  type PeriodeTerlaku,
 } from "./actions";
 
 interface User {
@@ -182,6 +186,7 @@ export default function DashboardPage() {
       : null;
   const [user, setUser] = useState<User | null>(initialUser);
   const [trendDays, setTrendDays] = useState<7 | 14 | 30>(30);
+  const [periodeTerlaku, setPeriodeTerlaku] = useState<PeriodeTerlaku>("90");
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +221,12 @@ export default function DashboardPage() {
     useCachedData<ReorderSuggestionsResponse>(
       "dashboard-reorder-v1",
       getReorderSuggestionsAction,
+    );
+
+  const { data: topSelling, isLoading: topSellingLoading } =
+    useCachedData<TopSellingProductsResult>(
+      `top-selling-${periodeTerlaku}`,
+      () => getTopSellingProductsAction(periodeTerlaku),
     );
 
   // Paksa revalidasi saran restock saat Beranda ter-mount. Setelah membuat draf
@@ -417,6 +428,51 @@ export default function DashboardPage() {
               void mutateReorder();
             }}
           />
+
+          {/* Produk Terlaku — disembunyikan untuk operator */}
+          {user?.role !== "operator" && (
+            <div className="bg-white dark:bg-slate-900/40 backdrop-blur-sm border border-white/30 dark:border-slate-700 rounded-2xl shadow p-5">
+              {/* Toggle periode bersama */}
+              <div className="flex justify-end mb-4">
+                <div className="flex gap-1">
+                  {(
+                    [
+                      { v: "30", label: "30 hari" },
+                      { v: "90", label: "90 hari" },
+                      { v: "semua", label: "Semua" },
+                    ] as const
+                  ).map((p) => (
+                    <button
+                      key={p.v}
+                      onClick={() => setPeriodeTerlaku(p.v)}
+                      className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all ${
+                        periodeTerlaku === p.v
+                          ? "bg-[#00afef] text-white shadow"
+                          : "bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-white/80"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:divide-x divide-slate-200 dark:divide-slate-700">
+                <TopSellingColumn
+                  title="Produk Jual Terlaku"
+                  items={topSelling?.dataBarang ?? []}
+                  loading={topSellingLoading && !topSelling}
+                  accent="emerald"
+                />
+                <TopSellingColumn
+                  title="Produk Maklon Terlaku"
+                  items={topSelling?.katalogExtra ?? []}
+                  loading={topSellingLoading && !topSelling}
+                  accent="purple"
+                  className="lg:pl-6"
+                />
+              </div>
+            </div>
+          )}
         </>
       ) : null}
 
@@ -884,6 +940,91 @@ function StatCard({
           </svg>
         </span>
       </div>
+    </div>
+  );
+}
+
+const fmtQty = (n: number) =>
+  new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(n);
+
+/**
+ * Satu kolom daftar 5 produk paling laku (dipakai dua kali dalam satu kartu:
+ * Produk Jual & Produk Maklon). Menampilkan peringkat, nama, qty terjual,
+ * omzet, dan margin per baris.
+ */
+function TopSellingColumn({
+  title,
+  items,
+  loading,
+  accent,
+  className = "",
+}: {
+  title: string;
+  items: ProdukTerlaku[];
+  loading: boolean;
+  accent: "emerald" | "purple";
+  className?: string;
+}) {
+  const accentMap = {
+    emerald: {
+      rank: "bg-emerald-500",
+      margin: "text-emerald-600 dark:text-emerald-400",
+    },
+    purple: {
+      rank: "bg-purple-500",
+      margin: "text-purple-600 dark:text-purple-400",
+    },
+  }[accent];
+
+  return (
+    <div className={className}>
+      <h3 className="font-bold text-gray-800 dark:text-slate-100 font-twcenmt mb-4">
+        {title}
+      </h3>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-[#00afef] border-t-transparent" />
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-gray-400 text-base py-6 text-center">
+          Belum ada penjualan pada periode ini
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((p, idx) => (
+            <div
+              key={`${p.nama}-${idx}`}
+              className="flex items-center gap-3 py-2 px-3 rounded-lg bg-white dark:bg-slate-900/60 border border-white/20 dark:border-slate-700"
+            >
+              <span
+                className={`${accentMap.rank} text-white text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0`}
+              >
+                {idx + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-base text-gray-800 dark:text-slate-100 truncate">
+                  {p.nama}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">
+                  Omzet {fmtCurrency(p.omzet)} · Margin{" "}
+                  <span className={`font-semibold ${accentMap.margin}`}>
+                    {fmtCurrency(p.margin)} ({p.marginPersen.toFixed(1)}%)
+                  </span>
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-bold text-lg text-gray-800 dark:text-slate-100 font-twcenmt leading-none">
+                  {fmtQty(p.qtyTerjual)}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">
+                  terjual
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

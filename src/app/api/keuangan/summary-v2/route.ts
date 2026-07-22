@@ -31,7 +31,7 @@ import {
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import { hitungSaldoPinjamanBatch } from "@/lib/services/pinjaman-karyawan-service";
 import { listKomponenBatch } from "@/lib/services/komponen-kompensasi-service";
-import { getOrCreateOpenPeriod } from "@/lib/services/accounting-periods-service";
+import { getOrCreateOpenPeriod, getOrCreatePeriod } from "@/lib/services/accounting-periods-service";
 import { computePeriodMetrics } from "@/lib/services/periode-metrics-service";
 
 export const runtime = "nodejs";
@@ -52,9 +52,16 @@ export async function GET(request: NextRequest) {
     // 2. Fetch actors, roles, formulas and latest computed values in parallel.
     //    listFormulasRaw skips the redundant seedDefaultsIfEmpty call inside
     //    listFormulas() since we already seeded above.
-    // Bila tidak ada filter bulan, gunakan periode aktif (period-scoped metrics).
-    // Bila ada filter bulan (tampilan historis), tetap gunakan running total kumulatif.
-    const currentPeriod = month ? null : await getOrCreateOpenPeriod().catch(() => null);
+    // Selalu gunakan period-scoped metrics berdasarkan periode_id — baik untuk
+    // periode aktif maupun historis. Running total kumulatif (transaksi_terhitung)
+    // tidak di-reset per periode sehingga tidak cocok untuk bagi hasil per bulan.
+    const currentPeriod = month
+      ? await (async () => {
+          const [y, m] = month.split("-").map(Number);
+          if (!y || !m) return null;
+          return getOrCreatePeriod(y, m).catch(() => null);
+        })()
+      : await getOrCreateOpenPeriod().catch(() => null);
 
     const [actors, roles, formulas, latestMap, periodMetrics] = await Promise.all([
       listBusinessActors({ includeInactive: false }),

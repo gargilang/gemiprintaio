@@ -91,6 +91,14 @@ function berisiFrasaFaktur(
   );
 }
 
+/** Deteksi transaksi yang berasal dari modul Penggajian (kasbon atau proses gaji). */
+function adalahTransaksiPenggajian(teks: string | null | undefined): boolean {
+  return (
+    (teks?.includes("[REF:pinjaman-") ?? false) ||
+    (teks?.includes("[REF:gaji-") ?? false)
+  );
+}
+
 export default function FinancePage() {
   const router = useRouter();
   const swr = useSWRConfig();
@@ -522,6 +530,28 @@ export default function FinancePage() {
       return;
     }
 
+    // Cek apakah transaksi berasal dari modul Penggajian (kasbon atau proses gaji).
+    if (adalahTransaksiPenggajian(cashBook.keperluan)) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Diedit",
+        message: `Transaksi ini berasal dari halaman Karyawan dan tidak dapat diedit langsung dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nUntuk mengubah transaksi ini:\n\n1. Buka halaman KARYAWAN\n2. Cari data kasbon atau proses gaji terkait\n3. Gunakan tombol Revert atau Batalkan pada data tersebut`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
     setEditingCashBook(cashBook);
     setFormData({
       tanggal: cashBook.tanggal,
@@ -706,6 +736,28 @@ export default function FinancePage() {
       return;
     }
 
+    // Cek apakah transaksi berasal dari modul Penggajian (kasbon atau proses gaji).
+    if (adalahTransaksiPenggajian(cashBook.keperluan)) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Dihapus",
+        message: `Transaksi ini berasal dari halaman Karyawan dan tidak dapat dihapus langsung dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nUntuk membatalkan transaksi ini:\n\n1. Buka halaman KARYAWAN\n2. Cari data kasbon atau proses gaji terkait\n3. Gunakan tombol Revert atau Batalkan pada data tersebut\n\nSaldo kasbon dan data gaji akan dihitung ulang secara otomatis.`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
     setConfirmDialog({
       show: true,
       title: "Hapus Transaksi",
@@ -825,6 +877,28 @@ export default function FinancePage() {
         confirmText: "Mengerti",
         cancelText: "",
         type: "pos",
+        onConfirm: () => {
+          setConfirmDialog(null);
+        },
+      });
+      return;
+    }
+
+    // Cek apakah transaksi berasal dari modul Penggajian (kasbon atau proses gaji).
+    if (adalahTransaksiPenggajian(cashBook.keperluan)) {
+      setConfirmDialog({
+        show: true,
+        title: "Tidak Dapat Di-Override",
+        message: `Transaksi ini berasal dari halaman Karyawan dan tidak dapat di-override dari halaman Keuangan.\n\nKategori: ${
+          cashBook.kategori_transaksi
+        }\nKeperluan: ${
+          stripReferenceId(cashBook.keperluan) || "-"
+        }\nTanggal: ${formatDateJakarta(
+          cashBook.tanggal
+        )}\n\nData akan dihitung otomatis berdasarkan transaksi kasbon dan proses gaji.`,
+        confirmText: "Mengerti",
+        cancelText: "",
+        type: "purchases",
         onConfirm: () => {
           setConfirmDialog(null);
         },

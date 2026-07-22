@@ -129,6 +129,7 @@ export async function listPinjaman(
 
 export interface CatatPinjamanInput {
   actorId: string;
+  actorNama?: string;
   jumlah: number;
   tanggal: string;
   keterangan?: string;
@@ -155,7 +156,9 @@ export async function catatTarikPinjaman(
     const hasil = await db.transaction(async () => {
       const pinjamanId = generateId();
       const now = getCurrentTimestamp();
-      const keterangan = input.keterangan?.trim() || "Tarik kasbon";
+      const keterangan =
+        input.keterangan?.trim() ||
+        (input.actorNama ? `Tarik kasbon (${input.actorNama})` : "Tarik kasbon");
 
       const pinjamanRow: PinjamanKaryawan = {
         id: pinjamanId,

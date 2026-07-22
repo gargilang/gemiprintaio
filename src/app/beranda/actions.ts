@@ -12,6 +12,7 @@ import {
 import { getPOSInitData } from "@/lib/services/pos-service";
 import { getProductionOrders } from "@/lib/services/production-service";
 import { getLatestPerFormulaKey } from "@/lib/services/transaction-computed-service";
+import { db } from "@/lib/db-unified";
 
 export interface DailySalesTrend {
   date: string; // "DD/MM"
@@ -176,4 +177,182 @@ export async function generateDraftPurchaseOrdersAction(
     vendor_ids,
     dibuat_oleh: session.uid,
   });
+}
+
+// ── Barang paling laku dijual (Beranda) ──────────────────────────────────────
+
+/** Rentang periode untuk perhitungan barang terlaku. */
+export type PeriodeTerlaku = "30" | "90" | "semua";
+
+/** Satu baris produk terlaku dengan metrik agregat. */
+export interface ProdukTerlaku {
+  /** Nama tampilan produk (Produk Jual untuk BARANG, nama produk untuk MAKLON). */
+  nama: string;
+  /** Total kuantitas terjual (Σ jumlah baris). */
+  qtyTerjual: number;
+  /** Total omzet dari produk ini (Σ subtotal). */
+  omzet: number;
+  /** Total margin/gross profit (Σ gross_profit). */
+  margin: number;
+  /** Margin dalam persen dari omzet (0 bila omzet 0). */
+  marginPersen: number;
+}
+
+export interface TopSellingProductsResult {
+  /** Produk produksi sendiri (baris tipe_item = BARANG), per Produk Jual. */
+  dataBarang: ProdukTerlaku[];
+  /** Produk maklon/subkontrak (baris tipe_item = MAKLON), per produk maklon. */
+  katalogExtra: ProdukTerlaku[];
+}
+
+/**
+ * Ambil 10 karakter tanggal (YYYY-MM-DD) dari nilai tanggal apa pun.
+ * Mengembalikan string kosong bila tidak bisa diparse.
+ */
+function tanggalKey(value: unknown): string {
+  if (typeof value === "string" && value.length >= 10) return value.slice(0, 10);
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function toNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Akumulasi metrik per produk saat mengelompokkan baris penjualan. */
+interface AkumulatorProduk {
+  nama: string;
+  qtyTerjual: number;
+  omzet: number;
+  margin: number;
+}
+
+/**
+ * Ubah peta akumulator menjadi daftar top-N produk terlaku,
+ * diurutkan berdasarkan kuantitas terjual (desc).
+ */
+function ringkasTerlaku(
+  map: Map<string, AkumulatorProduk>,
+  limit: number,
+): ProdukTerlaku[] {
+  return Array.from(map.values())
+    .sort((a, b) => b.qtyTerjual - a.qtyTerjual)
+    .slice(0, limit)
+    .map((acc) => ({
+      nama: acc.nama,
+      qtyTerjual: acc.qtyTerjual,
+      omzet: acc.omzet,
+      margin: acc.margin,
+      marginPersen: acc.omzet > 0 ? (acc.margin / acc.omzet) * 100 : 0,
+    }));
+}
+
+/**
+ * Hitung 5 produk paling laku dijual dalam periode tertentu, dipisah antara
+ * Data Barang (produksi sendiri, tipe_item = BARANG, dikelompokkan per Produk
+ * Jual) dan Katalog Extra (maklon, tipe_item = MAKLON, dikelompokkan per produk
+ * maklon). Transaksi VOIDED tidak dihitung.
+ */
+export async function getTopSellingProductsAction(
+  periode: PeriodeTerlaku = "90",
+): Promise<TopSellingProductsResult> {
+  const [salesRes, itemsRes, unitPricesRes] = await Promise.all([
+    db.query<any>("penjualan"),
+    db.query<any>("item_penjualan"),
+    db.query<any>("harga_barang_satuan"),
+  ]);
+
+  const sales = salesRes.data || [];
+  const items = itemsRes.data || [];
+
+  // Nama Produk Jual per harga_satuan_id (fallback resolusi nama BARANG).
+  const unitPriceNameMap = new Map<string, string>();
+  for (const up of unitPricesRes.data || []) {
+    if (up.nama_produk_jual) unitPriceNameMap.set(up.id, up.nama_produk_jual);
+  }
+
+  // Ambang bawah tanggal (inklusif) untuk periode 30/90 hari; null = semua.
+  let startKey: string | null = null;
+  if (periode !== "semua") {
+    const hari = periode === "30" ? 30 : 90;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (hari - 1));
+    startKey = tanggalKey(start);
+  }
+
+  // Kumpulkan id penjualan non-VOIDED yang masuk periode.
+  const saleIdSet = new Set<string>();
+  for (const s of sales) {
+    const status = String(s.status_transaksi || "POSTED").toUpperCase();
+    if (status === "VOIDED") continue;
+    if (startKey) {
+      const key = tanggalKey(s.dibuat_pada ?? s.created_at);
+      if (!key || key < startKey) continue;
+    }
+    saleIdSet.add(s.id);
+  }
+
+  const barang = new Map<string, AkumulatorProduk>();
+  const maklon = new Map<string, AkumulatorProduk>();
+
+  for (const item of items) {
+    if (!saleIdSet.has(item.penjualan_id)) continue;
+
+    const tipe = String(item.tipe_item || "BARANG").toUpperCase();
+    // JASA tidak masuk ke salah satu panel (bukan produk terlaku).
+    if (tipe !== "BARANG" && tipe !== "MAKLON") continue;
+
+    const qty = toNumber(item.jumlah);
+    const omzet = toNumber(item.subtotal);
+    const margin = toNumber(item.gross_profit);
+
+    if (tipe === "MAKLON") {
+      const key = item.katalog_maklon_id
+        ? `katalog:${item.katalog_maklon_id}`
+        : `nama:${(item.nama_produk_jual || item.nama_satuan || "Produk Maklon").toLowerCase()}`;
+      const nama =
+        item.nama_produk_jual || item.nama_satuan || "Produk Maklon";
+      const acc = maklon.get(key) || {
+        nama,
+        qtyTerjual: 0,
+        omzet: 0,
+        margin: 0,
+      };
+      acc.qtyTerjual += qty;
+      acc.omzet += omzet;
+      acc.margin += margin;
+      maklon.set(key, acc);
+    } else {
+      // Kelompokkan per Produk Jual (harga_satuan_id), bukan master barang.
+      const namaProdukJual =
+        item.nama_produk_jual ||
+        (item.harga_satuan_id
+          ? unitPriceNameMap.get(item.harga_satuan_id)
+          : null) ||
+        item.nama_satuan ||
+        "Produk";
+      const key = item.harga_satuan_id
+        ? `harga:${item.harga_satuan_id}`
+        : `nama:${namaProdukJual.toLowerCase()}`;
+      const acc = barang.get(key) || {
+        nama: namaProdukJual,
+        qtyTerjual: 0,
+        omzet: 0,
+        margin: 0,
+      };
+      acc.qtyTerjual += qty;
+      acc.omzet += omzet;
+      acc.margin += margin;
+      barang.set(key, acc);
+    }
+  }
+
+  return {
+    dataBarang: ringkasTerlaku(barang, 5),
+    katalogExtra: ringkasTerlaku(maklon, 5),
+  };
 }

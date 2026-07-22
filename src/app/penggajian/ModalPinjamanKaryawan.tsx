@@ -87,6 +87,7 @@ export default function ModalPinjamanKaryawan({
       setSubmitting(true);
       const payload = {
         actorId: actor.id,
+        actorNama: actor.nama,
         jumlah: nominal,
         tanggal,
         keterangan: keterangan.trim() || undefined,
@@ -219,6 +220,7 @@ export default function ModalPinjamanKaryawan({
                   min={0}
                   value={jumlah}
                   onChange={(e) => setJumlah(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handleSimpan()}
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-3 py-2 text-sm"
                 />
               </div>
@@ -241,6 +243,7 @@ export default function ModalPinjamanKaryawan({
                   type="text"
                   value={keterangan}
                   onChange={(e) => setKeterangan(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handleSimpan()}
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-3 py-2 text-sm"
                 />
               </div>
