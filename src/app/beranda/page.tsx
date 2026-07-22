@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -223,10 +223,15 @@ export default function DashboardPage() {
       getReorderSuggestionsAction,
     );
 
+  const fetchTopSelling = useCallback(
+    () => getTopSellingProductsAction(periodeTerlaku),
+    [periodeTerlaku],
+  );
+
   const { data: topSelling, isLoading: topSellingLoading } =
     useCachedData<TopSellingProductsResult>(
       `top-selling-${periodeTerlaku}`,
-      () => getTopSellingProductsAction(periodeTerlaku),
+      fetchTopSelling,
     );
 
   // Paksa revalidasi saran restock saat Beranda ter-mount. Setelah membuat draf
