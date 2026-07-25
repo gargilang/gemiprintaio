@@ -103,6 +103,8 @@ export interface SaleItem {
   roll_inventory_deferred?: number | null;
   /** Biaya tambahan yang ditautkan ke item ini (item_penjualan_id). */
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
+  /** Label kustom per baris yang ditulis kasir — dicetak di faktur dan struk. */
+  catatan_item?: string | null;
   dibuat_pada?: string;
 }
 

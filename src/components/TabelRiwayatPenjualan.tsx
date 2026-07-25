@@ -29,6 +29,8 @@ interface SaleItemRow {
   billed_panjang?: number | null;
   billed_lebar?: number | null;
   jumlah_roll?: number | null;
+  /** Label kustom per baris yang ditulis kasir — dicetak di faktur dan struk. */
+  catatan_item?: string | null;
 }
 
 interface Sale {
@@ -339,6 +341,7 @@ export default function TabelRiwayatPenjualan({
               label: b.label.trim(),
               nominal: Number(b.nominal),
             })),
+          catatan_item: item.catatan_item ?? undefined,
         };
       });
       const total = sale.total_jumlah;
@@ -444,6 +447,7 @@ export default function TabelRiwayatPenjualan({
               label: b.label.trim(),
               nominal: Number(b.nominal),
             })),
+          catatan_item: item.catatan_item,
         }),
       );
       const total = sale.total_jumlah;
@@ -553,6 +557,7 @@ export default function TabelRiwayatPenjualan({
               label: b.label.trim(),
               nominal: Number(b.nominal),
             })),
+          catatan_item: item.catatan_item,
         }),
       );
       const total = sale.total_jumlah;
