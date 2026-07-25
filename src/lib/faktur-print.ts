@@ -123,7 +123,11 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function renderItemRow(item: FakturItem, index: number): string {
+function renderItemRow(
+  item: FakturItem,
+  index: number,
+  showUkuran: boolean,
+): string {
   const namaLines = [escapeHtml(item.nama)];
   if (item.keterangan) namaLines.push(escapeHtml(item.keterangan));
   if (item.catatan_item)
@@ -131,7 +135,9 @@ function renderItemRow(item: FakturItem, index: number): string {
       `<em style="font-size:0.85em;color:#6366f1;">${escapeHtml(item.catatan_item)}</em>`,
     );
   const namaCell = namaLines.join("<br>");
-  const ukuran = item.ukuran ? escapeHtml(item.ukuran) : "&nbsp;";
+  const ukuranCell = showUkuran
+    ? `<td class="col-ukuran">${item.ukuran ? escapeHtml(item.ukuran) : "&nbsp;"}</td>`
+    : "";
   const qtyDisplay = Number.isInteger(item.qty)
     ? String(item.qty)
     : item.qty.toFixed(2).replace(/\.?0+$/, "");
@@ -146,7 +152,7 @@ function renderItemRow(item: FakturItem, index: number): string {
     <tr class="item-sub">
       <td class="col-no"></td>
       <td class="col-nama">+ ${escapeHtml(b.label.trim())}</td>
-      <td class="col-ukuran"></td>
+      ${showUkuran ? '<td class="col-ukuran"></td>' : ""}
       <td class="col-qty"></td>
       <td class="col-harga"></td>
       <td class="col-jumlah">${formatRupiahPlain(b.nominal)}</td>
@@ -158,7 +164,7 @@ function renderItemRow(item: FakturItem, index: number): string {
     <tr>
       <td class="col-no">${index + 1}</td>
       <td class="col-nama">${namaCell}</td>
-      <td class="col-ukuran">${ukuran}</td>
+      ${ukuranCell}
       <td class="col-qty">${qtyCell}</td>
       <td class="col-harga">${formatRupiahPlain(item.harga)}</td>
       <td class="col-jumlah">${formatRupiahPlain(item.jumlah)}</td>
@@ -199,7 +205,11 @@ export function generateFakturHTML(data: FakturData): string {
 
   const kotaDisplay =
     (kota?.trim() || "Bekasi") + ", " + formatJakartaDate(tanggal);
-  const itemsHTML = items.map(renderItemRow).join("");
+  // Tampilkan kolom Ukuran hanya jika minimal satu item punya nilai ukuran.
+  const hasUkuran = items.some((it) => !!it.ukuran?.trim());
+  const itemsHTML = items
+    .map((item, i) => renderItemRow(item, i, hasUkuran))
+    .join("");
   const pelangganDetailHTML = (pelanggan_detail || [])
     .map((line) => line.trim())
     .filter(Boolean)
@@ -507,7 +517,7 @@ export function generateFakturHTML(data: FakturData): string {
       height: 22px;
     }
     .col-no      { width: 6%;  text-align: center; }
-    .col-nama    { width: 32%; text-align: left; }
+    .col-nama    { width: ${hasUkuran ? "32%" : "44%"}; text-align: left; }
     .col-ukuran  { width: 12%; text-align: center; }
     .col-qty     { width: 8%;  text-align: center; }
     .col-harga   { width: 16%; text-align: right; }
@@ -748,7 +758,7 @@ export function generateFakturHTML(data: FakturData): string {
         <tr>
           <th class="col-no">NO.</th>
           <th class="col-nama">NAMA BARANG</th>
-          <th class="col-ukuran">UKURAN</th>
+          ${hasUkuran ? '<th class="col-ukuran">UKURAN</th>' : ""}
           <th class="col-qty">QTY</th>
           <th class="col-harga">HARGA</th>
           <th class="col-jumlah">JUMLAH</th>
