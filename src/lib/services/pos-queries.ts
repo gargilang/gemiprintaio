@@ -105,6 +105,8 @@ export interface SaleItem {
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
   /** Label kustom per baris yang ditulis kasir — dicetak di faktur dan struk. */
   catatan_item?: string | null;
+  /** String ukuran bebas untuk kolom UKURAN faktur — item sekali pakai. */
+  ukuran_display?: string | null;
   dibuat_pada?: string;
 }
 

@@ -1060,54 +1060,82 @@ export default function POSPage() {
   };
 
   const handleSaveTambahItemLainnya = async (v: TambahItemLainnyaValue) => {
-    // 1. Simpan ke katalog_maklon supaya item muncul di halaman Katalog Extra
-    //    untuk pelengkapan vendor/HPP belakangan. Vendor=null/biaya=null =
-    //    item "pending" (safeguard C2/Task 4 menangani saat checkout).
-    try {
-      const created = await createKatalogMaklonAction({
-        nama_produk: v.barang_nama,
-        nama_satuan: v.nama_satuan,
-        harga_jual_default: v.harga_satuan,
-        biaya_subkontrak_default: v.biaya_subkontrak ?? 0,
-        vendor_subkontrak_id_default: v.vendor_subkontrak_id ?? null,
-        metode_bayar_vendor_default: v.metode_bayar_vendor ?? "CASH",
-        kategori: v.kategori ?? null,
-        kategori_id: v.kategori_id ?? null,
-        populer_status: 0,
-        butuh_dimensi_status: v.butuh_dimensi_status ?? 0,
-        is_aktif: 1,
-        urutan: 0,
-      });
-      const createdKatalog = created as NonNullable<
-        POSInitData["katalogMaklon"]
-      >[number];
-      const katalogUntukCache = {
-        ...createdKatalog,
-        kategori_nama: createdKatalog.kategori_nama ?? v.kategori ?? null,
-      };
-      if (createdKatalog.id) {
-        void mutatePosInit(
-          (prev) => {
-            const base = prev ?? EMPTY_POS_INIT;
-            const current = base.katalogMaklon ?? [];
-            return {
-              ...base,
-              katalogMaklon: [katalogUntukCache, ...current],
-            };
-          },
-          { revalidate: false },
-        );
+    if (v.simpanKeKatalog) {
+      // ── Jalur lama: simpan ke katalog_maklon ─────────────────────────
+      // Item tersimpan di Katalog Extra untuk pelengkapan vendor/HPP belakangan.
+      try {
+        const created = await createKatalogMaklonAction({
+          nama_produk: v.barang_nama,
+          nama_satuan: v.nama_satuan,
+          harga_jual_default: v.harga_satuan,
+          biaya_subkontrak_default: v.biaya_subkontrak ?? 0,
+          vendor_subkontrak_id_default: v.vendor_subkontrak_id ?? null,
+          metode_bayar_vendor_default: v.metode_bayar_vendor ?? "CASH",
+          kategori: v.kategori ?? null,
+          kategori_id: v.kategori_id ?? null,
+          populer_status: 0,
+          butuh_dimensi_status: v.butuh_dimensi_status ?? 0,
+          is_aktif: 1,
+          urutan: 0,
+        });
+        const createdKatalog = created as NonNullable<
+          POSInitData["katalogMaklon"]
+        >[number];
+        const katalogUntukCache = {
+          ...createdKatalog,
+          kategori_nama: createdKatalog.kategori_nama ?? v.kategori ?? null,
+        };
+        if (createdKatalog.id) {
+          void mutatePosInit(
+            (prev) => {
+              const base = prev ?? EMPTY_POS_INIT;
+              const current = base.katalogMaklon ?? [];
+              return {
+                ...base,
+                katalogMaklon: [katalogUntukCache, ...current],
+              };
+            },
+            { revalidate: false },
+          );
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        showMsg("error", `Gagal simpan ke katalog: ${msg}`);
+        return;
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showMsg("error", `Gagal simpan ke katalog: ${msg}`);
-      return; // jangan tambah ke cart bila gagal simpan katalog
+      setShowTambahItemLainnya(false);
+      showMsg("success", "Item berhasil ditambahkan ke Pilih Barang");
+      invalidate("katalog-maklon");
+      return;
     }
 
+    // ── Jalur baru: sekali pakai — langsung ke keranjang ─────────────────
+    // Item tidak disimpan ke katalog_maklon. Saat checkout, safeguard C2
+    // di pos-mutations mendeteksi tipe_item=MAKLON tanpa vendor/biaya dan
+    // menyimpan pending_vendor_hpp=1 → muncul di panel Pending Vendor/HPP.
+    // katalog_maklon_id tidak di-set (null) → badge "Sekali Pakai" di Pending.
+    const qty = v.qty_display ?? 1;
+    const total = qty * v.harga_satuan;
+    const newItem: CartItem = {
+      barang_id: `adhoc-${Date.now()}`,
+      barang_nama: v.barang_nama,
+      nama_produk_jual: v.barang_nama,
+      harga_satuan_id: `adhoc-unit-${Date.now()}`,
+      nama_satuan: "pcs",
+      faktor_konversi: 1,
+      harga_satuan: v.harga_satuan,
+      jumlah: qty,
+      subtotalRaw: total,
+      tipe_item: "MAKLON",
+      deskripsi_pekerjaan: v.barang_nama,
+      ukuran_display: v.ukuran_display || undefined,
+      vendor_subkontrak_id: v.vendor_subkontrak_id ?? undefined,
+      biaya_subkontrak: v.biaya_subkontrak ?? undefined,
+      metode_bayar_vendor: v.metode_bayar_vendor ?? undefined,
+    };
+    setCart((prev) => [...prev, newItem]);
     setShowTambahItemLainnya(false);
-    showMsg("success", "Item berhasil ditambahkan ke Pilih Barang");
-    // Bust cache katalog supaya item muncul di halaman Katalog Extra.
-    invalidate("katalog-maklon");
+    showMsg("success", "Item sekali pakai ditambahkan ke keranjang");
   };
 
   const handleSaveRincianInternal = (index: number, v: Partial<CartItem>) => {
@@ -1667,6 +1695,7 @@ export default function POSPage() {
                   .filter((b) => b.label.trim() && b.nominal > 0)
                   .map((b) => ({ label: b.label.trim(), nominal: b.nominal })),
                 catatan_item: item.catatan_item?.trim() || undefined,
+                ukuran_display: item.ukuran_display,
               });
             }),
             total,

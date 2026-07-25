@@ -110,6 +110,11 @@ export interface CartItem {
    * Dicetak di struk, faktur A5, dan SPK produksi agar mudah diidentifikasi saat pengambilan.
    */
   catatan_item?: string;
+  /**
+   * String ukuran bebas untuk tampil di kolom UKURAN faktur — hanya untuk item sekali pakai.
+   * Tidak dipakai untuk kalkulasi apapun. Mis: "A3", "1m x 3m", "60×90cm".
+   */
+  ukuran_display?: string;
 }
 
 export interface SubkontraktorOption {

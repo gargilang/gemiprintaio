@@ -51,6 +51,8 @@ interface CartItem {
   deskripsi_pekerjaan?: string;
   /** Label kustom per baris — mis. "Banner Pecel Lele". Dicetak di struk/faktur/SPK. */
   catatan_item?: string;
+  /** String ukuran bebas untuk kolom UKURAN faktur — item sekali pakai. */
+  ukuran_display?: string;
 }
 
 export type PrintType = "thermal" | "faktur" | "both" | "none";
@@ -250,6 +252,7 @@ export default function OverlayKeranjang({
           harga_satuan: hargaEfektif,
           subtotal: lineTotal,
           catatan_item: item.catatan_item?.trim() || undefined,
+          ukuran_display: item.ukuran_display,
         });
 
         const biayaTambahan = (item.biaya_tambahan || []).filter(

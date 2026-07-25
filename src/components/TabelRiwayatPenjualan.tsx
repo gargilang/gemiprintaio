@@ -31,6 +31,8 @@ interface SaleItemRow {
   jumlah_roll?: number | null;
   /** Label kustom per baris yang ditulis kasir — dicetak di faktur dan struk. */
   catatan_item?: string | null;
+  /** String ukuran bebas untuk kolom UKURAN faktur — item sekali pakai. */
+  ukuran_display?: string | null;
 }
 
 interface Sale {
@@ -448,6 +450,7 @@ export default function TabelRiwayatPenjualan({
               nominal: Number(b.nominal),
             })),
           catatan_item: item.catatan_item,
+          ukuran_display: item.ukuran_display,
         }),
       );
       const total = sale.total_jumlah;
@@ -558,6 +561,7 @@ export default function TabelRiwayatPenjualan({
               nominal: Number(b.nominal),
             })),
           catatan_item: item.catatan_item,
+          ukuran_display: item.ukuran_display,
         }),
       );
       const total = sale.total_jumlah;

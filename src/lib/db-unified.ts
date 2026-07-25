@@ -1728,6 +1728,10 @@ class UnifiedDatabase {
       if (!cols.includes("catatan_item")) {
         db.exec("ALTER TABLE item_penjualan ADD COLUMN catatan_item TEXT");
       }
+      // Migrasi (20260725000000): ukuran_display — string ukuran bebas untuk faktur item sekali pakai.
+      if (!cols.includes("ukuran_display")) {
+        db.exec("ALTER TABLE item_penjualan ADD COLUMN ukuran_display TEXT");
+      }
       // Migrasi (20260716120000): info nesting roll untuk billing adil + saran SPK.
       if (!cols.includes("roll_items_per_row")) {
         db.exec("ALTER TABLE item_penjualan ADD COLUMN roll_items_per_row REAL");

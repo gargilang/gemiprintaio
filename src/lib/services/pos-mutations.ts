@@ -709,6 +709,7 @@ async function createSaleAttempt(data: CreateSaleData): Promise<{
           pending_vendor_hpp: isPendingMaklon ? 1 : 0,
           katalog_maklon_id: isMaklon ? item.katalog_maklon_id || null : null,
           catatan_item: (item as any).catatan_item?.trim() || null,
+          ukuran_display: (item as any).ukuran_display?.trim() || null,
           // Info nesting roll (saran billing/SPK) — nullable untuk data lama.
           roll_items_per_row: (item as any).roll_items_per_row ?? null,
           roll_rows: (item as any).roll_rows ?? null,

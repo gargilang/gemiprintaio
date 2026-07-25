@@ -138,6 +138,8 @@ export function mapPenjualanItemKeFaktur(item: {
   biaya_tambahan?: Array<{ label: string; nominal: number }>;
   /** Label kustom per baris — dicetak miring di bawah nama item. */
   catatan_item?: string | null;
+  /** Override string ukuran — untuk item sekali pakai tanpa dimensi nyata. */
+  ukuran_display?: string | null;
 }): FakturItem {
   const { qty, satuan } = qtySatuanCetakPenjualan(item);
   const subtotal = Number(item.subtotal) || 0;
@@ -153,7 +155,7 @@ export function mapPenjualanItemKeFaktur(item: {
 
   return {
     nama,
-    ukuran: formatUkuranCetakInput(item) ?? "",
+    ukuran: item.ukuran_display?.trim() || formatUkuranCetakInput(item) || "",
     qty,
     satuan,
     harga,
