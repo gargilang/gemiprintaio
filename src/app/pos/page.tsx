@@ -1129,6 +1129,7 @@ export default function POSPage() {
       tipe_item: "MAKLON",
       deskripsi_pekerjaan: v.barang_nama,
       ukuran_display: v.ukuran_display || undefined,
+      catatan_item: v.catatan_item || undefined,
       vendor_subkontrak_id: v.vendor_subkontrak_id ?? undefined,
       biaya_subkontrak: v.biaya_subkontrak ?? undefined,
       metode_bayar_vendor: v.metode_bayar_vendor ?? undefined,

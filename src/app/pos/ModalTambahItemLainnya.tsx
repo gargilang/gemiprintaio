@@ -28,6 +28,8 @@ export interface TambahItemLainnyaValue {
   ukuran_display?: string;
   /** Qty untuk faktur — hanya mode sekali pakai. */
   qty_display?: number;
+  /** Catatan per baris — dicetak miring di bawah nama item di faktur dan struk. */
+  catatan_item?: string;
 }
 
 interface ModalTambahItemLainnyaProps {
@@ -88,6 +90,7 @@ export default function ModalTambahItemLainnya({
   >("CASH");
   const [tampilkanInternalSekalipakai, setTampilkanInternalSekalipakai] =
     useState(false);
+  const [catatanSekalipakai, setCatatanSekalipakai] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -112,6 +115,7 @@ export default function ModalTambahItemLainnya({
     setBiayaSekalipakai("");
     setMetodeBayarSekalipakai("CASH");
     setTampilkanInternalSekalipakai(false);
+    setCatatanSekalipakai("");
     setError(null);
   };
 
@@ -204,6 +208,7 @@ export default function ModalTambahItemLainnya({
         simpanKeKatalog: false,
         ukuran_display: ukuranDisplay.trim() || undefined,
         qty_display: parsedQty,
+        catatan_item: catatanSekalipakai.trim() || undefined,
       });
       resetForm();
     } finally {
@@ -537,6 +542,21 @@ export default function ModalTambahItemLainnya({
                 }).format(totalSekalipakai)}
               </span>
             </div>
+            {/* Catatan per item */}
+            <label className="block text-sm">
+              <span className="text-slate-700 dark:text-slate-200">
+                Catatan{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">
+                  (opsional — dicetak miring di bawah nama item di faktur)
+                </span>
+              </span>
+              <input
+                value={catatanSekalipakai}
+                onChange={(e) => setCatatanSekalipakai(e.target.value)}
+                placeholder="mis. Banner Pecel Lele, ukuran sesuai permintaan"
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
+            </label>
             {/* Rincian Internal (opsional) */}
             <div className="space-y-3">
               <button
