@@ -31,7 +31,7 @@ import {
 import { recalculateCashbookIfAvailable } from "@/lib/services/finance-service";
 import { hitungSaldoPinjamanBatch } from "@/lib/services/pinjaman-karyawan-service";
 import { listKomponenBatch } from "@/lib/services/komponen-kompensasi-service";
-import { getOrCreateOpenPeriod, getOrCreatePeriod } from "@/lib/services/accounting-periods-service";
+import { getOrCreateOpenPeriod, getPeriodIfExists } from "@/lib/services/accounting-periods-service";
 import { computePeriodMetrics } from "@/lib/services/periode-metrics-service";
 
 export const runtime = "nodejs";
@@ -55,11 +55,15 @@ export async function GET(request: NextRequest) {
     // Selalu gunakan period-scoped metrics berdasarkan periode_id — baik untuk
     // periode aktif maupun historis. Running total kumulatif (transaksi_terhitung)
     // tidak di-reset per periode sehingga tidak cocok untuk bagi hasil per bulan.
+    // Bila month diberikan (permintaan historis), hanya baca periode yang sudah ada —
+    // JANGAN buat periode baru. Membuat periode di sini akan mencemari tabel
+    // accounting_periods dengan bulan-bulan masa depan hanya karena user membuka
+    // modal atau laporan. Periode baru hanya boleh dibuat oleh alur mutasi keuangan.
     const currentPeriod = month
       ? await (async () => {
           const [y, m] = month.split("-").map(Number);
           if (!y || !m) return null;
-          return getOrCreatePeriod(y, m).catch(() => null);
+          return getPeriodIfExists(y, m).catch(() => null);
         })()
       : await getOrCreateOpenPeriod().catch(() => null);
 

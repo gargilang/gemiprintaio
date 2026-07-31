@@ -46,6 +46,22 @@ export async function listAccountingPeriods(): Promise<AccountingPeriod[]> {
   return result.data || [];
 }
 
+/**
+ * Ambil periode yang sudah ada untuk tahun+bulan tertentu, tanpa membuat baru.
+ * Kembalikan `null` jika belum ada. Gunakan ini untuk endpoint read-only
+ * (mis. summary, laporan) agar tidak mencemari tabel dengan periode masa depan.
+ */
+export async function getPeriodIfExists(
+  year: number,
+  month: number
+): Promise<AccountingPeriod | null> {
+  const { key } = periodBounds(year, month);
+  const existing = await db.queryOne<AccountingPeriod>("accounting_periods", {
+    where: { period_key: key },
+  });
+  return existing.data ?? null;
+}
+
 export async function getOrCreatePeriod(
   year: number,
   month: number
